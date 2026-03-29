@@ -4,7 +4,7 @@ import 'package:tts_bandmate/features/events/data/models/event_member.dart';
 
 void main() {
   group('EventDetail.fromJson', () {
-    Map<String, dynamic> _fullJson({List<dynamic> members = const []}) => {
+    Map<String, dynamic> fullJson({List<dynamic> members = const []}) => {
           'id': 1,
           'key': 'evt-key',
           'title': 'Wedding Reception',
@@ -24,7 +24,7 @@ void main() {
         };
 
     test('test_parses_full_event_detail', () {
-      final detail = EventDetail.fromJson(_fullJson());
+      final detail = EventDetail.fromJson(fullJson());
 
       expect(detail.id, 1);
       expect(detail.key, 'evt-key');
@@ -43,7 +43,7 @@ void main() {
     });
 
     test('test_parses_members_list', () {
-      final detail = EventDetail.fromJson(_fullJson(members: [
+      final detail = EventDetail.fromJson(fullJson(members: [
         {
           'id': 10,
           'user_id': 3,
@@ -69,25 +69,25 @@ void main() {
     });
 
     test('test_parses_live_session_id_when_present', () {
-      final json = _fullJson()..['live_session_id'] = 42;
+      final json = fullJson()..['live_session_id'] = 42;
       final detail = EventDetail.fromJson(json);
       expect(detail.liveSessionId, 42);
     });
 
     test('test_can_write_defaults_to_false_when_missing', () {
-      final json = _fullJson()..remove('can_write');
+      final json = fullJson()..remove('can_write');
       final detail = EventDetail.fromJson(json);
       expect(detail.canWrite, isFalse);
     });
 
     test('test_members_is_empty_list_when_key_missing', () {
-      final json = _fullJson()..remove('members');
+      final json = fullJson()..remove('members');
       final detail = EventDetail.fromJson(json);
       expect(detail.members, isEmpty);
     });
 
     test('test_parsed_date_returns_correct_datetime', () {
-      final detail = EventDetail.fromJson(_fullJson());
+      final detail = EventDetail.fromJson(fullJson());
       expect(detail.parsedDate, DateTime(2026, 5, 20));
     });
   });

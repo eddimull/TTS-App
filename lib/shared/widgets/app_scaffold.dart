@@ -1,59 +1,57 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show BottomNavigationBarItem;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/connectivity_provider.dart';
 
-/// Destination configuration for the bottom navigation bar.
 class _NavDestination {
   const _NavDestination({
     required this.route,
     required this.label,
     required this.icon,
-    required this.selectedIcon,
+    required this.activeIcon,
   });
-
   final String route;
   final String label;
-  final Widget icon;
-  final Widget selectedIcon;
+  final IconData icon;
+  final IconData activeIcon;
 }
 
 const _destinations = [
   _NavDestination(
     route: '/dashboard',
     label: 'Dashboard',
-    icon: Icon(Icons.home_outlined),
-    selectedIcon: Icon(Icons.home),
+    icon: CupertinoIcons.home,
+    activeIcon: CupertinoIcons.house_fill,
   ),
   _NavDestination(
     route: '/events',
     label: 'Events',
-    icon: Icon(Icons.calendar_month_outlined),
-    selectedIcon: Icon(Icons.calendar_month),
+    icon: CupertinoIcons.calendar,
+    activeIcon: CupertinoIcons.calendar,
   ),
   _NavDestination(
     route: '/bookings',
     label: 'Bookings',
-    icon: Icon(Icons.book_outlined),
-    selectedIcon: Icon(Icons.book),
+    icon: CupertinoIcons.book,
+    activeIcon: CupertinoIcons.book_fill,
   ),
   _NavDestination(
     route: '/media',
     label: 'Media',
-    icon: Icon(Icons.perm_media_outlined),
-    selectedIcon: Icon(Icons.perm_media),
+    icon: CupertinoIcons.photo_on_rectangle,
+    activeIcon: CupertinoIcons.photo_fill_on_rectangle_fill,
   ),
   _NavDestination(
     route: '/more',
     label: 'More',
-    icon: Icon(Icons.menu_outlined),
-    selectedIcon: Icon(Icons.menu),
+    icon: CupertinoIcons.ellipsis,
+    activeIcon: CupertinoIcons.ellipsis,
   ),
 ];
 
 class AppScaffold extends ConsumerStatefulWidget {
   const AppScaffold({super.key, required this.child});
-
   final Widget child;
 
   @override
@@ -61,6 +59,8 @@ class AppScaffold extends ConsumerStatefulWidget {
 }
 
 class _AppScaffoldState extends ConsumerState<AppScaffold> {
+  bool _showBackOnline = false;
+
   int _selectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
     final idx = _destinations.indexWhere((d) => location.startsWith(d.route));
@@ -72,49 +72,45 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     final selectedIndex = _selectedIndex(context);
     final connectivityAsync = ref.watch(connectivityProvider);
 
-    // Show snackbar when connection is restored.
     ref.listen(connectivityProvider, (previous, next) {
       final wasOnline = previous?.valueOrNull ?? true;
       final isOnline = next.valueOrNull ?? true;
-
       if (!wasOnline && isOnline) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Back online'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
+        setState(() => _showBackOnline = true);
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) setState(() => _showBackOnline = false);
+        });
       }
     });
 
     final isOffline = connectivityAsync.valueOrNull == false;
 
-    return Scaffold(
-      body: Column(
-        children: [
-          if (isOffline) const _OfflineBanner(),
-          Expanded(child: widget.child),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (index) {
-          final route = _destinations[index].route;
-          if (!GoRouterState.of(context).matchedLocation.startsWith(route)) {
-            context.go(route);
-          }
-        },
-        destinations: _destinations
-            .map(
-              (d) => NavigationDestination(
-                icon: d.icon,
-                selectedIcon: d.selectedIcon,
+    return Column(
+      children: [
+        if (isOffline) const _OfflineBanner(),
+        if (_showBackOnline) const _BackOnlineBanner(),
+        Expanded(child: widget.child),
+        SafeArea(
+          top: false,
+          child: CupertinoTabBar(
+            currentIndex: selectedIndex,
+            onTap: (index) {
+              final route = _destinations[index].route;
+              if (!GoRouterState.of(context).matchedLocation.startsWith(route)) {
+                context.go(route);
+              }
+            },
+            items: _destinations.map((d) {
+              final isSelected = _destinations[selectedIndex].route == d.route;
+              return BottomNavigationBarItem(
+                icon: Icon(isSelected ? d.activeIcon : d.icon),
+                activeIcon: Icon(d.activeIcon),
                 label: d.label,
-              ),
-            )
-            .toList(),
-      ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -124,19 +120,46 @@ class _OfflineBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.grey.shade800,
+    return Container(
+      color: CupertinoColors.systemGrey.resolveFrom(context),
       child: const SafeArea(
         bottom: false,
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           child: Row(
             children: [
-              Icon(Icons.wifi_off, size: 16, color: Colors.white70),
+              Icon(CupertinoIcons.wifi_slash, size: 16, color: CupertinoColors.white),
               SizedBox(width: 8),
               Text(
                 'No internet connection',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
+                style: TextStyle(color: CupertinoColors.white, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BackOnlineBanner extends StatelessWidget {
+  const _BackOnlineBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: CupertinoColors.systemGreen,
+      child: const SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Row(
+            children: [
+              Icon(CupertinoIcons.wifi, size: 16, color: CupertinoColors.white),
+              SizedBox(width: 8),
+              Text(
+                'Back online',
+                style: TextStyle(color: CupertinoColors.white, fontSize: 13),
               ),
             ],
           ),

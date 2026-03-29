@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show DraggableScrollableSheet, Material, Theme, ThemeData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/band_song.dart';
 import '../data/models/live_session.dart';
@@ -18,7 +19,6 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
   @override
   void initState() {
     super.initState();
-    // Load after first frame so the provider is ready.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(liveSessionProvider(widget.eventKey).notifier).load();
     });
@@ -29,25 +29,28 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
     final state = ref.watch(liveSessionProvider(widget.eventKey));
 
     if (state.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return const CupertinoPageScaffold(
+        child: Center(child: CupertinoActivityIndicator()),
       );
     }
 
     if (state.error != null && state.session == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Live Setlist')),
-        body: Center(
+      return CupertinoPageScaffold(
+        navigationBar: const CupertinoNavigationBar(
+            middle: Text('Live Setlist')),
+        child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const Icon(CupertinoIcons.exclamationmark_circle,
+                  size: 48, color: CupertinoColors.systemRed),
               const SizedBox(height: 16),
               Text(state.error!, textAlign: TextAlign.center),
               const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () =>
-                    ref.read(liveSessionProvider(widget.eventKey).notifier).load(),
+              CupertinoButton.filled(
+                onPressed: () => ref
+                    .read(liveSessionProvider(widget.eventKey).notifier)
+                    .load(),
                 child: const Text('Retry'),
               ),
             ],
@@ -56,7 +59,6 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
       );
     }
 
-    // No active session — show start button for users who can write.
     if (state.session == null || state.session!.isCompleted) {
       return _NoSessionView(eventKey: widget.eventKey, canWrite: state.canWrite);
     }
@@ -64,8 +66,6 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
     return _ActiveSessionView(eventKey: widget.eventKey);
   }
 }
-
-// ── No session ─────────────────────────────────────────────────────────────────
 
 class _NoSessionView extends ConsumerWidget {
   const _NoSessionView({required this.eventKey, required this.canWrite});
@@ -75,45 +75,48 @@ class _NoSessionView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Live Setlist')),
-      body: Center(
+    return CupertinoPageScaffold(
+      navigationBar:
+          const CupertinoNavigationBar(middle: Text('Live Setlist')),
+      child: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.music_off_outlined,
+                CupertinoIcons.music_note_list,
                 size: 64,
-                color: theme.colorScheme.onSurfaceVariant,
+                color: CupertinoColors.secondaryLabel.resolveFrom(context),
               ),
               const SizedBox(height: 16),
-              Text(
+              const Text(
                 'No active session',
-                style: theme.textTheme.titleLarge,
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
               Text(
                 canWrite
                     ? 'Start a session to go live.'
                     : 'Waiting for the captain to start the session.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                style: TextStyle(
+                    fontSize: 15,
+                    color: CupertinoColors.secondaryLabel.resolveFrom(context)),
                 textAlign: TextAlign.center,
               ),
               if (canWrite) ...[
                 const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: () =>
-                      ref.read(liveSessionProvider(eventKey).notifier).startSession(),
-                  icon: const Icon(Icons.play_arrow),
-                  label: const Text('Start Session'),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(200, 48),
+                CupertinoButton.filled(
+                  onPressed: () => ref
+                      .read(liveSessionProvider(eventKey).notifier)
+                      .startSession(),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(CupertinoIcons.play_arrow_solid, size: 18),
+                      SizedBox(width: 8),
+                      Text('Start Session'),
+                    ],
                   ),
                 ),
               ],
@@ -124,8 +127,6 @@ class _NoSessionView extends ConsumerWidget {
     );
   }
 }
-
-// ── Active session ─────────────────────────────────────────────────────────────
 
 class _ActiveSessionView extends ConsumerWidget {
   const _ActiveSessionView({required this.eventKey});
@@ -138,50 +139,31 @@ class _ActiveSessionView extends ConsumerWidget {
     final session = state.session!;
     final notifier = ref.read(liveSessionProvider(eventKey).notifier);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Live Setlist'),
-        actions: [
-          if (state.isCaptain && session.isActive)
-            PopupMenuButton<_CaptainMenu>(
-              onSelected: (action) => _handleCaptainMenu(context, action, state, notifier),
-              itemBuilder: (_) => [
-                const PopupMenuItem(
-                  value: _CaptainMenu.startBreak,
-                  child: ListTile(
-                    leading: Icon(Icons.free_breakfast_outlined),
-                    title: Text('Start Break'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: _CaptainMenu.endSession,
-                  child: ListTile(
-                    leading: Icon(Icons.stop_circle_outlined, color: Colors.red),
-                    title: Text('End Session', style: TextStyle(color: Colors.red)),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ],
-            ),
-        ],
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text('Live Setlist'),
+        trailing: state.isCaptain && session.isActive
+            ? CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () =>
+                    _showCaptainMenu(context, state, notifier),
+                child: const Icon(CupertinoIcons.ellipsis),
+              )
+            : null,
       ),
-      body: Column(
+      child: Column(
         children: [
-          // Status banner.
           if (session.isOnBreak)
             _BreakBanner(
               eventKey: eventKey,
               songs: state.songs,
               isCaptain: state.isCaptain,
             ),
-          // Current + next song.
           _NowPlayingCard(
             session: session,
             isCaptain: state.isCaptain,
             notifier: notifier,
           ),
-          // Queue list.
           Expanded(
             child: _QueueList(
               session: session,
@@ -189,16 +171,22 @@ class _ActiveSessionView extends ConsumerWidget {
               notifier: notifier,
             ),
           ),
-          // Add off-setlist button for captains.
           if (state.isCaptain && session.isActive)
             Padding(
               padding: const EdgeInsets.all(12),
-              child: OutlinedButton.icon(
-                onPressed: () => _showSongPicker(context, state.songs, notifier),
-                icon: const Icon(Icons.add),
-                label: const Text('Add Song'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(44),
+              child: SizedBox(
+                width: double.infinity,
+                child: CupertinoButton(
+                  onPressed: () =>
+                      _showSongPicker(context, state.songs, notifier),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(CupertinoIcons.add, size: 18),
+                      SizedBox(width: 6),
+                      Text('Add Song'),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -207,36 +195,77 @@ class _ActiveSessionView extends ConsumerWidget {
     );
   }
 
-  Future<void> _handleCaptainMenu(
+  void _showCaptainMenu(
     BuildContext context,
-    _CaptainMenu action,
-    LiveSessionState _,
+    LiveSessionState state,
+    LiveSessionNotifier notifier,
+  ) {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (_) => CupertinoActionSheet(
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () async {
+              Navigator.pop(context);
+              await notifier.startBreak();
+            },
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(CupertinoIcons.hourglass, size: 18),
+                SizedBox(width: 8),
+                Text('Start Break'),
+              ],
+            ),
+          ),
+          CupertinoActionSheetAction(
+            isDestructiveAction: true,
+            onPressed: () async {
+              Navigator.pop(context);
+              _confirmEndSession(context, notifier);
+            },
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(CupertinoIcons.stop_circle, size: 18),
+                SizedBox(width: 8),
+                Text('End Session'),
+              ],
+            ),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmEndSession(
+    BuildContext context,
     LiveSessionNotifier notifier,
   ) async {
-    switch (action) {
-      case _CaptainMenu.startBreak:
-        await notifier.startBreak();
-      case _CaptainMenu.endSession:
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('End Session?'),
-            content: const Text('This will end the live setlist session for everyone.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                child: const Text('End Session'),
-              ),
-            ],
+    final confirmed = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (_) => CupertinoAlertDialog(
+        title: const Text('End Session?'),
+        content: const Text(
+            'This will end the live setlist session for everyone.'),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context, false),
           ),
-        );
-        if (confirmed == true) await notifier.endSession();
-    }
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            child: const Text('End Session'),
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await notifier.endSession();
   }
 
   Future<void> _showSongPicker(
@@ -244,17 +273,21 @@ class _ActiveSessionView extends ConsumerWidget {
     List<BandSong> songs,
     LiveSessionNotifier notifier,
   ) async {
-    final selected = await showModalBottomSheet<BandSong>(
+    final selected = await showCupertinoModalPopup<BandSong>(
       context: context,
-      isScrollControlled: true,
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.4,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (_, controller) => _SongPickerSheet(
-          songs: songs,
-          scrollController: controller,
+      builder: (ctx) => Theme(
+        data: ThemeData(brightness: MediaQuery.platformBrightnessOf(ctx)),
+        child: Material(
+          child: DraggableScrollableSheet(
+            initialChildSize: 0.7,
+            minChildSize: 0.4,
+            maxChildSize: 0.95,
+            expand: false,
+            builder: (_, controller) => _SongPickerSheet(
+              songs: songs,
+              scrollController: controller,
+            ),
+          ),
         ),
       ),
     );
@@ -264,10 +297,6 @@ class _ActiveSessionView extends ConsumerWidget {
     }
   }
 }
-
-enum _CaptainMenu { startBreak, endSession }
-
-// ── Break banner ───────────────────────────────────────────────────────────────
 
 class _BreakBanner extends ConsumerWidget {
   const _BreakBanner({
@@ -284,23 +313,25 @@ class _BreakBanner extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       width: double.infinity,
-      color: Colors.amber.shade100,
+      color: CupertinoColors.systemOrange.resolveFrom(context).withValues(alpha: 0.15),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          const Icon(Icons.free_breakfast_outlined, color: Colors.amber),
+          Icon(CupertinoIcons.hourglass,
+              color: CupertinoColors.systemOrange.resolveFrom(context)),
           const SizedBox(width: 8),
-          const Expanded(
+          Expanded(
             child: Text(
               'On Break',
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: Colors.amber,
+                color: CupertinoColors.systemOrange.resolveFrom(context),
               ),
             ),
           ),
           if (isCaptain)
-            TextButton(
+            CupertinoButton(
+              padding: EdgeInsets.zero,
               onPressed: () => _resumeBreak(context, ref),
               child: const Text('Resume'),
             ),
@@ -310,29 +341,33 @@ class _BreakBanner extends ConsumerWidget {
   }
 
   Future<void> _resumeBreak(BuildContext context, WidgetRef ref) async {
-    final selected = await showModalBottomSheet<BandSong>(
+    final selected = await showCupertinoModalPopup<BandSong>(
       context: context,
-      isScrollControlled: true,
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.4,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (_, controller) => _SongPickerSheet(
-          songs: songs,
-          scrollController: controller,
-          title: 'First song back from break',
+      builder: (ctx) => Theme(
+        data: ThemeData(brightness: MediaQuery.platformBrightnessOf(ctx)),
+        child: Material(
+          child: DraggableScrollableSheet(
+            initialChildSize: 0.7,
+            minChildSize: 0.4,
+            maxChildSize: 0.95,
+            expand: false,
+            builder: (_, controller) => _SongPickerSheet(
+              songs: songs,
+              scrollController: controller,
+              title: 'First song back from break',
+            ),
+          ),
         ),
       ),
     );
 
     if (selected != null) {
-      await ref.read(liveSessionProvider(eventKey).notifier).resumeFromBreak(selected.id);
+      await ref
+          .read(liveSessionProvider(eventKey).notifier)
+          .resumeFromBreak(selected.id);
     }
   }
 }
-
-// ── Now playing card ───────────────────────────────────────────────────────────
 
 class _NowPlayingCard extends StatelessWidget {
   const _NowPlayingCard({
@@ -347,141 +382,154 @@ class _NowPlayingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final current = session.currentSong;
     final next = session.nextSong;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.all(12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Now playing.
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(CupertinoIcons.music_note,
+                  color: CupertinoColors.systemBlue.resolveFrom(context), size: 18),
+              const SizedBox(width: 6),
+              Text(
+                'NOW PLAYING',
+                style: TextStyle(
+                  color: CupertinoColors.systemBlue.resolveFrom(context),
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (current != null) ...[
+            Text(
+              current.title ?? 'Unknown',
+              style: const TextStyle(
+                  fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            if (current.artist != null)
+              Text(
+                current.artist!,
+                style: TextStyle(
+                    fontSize: 15,
+                    color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+              ),
+            if (current.leadSinger != null || current.songKey != null) ...[
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 8,
+                children: [
+                  if (current.leadSinger != null)
+                    _Chip(
+                        label: current.leadSinger!,
+                        icon: CupertinoIcons.mic),
+                  if (current.songKey != null)
+                    _Chip(label: 'Key: ${current.songKey!}'),
+                  if (current.bpm != null)
+                    _Chip(label: '${current.bpm!.toInt()} BPM'),
+                ],
+              ),
+            ],
+          ] else
+            Text(
+              session.isOnBreak ? 'On Break' : 'Queue empty',
+              style: TextStyle(
+                  fontSize: 17,
+                  color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+            ),
+
+          if (isCaptain && current != null && session.isActive) ...[
+            const SizedBox(height: 12),
             Row(
               children: [
-                Icon(Icons.music_note, color: theme.colorScheme.primary, size: 18),
-                const SizedBox(width: 6),
-                Text(
-                  'NOW PLAYING',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.primary,
-                    letterSpacing: 1.2,
-                    fontWeight: FontWeight.w700,
+                _ReactionButton(
+                  icon: CupertinoIcons.hand_thumbsup,
+                  color: CupertinoColors.systemGreen.resolveFrom(context),
+                  onPressed: () => notifier.react(current.id, 'positive'),
+                ),
+                const SizedBox(width: 8),
+                _ReactionButton(
+                  icon: CupertinoIcons.hand_thumbsdown,
+                  color: CupertinoColors.systemRed.resolveFrom(context),
+                  onPressed: () => notifier.react(current.id, 'negative'),
+                ),
+                const Spacer(),
+                CupertinoButton(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  onPressed: notifier.skip,
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(CupertinoIcons.forward_end, size: 16),
+                      SizedBox(width: 4),
+                      Text('Skip'),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                CupertinoButton.filled(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  onPressed: notifier.next,
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(CupertinoIcons.checkmark, size: 16),
+                      SizedBox(width: 4),
+                      Text('Next'),
+                    ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            if (current != null) ...[
-              Text(
-                current.title ?? 'Unknown',
-                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              if (current.artist != null)
+          ],
+
+          if (next != null) ...[
+            Container(
+                height: 0.5,
+                color: CupertinoColors.separator.resolveFrom(context),
+                margin: const EdgeInsets.symmetric(vertical: 10)),
+            Row(
+              children: [
+                Icon(CupertinoIcons.list_bullet_below_rectangle,
+                    size: 16, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                const SizedBox(width: 6),
                 Text(
-                  current.artist!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                  'UP NEXT',
+                  style: TextStyle(
+                    color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                    letterSpacing: 1.1,
+                    fontSize: 12,
                   ),
                 ),
-              if (current.leadSinger != null || current.songKey != null) ...[
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    if (current.leadSinger != null)
-                      _Chip(label: current.leadSinger!, icon: Icons.mic_outlined),
-                    if (current.songKey != null)
-                      _Chip(label: 'Key: ${current.songKey!}'),
-                    if (current.bpm != null)
-                      _Chip(label: '${current.bpm!.toInt()} BPM'),
-                  ],
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    next.title ?? 'Unknown',
+                    style: const TextStyle(fontSize: 15),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
-            ] else
-              Text(
-                session.isOnBreak ? 'On Break' : 'Queue empty',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-
-            // Captain controls.
-            if (isCaptain && current != null && session.isActive) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  // Reaction buttons.
-                  _ReactionButton(
-                    icon: Icons.thumb_up_outlined,
-                    color: Colors.green,
-                    onPressed: () => notifier.react(current.id, 'positive'),
-                  ),
-                  const SizedBox(width: 8),
-                  _ReactionButton(
-                    icon: Icons.thumb_down_outlined,
-                    color: Colors.red,
-                    onPressed: () => notifier.react(current.id, 'negative'),
-                  ),
-                  const Spacer(),
-                  // Skip.
-                  OutlinedButton.icon(
-                    onPressed: notifier.skip,
-                    icon: const Icon(Icons.skip_next, size: 18),
-                    label: const Text('Skip'),
-                    style: OutlinedButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Next.
-                  FilledButton.icon(
-                    onPressed: notifier.next,
-                    icon: const Icon(Icons.check, size: 18),
-                    label: const Text('Next'),
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-
-            // Up next.
-            if (next != null) ...[
-              const Divider(height: 20),
-              Row(
-                children: [
-                  Icon(Icons.queue_music, size: 16, color: theme.colorScheme.onSurfaceVariant),
-                  const SizedBox(width: 6),
-                  Text(
-                    'UP NEXT',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      letterSpacing: 1.1,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      next.title ?? 'Unknown',
-                      style: theme.textTheme.bodyMedium,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
 }
-
-// ── Queue list ─────────────────────────────────────────────────────────────────
 
 class _QueueList extends StatelessWidget {
   const _QueueList({
@@ -497,19 +545,16 @@ class _QueueList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pending = session.queue
-        .where((e) => e.isPending && e.position > session.currentPosition)
+        .where(
+            (e) => e.isPending && e.position > session.currentPosition)
         .toList()
       ..sort((a, b) => a.position.compareTo(b.position));
 
-    final played = session.queue
-        .where((e) => e.isPlayed)
-        .toList()
+    final played = session.queue.where((e) => e.isPlayed).toList()
       ..sort((a, b) => b.position.compareTo(a.position));
 
     if (pending.isEmpty && played.isEmpty) {
-      return const Center(
-        child: Text('Queue is empty.'),
-      );
+      return const Center(child: Text('Queue is empty.'));
     }
 
     return ListView(
@@ -519,25 +564,29 @@ class _QueueList extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
-              'UPCOMING (${pending.length})',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    letterSpacing: 1.2,
-                  ),
+              'UPCOMING',
+              style: TextStyle(
+                  fontSize: 12,
+                  letterSpacing: 1.2,
+                  color: CupertinoColors.secondaryLabel.resolveFrom(context)),
             ),
           ),
-          ...pending.map((e) => _QueueTile(entry: e, isCaptain: isCaptain, notifier: notifier)),
+          ...pending.map(
+              (e) => _QueueTile(entry: e, isCaptain: isCaptain)),
         ],
         if (played.isNotEmpty) ...[
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
               'PLAYED',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    letterSpacing: 1.2,
-                  ),
+              style: TextStyle(
+                  fontSize: 12,
+                  letterSpacing: 1.2,
+                  color: CupertinoColors.secondaryLabel.resolveFrom(context)),
             ),
           ),
-          ...played.map((e) => _QueueTile(entry: e, isCaptain: false, notifier: notifier)),
+          ...played
+              .map((e) => _QueueTile(entry: e, isCaptain: false)),
         ],
       ],
     );
@@ -548,70 +597,87 @@ class _QueueTile extends StatelessWidget {
   const _QueueTile({
     required this.entry,
     required this.isCaptain,
-    required this.notifier,
   });
 
   final QueueEntry entry;
   final bool isCaptain;
-  final LiveSessionNotifier notifier;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final isPlayed = entry.isPlayed;
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-      leading: CircleAvatar(
-        radius: 16,
-        backgroundColor: isPlayed
-            ? theme.colorScheme.surfaceContainerHighest
-            : theme.colorScheme.primaryContainer,
-        child: isPlayed
-            ? Icon(Icons.check, size: 16, color: theme.colorScheme.onSurfaceVariant)
-            : Text(
-                '${entry.position}',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.bold,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: isPlayed
+                  ? CupertinoColors.tertiarySystemBackground.resolveFrom(context)
+                  : CupertinoColors.systemBlue.resolveFrom(context).withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: isPlayed
+                  ? Icon(CupertinoIcons.checkmark,
+                      size: 14,
+                      color: CupertinoColors.secondaryLabel.resolveFrom(context))
+                  : Text(
+                      '${entry.position}',
+                      style: TextStyle(
+                        color: CupertinoColors.systemBlue.resolveFrom(context),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.isBreak ? '— Break —' : (entry.title ?? 'Unknown'),
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: isPlayed
+                        ? CupertinoColors.secondaryLabel.resolveFrom(context)
+                        : CupertinoColors.label.resolveFrom(context),
+                    decoration: isPlayed ? TextDecoration.lineThrough : null,
+                  ),
                 ),
-              ),
-      ),
-      title: Text(
-        entry.isBreak ? '— Break —' : (entry.title ?? 'Unknown'),
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: isPlayed ? theme.colorScheme.onSurfaceVariant : null,
-          decoration: isPlayed ? TextDecoration.lineThrough : null,
-        ),
-      ),
-      subtitle: entry.artist != null && !isPlayed
-          ? Text(
-              entry.artist!,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            )
-          : null,
-      trailing: entry.crowdReaction != null
-          ? Icon(
+                if (entry.artist != null && !isPlayed)
+                  Text(
+                    entry.artist!,
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                  ),
+              ],
+            ),
+          ),
+          if (entry.crowdReaction != null)
+            Icon(
               entry.crowdReaction == 'positive'
-                  ? Icons.thumb_up
+                  ? CupertinoIcons.hand_thumbsup_fill
                   : entry.crowdReaction == 'negative'
-                      ? Icons.thumb_down
-                      : Icons.remove,
+                      ? CupertinoIcons.hand_thumbsdown_fill
+                      : CupertinoIcons.minus_circle,
               size: 16,
               color: entry.crowdReaction == 'positive'
-                  ? Colors.green
+                  ? CupertinoColors.systemGreen.resolveFrom(context)
                   : entry.crowdReaction == 'negative'
-                      ? Colors.red
-                      : Colors.grey,
-            )
-          : null,
+                      ? CupertinoColors.systemRed.resolveFrom(context)
+                      : CupertinoColors.systemGrey.resolveFrom(context),
+            ),
+        ],
+      ),
     );
   }
 }
-
-// ── Song picker sheet ──────────────────────────────────────────────────────────
 
 class _SongPickerSheet extends StatefulWidget {
   const _SongPickerSheet({
@@ -630,10 +696,16 @@ class _SongPickerSheet extends StatefulWidget {
 
 class _SongPickerSheetState extends State<_SongPickerSheet> {
   String _query = '';
+  final _queryController = TextEditingController();
+
+  @override
+  void dispose() {
+    _queryController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final filtered = _query.isEmpty
         ? widget.songs
         : widget.songs.where((s) {
@@ -645,29 +717,28 @@ class _SongPickerSheetState extends State<_SongPickerSheet> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
           child: Row(
             children: [
               Expanded(
-                child: Text(widget.title, style: theme.textTheme.titleMedium),
+                child: Text(widget.title,
+                    style: const TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.w600)),
               ),
-              IconButton(
-                icon: const Icon(Icons.close),
+              CupertinoButton(
+                padding: EdgeInsets.zero,
                 onPressed: () => Navigator.pop(context),
+                child: const Icon(CupertinoIcons.xmark),
               ),
             ],
           ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: TextField(
+          child: CupertinoSearchTextField(
+            controller: _queryController,
+            placeholder: 'Search songs…',
             autofocus: true,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search),
-              hintText: 'Search songs…',
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
             onChanged: (v) => setState(() => _query = v),
           ),
         ),
@@ -677,13 +748,32 @@ class _SongPickerSheetState extends State<_SongPickerSheet> {
             itemCount: filtered.length,
             itemBuilder: (_, i) {
               final song = filtered[i];
-              return ListTile(
-                title: Text(song.title),
-                subtitle: song.artist != null ? Text(song.artist!) : null,
-                trailing: song.songKey != null
-                    ? _Chip(label: song.songKey!)
-                    : null,
+              return GestureDetector(
                 onTap: () => Navigator.pop(context, song),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(song.title,
+                                style: const TextStyle(fontSize: 15)),
+                            if (song.artist != null)
+                              Text(song.artist!,
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: CupertinoColors.secondaryLabel.resolveFrom(context))),
+                          ],
+                        ),
+                      ),
+                      if (song.songKey != null)
+                        _Chip(label: song.songKey!),
+                    ],
+                  ),
+                ),
               );
             },
           ),
@@ -693,8 +783,6 @@ class _SongPickerSheetState extends State<_SongPickerSheet> {
   }
 }
 
-// ── Small widgets ──────────────────────────────────────────────────────────────
-
 class _Chip extends StatelessWidget {
   const _Chip({required this.label, this.icon});
 
@@ -703,25 +791,23 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
+        color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 12, color: theme.colorScheme.onSurfaceVariant),
+            Icon(icon, size: 12, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
             const SizedBox(width: 4),
           ],
           Text(
             label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: TextStyle(
+                fontSize: 12, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
           ),
         ],
       ),
@@ -742,11 +828,18 @@ class _ReactionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton.outlined(
-      onPressed: onPressed,
-      icon: Icon(icon, color: color, size: 20),
-      style: IconButton.styleFrom(
-        side: BorderSide(color: color.withValues(alpha: 0.4)),
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          border: Border.all(color: color.withValues(alpha: 0.4)),
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Icon(icon, color: color, size: 20),
+        ),
       ),
     );
   }

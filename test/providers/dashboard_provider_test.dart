@@ -52,7 +52,7 @@ UpcomingChart _makeChart(String title) => UpcomingChart.fromJson({
 
 void main() {
   group('DashboardNotifier', () {
-    ProviderContainer _makeContainer(FakeDashboardRepository repo) {
+    ProviderContainer makeContainer(FakeDashboardRepository repo) {
       return ProviderContainer(
         overrides: [
           dashboardRepositoryProvider.overrideWithValue(repo),
@@ -65,7 +65,7 @@ void main() {
         events: [_makeEvent('e1'), _makeEvent('e2')],
         charts: [_makeChart('My Way')],
       );
-      final container = _makeContainer(repo);
+      final container = makeContainer(repo);
       addTearDown(container.dispose);
 
       final state = await container.read(dashboardProvider.future);
@@ -78,7 +78,7 @@ void main() {
 
     test('test_build_returns_empty_lists_when_no_data', () async {
       final repo = FakeDashboardRepository(events: [], charts: []);
-      final container = _makeContainer(repo);
+      final container = makeContainer(repo);
       addTearDown(container.dispose);
 
       final state = await container.read(dashboardProvider.future);
@@ -92,7 +92,7 @@ void main() {
         events: [_makeEvent('e1')],
         charts: [],
       );
-      final container = _makeContainer(repo);
+      final container = makeContainer(repo);
       addTearDown(container.dispose);
 
       // First load via build()

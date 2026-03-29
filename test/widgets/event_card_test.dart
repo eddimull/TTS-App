@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show Material;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/dashboard/widgets/event_card.dart';
 import 'package:tts_bandmate/features/events/data/models/event_summary.dart';
@@ -27,9 +28,11 @@ EventSummary _makeEvent({
       'live_session_id': liveSessionId,
     });
 
-Widget _wrap(Widget child) => MaterialApp(
-      theme: ThemeData(useMaterial3: true),
-      home: Scaffold(body: child),
+Widget _wrap(Widget child) => CupertinoApp(
+      theme: const CupertinoThemeData(
+        primaryColor: CupertinoColors.systemBlue,
+      ),
+      home: Material(child: child),
     );
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -74,14 +77,14 @@ void main() {
         EventCard(event: _makeEvent(liveSessionId: 7)),
       ));
 
-      // The live badge is a music_note icon
-      expect(find.byIcon(Icons.music_note), findsOneWidget);
+      // The live badge is a music_note icon (CupertinoIcons)
+      expect(find.byIcon(CupertinoIcons.music_note), findsOneWidget);
     });
 
     testWidgets('test_no_live_badge_when_no_session', (tester) async {
       await tester.pumpWidget(_wrap(EventCard(event: _makeEvent())));
 
-      expect(find.byIcon(Icons.music_note), findsNothing);
+      expect(find.byIcon(CupertinoIcons.music_note), findsNothing);
     });
 
     testWidgets('test_does_not_render_venue_when_null', (tester) async {
@@ -90,17 +93,17 @@ void main() {
       expect(find.text('The Grand Hotel'), findsNothing);
     });
 
-    testWidgets('test_rehearsal_uses_fitness_icon', (tester) async {
+    testWidgets('test_rehearsal_uses_mic_icon', (tester) async {
       await tester.pumpWidget(_wrap(EventCard(event: _makeEvent(source: 'rehearsal'))));
 
-      expect(find.byIcon(Icons.fitness_center_outlined), findsOneWidget);
-      expect(find.byIcon(Icons.event_available_outlined), findsNothing);
+      expect(find.byIcon(CupertinoIcons.music_mic), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.checkmark_circle), findsNothing);
     });
 
-    testWidgets('test_booking_uses_event_available_icon', (tester) async {
+    testWidgets('test_booking_uses_checkmark_circle_icon', (tester) async {
       await tester.pumpWidget(_wrap(EventCard(event: _makeEvent(source: 'booking'))));
 
-      expect(find.byIcon(Icons.event_available_outlined), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.checkmark_circle), findsOneWidget);
     });
 
     testWidgets('test_on_tap_callback_is_invoked', (tester) async {
@@ -109,7 +112,7 @@ void main() {
         EventCard(event: _makeEvent(), onTap: () => tapped = true),
       ));
 
-      await tester.tap(find.byType(InkWell).first);
+      await tester.tap(find.byType(GestureDetector).first);
       expect(tapped, isTrue);
     });
 

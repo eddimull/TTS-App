@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show Material, Theme, ThemeData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -28,7 +29,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final bandAsync = ref.watch(selectedBandProvider);
     final bandId = bandAsync.valueOrNull;
 
-    final userName = authState is AuthAuthenticated ? authState.user.name : 'there';
+    final userName =
+        authState is AuthAuthenticated ? authState.user.name : 'there';
 
     final bandName = () {
       if (authState is! AuthAuthenticated || bandId == null) return 'Your Band';
@@ -42,78 +44,78 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final dashboardAsync = ref.watch(dashboardProvider);
 
     return AppScaffold(
-      child: RefreshIndicator(
-        onRefresh: () => ref.read(dashboardProvider.notifier).refresh(),
+      child: CupertinoPageScaffold(
         child: CustomScrollView(
-          slivers: [
-            SliverAppBar.medium(
-              title: Text(bandName),
-              centerTitle: false,
-              actions: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: GestureDetector(
-                    onTap: () => _showLogoutDialog(context),
-                    child: CircleAvatar(
-                      radius: 18,
-                      backgroundColor:
-                          Theme.of(context).colorScheme.primaryContainer,
-                      child: Text(
-                        userName.isNotEmpty ? userName[0].toUpperCase() : '?',
-                        style: TextStyle(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onPrimaryContainer,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+        slivers: [
+          CupertinoSliverRefreshControl(
+            onRefresh: () => ref.read(dashboardProvider.notifier).refresh(),
+          ),
+          CupertinoSliverNavigationBar(
+            largeTitle: Text(bandName),
+            trailing: GestureDetector(
+              onTap: () => _showLogoutDialog(context),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(
+                  color: CupertinoColors.systemBlue,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+                    style: const TextStyle(
+                      color: CupertinoColors.white,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-              ],
-            ),
-            dashboardAsync.when(
-              loading: () => const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (e, _) => SliverFillRemaining(
-                child: ErrorView(
-                  message: 'Could not load dashboard.\n$e',
-                  onRetry: () =>
-                      ref.read(dashboardProvider.notifier).refresh(),
-                ),
-              ),
-              data: (state) => _DashboardContent(
-                events: state.events,
-                focusedDay: _focusedDay,
-                selectedDay: _selectedDay,
-                onDaySelected: (selected, focused) {
-                  setState(() {
-                    _selectedDay =
-                        isSameDay(_selectedDay, selected) ? null : selected;
-                    _focusedDay = focused;
-                  });
-                },
               ),
             ),
-          ],
+          ),
+          dashboardAsync.when(
+            loading: () => const SliverFillRemaining(
+              child: Center(child: CupertinoActivityIndicator()),
+            ),
+            error: (e, _) => SliverFillRemaining(
+              child: ErrorView(
+                message: 'Could not load dashboard.\n$e',
+                onRetry: () =>
+                    ref.read(dashboardProvider.notifier).refresh(),
+              ),
+            ),
+            data: (state) => _DashboardContent(
+              events: state.events,
+              focusedDay: _focusedDay,
+              selectedDay: _selectedDay,
+              onDaySelected: (selected, focused) {
+                setState(() {
+                  _selectedDay =
+                      isSameDay(_selectedDay, selected) ? null : selected;
+                  _focusedDay = focused;
+                });
+              },
+            ),
+          ),
+        ],
         ),
       ),
     );
   }
 
   Future<void> _showLogoutDialog(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showCupertinoDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => CupertinoAlertDialog(
         title: const Text('Log out'),
         content: const Text('Are you sure you want to log out?'),
         actions: [
-          TextButton(
+          CupertinoDialogAction(
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
-          FilledButton(
+          CupertinoDialogAction(
+            isDestructiveAction: true,
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Log out'),
           ),
@@ -126,8 +128,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 }
-
-// ── Dashboard content ─────────────────────────────────────────────────────────
 
 class _DashboardContent extends StatelessWidget {
   const _DashboardContent({
@@ -147,13 +147,11 @@ class _DashboardContent extends StatelessWidget {
     final cutoff = now.add(const Duration(days: 30));
 
     if (selectedDay != null) {
-      final dayEvents = events
-          .where((e) => isSameDay(e.parsedDate, selectedDay!))
-          .toList();
+      final dayEvents =
+          events.where((e) => isSameDay(e.parsedDate, selectedDay!)).toList();
 
       if (dayEvents.isNotEmpty) return dayEvents;
 
-      // No events on selected day — show the next event after it.
       final later = events
           .where((e) => !e.parsedDate.isBefore(selectedDay!))
           .toList()
@@ -164,27 +162,23 @@ class _DashboardContent extends StatelessWidget {
     return events
         .where(
           (e) =>
-              !e.parsedDate.isBefore(now) &&
-              !e.parsedDate.isAfter(cutoff),
+              !e.parsedDate.isBefore(now) && !e.parsedDate.isAfter(cutoff),
         )
         .toList()
       ..sort((a, b) => a.parsedDate.compareTo(b.parsedDate));
   }
 
-  Set<DateTime> get _eventDays {
-    return events.map((e) => _normalise(e.parsedDate)).toSet();
-  }
+  Set<DateTime> get _eventDays =>
+      events.map((e) => _normalise(e.parsedDate)).toSet();
 
   DateTime _normalise(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
-  List<Object> _getEventsForDay(DateTime day) {
-    return _eventDays.contains(_normalise(day)) ? [Object()] : [];
-  }
+  List<Object> _getEventsForDay(DateTime day) =>
+      _eventDays.contains(_normalise(day)) ? [Object()] : [];
 
   @override
   Widget build(BuildContext context) {
     final filtered = _filteredEvents;
-
     return SliverList(
       delegate: SliverChildListDelegate([
         _CalendarSection(
@@ -204,8 +198,6 @@ class _DashboardContent extends StatelessWidget {
   }
 }
 
-// ── Calendar ──────────────────────────────────────────────────────────────────
-
 class _CalendarSection extends StatelessWidget {
   const _CalendarSection({
     required this.focusedDay,
@@ -221,41 +213,36 @@ class _CalendarSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return TableCalendar<Object>(
-      firstDay: DateTime.now().subtract(const Duration(days: 365)),
-      lastDay: DateTime.now().add(const Duration(days: 365)),
-      focusedDay: focusedDay,
-      selectedDayPredicate: (day) => isSameDay(selectedDay, day),
-      eventLoader: getEventsForDay,
-      onDaySelected: onDaySelected,
-      calendarFormat: CalendarFormat.month,
-      availableCalendarFormats: const {CalendarFormat.month: 'Month'},
-      headerStyle: const HeaderStyle(
-        formatButtonVisible: false,
-        titleCentered: true,
-      ),
-      calendarStyle: CalendarStyle(
-        markerDecoration: BoxDecoration(
-          color: colorScheme.primary,
-          shape: BoxShape.circle,
+    final brightness = MediaQuery.platformBrightnessOf(context);
+    return Theme(
+      data: ThemeData(brightness: brightness),
+      child: Material(
+        color: CupertinoColors.systemBackground.resolveFrom(context),
+        child: TableCalendar<Object>(
+          firstDay: DateTime.now().subtract(const Duration(days: 365)),
+          lastDay: DateTime.now().add(const Duration(days: 365)),
+          focusedDay: focusedDay,
+          selectedDayPredicate: (day) => isSameDay(selectedDay, day),
+          eventLoader: getEventsForDay,
+          onDaySelected: onDaySelected,
+          calendarFormat: CalendarFormat.month,
+          availableCalendarFormats: const {CalendarFormat.month: 'Month'},
+          headerStyle:
+              const HeaderStyle(formatButtonVisible: false, titleCentered: true),
+          calendarStyle: const CalendarStyle(
+            markerDecoration: BoxDecoration(
+                color: CupertinoColors.systemBlue, shape: BoxShape.circle),
+            selectedDecoration: BoxDecoration(
+                color: CupertinoColors.systemBlue, shape: BoxShape.circle),
+            todayDecoration: BoxDecoration(
+                color: CupertinoColors.systemBlue, shape: BoxShape.circle),
+            todayTextStyle: TextStyle(color: CupertinoColors.white),
+          ),
         ),
-        selectedDecoration: BoxDecoration(
-          color: colorScheme.primary,
-          shape: BoxShape.circle,
-        ),
-        todayDecoration: BoxDecoration(
-          color: colorScheme.primaryContainer,
-          shape: BoxShape.circle,
-        ),
-        todayTextStyle: TextStyle(color: colorScheme.onPrimaryContainer),
       ),
     );
   }
 }
-
-// ── Events list ───────────────────────────────────────────────────────────────
 
 class _EventsList extends StatelessWidget {
   const _EventsList({required this.events});
@@ -279,13 +266,11 @@ class _EventsList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
           child: Text(
             'Upcoming Events',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
           ),
         ),
         ...events.map(
@@ -299,39 +284,32 @@ class _EventsList extends StatelessWidget {
   }
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
-
 class _EmptyUpcomingEvents extends StatelessWidget {
   const _EmptyUpcomingEvents();
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 32, horizontal: 24),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.calendar_today_outlined,
-              size: 56,
-              color: theme.colorScheme.primary.withValues(alpha: 0.4),
-            ),
-            const SizedBox(height: 16),
+            Icon(CupertinoIcons.calendar,
+                size: 56, color: CupertinoColors.systemBlue),
+            SizedBox(height: 16),
             Text(
               'No upcoming events',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+              style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w500,
+                  color: CupertinoColors.secondaryLabel),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               'Your next 30 days are clear.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+              style: TextStyle(
+                  fontSize: 13, color: CupertinoColors.tertiaryLabel),
             ),
           ],
         ),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
@@ -15,9 +15,6 @@ class RehearsalDetailScreen extends ConsumerWidget {
             'Provide rehearsalId or preloaded');
 
   final int? rehearsalId;
-
-  /// Pass a pre-loaded detail (e.g. from by-key resolution) to skip the
-  /// extra network fetch.
   final RehearsalDetail? preloaded;
 
   @override
@@ -29,23 +26,22 @@ class RehearsalDetailScreen extends ConsumerWidget {
     final detailAsync = ref.watch(rehearsalDetailProvider(rehearsalId!));
 
     return detailAsync.when(
-      loading: () => Scaffold(
-        appBar: AppBar(),
-        body: const Center(child: CircularProgressIndicator()),
+      loading: () => const CupertinoPageScaffold(
+        navigationBar: CupertinoNavigationBar(),
+        child: Center(child: CupertinoActivityIndicator()),
       ),
-      error: (e, _) => Scaffold(
-        appBar: AppBar(),
-        body: ErrorView(
+      error: (e, _) => CupertinoPageScaffold(
+        navigationBar: const CupertinoNavigationBar(),
+        child: ErrorView(
           message: 'Could not load rehearsal.\n$e',
-          onRetry: () => ref.invalidate(rehearsalDetailProvider(rehearsalId!)),
+          onRetry: () =>
+              ref.invalidate(rehearsalDetailProvider(rehearsalId!)),
         ),
       ),
       data: (rehearsal) => _RehearsalDetailView(rehearsal: rehearsal),
     );
   }
 }
-
-// ── Detail view ───────────────────────────────────────────────────────────────
 
 class _RehearsalDetailView extends ConsumerStatefulWidget {
   const _RehearsalDetailView({required this.rehearsal});
@@ -57,7 +53,8 @@ class _RehearsalDetailView extends ConsumerStatefulWidget {
       _RehearsalDetailViewState();
 }
 
-class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
+class _RehearsalDetailViewState
+    extends ConsumerState<_RehearsalDetailView> {
   late String? _notes;
   bool _editingNotes = false;
   bool _savingNotes = false;
@@ -77,8 +74,9 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
   }
 
   Future<void> _saveNotes() async {
-    final newNotes =
-        _notesController.text.trim().isEmpty ? null : _notesController.text.trim();
+    final newNotes = _notesController.text.trim().isEmpty
+        ? null
+        : _notesController.text.trim();
     setState(() => _savingNotes = true);
     try {
       final repo = ref.read(rehearsalsRepositoryProvider);
@@ -88,14 +86,34 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
         _editingNotes = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Notes saved')),
+        showCupertinoDialog(
+          context: context,
+          builder: (_) => CupertinoAlertDialog(
+            title: const Text('Saved'),
+            content: const Text('Notes saved successfully.'),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('OK'),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save notes: $e')),
+        showCupertinoDialog(
+          context: context,
+          builder: (_) => CupertinoAlertDialog(
+            title: const Text('Error'),
+            content: Text('Failed to save notes: $e'),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('OK'),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
         );
       }
     } finally {
@@ -106,8 +124,6 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
   @override
   Widget build(BuildContext context) {
     final rehearsal = widget.rehearsal;
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
     final displayVenue =
         (rehearsal.venueName != null && rehearsal.venueName!.isNotEmpty)
@@ -117,60 +133,64 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
                 ? rehearsal.schedule.locationName!
                 : null;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_formatDateShort(rehearsal.date)),
-        centerTitle: false,
-        actions: [
-          if (!_editingNotes)
-            IconButton(
-              icon: const Icon(Icons.edit_note),
-              tooltip: 'Edit notes',
-              onPressed: () {
-                _notesController.text = _notes ?? '';
-                setState(() => _editingNotes = true);
-              },
-            ),
-          if (_editingNotes) ...[
-            TextButton(
-              onPressed: _savingNotes ? null : () => setState(() => _editingNotes = false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: _savingNotes ? null : _saveNotes,
-              child: _savingNotes
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Save'),
-            ),
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(
+        middle: Text(_formatDateShort(rehearsal.date)),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!_editingNotes)
+              CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () {
+                  _notesController.text = _notes ?? '';
+                  setState(() => _editingNotes = true);
+                },
+                child: const Icon(CupertinoIcons.pencil),
+              ),
+            if (_editingNotes) ...[
+              CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: _savingNotes
+                    ? null
+                    : () => setState(() => _editingNotes = false),
+                child: const Text('Cancel'),
+              ),
+              CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: _savingNotes ? null : _saveNotes,
+                child: _savingNotes
+                    ? const CupertinoActivityIndicator()
+                    : const Text('Save'),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
-      body: ListView(
+      child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Cancelled banner.
           if (rehearsal.isCancelled) ...[
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
+                color: CupertinoColors.systemRed.resolveFrom(context).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.shade200),
+                border: Border.all(
+                    color: CupertinoColors.systemRed.resolveFrom(context).withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.cancel_outlined,
-                      color: Colors.red.shade700, size: 20),
+                  Icon(CupertinoIcons.xmark_circle,
+                      color: CupertinoColors.systemRed.resolveFrom(context), size: 20),
                   const SizedBox(width: 8),
                   Text(
                     'This rehearsal has been cancelled.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.red.shade700,
+                    style: TextStyle(
+                      color: CupertinoColors.systemRed.resolveFrom(context),
                       fontWeight: FontWeight.w500,
+                      fontSize: 15,
                     ),
                   ),
                 ],
@@ -178,48 +198,34 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
             ),
             const SizedBox(height: 16),
           ],
-          // Date + time.
           _InfoRow(
-            icon: Icons.calendar_today_outlined,
+            icon: CupertinoIcons.calendar,
             label: 'Date',
             value: _formatDateAndTime(rehearsal.date, rehearsal.time),
           ),
-          // Venue.
           if (displayVenue != null) ...[
             const SizedBox(height: 12),
             _InfoRow(
-              icon: Icons.location_on_outlined,
+              icon: CupertinoIcons.location,
               label: 'Location',
               value: displayVenue,
             ),
           ],
-          // Notes section.
           const SizedBox(height: 20),
-          Row(
-            children: [
-              Text(
-                'Notes',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+          const Text('Notes',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           if (_editingNotes)
-            TextField(
+            CupertinoTextField(
               controller: _notesController,
               autofocus: true,
               maxLines: null,
               minLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Add notes for this rehearsal…',
-                filled: true,
-                fillColor: colorScheme.surfaceContainerHighest,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
+              placeholder: 'Add notes for this rehearsal…',
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
+                borderRadius: BorderRadius.circular(8),
               ),
             )
           else if (_notes != null && _notes!.isNotEmpty)
@@ -227,34 +233,26 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
+                color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                _notes!,
-                style: theme.textTheme.bodyMedium,
-              ),
+              child: Text(_notes!, style: const TextStyle(fontSize: 15)),
             )
           else
             Text(
               'No notes yet. Tap the edit button to add some.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
+              style: TextStyle(
+                  fontSize: 13,
+                  color: CupertinoColors.secondaryLabel.resolveFrom(context)),
             ),
-          // Schedule info.
           const SizedBox(height: 20),
-          Text(
-            'Schedule',
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          const Text('Schedule',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest,
+              color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
@@ -262,36 +260,30 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
               children: [
                 Text(
                   rehearsal.schedule.name,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w500),
                 ),
                 if (rehearsal.schedule.locationName != null &&
                     rehearsal.schedule.locationName!.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
                     rehearsal.schedule.locationName!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: CupertinoColors.secondaryLabel.resolveFrom(context)),
                   ),
                 ],
               ],
             ),
           ),
-          // Associated bookings.
           if (rehearsal.associatedBookings.isNotEmpty) ...[
             const SizedBox(height: 20),
-            Text(
-              'Associated Bookings',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            const Text('Associated Bookings',
+                style:
+                    TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            ...rehearsal.associatedBookings.map(
-              (booking) => _AssociatedBookingRow(booking: booking),
-            ),
+            ...rehearsal.associatedBookings
+                .map((b) => _AssociatedBookingRow(booking: b)),
           ],
           const SizedBox(height: 32),
         ],
@@ -321,8 +313,6 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
   }
 }
 
-// ── Info row ──────────────────────────────────────────────────────────────────
-
 class _InfoRow extends StatelessWidget {
   const _InfoRow({
     required this.icon,
@@ -336,26 +326,21 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: colorScheme.onSurfaceVariant),
+        Icon(icon, size: 20, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: CupertinoColors.secondaryLabel.resolveFrom(context))),
               const SizedBox(height: 2),
-              Text(value, style: theme.textTheme.bodyMedium),
+              Text(value, style: const TextStyle(fontSize: 15)),
             ],
           ),
         ),
@@ -364,8 +349,6 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-// ── Associated booking row ────────────────────────────────────────────────────
-
 class _AssociatedBookingRow extends StatelessWidget {
   const _AssociatedBookingRow({required this.booking});
 
@@ -373,34 +356,25 @@ class _AssociatedBookingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(
-            Icons.book_outlined,
-            size: 20,
-            color: colorScheme.onSurfaceVariant,
-          ),
+          Icon(CupertinoIcons.book,
+              size: 20, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  booking.name,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                Text(booking.name,
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w500)),
                 Text(
                   _formatDate(booking.date),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: CupertinoColors.secondaryLabel.resolveFrom(context)),
                 ),
               ],
             ),

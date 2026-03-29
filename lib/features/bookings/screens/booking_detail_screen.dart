@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -23,13 +23,13 @@ class BookingDetailScreen extends ConsumerWidget {
     final detailAsync = ref.watch(bookingDetailProvider(args));
 
     return detailAsync.when(
-      loading: () => Scaffold(
-        appBar: AppBar(),
-        body: const Center(child: CircularProgressIndicator()),
+      loading: () => const CupertinoPageScaffold(
+        navigationBar: CupertinoNavigationBar(),
+        child: Center(child: CupertinoActivityIndicator()),
       ),
-      error: (e, _) => Scaffold(
-        appBar: AppBar(),
-        body: ErrorView(
+      error: (e, _) => CupertinoPageScaffold(
+        navigationBar: const CupertinoNavigationBar(),
+        child: ErrorView(
           message: 'Could not load booking.\n$e',
           onRetry: () => ref.invalidate(bookingDetailProvider(args)),
         ),
@@ -39,8 +39,6 @@ class BookingDetailScreen extends ConsumerWidget {
   }
 }
 
-// ── Detail view ───────────────────────────────────────────────────────────────
-
 class _BookingDetailView extends StatelessWidget {
   const _BookingDetailView({required this.booking});
 
@@ -48,30 +46,24 @@ class _BookingDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(booking.name),
-        centerTitle: false,
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(
+        middle: Text(booking.name),
       ),
-      body: ListView(
+      child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Date + time.
           _InfoRow(
-            icon: Icons.calendar_today_outlined,
+            icon: CupertinoIcons.calendar,
             label: 'Date',
             value: _formatDateAndTime(
                 booking.date, booking.startTime, booking.endTime),
           ),
-          // Venue.
           if (booking.venueName != null &&
               booking.venueName!.isNotEmpty) ...[
             const SizedBox(height: 12),
             _InfoRow(
-              icon: Icons.location_on_outlined,
+              icon: CupertinoIcons.location,
               label: 'Venue',
               value: [
                 booking.venueName!,
@@ -81,30 +73,24 @@ class _BookingDetailView extends StatelessWidget {
               ].join('\n'),
             ),
           ],
-          // Status.
           if (booking.status != null) ...[
             const SizedBox(height: 12),
             _InfoRow(
-              icon: Icons.info_outline,
+              icon: CupertinoIcons.info_circle,
               label: 'Status',
               value: '',
               trailing: _StatusChip(status: booking.status!),
             ),
           ],
-          // Price section.
           const SizedBox(height: 20),
-          Text(
-            'Financials',
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          const Text('Financials',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
+              color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Column(
               children: [
@@ -117,28 +103,29 @@ class _BookingDetailView extends StatelessWidget {
                 _FinanceRow(
                   label: 'Paid',
                   value: booking.displayAmountPaid,
-                  valueColor: Colors.green.shade700,
+                  valueColor: CupertinoColors.systemGreen.resolveFrom(context),
                 ),
                 const SizedBox(height: 6),
                 _FinanceRow(
                   label: 'Balance due',
                   value: booking.displayAmountDue,
                   valueColor: booking.isPaid
-                      ? Colors.green.shade700
-                      : Colors.red.shade700,
+                      ? CupertinoColors.systemGreen.resolveFrom(context)
+                      : CupertinoColors.systemRed.resolveFrom(context),
                 ),
                 if (booking.isPaid) ...[
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Icon(Icons.check_circle_outline,
-                          size: 16, color: Colors.green.shade700),
+                      Icon(CupertinoIcons.checkmark_circle,
+                          size: 16, color: CupertinoColors.systemGreen.resolveFrom(context)),
                       const SizedBox(width: 4),
                       Text(
                         'Paid in full',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: Colors.green.shade700,
+                        style: TextStyle(
+                          color: CupertinoColors.systemGreen.resolveFrom(context),
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -148,55 +135,37 @@ class _BookingDetailView extends StatelessWidget {
               ],
             ),
           ),
-          // Notes.
           if (booking.notes != null && booking.notes!.isNotEmpty) ...[
             const SizedBox(height: 20),
-            Text(
-              'Notes',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            const Text('Notes',
+                style:
+                    TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
+                color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(
-                booking.notes!,
-                style: theme.textTheme.bodyMedium,
-              ),
+              child: Text(booking.notes!,
+                  style: const TextStyle(fontSize: 15)),
             ),
           ],
-          // Contacts section.
           if (booking.contacts.isNotEmpty) ...[
             const SizedBox(height: 20),
-            Text(
-              'Contacts',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            const Text('Contacts',
+                style:
+                    TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            ...booking.contacts.map(
-              (contact) => _ContactRow(contact: contact),
-            ),
+            ...booking.contacts.map((c) => _ContactRow(contact: c)),
           ],
-          // Events section.
           if (booking.events.isNotEmpty) ...[
             const SizedBox(height: 20),
-            Text(
-              'Linked Events',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            const Text('Linked Events',
+                style:
+                    TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            ...booking.events.map(
-              (event) => _EventRow(event: event),
-            ),
+            ...booking.events.map((e) => _EventRow(event: e)),
           ],
           const SizedBox(height: 32),
         ],
@@ -222,8 +191,6 @@ class _BookingDetailView extends StatelessWidget {
   }
 }
 
-// ── Info row ──────────────────────────────────────────────────────────────────
-
 class _InfoRow extends StatelessWidget {
   const _InfoRow({
     required this.icon,
@@ -239,27 +206,22 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: colorScheme.onSurfaceVariant),
+        Icon(icon, size: 20, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: CupertinoColors.secondaryLabel.resolveFrom(context))),
               if (value.isNotEmpty) ...[
                 const SizedBox(height: 2),
-                Text(value, style: theme.textTheme.bodyMedium),
+                Text(value, style: const TextStyle(fontSize: 15)),
               ],
               if (trailing != null) trailing!,
             ],
@@ -269,8 +231,6 @@ class _InfoRow extends StatelessWidget {
     );
   }
 }
-
-// ── Finance row ───────────────────────────────────────────────────────────────
 
 class _FinanceRow extends StatelessWidget {
   const _FinanceRow({
@@ -287,20 +247,20 @@ class _FinanceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
-          style: theme.textTheme.bodyMedium?.copyWith(
+          style: TextStyle(
+            fontSize: 15,
             fontWeight: bold ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
         Text(
           value,
-          style: theme.textTheme.bodyMedium?.copyWith(
+          style: TextStyle(
+            fontSize: 15,
             fontWeight: bold ? FontWeight.w600 : FontWeight.normal,
             color: valueColor,
           ),
@@ -309,8 +269,6 @@ class _FinanceRow extends StatelessWidget {
     );
   }
 }
-
-// ── Status chip ───────────────────────────────────────────────────────────────
 
 class _StatusChip extends StatelessWidget {
   const _StatusChip({required this.status});
@@ -322,45 +280,36 @@ class _StatusChip extends StatelessWidget {
     final (label, bg, fg) = switch (status.toLowerCase()) {
       'confirmed' => (
           'Confirmed',
-          Colors.green.shade100,
-          Colors.green.shade800,
+          CupertinoColors.systemGreen.resolveFrom(context).withValues(alpha: 0.15),
+          CupertinoColors.systemGreen.resolveFrom(context),
         ),
       'pending' => (
           'Pending',
-          Colors.amber.shade100,
-          Colors.amber.shade800,
+          CupertinoColors.systemOrange.resolveFrom(context).withValues(alpha: 0.15),
+          CupertinoColors.systemOrange.resolveFrom(context),
         ),
       'cancelled' || 'canceled' => (
           'Cancelled',
-          Colors.red.shade100,
-          Colors.red.shade800,
+          CupertinoColors.systemRed.resolveFrom(context).withValues(alpha: 0.15),
+          CupertinoColors.systemRed.resolveFrom(context),
         ),
       _ => (
           status,
-          Colors.grey.shade200,
-          Colors.grey.shade700,
+          CupertinoColors.systemGrey5.resolveFrom(context),
+          CupertinoColors.systemGrey.resolveFrom(context),
         ),
     };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: fg,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      decoration:
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      child: Text(label,
+          style: TextStyle(
+              color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
     );
   }
 }
-
-// ── Contact row ───────────────────────────────────────────────────────────────
 
 class _ContactRow extends StatelessWidget {
   const _ContactRow({required this.contact});
@@ -369,23 +318,25 @@ class _ContactRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: colorScheme.surfaceContainerHighest,
-            child: Text(
-              contact.name.isNotEmpty
-                  ? contact.name[0].toUpperCase()
-                  : '?',
-              style: theme.textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
+              color: CupertinoColors.tertiarySystemBackground,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                contact.name.isNotEmpty
+                    ? contact.name[0].toUpperCase()
+                    : '?',
+                style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -394,33 +345,24 @@ class _ContactRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  contact.name,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                Text(contact.name,
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w500)),
                 if (contact.role != null && contact.role!.isNotEmpty)
-                  Text(
-                    contact.role!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
+                  Text(contact.role!,
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: CupertinoColors.secondaryLabel.resolveFrom(context))),
                 if (contact.email != null && contact.email!.isNotEmpty)
-                  Text(
-                    contact.email!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
+                  Text(contact.email!,
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: CupertinoColors.secondaryLabel.resolveFrom(context))),
                 if (contact.phone != null && contact.phone!.isNotEmpty)
-                  Text(
-                    contact.phone!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
+                  Text(contact.phone!,
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: CupertinoColors.secondaryLabel.resolveFrom(context))),
               ],
             ),
           ),
@@ -430,8 +372,6 @@ class _ContactRow extends StatelessWidget {
   }
 }
 
-// ── Event row ─────────────────────────────────────────────────────────────────
-
 class _EventRow extends StatelessWidget {
   const _EventRow({required this.event});
 
@@ -439,32 +379,36 @@ class _EventRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(
-        Icons.event_outlined,
-        color: colorScheme.onSurfaceVariant,
-      ),
-      title: Text(
-        event.title,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      subtitle: Text(
-        _formatDate(event.date, event.time),
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: colorScheme.onSurfaceVariant,
-        ),
-      ),
-      trailing: Icon(
-        Icons.chevron_right,
-        color: colorScheme.onSurfaceVariant,
-      ),
+    return GestureDetector(
       onTap: () => GoRouter.of(context).push('/events/${event.key}'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Icon(CupertinoIcons.calendar,
+                size: 20, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(event.title,
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w500)),
+                  Text(
+                    _formatDate(event.date, event.time),
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                  ),
+                ],
+              ),
+            ),
+            Icon(CupertinoIcons.chevron_right,
+                size: 16, color: CupertinoColors.tertiaryLabel.resolveFrom(context)),
+          ],
+        ),
+      ),
     );
   }
 

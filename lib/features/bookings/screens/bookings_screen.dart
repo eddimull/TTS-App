@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -7,8 +7,6 @@ import 'package:tts_bandmate/shared/widgets/app_scaffold.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/models/booking_summary.dart';
 import '../providers/bookings_provider.dart';
-
-// ── Filter enum ───────────────────────────────────────────────────────────────
 
 enum _BookingsFilter { all, upcoming, confirmed, pending }
 
@@ -20,8 +18,6 @@ extension _BookingsFilterLabel on _BookingsFilter {
         _BookingsFilter.pending => 'Pending',
       };
 }
-
-// ── Screen ────────────────────────────────────────────────────────────────────
 
 class BookingsScreen extends ConsumerStatefulWidget {
   const BookingsScreen({super.key});
@@ -39,18 +35,18 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
 
     return AppScaffold(
       child: bandAsync.when(
-        loading: () => const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
-        error: (e, _) => Scaffold(
-          appBar: AppBar(title: const Text('Bookings')),
-          body: ErrorView(message: 'Could not determine band.\n$e'),
+        loading: () => const Center(child: CupertinoActivityIndicator()),
+        error: (e, _) => CupertinoPageScaffold(
+          navigationBar:
+              const CupertinoNavigationBar(middle: Text('Bookings')),
+          child: ErrorView(message: 'Could not determine band.\n$e'),
         ),
         data: (bandId) {
           if (bandId == null) {
-            return Scaffold(
-              appBar: AppBar(title: const Text('Bookings')),
-              body: const ErrorView(message: 'No band selected.'),
+            return const CupertinoPageScaffold(
+              navigationBar:
+                  CupertinoNavigationBar(middle: Text('Bookings')),
+              child: ErrorView(message: 'No band selected.'),
             );
           }
           return _BookingsBody(
@@ -63,8 +59,6 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     );
   }
 }
-
-// ── Body ──────────────────────────────────────────────────────────────────────
 
 class _BookingsBody extends ConsumerWidget {
   const _BookingsBody({
@@ -82,64 +76,55 @@ class _BookingsBody extends ConsumerWidget {
     final params = BandBookingsParams(bandId: bandId);
     final bookingsAsync = ref.watch(bandBookingsProvider(params));
 
-    return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () =>
-            ref.read(bandBookingsProvider(params).notifier).refresh(),
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar.medium(
-              title: const Text('Bookings'),
-              centerTitle: false,
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(56),
-                child: _FilterChips(
-                  current: filter,
-                  onChanged: onFilterChanged,
-                ),
-              ),
-            ),
-            bookingsAsync.when(
-              loading: () => const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (e, _) => SliverFillRemaining(
-                child: ErrorView(
-                  message: 'Could not load bookings.\n$e',
-                  onRetry: () =>
-                      ref.read(bandBookingsProvider(params).notifier).refresh(),
-                ),
-              ),
-              data: (bookings) {
-                final filtered = _applyFilter(bookings, filter);
-                if (filtered.isEmpty) {
-                  return const SliverFillRemaining(
-                    child: _EmptyBookings(),
-                  );
-                }
-                return SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => _BookingCard(
-                      booking: filtered[index],
-                      onTap: () => context.push(
-                        '/bookings/$bandId/${filtered[index].id}',
-                      ),
-                    ),
-                    childCount: filtered.length,
-                  ),
-                );
-              },
-            ),
-          ],
+    return CupertinoPageScaffold(
+      child: CustomScrollView(
+      slivers: [
+        CupertinoSliverRefreshControl(
+          onRefresh: () =>
+              ref.read(bandBookingsProvider(params).notifier).refresh(),
         ),
+        const CupertinoSliverNavigationBar(
+          largeTitle: Text('Bookings'),
+        ),
+        SliverToBoxAdapter(
+          child: _FilterPills(current: filter, onChanged: onFilterChanged),
+        ),
+        bookingsAsync.when(
+          loading: () => const SliverFillRemaining(
+            child: Center(child: CupertinoActivityIndicator()),
+          ),
+          error: (e, _) => SliverFillRemaining(
+            child: ErrorView(
+              message: 'Could not load bookings.\n$e',
+              onRetry: () =>
+                  ref.read(bandBookingsProvider(params).notifier).refresh(),
+            ),
+          ),
+          data: (bookings) {
+            final filtered = _applyFilter(bookings, filter);
+            if (filtered.isEmpty) {
+              return const SliverFillRemaining(child: _EmptyBookings());
+            }
+            return SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _BookingCard(
+                  booking: filtered[index],
+                  onTap: () => context.push(
+                    '/bookings/$bandId/${filtered[index].id}',
+                  ),
+                ),
+                childCount: filtered.length,
+              ),
+            );
+          },
+        ),
+      ],
       ),
     );
   }
 
   List<BookingSummary> _applyFilter(
-    List<BookingSummary> bookings,
-    _BookingsFilter filter,
-  ) {
+      List<BookingSummary> bookings, _BookingsFilter filter) {
     final now = DateTime.now();
     final sorted = [...bookings]
       ..sort((a, b) => a.parsedDate.compareTo(b.parsedDate));
@@ -156,10 +141,8 @@ class _BookingsBody extends ConsumerWidget {
   }
 }
 
-// ── Filter chips ──────────────────────────────────────────────────────────────
-
-class _FilterChips extends StatelessWidget {
-  const _FilterChips({required this.current, required this.onChanged});
+class _FilterPills extends StatelessWidget {
+  const _FilterPills({required this.current, required this.onChanged});
 
   final _BookingsFilter current;
   final void Function(_BookingsFilter) onChanged;
@@ -168,26 +151,42 @@ class _FilterChips extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Row(
-        children: _BookingsFilter.values
-            .map(
-              (f) => Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: FilterChip(
-                  label: Text(f.label),
-                  selected: current == f,
-                  onSelected: (_) => onChanged(f),
+        children: _BookingsFilter.values.map((f) {
+          final isSelected = current == f;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () => onChanged(f),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? CupertinoColors.systemBlue.resolveFrom(context)
+                      : CupertinoColors.tertiarySystemBackground.resolveFrom(context),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  f.label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: isSelected
+                        ? CupertinoColors.white
+                        : CupertinoColors.label.resolveFrom(context),
+                  ),
                 ),
               ),
-            )
-            .toList(),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
 }
-
-// ── Booking card ──────────────────────────────────────────────────────────────
 
 class _BookingCard extends StatelessWidget {
   const _BookingCard({required this.booking, this.onTap});
@@ -197,37 +196,33 @@ class _BookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        clipBehavior: Clip.antiAlias,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Coloured strip.
             Container(
               width: 48,
-              color: Colors.indigo.shade50,
+              color: CupertinoColors.systemBlue.resolveFrom(context).withValues(alpha: 0.08),
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.book_outlined,
-                    size: 20,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                  Icon(CupertinoIcons.book,
+                      size: 20, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
                 ],
               ),
             ),
-            // Main content.
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -237,9 +232,8 @@ class _BookingCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             booking.name,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: const TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.bold),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -250,18 +244,18 @@ class _BookingCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       _formatDate(booking),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: CupertinoColors.secondaryLabel.resolveFrom(context)),
                     ),
                     if (booking.venueName != null &&
                         booking.venueName!.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(
                         booking.venueName!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: CupertinoColors.secondaryLabel.resolveFrom(context)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -269,10 +263,10 @@ class _BookingCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       booking.displayPrice,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: CupertinoColors.systemBlue.resolveFrom(context),
+                          fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -285,16 +279,13 @@ class _BookingCard extends StatelessWidget {
   }
 
   String _formatDate(BookingSummary booking) {
-    final dateStr =
-        DateFormat('EEEE, MMMM d').format(booking.parsedDate);
+    final dateStr = DateFormat('EEEE, MMMM d').format(booking.parsedDate);
     if (booking.startTime != null && booking.startTime!.isNotEmpty) {
       return '$dateStr at ${booking.startTime}';
     }
     return dateStr;
   }
 }
-
-// ── Status chip ───────────────────────────────────────────────────────────────
 
 class _StatusChip extends StatelessWidget {
   const _StatusChip({required this.status});
@@ -306,75 +297,61 @@ class _StatusChip extends StatelessWidget {
     final (label, bg, fg) = switch (status.toLowerCase()) {
       'confirmed' => (
           'Confirmed',
-          Colors.green.shade100,
-          Colors.green.shade800,
+          CupertinoColors.systemGreen.resolveFrom(context).withValues(alpha: 0.15),
+          CupertinoColors.systemGreen.resolveFrom(context),
         ),
       'pending' => (
           'Pending',
-          Colors.amber.shade100,
-          Colors.amber.shade800,
+          CupertinoColors.systemOrange.resolveFrom(context).withValues(alpha: 0.15),
+          CupertinoColors.systemOrange.resolveFrom(context),
         ),
       'cancelled' || 'canceled' => (
           'Cancelled',
-          Colors.red.shade100,
-          Colors.red.shade800,
+          CupertinoColors.systemRed.resolveFrom(context).withValues(alpha: 0.15),
+          CupertinoColors.systemRed.resolveFrom(context),
         ),
       _ => (
           status,
-          Colors.grey.shade200,
-          Colors.grey.shade700,
+          CupertinoColors.systemGrey5.resolveFrom(context),
+          CupertinoColors.systemGrey.resolveFrom(context),
         ),
     };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: fg,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      decoration:
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      child: Text(label,
+          style: TextStyle(
+              color: fg, fontSize: 11, fontWeight: FontWeight.w600)),
     );
   }
 }
-
-// ── Empty state ───────────────────────────────────────────────────────────────
 
 class _EmptyBookings extends StatelessWidget {
   const _EmptyBookings();
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Center(
+    return const Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.book_outlined,
-            size: 56,
-            color: theme.colorScheme.primary.withValues(alpha: 0.4),
-          ),
-          const SizedBox(height: 16),
+          Icon(CupertinoIcons.book,
+              size: 56, color: CupertinoColors.systemBlue),
+          SizedBox(height: 16),
           Text(
             'No bookings found',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w500,
+                color: CupertinoColors.secondaryLabel),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             'Check back later.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            style: TextStyle(
+                fontSize: 13, color: CupertinoColors.tertiaryLabel),
           ),
         ],
       ),

@@ -51,6 +51,24 @@ class EventSummary {
     );
   }
 
+  /// Returns the asset path for the gig type icon, or null for rehearsals.
+  String? get gigIconPath {
+    if (isRehearsal) return null;
+    final type = eventType?.toLowerCase().replaceAll(' ', '') ?? '';
+    const base = 'assets/images/gigIcons';
+    return switch (type) {
+      'bar' => '$base/bar.png',
+      'casino' => '$base/casino.png',
+      'charity' => '$base/charity.png',
+      'festival' => '$base/festival.png',
+      'mardigras' => '$base/mardiGras.png',
+      'private' => '$base/private.png',
+      'special' => '$base/special.png',
+      'wedding' => '$base/wedding.png',
+      _ => '$base/other.png',
+    };
+  }
+
   /// Returns true when this event is a rehearsal.
   bool get isRehearsal =>
       eventSource == 'rehearsal' || eventSource == 'rehearsal_schedule';

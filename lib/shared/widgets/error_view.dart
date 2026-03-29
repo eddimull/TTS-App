@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 class ErrorView extends StatelessWidget {
   const ErrorView({
@@ -12,31 +12,35 @@ class ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.error_outline,
+            const Icon(
+              CupertinoIcons.exclamationmark_circle,
               size: 48,
-              color: theme.colorScheme.error,
+              color: CupertinoColors.systemRed,
             ),
             const SizedBox(height: 16),
             Text(
               message,
-              style: theme.textTheme.bodyLarge,
+              style: const TextStyle(fontSize: 15),
               textAlign: TextAlign.center,
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 24),
-              FilledButton.icon(
+              CupertinoButton.filled(
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(CupertinoIcons.refresh, size: 18),
+                    SizedBox(width: 6),
+                    Text('Retry'),
+                  ],
+                ),
               ),
             ],
           ],

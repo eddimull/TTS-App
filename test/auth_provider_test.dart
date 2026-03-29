@@ -46,10 +46,10 @@ class FakeSecureStorage extends SecureStorage {
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
-final _fakeUser = AuthUser(id: 1, name: 'Eddie', email: 'eddie@example.com');
+const _fakeUser = AuthUser(id: 1, name: 'Eddie', email: 'eddie@example.com');
 final _fakeBands = [
-  BandSummary(id: 10, name: 'The Rocking Eds', isOwner: true),
-  BandSummary(id: 11, name: 'Side Project', isOwner: false),
+  const BandSummary(id: 10, name: 'The Rocking Eds', isOwner: true),
+  const BandSummary(id: 11, name: 'Side Project', isOwner: false),
 ];
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -58,7 +58,7 @@ void main() {
   group('AuthNotifier', () {
     /// Helper that builds a ProviderContainer wired to [FakeSecureStorage] and
     /// an [ApiClient] that will never be able to reach a real server.
-    ProviderContainer _makeContainer(FakeSecureStorage storage) {
+    ProviderContainer makeContainer(FakeSecureStorage storage) {
       return ProviderContainer(
         overrides: [
           secureStorageProvider.overrideWithValue(storage),
@@ -75,7 +75,7 @@ void main() {
         final storage = FakeSecureStorage();
         // No token written — build() should return AuthUnauthenticated without
         // ever attempting a network call.
-        final container = _makeContainer(storage);
+        final container = makeContainer(storage);
         addTearDown(container.dispose);
 
         final state = await container.read(authProvider.future);
@@ -92,7 +92,7 @@ void main() {
         // Write a stale token — getMe() will fail (no real server).
         await storage.writeToken('stale-token-abc');
 
-        final container = _makeContainer(storage);
+        final container = makeContainer(storage);
         addTearDown(container.dispose);
 
         final state = await container.read(authProvider.future);
@@ -112,7 +112,7 @@ void main() {
         await storage.writeBandId('10');
         await storage.writeUser('{"id":1,"name":"Eddie","email":"e@e.com"}');
 
-        final container = _makeContainer(storage);
+        final container = makeContainer(storage);
         addTearDown(container.dispose);
 
         // Let build() finish (it will clear the bad token and go unauthenticated).

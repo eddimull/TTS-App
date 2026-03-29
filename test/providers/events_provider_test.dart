@@ -33,7 +33,7 @@ class FakeEventsRepository implements EventsRepository {
   Future<EventDetail> getEventDetail(String key) async {
     detailCallCount++;
     if (_detail == null) throw Exception('Not found');
-    return _detail!;
+    return _detail;
   }
 }
 
@@ -61,7 +61,7 @@ EventDetail _makeDetail(String key) => EventDetail.fromJson({
 
 void main() {
   group('bandEventsProvider', () {
-    ProviderContainer _makeContainer(FakeEventsRepository repo) {
+    ProviderContainer makeContainer(FakeEventsRepository repo) {
       return ProviderContainer(
         overrides: [eventsRepositoryProvider.overrideWithValue(repo)],
       );
@@ -71,10 +71,10 @@ void main() {
       final repo = FakeEventsRepository(
         events: [_makeEvent('e1'), _makeEvent('e2')],
       );
-      final container = _makeContainer(repo);
+      final container = makeContainer(repo);
       addTearDown(container.dispose);
 
-      final params = BandEventsParams(bandId: 10);
+      const params = BandEventsParams(bandId: 10);
       final events = await container.read(bandEventsProvider(params).future);
 
       expect(events, hasLength(2));
@@ -83,7 +83,7 @@ void main() {
 
     test('test_returns_empty_list_when_no_events', () async {
       final repo = FakeEventsRepository(events: []);
-      final container = _makeContainer(repo);
+      final container = makeContainer(repo);
       addTearDown(container.dispose);
 
       final events = await container.read(
@@ -95,10 +95,10 @@ void main() {
 
     test('test_refresh_calls_repository_again', () async {
       final repo = FakeEventsRepository(events: [_makeEvent('e1')]);
-      final container = _makeContainer(repo);
+      final container = makeContainer(repo);
       addTearDown(container.dispose);
 
-      final params = const BandEventsParams(bandId: 10);
+      const params = BandEventsParams(bandId: 10);
       await container.read(bandEventsProvider(params).future);
       expect(repo.listCallCount, 1);
 
@@ -108,7 +108,7 @@ void main() {
 
     test('test_different_params_are_independent_providers', () async {
       final repo = FakeEventsRepository(events: [_makeEvent('e1')]);
-      final container = _makeContainer(repo);
+      final container = makeContainer(repo);
       addTearDown(container.dispose);
 
       // Reading two different bandIds should make two separate calls
@@ -120,7 +120,7 @@ void main() {
   });
 
   group('eventDetailProvider', () {
-    ProviderContainer _makeContainer(FakeEventsRepository repo) {
+    ProviderContainer makeContainer(FakeEventsRepository repo) {
       return ProviderContainer(
         overrides: [eventsRepositoryProvider.overrideWithValue(repo)],
       );
@@ -129,7 +129,7 @@ void main() {
     test('test_returns_event_detail_for_key', () async {
       final detail = _makeDetail('evt-key');
       final repo = FakeEventsRepository(detail: detail);
-      final container = _makeContainer(repo);
+      final container = makeContainer(repo);
       addTearDown(container.dispose);
 
       final result = await container.read(eventDetailProvider('evt-key').future);
@@ -140,7 +140,7 @@ void main() {
 
     test('test_propagates_error_when_not_found', () async {
       final repo = FakeEventsRepository(); // no detail set → throws
-      final container = _makeContainer(repo);
+      final container = makeContainer(repo);
       addTearDown(container.dispose);
 
       final result = await container

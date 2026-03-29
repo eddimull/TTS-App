@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tts_bandmate/features/auth/data/models/auth_user.dart';
 import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
 import 'package:tts_bandmate/features/auth/screens/login_screen.dart';
 
@@ -41,7 +42,7 @@ class FakeAuthNotifier extends AuthNotifier {
   }
 }
 
-final _fakeUser = AuthUser(id: 1, name: 'Eddie', email: 'eddie@example.com');
+const _fakeUser = AuthUser(id: 1, name: 'Eddie', email: 'eddie@example.com');
 
 // ── Widget wrapper ────────────────────────────────────────────────────────────
 
@@ -54,8 +55,10 @@ Widget _wrapWithProviders(
     overrides: [
       authProvider.overrideWith(() => fake),
     ],
-    child: MaterialApp(
-      theme: ThemeData(useMaterial3: true),
+    child: CupertinoApp(
+      theme: const CupertinoThemeData(
+        primaryColor: CupertinoColors.systemBlue,
+      ),
       home: child,
     ),
   );
@@ -69,8 +72,8 @@ void main() {
       await tester.pumpWidget(_wrapWithProviders(const LoginScreen()));
       await tester.pump();
 
-      expect(find.widgetWithText(TextFormField, 'Email'), findsOneWidget);
-      expect(find.widgetWithText(TextFormField, 'Password'), findsOneWidget);
+      expect(find.widgetWithText(CupertinoTextField, 'Email'), findsOneWidget);
+      expect(find.widgetWithText(CupertinoTextField, 'Password'), findsOneWidget);
     });
 
     testWidgets('test_renders_sign_in_button', (tester) async {
@@ -96,7 +99,7 @@ void main() {
       await tester.pump();
 
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Email'),
+        find.widgetWithText(CupertinoTextField, 'Email'),
         'not-an-email',
       );
       await tester.tap(find.text('Sign In'));
@@ -110,7 +113,7 @@ void main() {
       await tester.pump();
 
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Email'),
+        find.widgetWithText(CupertinoTextField, 'Email'),
         'valid@email.com',
       );
       await tester.tap(find.text('Sign In'));
@@ -125,11 +128,11 @@ void main() {
       await tester.pump();
 
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Email'),
+        find.widgetWithText(CupertinoTextField, 'Email'),
         '  eddie@example.com  ',
       );
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Password'),
+        find.widgetWithText(CupertinoTextField, 'Password'),
         'secret123',
       );
 
@@ -146,43 +149,40 @@ void main() {
       await tester.pumpWidget(_wrapWithProviders(const LoginScreen()));
       await tester.pump();
 
-      final passwordField = tester.widget<EditableText>(
-        find.descendant(
-          of: find.widgetWithText(TextFormField, 'Password'),
-          matching: find.byType(EditableText),
-        ),
-      );
-      expect(passwordField.obscureText, isTrue);
+      // Find the EditableText inside the password CupertinoTextField
+      final passwordFields = tester.widgetList<CupertinoTextField>(
+        find.byType(CupertinoTextField),
+      ).toList();
+      // Password is the second CupertinoTextField
+      expect(passwordFields.length, greaterThanOrEqualTo(2));
+      expect(passwordFields[1].obscureText, isTrue);
     });
 
     testWidgets('test_password_visibility_toggle_reveals_text', (tester) async {
       await tester.pumpWidget(_wrapWithProviders(const LoginScreen()));
       await tester.pump();
 
-      // Tap the visibility toggle icon
-      await tester.tap(find.byIcon(Icons.visibility_outlined));
+      // Tap the visibility toggle icon (eye icon)
+      await tester.tap(find.byIcon(CupertinoIcons.eye));
       await tester.pump();
 
-      final passwordField = tester.widget<EditableText>(
-        find.descendant(
-          of: find.widgetWithText(TextFormField, 'Password'),
-          matching: find.byType(EditableText),
-        ),
-      );
-      expect(passwordField.obscureText, isFalse);
+      final passwordFields = tester.widgetList<CupertinoTextField>(
+        find.byType(CupertinoTextField),
+      ).toList();
+      expect(passwordFields[1].obscureText, isFalse);
     });
 
-    testWidgets('test_shows_error_snackbar_on_failed_login', (tester) async {
+    testWidgets('test_shows_error_dialog_on_failed_login', (tester) async {
       final fake = FakeAuthNotifier()..shouldFail = true;
       await tester.pumpWidget(_wrapWithProviders(const LoginScreen(), notifier: fake));
       await tester.pump();
 
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Email'),
+        find.widgetWithText(CupertinoTextField, 'Email'),
         'bad@example.com',
       );
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Password'),
+        find.widgetWithText(CupertinoTextField, 'Password'),
         'wrongpass',
       );
 

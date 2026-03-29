@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../providers/rehearsals_provider.dart';
@@ -16,13 +16,13 @@ class RehearsalDetailByKeyScreen extends ConsumerWidget {
     final detailAsync = ref.watch(rehearsalDetailByKeyProvider(eventKey));
 
     return detailAsync.when(
-      loading: () => Scaffold(
-        appBar: AppBar(),
-        body: const Center(child: CircularProgressIndicator()),
+      loading: () => const CupertinoPageScaffold(
+        navigationBar: CupertinoNavigationBar(),
+        child: Center(child: CupertinoActivityIndicator()),
       ),
-      error: (e, _) => Scaffold(
-        appBar: AppBar(),
-        body: ErrorView(
+      error: (e, _) => CupertinoPageScaffold(
+        navigationBar: const CupertinoNavigationBar(),
+        child: ErrorView(
           message: 'Could not load rehearsal.\n$e',
           onRetry: () =>
               ref.invalidate(rehearsalDetailByKeyProvider(eventKey)),

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tts_bandmate/core/network/api_endpoints.dart';
 import 'package:tts_bandmate/core/providers/core_providers.dart';
 import 'models/rehearsal_detail.dart';
 import 'models/rehearsal_schedule.dart';

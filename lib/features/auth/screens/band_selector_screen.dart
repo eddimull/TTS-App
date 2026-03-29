@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../data/models/band_summary.dart';
@@ -10,28 +10,31 @@ class BandSelectorScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authAsync = ref.watch(authProvider);
-    final theme = Theme.of(context);
 
     return PopScope(
-      // Prevent the user from backing out of band selection — it is required.
       canPop: false,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Select Band'),
+      child: CupertinoPageScaffold(
+        navigationBar: CupertinoNavigationBar(
+          middle: const Text('Select Band'),
           automaticallyImplyLeading: false,
-          actions: [
-            TextButton.icon(
-              onPressed: () async {
-                await ref.read(authProvider.notifier).logout();
-                // Router redirect will send to /login after logout.
-              },
-              icon: const Icon(Icons.logout),
-              label: const Text('Sign out'),
+          trailing: CupertinoButton(
+            padding: EdgeInsets.zero,
+            onPressed: () async {
+              await ref.read(authProvider.notifier).logout();
+            },
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(CupertinoIcons.square_arrow_right, size: 18),
+                SizedBox(width: 4),
+                Text('Sign out'),
+              ],
             ),
-          ],
+          ),
         ),
-        body: authAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+        child: authAsync.when(
+          loading: () =>
+              const Center(child: CupertinoActivityIndicator()),
           error: (err, _) => Center(child: Text('Error: $err')),
           data: (authState) {
             if (authState is! AuthAuthenticated) {
@@ -45,11 +48,9 @@ class BandSelectorScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.group_off_outlined,
-                      size: 48,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                    Icon(CupertinoIcons.person_2,
+                        size: 48,
+                        color: CupertinoColors.secondaryLabel.resolveFrom(context)),
                     const SizedBox(height: 16),
                     const Text('No bands found for your account.'),
                   ],
@@ -76,13 +77,8 @@ class BandSelectorScreen extends ConsumerWidget {
   }
 
   Future<void> _selectBand(
-    BuildContext context,
-    WidgetRef ref,
-    BandSummary band,
-  ) async {
+      BuildContext context, WidgetRef ref, BandSummary band) async {
     await ref.read(selectedBandProvider.notifier).selectBand(band.id);
-    // Router redirect observes selectedBandProvider and will navigate to
-    // /dashboard automatically — no explicit context.go() needed.
   }
 }
 
@@ -94,41 +90,66 @@ class _BandTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: theme.colorScheme.primaryContainer,
-          child: Text(
-            band.name.isNotEmpty ? band.name[0].toUpperCase() : '?',
-            style: TextStyle(color: theme.colorScheme.onPrimaryContainer),
-          ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
+          borderRadius: BorderRadius.circular(12),
         ),
-        title: Text(
-          band.name,
-          style: theme.textTheme.titleMedium,
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
           children: [
-            if (band.isOwner)
-              Chip(
-                label: const Text('Owner'),
-                labelStyle: TextStyle(
-                  color: theme.colorScheme.onSecondaryContainer,
-                  fontSize: 12,
-                ),
-                backgroundColor: theme.colorScheme.secondaryContainer,
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: CupertinoColors.systemBlue.resolveFrom(context).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
               ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right),
+              child: Center(
+                child: Text(
+                  band.name.isNotEmpty ? band.name[0].toUpperCase() : '?',
+                  style: TextStyle(
+                    color: CupertinoColors.systemBlue.resolveFrom(context),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                band.name,
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+            ),
+            if (band.isOwner) ...[
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemBlue.resolveFrom(context).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'Owner',
+                  style: TextStyle(
+                    color: CupertinoColors.systemBlue.resolveFrom(context),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Icon(CupertinoIcons.chevron_right,
+                size: 18, color: CupertinoColors.tertiaryLabel.resolveFrom(context)),
           ],
         ),
-        onTap: onTap,
       ),
     );
   }

@@ -1,5 +1,130 @@
 import 'event_member.dart';
 
+// ── Supporting types ──────────────────────────────────────────────────────────
+
+class EventTimelineEntry {
+  const EventTimelineEntry({required this.title, this.time});
+  final String title;
+  final String? time; // e.g. "2026-04-15T19:00:00" or "19:00"
+
+  factory EventTimelineEntry.fromJson(Map<String, dynamic> json) =>
+      EventTimelineEntry(
+        title: json['title'] as String? ?? '',
+        time: json['time'] as String?,
+      );
+}
+
+class EventContact {
+  const EventContact({
+    required this.id,
+    required this.name,
+    this.email,
+    this.phone,
+    this.role,
+  });
+  final int id;
+  final String name;
+  final String? email;
+  final String? phone;
+  final String? role;
+
+  factory EventContact.fromJson(Map<String, dynamic> json) => EventContact(
+        id: (json['id'] as num).toInt(),
+        name: json['name'] as String? ?? '',
+        email: json['email'] as String?,
+        phone: json['phone'] as String?,
+        role: json['role'] as String?,
+      );
+}
+
+class WeddingDance {
+  const WeddingDance({required this.title, this.data});
+  final String title;
+  final String? data;
+
+  factory WeddingDance.fromJson(Map<String, dynamic> json) => WeddingDance(
+        title: json['title'] as String? ?? '',
+        data: json['data'] as String?,
+      );
+}
+
+class WeddingDetail {
+  const WeddingDetail({this.onsite, required this.dances});
+  final bool? onsite;
+  final List<WeddingDance> dances;
+
+  factory WeddingDetail.fromJson(Map<String, dynamic> json) {
+    final rawDances = json['dances'];
+    final dances = rawDances is List
+        ? rawDances.cast<Map<String, dynamic>>().map(WeddingDance.fromJson).toList()
+        : <WeddingDance>[];
+    return WeddingDetail(
+      onsite: json['onsite'] as bool?,
+      dances: dances,
+    );
+  }
+}
+
+class PerformanceSong {
+  const PerformanceSong({this.title, this.url});
+  final String? title;
+  final String? url;
+
+  factory PerformanceSong.fromJson(Map<String, dynamic> json) => PerformanceSong(
+        title: json['title'] as String?,
+        url: json['url'] as String?,
+      );
+}
+
+class PerformanceChart {
+  const PerformanceChart({required this.title, this.composer});
+  final String title;
+  final String? composer;
+
+  factory PerformanceChart.fromJson(Map<String, dynamic> json) => PerformanceChart(
+        title: json['title'] as String? ?? '',
+        composer: json['composer'] as String?,
+      );
+}
+
+class Performance {
+  const Performance({this.notes, required this.songs, required this.charts});
+  final String? notes;
+  final List<PerformanceSong> songs;
+  final List<PerformanceChart> charts;
+
+  factory Performance.fromJson(Map<String, dynamic> json) {
+    final rawSongs = json['songs'];
+    final songs = rawSongs is List
+        ? rawSongs.cast<Map<String, dynamic>>().map(PerformanceSong.fromJson).toList()
+        : <PerformanceSong>[];
+    final rawCharts = json['charts'];
+    final charts = rawCharts is List
+        ? rawCharts.cast<Map<String, dynamic>>().map(PerformanceChart.fromJson).toList()
+        : <PerformanceChart>[];
+    return Performance(
+      notes: json['notes'] as String?,
+      songs: songs,
+      charts: charts,
+    );
+  }
+}
+
+class LodgingItem {
+  const LodgingItem({required this.type, required this.title, this.data});
+  final String type;
+  final String title;
+  final dynamic data;
+
+  factory LodgingItem.fromJson(Map<String, dynamic> json) => LodgingItem(
+        type: json['type'] as String? ?? 'text',
+        title: json['title'] as String? ?? '',
+        data: json['data'],
+      );
+}
+
+// ── EventDetail ───────────────────────────────────────────────────────────────
+
 class EventDetail {
   const EventDetail({
     required this.id,
@@ -18,6 +143,16 @@ class EventDetail {
     required this.canWrite,
     this.liveSessionId,
     required this.members,
+    required this.timeline,
+    this.isPublic,
+    this.attire,
+    this.outside,
+    this.backlineProvided,
+    this.productionNeeded,
+    required this.lodging,
+    this.performance,
+    this.wedding,
+    required this.contacts,
   });
 
   final int id;
@@ -41,20 +176,53 @@ class EventDetail {
   final String? eventableType;
   final int? eventableId;
 
-  /// Whether the current user has write access to this event.
   final bool canWrite;
 
   final int? liveSessionId;
   final List<EventMember> members;
 
+  // additional_data fields
+  final List<EventTimelineEntry> timeline;
+  final bool? isPublic;
+  final String? attire;
+  final bool? outside;
+  final bool? backlineProvided;
+  final bool? productionNeeded;
+  final List<LodgingItem> lodging;
+  final Performance? performance;
+  final WeddingDetail? wedding;
+  final List<EventContact> contacts;
+
   factory EventDetail.fromJson(Map<String, dynamic> json) {
     final rawMembers = json['members'];
     final members = rawMembers is List
-        ? rawMembers
-            .cast<Map<String, dynamic>>()
-            .map(EventMember.fromJson)
-            .toList()
+        ? rawMembers.cast<Map<String, dynamic>>().map(EventMember.fromJson).toList()
         : <EventMember>[];
+
+    final rawTimeline = json['timeline'];
+    final timeline = rawTimeline is List
+        ? rawTimeline.cast<Map<String, dynamic>>().map(EventTimelineEntry.fromJson).toList()
+        : <EventTimelineEntry>[];
+
+    final rawLodging = json['lodging'];
+    final lodging = rawLodging is List
+        ? rawLodging.cast<Map<String, dynamic>>().map(LodgingItem.fromJson).toList()
+        : <LodgingItem>[];
+
+    final rawContacts = json['contacts'];
+    final contacts = rawContacts is List
+        ? rawContacts.cast<Map<String, dynamic>>().map(EventContact.fromJson).toList()
+        : <EventContact>[];
+
+    final rawPerformance = json['performance'];
+    final performance = rawPerformance is Map<String, dynamic>
+        ? Performance.fromJson(rawPerformance)
+        : null;
+
+    final rawWedding = json['wedding'];
+    final wedding = rawWedding is Map<String, dynamic>
+        ? WeddingDetail.fromJson(rawWedding)
+        : null;
 
     return EventDetail(
       id: (json['id'] as num).toInt(),
@@ -79,10 +247,19 @@ class EventDetail {
           ? null
           : (json['live_session_id'] as num).toInt(),
       members: members,
+      timeline: timeline,
+      isPublic: json['is_public'] as bool?,
+      attire: json['attire'] as String?,
+      outside: json['outside'] as bool?,
+      backlineProvided: json['backline_provided'] as bool?,
+      productionNeeded: json['production_needed'] as bool?,
+      lodging: lodging,
+      performance: performance,
+      wedding: wedding,
+      contacts: contacts,
     );
   }
 
-  /// Parses [date] into a [DateTime]. Returns [DateTime.now()] as a fallback.
   DateTime get parsedDate {
     try {
       return DateTime.parse(date);
@@ -98,9 +275,7 @@ class EventDetail {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is EventDetail &&
-          runtimeType == other.runtimeType &&
-          key == other.key;
+      other is EventDetail && runtimeType == other.runtimeType && key == other.key;
 
   @override
   int get hashCode => key.hashCode;

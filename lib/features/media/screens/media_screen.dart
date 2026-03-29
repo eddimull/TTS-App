@@ -6,7 +6,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../shared/providers/selected_band_provider.dart';
-import '../../../shared/widgets/app_scaffold.dart';
 import '../../../core/providers/core_providers.dart';
 import '../data/models/media_file.dart';
 import '../providers/media_provider.dart';
@@ -46,8 +45,7 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
     final listState = ref.watch(mediaListProvider(_params));
     final uploadState = ref.watch(uploadProvider);
 
-    return AppScaffold(
-      child: CupertinoPageScaffold(
+    return CupertinoPageScaffold(
         navigationBar: CupertinoNavigationBar(
           middle: _folderPath != null
               ? Text(_folderPath!.split('/').last)
@@ -111,7 +109,6 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
             Expanded(child: _buildBody(listState, bandId)),
           ],
         ),
-      ),
     );
   }
 

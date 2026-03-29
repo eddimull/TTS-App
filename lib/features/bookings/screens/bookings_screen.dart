@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
-import 'package:tts_bandmate/shared/widgets/app_scaffold.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/models/booking_summary.dart';
 import '../providers/bookings_provider.dart';
@@ -33,29 +32,27 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   Widget build(BuildContext context) {
     final bandAsync = ref.watch(selectedBandProvider);
 
-    return AppScaffold(
-      child: bandAsync.when(
-        loading: () => const Center(child: CupertinoActivityIndicator()),
-        error: (e, _) => CupertinoPageScaffold(
-          navigationBar:
-              const CupertinoNavigationBar(middle: Text('Bookings')),
-          child: ErrorView(message: 'Could not determine band.\n$e'),
-        ),
-        data: (bandId) {
-          if (bandId == null) {
-            return const CupertinoPageScaffold(
-              navigationBar:
-                  CupertinoNavigationBar(middle: Text('Bookings')),
-              child: ErrorView(message: 'No band selected.'),
-            );
-          }
-          return _BookingsBody(
-            bandId: bandId,
-            filter: _filter,
-            onFilterChanged: (f) => setState(() => _filter = f),
-          );
-        },
+    return bandAsync.when(
+      loading: () => const Center(child: CupertinoActivityIndicator()),
+      error: (e, _) => CupertinoPageScaffold(
+        navigationBar:
+            const CupertinoNavigationBar(middle: Text('Bookings')),
+        child: ErrorView(message: 'Could not determine band.\n$e'),
       ),
+      data: (bandId) {
+        if (bandId == null) {
+          return const CupertinoPageScaffold(
+            navigationBar:
+                CupertinoNavigationBar(middle: Text('Bookings')),
+            child: ErrorView(message: 'No band selected.'),
+          );
+        }
+        return _BookingsBody(
+          bandId: bandId,
+          filter: _filter,
+          onFilterChanged: (f) => setState(() => _filter = f),
+        );
+      },
     );
   }
 }

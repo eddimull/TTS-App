@@ -1,14 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
-import '../../../shared/widgets/app_scaffold.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
-      child: CupertinoPageScaffold(
+    return CupertinoPageScaffold(
         navigationBar: const CupertinoNavigationBar(middle: Text('More')),
         child: ListView(
           children: [
@@ -44,7 +42,6 @@ class MoreScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }

@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../../shared/providers/selected_band_provider.dart';
-import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../events/data/models/event_summary.dart';
 import '../providers/dashboard_provider.dart';
@@ -43,8 +42,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     final dashboardAsync = ref.watch(dashboardProvider);
 
-    return AppScaffold(
-      child: CupertinoPageScaffold(
+    return CupertinoPageScaffold(
         child: CustomScrollView(
         slivers: [
           CupertinoSliverRefreshControl(
@@ -99,7 +97,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ],
         ),
-      ),
     );
   }
 

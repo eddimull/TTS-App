@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/providers/selected_band_provider.dart';
-import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../dashboard/widgets/event_card.dart';
 import '../data/models/event_summary.dart';
@@ -24,30 +23,28 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
   Widget build(BuildContext context) {
     final bandAsync = ref.watch(selectedBandProvider);
 
-    return AppScaffold(
-      child: bandAsync.when(
-        loading: () => const Center(child: CupertinoActivityIndicator()),
-        error: (e, _) => CupertinoPageScaffold(
-          navigationBar: const CupertinoNavigationBar(middle: Text('Events')),
-          child: ErrorView(message: 'Could not determine band.\n$e'),
-        ),
-        data: (bandId) {
-          if (bandId == null) {
-            return const CupertinoPageScaffold(
-              navigationBar:
-                  CupertinoNavigationBar(middle: Text('Events')),
-              child: ErrorView(message: 'No band selected.'),
-            );
-          }
-          return _EventsBody(
-            bandId: bandId,
-            filter: _filter,
-            onFilterChanged: (f) {
-              setState(() => _filter = f);
-            },
-          );
-        },
+    return bandAsync.when(
+      loading: () => const Center(child: CupertinoActivityIndicator()),
+      error: (e, _) => CupertinoPageScaffold(
+        navigationBar: const CupertinoNavigationBar(middle: Text('Events')),
+        child: ErrorView(message: 'Could not determine band.\n$e'),
       ),
+      data: (bandId) {
+        if (bandId == null) {
+          return const CupertinoPageScaffold(
+            navigationBar:
+                CupertinoNavigationBar(middle: Text('Events')),
+            child: ErrorView(message: 'No band selected.'),
+          );
+        }
+        return _EventsBody(
+          bandId: bandId,
+          filter: _filter,
+          onFilterChanged: (f) {
+            setState(() => _filter = f);
+          },
+        );
+      },
     );
   }
 }

@@ -16,6 +16,7 @@ import '../../features/media/screens/media_screen.dart';
 import '../../features/more/screens/more_screen.dart';
 import '../../features/setlist/screens/live_session_screen.dart';
 import '../../shared/providers/selected_band_provider.dart';
+import '../../shared/widgets/app_scaffold.dart';
 
 // ── Router provider ───────────────────────────────────────────────────────────
 
@@ -95,13 +96,30 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/bands',
         builder: (context, state) => const BandSelectorScreen(),
       ),
-      GoRoute(
-        path: '/dashboard',
-        builder: (context, state) => const DashboardScreen(),
-      ),
-      GoRoute(
-        path: '/events',
-        builder: (_, __) => const EventsScreen(),
+      ShellRoute(
+        builder: (context, state, child) => AppScaffold(child: child),
+        routes: [
+          GoRoute(
+            path: '/dashboard',
+            builder: (context, state) => const DashboardScreen(),
+          ),
+          GoRoute(
+            path: '/events',
+            builder: (_, __) => const EventsScreen(),
+          ),
+          GoRoute(
+            path: '/bookings',
+            builder: (_, __) => const BookingsScreen(),
+          ),
+          GoRoute(
+            path: '/media',
+            builder: (_, __) => const MediaScreen(),
+          ),
+          GoRoute(
+            path: '/more',
+            builder: (_, __) => const MoreScreen(),
+          ),
+        ],
       ),
       GoRoute(
         path: '/events/:key',
@@ -115,23 +133,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: '/bookings',
-        builder: (_, __) => const BookingsScreen(),
-      ),
-      GoRoute(
         path: '/bookings/:bandId/:id',
         builder: (_, state) => BookingDetailScreen(
           bandId: int.parse(state.pathParameters['bandId']!),
           bookingId: int.parse(state.pathParameters['id']!),
         ),
-      ),
-      GoRoute(
-        path: '/media',
-        builder: (_, __) => const MediaScreen(),
-      ),
-      GoRoute(
-        path: '/more',
-        builder: (_, __) => const MoreScreen(),
       ),
       GoRoute(
         path: '/rehearsals',

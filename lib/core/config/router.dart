@@ -43,9 +43,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authAsync = ref.read(authProvider);
       final bandAsync = ref.read(selectedBandProvider);
 
-      // While auth is resolving, stay put (GoRouter will re-evaluate when
-      // refreshListenable fires after the async completes).
-      if (authAsync.isLoading) return null;
+      // While auth or band selection is resolving, stay put (GoRouter will
+      // re-evaluate when refreshListenable fires after the async completes).
+      if (authAsync.isLoading || bandAsync.isLoading) return null;
 
       final authState = authAsync.valueOrNull;
 

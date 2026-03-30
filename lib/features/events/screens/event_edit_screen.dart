@@ -356,7 +356,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(CupertinoIcons.calendar_clock, size: 16),
+                        const Icon(CupertinoIcons.calendar, size: 16),
                         const SizedBox(width: 6),
                         Text(
                           entryTime != null

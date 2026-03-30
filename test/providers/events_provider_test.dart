@@ -35,6 +35,16 @@ class FakeEventsRepository implements EventsRepository {
     if (_detail == null) throw Exception('Not found');
     return _detail;
   }
+
+  @override
+  Future<void> updateEvent(String key, Map<String, dynamic> data) async {}
+
+  @override
+  Future<EventAttachment> uploadAttachment(String key, dynamic file) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteAttachment(String key, int attachmentId) async {}
 }
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────

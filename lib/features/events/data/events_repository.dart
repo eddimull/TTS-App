@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/core_providers.dart';
@@ -53,12 +51,13 @@ class EventsRepository {
   }
 
   /// Uploads a single file attachment for the event identified by [key].
-  Future<EventAttachment> uploadAttachment(String key, File file) async {
+  Future<EventAttachment> uploadAttachment(
+    String key, {
+    required List<int> bytes,
+    required String filename,
+  }) async {
     final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(
-        file.path,
-        filename: file.path.split('/').last,
-      ),
+      'file': MultipartFile.fromBytes(bytes, filename: filename),
     });
     final response = await _dio.post<Map<String, dynamic>>(
       ApiEndpoints.mobileEventAttachments(key),

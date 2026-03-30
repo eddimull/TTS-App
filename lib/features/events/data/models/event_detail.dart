@@ -267,7 +267,7 @@ class EventDetail {
       key: json['key'] as String,
       title: json['title'] as String,
       date: json['date'] as String,
-      time: json['time'] as String?,
+      time: _toHHmm(json['time'] as String?),
       notes: json['notes'] as String?,
       eventType: json['event_type'] as String?,
       eventTypeId: json['event_type_id'] == null
@@ -318,4 +318,13 @@ class EventDetail {
 
   @override
   int get hashCode => key.hashCode;
+}
+
+/// Normalises a time string from the API (e.g. "20:00:00" or "20:00") to "HH:mm"
+/// as required by the backend's `date_format:H:i` validation rule.
+String? _toHHmm(String? raw) {
+  if (raw == null) return null;
+  final parts = raw.split(':');
+  if (parts.length < 2) return raw;
+  return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
 }

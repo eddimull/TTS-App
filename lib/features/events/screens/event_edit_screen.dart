@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -522,16 +520,23 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
 
   // ── Attachment helpers ──────────────────────────────────────────────────────
 
-  Future<void> _pickAndUploadAttachment() async {
-    final result = await FilePicker.platform.pickFiles(allowMultiple: false);
-    if (result == null || result.files.isEmpty) return;
-    final path = result.files.first.path;
-    if (path == null) return;
+  Future<List<EventAttachment>> _pickAndUploadAttachment() async {
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return _attachments;
+    final file = result.files.first;
+    final filename = file.name;
 
     setState(() => _uploading = true);
     try {
       final repo = ref.read(eventsRepositoryProvider);
-      final attachment = await repo.uploadAttachment(widget.event.key, File(path));
+      final attachment = await repo.uploadAttachment(
+        widget.event.key,
+        bytes: file.bytes!,
+        filename: filename,
+      );
       setState(() => _attachments.add(attachment));
     } catch (e) {
       if (mounted) {
@@ -553,9 +558,10 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
+    return _attachments;
   }
 
-  Future<void> _deleteAttachment(EventAttachment attachment) async {
+  Future<List<EventAttachment>> _deleteAttachment(EventAttachment attachment) async {
     final confirmed = await showCupertinoDialog<bool>(
       context: context,
       builder: (_) => CupertinoAlertDialog(
@@ -574,7 +580,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true) return _attachments;
 
     try {
       final repo = ref.read(eventsRepositoryProvider);
@@ -598,6 +604,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
         );
       }
     }
+    return _attachments;
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -721,14 +728,31 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
           // ── Notes & Attire ──────────────────────────────────────────────────
           _SectionHeader(title: 'Details'),
           _FormCard(children: [
-            _LabeledField(
-              label: 'Notes',
-              child: CupertinoTextField.borderless(
-                controller: _notes,
-                placeholder: 'Notes',
-                maxLines: 4,
-                minLines: 1,
-              ),
+            // Notes — tappable preview card that opens a fullscreen editor
+            _NotesPreviewCard(
+              notes: _notes.text,
+              attachmentCount: _attachments.length,
+              onTap: () async {
+                final result = await Navigator.of(context).push<_NotesEditorResult>(
+                  CupertinoPageRoute(
+                    fullscreenDialog: true,
+                    builder: (_) => _NotesEditorSheet(
+                      initialNotes: _notes.text,
+                      attachments: _attachments,
+                      attachmentIcon: _attachmentIcon,
+                      onUpload: _pickAndUploadAttachment,
+                      onDelete: _deleteAttachment,
+                      uploading: _uploading,
+                    ),
+                  ),
+                );
+                if (result != null) {
+                  setState(() {
+                    _notes.text = result.notes;
+                    _attachments = result.attachments;
+                  });
+                }
+              },
             ),
             _Divider(),
             _LabeledField(
@@ -1229,6 +1253,341 @@ class _ToggleRow extends StatelessWidget {
           Expanded(child: Text(label, style: const TextStyle(fontSize: 15))),
           CupertinoSwitch(value: value, onChanged: onChanged),
         ],
+      ),
+    );
+  }
+}
+
+// ── Notes preview card ────────────────────────────────────────────────────────
+
+/// Compact, tappable card shown inline in the Details form section.
+/// Mirrors the web "Click to edit notes and attachments" pattern.
+class _NotesPreviewCard extends StatelessWidget {
+  const _NotesPreviewCard({
+    required this.notes,
+    required this.attachmentCount,
+    required this.onTap,
+  });
+
+  final String notes;
+  final int attachmentCount;
+  final VoidCallback onTap;
+
+  /// Returns (previewLines, extraLineCount).
+  /// Shows the first 3 non-empty lines; reports how many remain.
+  static ({List<String> preview, int extra}) _splitPreview(String text) {
+    final lines = text.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    if (lines.isEmpty) return (preview: const [], extra: 0);
+    final preview = lines.take(3).toList();
+    final extra = lines.length - preview.length;
+    return (preview: preview, extra: extra);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEmpty = notes.trim().isEmpty;
+    final split = isEmpty ? (preview: <String>[], extra: 0) : _splitPreview(notes);
+    final secondaryColor = CupertinoColors.secondaryLabel.resolveFrom(context);
+
+    return Semantics(
+      button: true,
+      label: 'Edit notes and attachments',
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top row: "Notes" label left, expand icon right
+              Row(
+                children: [
+                  const Text(
+                    'Notes',
+                    style: TextStyle(fontSize: 15),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    CupertinoIcons.arrow_up_left_arrow_down_right,
+                    size: 16,
+                    color: secondaryColor,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              // Content area
+              if (isEmpty)
+                Text(
+                  'Tap to edit notes and attachments',
+                  style: TextStyle(fontSize: 14, color: secondaryColor),
+                )
+              else ...[
+                // Preview lines (up to 3)
+                for (final line in split.preview)
+                  Text(
+                    line,
+                    style: const TextStyle(fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                if (split.extra > 0) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    '+ ${split.extra} more ${split.extra == 1 ? 'line' : 'lines'}',
+                    style: TextStyle(fontSize: 13, color: secondaryColor),
+                  ),
+                ],
+              ],
+              // Bottom row: attachment count
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(CupertinoIcons.paperclip, size: 14, color: secondaryColor),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$attachmentCount ${attachmentCount == 1 ? 'attachment' : 'attachments'}',
+                    style: TextStyle(fontSize: 13, color: secondaryColor),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Notes editor result ───────────────────────────────────────────────────────
+
+class _NotesEditorResult {
+  const _NotesEditorResult({required this.notes, required this.attachments});
+  final String notes;
+  final List<EventAttachment> attachments;
+}
+
+// ── Fullscreen notes editor ───────────────────────────────────────────────────
+
+class _NotesEditorSheet extends StatefulWidget {
+  const _NotesEditorSheet({
+    required this.initialNotes,
+    required this.attachments,
+    required this.attachmentIcon,
+    required this.onUpload,
+    required this.onDelete,
+    required this.uploading,
+  });
+
+  final String initialNotes;
+  final List<EventAttachment> attachments;
+  final IconData Function(String mimeType) attachmentIcon;
+  final Future<List<EventAttachment>> Function() onUpload;
+  final Future<List<EventAttachment>> Function(EventAttachment) onDelete;
+  final bool uploading;
+
+  @override
+  State<_NotesEditorSheet> createState() => _NotesEditorSheetState();
+}
+
+class _NotesEditorSheetState extends State<_NotesEditorSheet> {
+  late final TextEditingController _ctrl;
+  // Local copy of attachments so mutations are reflected immediately in the sheet
+  late List<EventAttachment> _attachments;
+  bool _uploading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.initialNotes);
+    _attachments = List.of(widget.attachments);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleUpload() async {
+    setState(() => _uploading = true);
+    try {
+      final updated = await widget.onUpload();
+      if (mounted) setState(() => _attachments = updated);
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  Future<void> _handleDelete(EventAttachment attachment) async {
+    final updated = await widget.onDelete(attachment);
+    if (mounted) setState(() => _attachments = updated);
+  }
+
+  void _done() {
+    Navigator.of(context).pop(
+      _NotesEditorResult(notes: _ctrl.text, attachments: _attachments),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final secondaryColor = CupertinoColors.secondaryLabel.resolveFrom(context);
+    final blueColor = CupertinoColors.activeBlue.resolveFrom(context);
+    final separatorColor = CupertinoColors.separator.resolveFrom(context);
+
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text('Notes'),
+        leading: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: _done,
+          child: const Text(
+            'Done',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            // ── Text editor (fills available vertical space) ────────────────
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: CupertinoTextField(
+                  controller: _ctrl,
+                  placeholder: 'Add notes…',
+                  // expands: true requires maxLines: null
+                  maxLines: null,
+                  expands: true,
+                  textAlignVertical: TextAlignVertical.top,
+                  decoration: const BoxDecoration(), // borderless
+                  style: const TextStyle(fontSize: 15),
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.sentences,
+                  keyboardType: TextInputType.multiline,
+                ),
+              ),
+            ),
+
+            // ── Divider before attachments ──────────────────────────────────
+            Container(height: 0.5, color: separatorColor),
+
+            // ── Attachments list + add button ───────────────────────────────
+            Container(
+              color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
+              // Constrain to a scrollable area; on small phones this caps nicely
+              constraints: const BoxConstraints(maxHeight: 280),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_attachments.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        child: Text(
+                          'No attachments',
+                          style: TextStyle(fontSize: 14, color: secondaryColor),
+                        ),
+                      ),
+                    for (int i = 0; i < _attachments.length; i++) ...[
+                      if (i > 0)
+                        Container(
+                          height: 0.5,
+                          margin: const EdgeInsets.only(left: 16),
+                          color: separatorColor,
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        child: Row(
+                          children: [
+                            Icon(
+                              widget.attachmentIcon(_attachments[i].mimeType),
+                              size: 20,
+                              color: secondaryColor,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _attachments[i].filename,
+                                    style: const TextStyle(fontSize: 15),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    _attachments[i].formattedSize,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: secondaryColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              minSize: 28,
+                              onPressed: () => _handleDelete(_attachments[i]),
+                              child: Icon(
+                                CupertinoIcons.minus_circle,
+                                size: 20,
+                                color: CupertinoColors.systemRed
+                                    .resolveFrom(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (_attachments.isNotEmpty)
+                      Container(
+                        height: 0.5,
+                        margin: const EdgeInsets.only(left: 16),
+                        color: separatorColor,
+                      ),
+                    // Add attachment button
+                    CupertinoButton(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      onPressed: _uploading ? null : _handleUpload,
+                      child: Row(
+                        children: [
+                          if (_uploading)
+                            const CupertinoActivityIndicator()
+                          else
+                            Icon(
+                              CupertinoIcons.paperclip,
+                              size: 18,
+                              color: blueColor,
+                            ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _uploading ? 'Uploading…' : 'Add Attachment',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: _uploading ? secondaryColor : blueColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

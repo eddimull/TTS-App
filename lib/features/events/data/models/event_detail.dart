@@ -8,17 +8,20 @@ class EventAttachment {
     required this.filename,
     required this.mimeType,
     required this.fileSize,
+    this.url = '',
   });
   final int id;
   final String filename;
   final String mimeType;
   final int fileSize;
+  final String url;
 
   factory EventAttachment.fromJson(Map<String, dynamic> json) => EventAttachment(
         id: (json['id'] as num).toInt(),
         filename: json['filename'] as String? ?? '',
         mimeType: json['mime_type'] as String? ?? '',
         fileSize: (json['file_size'] as num?)?.toInt() ?? 0,
+        url: json['url'] as String? ?? '',
       );
 
   String get formattedSize {

@@ -2,11 +2,10 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material, Theme, ThemeData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../shared/providers/selected_band_provider.dart';
-import '../../../core/providers/core_providers.dart';
+import '../../../shared/widgets/auth_thumbnail.dart';
 import '../data/models/media_file.dart';
 import '../providers/media_provider.dart';
 
@@ -444,8 +443,7 @@ class _MediaTile extends ConsumerWidget {
           fit: StackFit.expand,
           children: [
             if (file.isImage && file.thumbnailUrl != null)
-              _ThumbnailImage(
-                  url: file.thumbnailUrl!, bandId: bandId, ref: ref)
+              AuthThumbnail(url: file.thumbnailUrl!)
             else
               Container(
                 color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
@@ -581,43 +579,6 @@ class _MediaTile extends ConsumerWidget {
   }
 }
 
-class _ThumbnailImage extends StatefulWidget {
-  const _ThumbnailImage(
-      {required this.url, required this.bandId, required this.ref});
-
-  final String url;
-  final int bandId;
-  final WidgetRef ref;
-
-  @override
-  State<_ThumbnailImage> createState() => _ThumbnailImageState();
-}
-
-class _ThumbnailImageState extends State<_ThumbnailImage> {
-  String? _token;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.ref.read(secureStorageProvider).readToken().then((t) {
-      if (mounted) setState(() => _token = t);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_token == null) {
-      return const SizedBox.shrink();
-    }
-    return CachedNetworkImage(
-      imageUrl: widget.url,
-      httpHeaders: {'Authorization': 'Bearer $_token'},
-      fit: BoxFit.cover,
-      errorWidget: (_, __, ___) =>
-          const Icon(CupertinoIcons.photo),
-    );
-  }
-}
 
 class _MediaDetailSheet extends StatelessWidget {
   const _MediaDetailSheet({

@@ -2,7 +2,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timelines_plus/timelines_plus.dart';
+import '../../../core/config/app_config.dart';
 import '../../../shared/utils/time_format.dart';
+import '../../../shared/widgets/auth_thumbnail.dart';
 import '../../../shared/widgets/status_chip.dart';
 import '../data/models/event_detail.dart';
 import '../data/events_repository.dart';
@@ -1098,10 +1100,28 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Row(
                   children: [
-                    Icon(
-                      _attachmentIcon(_attachments[i].mimeType),
-                      size: 20,
-                      color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: _attachments[i].mimeType.startsWith('image/') &&
+                                _resolveAttachmentUrl(_attachments[i].url).isNotEmpty
+                            ? AuthThumbnail(
+                                url: _resolveAttachmentUrl(_attachments[i].url))
+                            : ColoredBox(
+                                color: CupertinoColors.secondarySystemBackground
+                                    .resolveFrom(context),
+                                child: Center(
+                                  child: Icon(
+                                    _attachmentIcon(_attachments[i].mimeType),
+                                    size: 20,
+                                    color: CupertinoColors.secondaryLabel
+                                        .resolveFrom(context),
+                                  ),
+                                ),
+                              ),
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -1172,6 +1192,12 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
       ),
     );
   }
+}
+
+String _resolveAttachmentUrl(String raw) {
+  if (raw.startsWith('http')) return raw;
+  if (raw.startsWith('/')) return '${AppConfig.baseUrl}$raw';
+  return raw;
 }
 
 // ── Layout helpers ────────────────────────────────────────────────────────────
@@ -1578,10 +1604,27 @@ class _NotesEditorSheetState extends State<_NotesEditorSheet> {
                             horizontal: 16, vertical: 10),
                         child: Row(
                           children: [
-                            Icon(
-                              widget.attachmentIcon(_attachments[i].mimeType),
-                              size: 20,
-                              color: secondaryColor,
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: SizedBox(
+                                width: 40,
+                                height: 40,
+                                child: _attachments[i].mimeType.startsWith('image/') &&
+                                        _resolveAttachmentUrl(_attachments[i].url).isNotEmpty
+                                    ? AuthThumbnail(
+                                        url: _resolveAttachmentUrl(_attachments[i].url))
+                                    : ColoredBox(
+                                        color: CupertinoColors.secondarySystemBackground
+                                            .resolveFrom(context),
+                                        child: Center(
+                                          child: Icon(
+                                            widget.attachmentIcon(_attachments[i].mimeType),
+                                            size: 20,
+                                            color: secondaryColor,
+                                          ),
+                                        ),
+                                      ),
+                              ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(

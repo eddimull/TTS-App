@@ -58,6 +58,19 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
   late List<EventAttachment> _attachments;
   bool _uploading = false;
 
+  // Initial values for dirty-check
+  late String _initTitle;
+  late String _initVenueName;
+  late String _initVenueAddress;
+  late String _initNotes;
+  late String _initAttire;
+  late DateTime _initDate;
+  String? _initTime;
+  bool? _initIsPublic;
+  bool? _initOutside;
+  bool? _initBacklineProvided;
+  bool? _initProductionNeeded;
+
   bool _saving = false;
   String? _error;
 
@@ -92,6 +105,19 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     }
 
     _attachments = List.of(e.attachments);
+
+    // Snapshot for dirty check
+    _initTitle = _title.text;
+    _initVenueName = _venueName.text;
+    _initVenueAddress = _venueAddress.text;
+    _initNotes = _notes.text;
+    _initAttire = _attire.text;
+    _initDate = _date;
+    _initTime = _time;
+    _initIsPublic = _isPublic;
+    _initOutside = _outside;
+    _initBacklineProvided = _backlineProvided;
+    _initProductionNeeded = _productionNeeded;
   }
 
   @override
@@ -126,6 +152,49 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
           '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     }
     return raw;
+  }
+
+  // ── Dirty check / cancel guard ───────────────────────────────────────────────
+
+  bool _hasChanges() {
+    if (_title.text != _initTitle) return true;
+    if (_venueName.text != _initVenueName) return true;
+    if (_venueAddress.text != _initVenueAddress) return true;
+    if (_notes.text != _initNotes) return true;
+    if (_attire.text != _initAttire) return true;
+    if (_date != _initDate) return true;
+    if (_time != _initTime) return true;
+    if (_isPublic != _initIsPublic) return true;
+    if (_outside != _initOutside) return true;
+    if (_backlineProvided != _initBacklineProvided) return true;
+    if (_productionNeeded != _initProductionNeeded) return true;
+    return false;
+  }
+
+  Future<void> _confirmCancel() async {
+    if (!_hasChanges()) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final discard = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (_) => CupertinoAlertDialog(
+        title: const Text('Discard Changes?'),
+        content: const Text('You have unsaved changes. Are you sure you want to discard them?'),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep Editing'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    if (discard == true && mounted) Navigator.of(context).pop();
   }
 
   // ── Save ────────────────────────────────────────────────────────────────────
@@ -640,7 +709,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
         middle: const Text('Edit Event'),
         leading: CupertinoButton(
           padding: EdgeInsets.zero,
-          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          onPressed: _saving ? null : _confirmCancel,
           child: const Text('Cancel'),
         ),
         trailing: CupertinoButton(

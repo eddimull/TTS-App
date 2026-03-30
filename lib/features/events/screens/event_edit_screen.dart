@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show DefaultMaterialLocalizations, MaterialLocalizations, ReorderableDragStartListener, ReorderableListView;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timelines_plus/timelines_plus.dart';
 import '../../../core/config/app_config.dart';
@@ -72,6 +73,8 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
   bool? _initOutside;
   bool? _initBacklineProvided;
   bool? _initProductionNeeded;
+  List<_WeddingDance>? _initWeddingDances;
+  bool? _initWeddingOnsite;
 
   bool _saving = false;
   String? _error;
@@ -120,6 +123,10 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     _initOutside = _outside;
     _initBacklineProvided = _backlineProvided;
     _initProductionNeeded = _productionNeeded;
+    _initWeddingOnsite = _weddingOnsite;
+    _initWeddingDances = _weddingDances
+        ?.map((d) => _WeddingDance(title: d.title, data: d.data))
+        .toList();
   }
 
   @override
@@ -170,6 +177,15 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     if (_outside != _initOutside) return true;
     if (_backlineProvided != _initBacklineProvided) return true;
     if (_productionNeeded != _initProductionNeeded) return true;
+    if (_weddingOnsite != _initWeddingOnsite) return true;
+    if (_weddingDances != null) {
+      final init = _initWeddingDances!;
+      final curr = _weddingDances!;
+      if (curr.length != init.length) return true;
+      for (int i = 0; i < curr.length; i++) {
+        if (curr[i].title != init[i].title || curr[i].data != init[i].data) return true;
+      }
+    }
     return false;
   }
 
@@ -510,74 +526,120 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     final songCtrl = TextEditingController();
     final customCtrl = TextEditingController();
 
-    await showCupertinoDialog<void>(
+    await showCupertinoModalPopup<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDlgState) => CupertinoAlertDialog(
-          title: const Text('Add Dance'),
-          content: Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Type picker
-                SizedBox(
-                  height: 120,
-                  child: CupertinoPicker(
-                    itemExtent: 32,
-                    scrollController: FixedExtentScrollController(
-                      initialItem: _danceTypes.indexWhere((t) => t.$1 == selectedType),
+        builder: (ctx, setDlgState) {
+          final bg = CupertinoColors.systemBackground.resolveFrom(ctx);
+          return Container(
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            ),
+            // Let the sheet grow with the keyboard so text fields stay visible
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Drag handle
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, bottom: 4),
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.systemFill.resolveFrom(ctx),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                    onSelectedItemChanged: (i) =>
-                        setDlgState(() => selectedType = _danceTypes[i].$1),
-                    children: _danceTypes
-                        .map((t) => Center(
-                              child: Text(t.$2, style: const TextStyle(fontSize: 14)),
-                            ))
-                        .toList(),
                   ),
-                ),
-                const SizedBox(height: 8),
-                if (selectedType == 'custom')
-                  CupertinoTextField(
-                    controller: customCtrl,
-                    placeholder: 'Dance type',
-                    textCapitalization: TextCapitalization.words,
+                  // Header row: Cancel | title | Add
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(
+                      children: [
+                        CupertinoButton(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                          onPressed: () => Navigator.pop(ctx),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: CupertinoColors.destructiveRed.resolveFrom(ctx),
+                            ),
+                          ),
+                        ),
+                        const Expanded(
+                          child: Text(
+                            'Add Dance',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        CupertinoButton(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                          onPressed: () {
+                            final type = selectedType == 'custom'
+                                ? customCtrl.text.trim().toLowerCase().replaceAll(' ', '_')
+                                : selectedType;
+                            if (type.isEmpty) return;
+                            setState(() {
+                              _weddingDances!.add(_WeddingDance(
+                                title: type,
+                                data: songCtrl.text.trim().isEmpty ? null : songCtrl.text.trim(),
+                              ));
+                            });
+                            Navigator.pop(ctx);
+                          },
+                          child: const Text('Add'),
+                        ),
+                      ],
+                    ),
                   ),
-                const SizedBox(height: 8),
-                CupertinoTextField(
-                  controller: songCtrl,
-                  placeholder: 'Song / details (optional)',
-                  textCapitalization: TextCapitalization.sentences,
-                ),
-              ],
+                  // Type picker
+                  SizedBox(
+                    height: 200,
+                    child: CupertinoPicker(
+                      itemExtent: 36,
+                      scrollController: FixedExtentScrollController(
+                        initialItem: _danceTypes.indexWhere((t) => t.$1 == selectedType),
+                      ),
+                      onSelectedItemChanged: (i) =>
+                          setDlgState(() => selectedType = _danceTypes[i].$1),
+                      children: _danceTypes
+                          .map((t) => Center(child: Text(t.$2)))
+                          .toList(),
+                    ),
+                  ),
+                  // Custom type field — only shown when 'Other' is selected
+                  if (selectedType == 'custom')
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      child: CupertinoTextField(
+                        controller: customCtrl,
+                        placeholder: 'Dance type',
+                        textCapitalization: TextCapitalization.words,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                  // Song / details field
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    child: CupertinoTextField(
+                      controller: songCtrl,
+                      placeholder: 'Song / details (optional)',
+                      textCapitalization: TextCapitalization.sentences,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          actions: [
-            CupertinoDialogAction(
-              isDestructiveAction: true,
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            CupertinoDialogAction(
-              isDefaultAction: true,
-              onPressed: () {
-                final type = selectedType == 'custom'
-                    ? customCtrl.text.trim().toLowerCase().replaceAll(' ', '_')
-                    : selectedType;
-                if (type.isEmpty) return;
-                setState(() {
-                  _weddingDances!.add(_WeddingDance(
-                    title: type,
-                    data: songCtrl.text.trim().isEmpty ? null : songCtrl.text.trim(),
-                  ));
-                });
-                Navigator.pop(ctx);
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
 
@@ -587,6 +649,139 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
 
   void _removeWeddingDance(int index) {
     setState(() => _weddingDances!.removeAt(index));
+  }
+
+  Future<void> _editWeddingDance(int index) async {
+    final dance = _weddingDances![index];
+
+    // If the stored title matches a known key use it directly; otherwise fall
+    // back to 'custom' and pre-fill the custom field so the user can see what
+    // was previously saved.
+    final knownKey = _danceTypes.any((t) => t.$1 == dance.title);
+    String selectedType = knownKey ? dance.title : 'custom';
+    final songCtrl = TextEditingController(text: dance.data ?? '');
+    final customCtrl = TextEditingController(
+      text: knownKey ? '' : dance.title,
+    );
+
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) {
+          final bg = CupertinoColors.systemBackground.resolveFrom(ctx);
+          return Container(
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Drag handle
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, bottom: 4),
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.systemFill.resolveFrom(ctx),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  // Header row: Cancel | title | Save
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(
+                      children: [
+                        CupertinoButton(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                          onPressed: () => Navigator.pop(ctx),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: CupertinoColors.destructiveRed.resolveFrom(ctx),
+                            ),
+                          ),
+                        ),
+                        const Expanded(
+                          child: Text(
+                            'Edit Dance',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        CupertinoButton(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                          onPressed: () {
+                            final type = selectedType == 'custom'
+                                ? customCtrl.text.trim().toLowerCase().replaceAll(' ', '_')
+                                : selectedType;
+                            if (type.isEmpty) return;
+                            setState(() {
+                              _weddingDances![index] = _WeddingDance(
+                                title: type,
+                                data: songCtrl.text.trim().isEmpty ? null : songCtrl.text.trim(),
+                              );
+                            });
+                            Navigator.pop(ctx);
+                          },
+                          child: const Text('Done'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Type picker
+                  SizedBox(
+                    height: 200,
+                    child: CupertinoPicker(
+                      itemExtent: 36,
+                      scrollController: FixedExtentScrollController(
+                        initialItem: _danceTypes.indexWhere((t) => t.$1 == selectedType),
+                      ),
+                      onSelectedItemChanged: (i) =>
+                          setDlgState(() => selectedType = _danceTypes[i].$1),
+                      children: _danceTypes
+                          .map((t) => Center(child: Text(t.$2)))
+                          .toList(),
+                    ),
+                  ),
+                  // Custom type field — only shown when 'Other' is selected
+                  if (selectedType == 'custom')
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      child: CupertinoTextField(
+                        controller: customCtrl,
+                        placeholder: 'Dance type',
+                        textCapitalization: TextCapitalization.words,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                  // Song / details field
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    child: CupertinoTextField(
+                      controller: songCtrl,
+                      placeholder: 'Song / details (optional)',
+                      textCapitalization: TextCapitalization.sentences,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    songCtrl.dispose();
+    customCtrl.dispose();
   }
 
   // ── Attachment helpers ──────────────────────────────────────────────────────
@@ -1006,54 +1201,98 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                     ),
                   ),
                 ),
-              for (int i = 0; i < _weddingDances!.length; i++) ...[
-                if (i > 0 || _weddingOnsite != null) _Divider(),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: Row(
+              if (_weddingDances!.isNotEmpty) ...[
+                if (_weddingOnsite != null) _Divider(),
+                Localizations(
+                  locale: const Locale('en'),
+                  delegates: const [
+                    DefaultMaterialLocalizations.delegate,
+                    DefaultCupertinoLocalizations.delegate,
+                    DefaultWidgetsLocalizations.delegate,
+                  ],
+                  child: ReorderableListView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    buildDefaultDragHandles: false,
+                    onReorder: (oldIndex, newIndex) {
+                      setState(() {
+                        if (newIndex > oldIndex) newIndex--;
+                        _weddingDances!.insert(newIndex, _weddingDances!.removeAt(oldIndex));
+                      });
+                    },
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      for (int i = 0; i < _weddingDances!.length; i++)
+                        Column(
+                          key: ObjectKey(_weddingDances![i]),
                           children: [
-                            Text(
-                              _formatDanceTitle(_weddingDances![i].title),
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                            if (i > 0) _Divider(),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              child: Row(
+                                children: [
+                                  ReorderableDragStartListener(
+                                    index: i,
+                                    child: Icon(
+                                      CupertinoIcons.bars,
+                                      size: 18,
+                                      color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    // GestureDetector scoped to the text area only;
+                                    // the drag handle and delete button are siblings
+                                    // in the Row and are not affected.
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () => _editWeddingDance(i),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _formatDanceTitle(_weddingDances![i].title),
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                                            ),
+                                          ),
+                                          if (_weddingDances![i].data?.isNotEmpty == true)
+                                            Text(
+                                              _weddingDances![i].data!,
+                                              style: const TextStyle(fontSize: 15),
+                                            )
+                                          else
+                                            Text(
+                                              'TBD',
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  CupertinoButton(
+                                    padding: EdgeInsets.zero,
+                                    minSize: 28,
+                                    onPressed: () => _removeWeddingDance(i),
+                                    child: Icon(
+                                      CupertinoIcons.minus_circle,
+                                      size: 20,
+                                      color: CupertinoColors.systemRed.resolveFrom(context),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            if (_weddingDances![i].data?.isNotEmpty == true)
-                              Text(
-                                _weddingDances![i].data!,
-                                style: const TextStyle(fontSize: 15),
-                              )
-                            else
-                              Text(
-                                'TBD',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
-                                ),
-                              ),
                           ],
                         ),
-                      ),
-                      CupertinoButton(
-                        padding: EdgeInsets.zero,
-                        minSize: 28,
-                        onPressed: () => _removeWeddingDance(i),
-                        child: Icon(
-                          CupertinoIcons.minus_circle,
-                          size: 20,
-                          color: CupertinoColors.systemRed.resolveFrom(context),
-                        ),
-                      ),
                     ],
                   ),
                 ),
+                _Divider(),
               ],
-              if (_weddingDances!.isNotEmpty) _Divider(),
               CupertinoButton(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 onPressed: _addWeddingDance,

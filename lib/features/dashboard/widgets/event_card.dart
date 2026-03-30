@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import '../../events/data/models/event_summary.dart';
 import '../../../shared/utils/time_format.dart';
+import '../../../shared/widgets/status_chip.dart';
 
 class EventCard extends StatelessWidget {
   const EventCard({super.key, required this.event, this.onTap});
@@ -62,7 +63,7 @@ class EventCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        _StatusChip(status: event.status),
+                        if (event.status != null) StatusChip(status: event.status!),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -97,7 +98,7 @@ class EventCard extends StatelessWidget {
   String _formatDate(EventSummary event) {
     final dateStr = DateFormat('EEEE, MMMM d').format(event.parsedDate);
     if (event.time != null && event.time!.isNotEmpty) {
-      return '$dateStr at ${_toAmPm(event.time!)}';
+      return '$dateStr at ${toAmPm(event.time!)}';
     }
     return dateStr;
   }
@@ -119,44 +120,3 @@ class _EventTypeIcon extends StatelessWidget {
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({this.status});
-  final String? status;
-
-  @override
-  Widget build(BuildContext context) {
-    if (status == null) return const SizedBox.shrink();
-
-    final (label, bg, fg) = switch (status!.toLowerCase()) {
-      'confirmed' => (
-          'Confirmed',
-          CupertinoColors.systemGreen.resolveFrom(context).withValues(alpha: 0.15),
-          CupertinoColors.systemGreen.resolveFrom(context),
-        ),
-      'pending' => (
-          'Pending',
-          CupertinoColors.systemOrange.resolveFrom(context).withValues(alpha: 0.15),
-          CupertinoColors.systemOrange.resolveFrom(context),
-        ),
-      'cancelled' || 'canceled' => (
-          'Cancelled',
-          CupertinoColors.systemRed.resolveFrom(context).withValues(alpha: 0.15),
-          CupertinoColors.systemRed.resolveFrom(context),
-        ),
-      _ => (
-          status!,
-          CupertinoColors.systemGrey5.resolveFrom(context),
-          CupertinoColors.systemGrey.resolveFrom(context),
-        ),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration:
-          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-      child: Text(label,
-          style: TextStyle(
-              color: fg, fontSize: 11, fontWeight: FontWeight.w600)),
-    );
-  }
-}

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../../shared/providers/selected_band_provider.dart';
+import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../events/data/models/event_summary.dart';
 import '../providers/dashboard_provider.dart';
@@ -186,7 +187,14 @@ class _DashboardContent extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         if (filtered.isEmpty)
-          const _EmptyUpcomingEvents()
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+            child: EmptyStateView(
+              icon: CupertinoIcons.calendar,
+              title: 'No upcoming events',
+              subtitle: 'Your next 30 days are clear.',
+            ),
+          )
         else
           _EventsList(events: filtered),
         const SizedBox(height: 16),
@@ -281,36 +289,3 @@ class _EventsList extends StatelessWidget {
   }
 }
 
-class _EmptyUpcomingEvents extends StatelessWidget {
-  const _EmptyUpcomingEvents();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 32, horizontal: 24),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(CupertinoIcons.calendar,
-                size: 56, color: CupertinoColors.systemBlue),
-            SizedBox(height: 16),
-            Text(
-              'No upcoming events',
-              style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w500,
-                  color: CupertinoColors.secondaryLabel),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Your next 30 days are clear.',
-              style: TextStyle(
-                  fontSize: 13, color: CupertinoColors.tertiaryLabel),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

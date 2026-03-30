@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 import 'package:tts_bandmate/shared/utils/time_format.dart';
+import 'package:tts_bandmate/shared/widgets/empty_state_view.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
+import 'package:tts_bandmate/shared/widgets/status_chip.dart';
 import '../data/models/booking_summary.dart';
 import '../providers/bookings_provider.dart';
 
@@ -101,7 +103,13 @@ class _BookingsBody extends ConsumerWidget {
           data: (bookings) {
             final filtered = _applyFilter(bookings, filter);
             if (filtered.isEmpty) {
-              return const SliverFillRemaining(child: _EmptyBookings());
+              return const SliverFillRemaining(
+              child: EmptyStateView(
+                icon: CupertinoIcons.book,
+                title: 'No bookings found',
+                subtitle: 'Check back later.',
+              ),
+            );
             }
             return SliverList(
               delegate: SliverChildBuilderDelegate(
@@ -236,7 +244,7 @@ class _BookingCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         if (booking.status != null)
-                          _StatusChip(status: booking.status!),
+                          StatusChip(status: booking.status!),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -279,81 +287,9 @@ class _BookingCard extends StatelessWidget {
   String _formatDate(BookingSummary booking) {
     final dateStr = DateFormat('EEEE, MMMM d').format(booking.parsedDate);
     if (booking.startTime != null && booking.startTime!.isNotEmpty) {
-      return '$dateStr at ${_toAmPm(booking.startTime!)}';
+      return '$dateStr at ${toAmPm(booking.startTime!)}';
     }
     return dateStr;
   }
 
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final (label, bg, fg) = switch (status.toLowerCase()) {
-      'confirmed' => (
-          'Confirmed',
-          CupertinoColors.systemGreen.resolveFrom(context).withValues(alpha: 0.15),
-          CupertinoColors.systemGreen.resolveFrom(context),
-        ),
-      'pending' => (
-          'Pending',
-          CupertinoColors.systemOrange.resolveFrom(context).withValues(alpha: 0.15),
-          CupertinoColors.systemOrange.resolveFrom(context),
-        ),
-      'cancelled' || 'canceled' => (
-          'Cancelled',
-          CupertinoColors.systemRed.resolveFrom(context).withValues(alpha: 0.15),
-          CupertinoColors.systemRed.resolveFrom(context),
-        ),
-      _ => (
-          status,
-          CupertinoColors.systemGrey5.resolveFrom(context),
-          CupertinoColors.systemGrey.resolveFrom(context),
-        ),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration:
-          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-      child: Text(label,
-          style: TextStyle(
-              color: fg, fontSize: 11, fontWeight: FontWeight.w600)),
-    );
-  }
-}
-
-class _EmptyBookings extends StatelessWidget {
-  const _EmptyBookings();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(CupertinoIcons.book,
-              size: 56, color: CupertinoColors.systemBlue),
-          SizedBox(height: 16),
-          Text(
-            'No bookings found',
-            style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w500,
-                color: CupertinoColors.secondaryLabel),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Check back later.',
-            style: TextStyle(
-                fontSize: 13, color: CupertinoColors.tertiaryLabel),
-          ),
-        ],
-      ),
-    );
-  }
 }

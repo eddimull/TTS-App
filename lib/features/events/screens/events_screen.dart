@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/providers/selected_band_provider.dart';
+import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../dashboard/widgets/event_card.dart';
 import '../data/models/event_summary.dart';
@@ -92,7 +93,13 @@ class _EventsBody extends ConsumerWidget {
           data: (events) {
             final filtered = _applyFilter(events, filter);
             if (filtered.isEmpty) {
-              return const SliverFillRemaining(child: _EmptyEvents());
+              return const SliverFillRemaining(
+                child: EmptyStateView(
+                  icon: CupertinoIcons.calendar_badge_minus,
+                  title: 'No events found',
+                  subtitle: 'Check back later.',
+                ),
+              );
             }
             return SliverList(
               delegate: SliverChildBuilderDelegate(
@@ -198,33 +205,3 @@ class _Pill extends StatelessWidget {
   }
 }
 
-class _EmptyEvents extends StatelessWidget {
-  const _EmptyEvents();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(CupertinoIcons.calendar_badge_minus,
-              size: 56, color: CupertinoColors.systemBlue),
-          SizedBox(height: 16),
-          Text(
-            'No events found',
-            style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w500,
-                color: CupertinoColors.secondaryLabel),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Check back later.',
-            style: TextStyle(
-                fontSize: 13, color: CupertinoColors.tertiaryLabel),
-          ),
-        ],
-      ),
-    );
-  }
-}

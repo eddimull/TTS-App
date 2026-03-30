@@ -1,10 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/error_view.dart';
+import '../../../shared/widgets/status_chip.dart';
 import '../data/models/event_detail.dart';
 import '../data/models/event_member.dart';
 import '../providers/events_provider.dart';
@@ -83,7 +83,7 @@ class _EventDetailView extends StatelessWidget {
               icon: CupertinoIcons.info_circle,
               label: 'Status',
               value: '',
-              trailing: _StatusChip(status: event.status!),
+              trailing: StatusChip(status: event.status!),
             ),
           ],
 
@@ -179,16 +179,8 @@ class _EventDetailView extends StatelessWidget {
       event.backlineProvided != null ||
       event.productionNeeded != null;
 
-  String _formatDateAndTime(String date, String? time) {
-    try {
-      final dt = DateTime.parse(date);
-      final dateStr = DateFormat('EEEE, MMMM d, yyyy').format(dt);
-      if (time != null && time.isNotEmpty) return '$dateStr at ${_formatTime(time)}';
-      return dateStr;
-    } catch (_) {
-      return time != null ? '$date at ${_formatTime(time)}' : date;
-    }
-  }
+  String _formatDateAndTime(String date, String? time) =>
+      formatDateWithTimeRange(date, time, null);
 }
 
 // ── Reusable layout helpers ───────────────────────────────────────────────────
@@ -265,45 +257,6 @@ class _InfoRow extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ── Status chip ───────────────────────────────────────────────────────────────
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final (label, bg, fg) = switch (status.toLowerCase()) {
-      'confirmed' => (
-          'Confirmed',
-          CupertinoColors.systemGreen.resolveFrom(context).withValues(alpha: 0.15),
-          CupertinoColors.systemGreen.resolveFrom(context),
-        ),
-      'pending' => (
-          'Pending',
-          CupertinoColors.systemOrange.resolveFrom(context).withValues(alpha: 0.15),
-          CupertinoColors.systemOrange.resolveFrom(context),
-        ),
-      'cancelled' || 'canceled' => (
-          'Cancelled',
-          CupertinoColors.systemRed.resolveFrom(context).withValues(alpha: 0.15),
-          CupertinoColors.systemRed.resolveFrom(context),
-        ),
-      _ => (
-          status,
-          CupertinoColors.systemGrey5.resolveFrom(context),
-          CupertinoColors.systemGrey.resolveFrom(context),
-        ),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-      child: Text(label,
-          style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
     );
   }
 }
@@ -402,7 +355,7 @@ class _TimelineSection extends StatelessWidget {
                   SizedBox(
                     width: 72,
                     child: Text(
-                      _formatTime(entries[i].time),
+                      toAmPm(entries[i].time, fallback: '—'),
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -425,7 +378,6 @@ class _TimelineSection extends StatelessWidget {
     );
   }
 
-  String _formatTime(String? raw) => toAmPm(raw, fallback: '—');
 }
 
 // ── Notes ─────────────────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:tts_bandmate/shared/utils/time_format.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
+import 'package:tts_bandmate/shared/widgets/status_chip.dart';
 import '../data/models/booking_contact.dart';
 import '../data/models/booking_detail.dart';
 import '../providers/bookings_provider.dart';
@@ -80,7 +81,7 @@ class _BookingDetailView extends StatelessWidget {
               icon: CupertinoIcons.info_circle,
               label: 'Status',
               value: '',
-              trailing: _StatusChip(status: booking.status!),
+              trailing: StatusChip(status: booking.status!),
             ),
           ],
           const SizedBox(height: 20),
@@ -174,22 +175,8 @@ class _BookingDetailView extends StatelessWidget {
     );
   }
 
-  String _formatDateAndTime(
-      String date, String? startTime, String? endTime) {
-    try {
-      final dt = DateTime.parse(date);
-      final dateStr = DateFormat('EEEE, MMMM d, yyyy').format(dt);
-      if (startTime != null && startTime.isNotEmpty) {
-        if (endTime != null && endTime.isNotEmpty) {
-          return '$dateStr, ${_toAmPm(startTime)} – ${_toAmPm(endTime)}';
-        }
-        return '$dateStr at ${_toAmPm(startTime)}';
-      }
-      return dateStr;
-    } catch (_) {
-      return startTime != null ? '$date at ${_toAmPm(startTime)}' : date;
-    }
-  }
+  String _formatDateAndTime(String date, String? startTime, String? endTime) =>
+      formatDateWithTimeRange(date, startTime, endTime);
 
 }
 
@@ -268,47 +255,6 @@ class _FinanceRow extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final (label, bg, fg) = switch (status.toLowerCase()) {
-      'confirmed' => (
-          'Confirmed',
-          CupertinoColors.systemGreen.resolveFrom(context).withValues(alpha: 0.15),
-          CupertinoColors.systemGreen.resolveFrom(context),
-        ),
-      'pending' => (
-          'Pending',
-          CupertinoColors.systemOrange.resolveFrom(context).withValues(alpha: 0.15),
-          CupertinoColors.systemOrange.resolveFrom(context),
-        ),
-      'cancelled' || 'canceled' => (
-          'Cancelled',
-          CupertinoColors.systemRed.resolveFrom(context).withValues(alpha: 0.15),
-          CupertinoColors.systemRed.resolveFrom(context),
-        ),
-      _ => (
-          status,
-          CupertinoColors.systemGrey5.resolveFrom(context),
-          CupertinoColors.systemGrey.resolveFrom(context),
-        ),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration:
-          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-      child: Text(label,
-          style: TextStyle(
-              color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
     );
   }
 }

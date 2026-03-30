@@ -302,14 +302,14 @@ class _RehearsalDetailViewState
   }
 
   String _formatDateAndTime(String? date, String? time) {
-    if (date == null) return time != null ? _toAmPm(time) : 'Date TBD';
+    if (date == null) return time != null ? toAmPm(time) : 'Date TBD';
     try {
       final dt = DateTime.parse(date);
       final dateStr = DateFormat('EEEE, MMMM d, yyyy').format(dt);
-      if (time != null && time.isNotEmpty) return '$dateStr at ${_toAmPm(time)}';
+      if (time != null && time.isNotEmpty) return '$dateStr at ${toAmPm(time)}';
       return dateStr;
     } catch (_) {
-      return time != null ? '$date at ${_toAmPm(time)}' : date;
+      return time != null ? '$date at ${toAmPm(time)}' : date;
     }
   }
 

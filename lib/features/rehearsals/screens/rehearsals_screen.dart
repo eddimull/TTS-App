@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
-import 'package:tts_bandmate/shared/widgets/app_scaffold.dart';
 import 'package:tts_bandmate/shared/utils/time_format.dart';
+import 'package:tts_bandmate/shared/widgets/app_scaffold.dart';
+import 'package:tts_bandmate/shared/widgets/empty_state_view.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/models/rehearsal_schedule.dart';
 import '../data/models/rehearsal_summary.dart';
@@ -71,7 +72,11 @@ class _RehearsalsBody extends ConsumerWidget {
           data: (schedules) {
             if (schedules.isEmpty) {
               return const SliverFillRemaining(
-                child: _EmptyRehearsals(),
+                child: EmptyStateView(
+                  icon: CupertinoIcons.music_mic,
+                  title: 'No rehearsal schedules',
+                  subtitle: 'Check back later.',
+                ),
               );
             }
             return SliverList(
@@ -272,7 +277,7 @@ class _RehearsalSubTile extends StatelessWidget {
       final dateStr =
           DateFormat('EEEE, MMMM d').format(rehearsal.parsedDate);
       if (rehearsal.time != null && rehearsal.time!.isNotEmpty) {
-        return '$dateStr at ${_toAmPm(rehearsal.time!)}';
+        return '$dateStr at ${toAmPm(rehearsal.time!)}';
       }
       return dateStr;
     } catch (_) {
@@ -280,35 +285,4 @@ class _RehearsalSubTile extends StatelessWidget {
     }
   }
 
-}
-
-class _EmptyRehearsals extends StatelessWidget {
-  const _EmptyRehearsals();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(CupertinoIcons.music_mic,
-              size: 56, color: CupertinoColors.systemBlue),
-          SizedBox(height: 16),
-          Text(
-            'No rehearsal schedules',
-            style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w500,
-                color: CupertinoColors.secondaryLabel),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Check back later.',
-            style: TextStyle(
-                fontSize: 13, color: CupertinoColors.tertiaryLabel),
-          ),
-        ],
-      ),
-    );
-  }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import '../../events/data/models/event_summary.dart';
+import '../../../shared/utils/time_format.dart';
 
 class EventCard extends StatelessWidget {
   const EventCard({super.key, required this.event, this.onTap});
@@ -96,10 +97,11 @@ class EventCard extends StatelessWidget {
   String _formatDate(EventSummary event) {
     final dateStr = DateFormat('EEEE, MMMM d').format(event.parsedDate);
     if (event.time != null && event.time!.isNotEmpty) {
-      return '$dateStr at ${event.time}';
+      return '$dateStr at ${_toAmPm(event.time!)}';
     }
     return dateStr;
   }
+
 }
 
 class _EventTypeIcon extends StatelessWidget {

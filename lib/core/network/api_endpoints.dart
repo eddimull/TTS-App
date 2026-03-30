@@ -8,6 +8,10 @@ class ApiEndpoints {
   static const String mobileDashboard = '/api/mobile/dashboard';
   static String mobileBandEvents(int bandId) => '/api/mobile/bands/$bandId/events';
   static String mobileEventDetail(String key) => '/api/mobile/events/$key';
+  static String mobileUpdateEvent(String key) => '/api/mobile/events/$key';
+  static String mobileEventAttachments(String key) => '/api/mobile/events/$key/attachments';
+  static String mobileDeleteEventAttachment(String key, int id) =>
+      '/api/mobile/events/$key/attachments/$id';
 
   static String mobileBandBookings(int bandId) =>
       '/api/mobile/bands/$bandId/bookings';

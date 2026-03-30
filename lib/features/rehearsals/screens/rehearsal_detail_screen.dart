@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:tts_bandmate/shared/utils/time_format.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/models/rehearsal_detail.dart';
 import '../data/rehearsals_repository.dart';
@@ -301,16 +302,17 @@ class _RehearsalDetailViewState
   }
 
   String _formatDateAndTime(String? date, String? time) {
-    if (date == null) return time ?? 'Date TBD';
+    if (date == null) return time != null ? _toAmPm(time) : 'Date TBD';
     try {
       final dt = DateTime.parse(date);
       final dateStr = DateFormat('EEEE, MMMM d, yyyy').format(dt);
-      if (time != null && time.isNotEmpty) return '$dateStr at $time';
+      if (time != null && time.isNotEmpty) return '$dateStr at ${_toAmPm(time)}';
       return dateStr;
     } catch (_) {
-      return time != null ? '$date at $time' : date;
+      return time != null ? '$date at ${_toAmPm(time)}' : date;
     }
   }
+
 }
 
 class _InfoRow extends StatelessWidget {

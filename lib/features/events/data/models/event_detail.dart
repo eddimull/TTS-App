@@ -2,6 +2,37 @@ import 'event_member.dart';
 
 // ── Supporting types ──────────────────────────────────────────────────────────
 
+class EventAttachment {
+  const EventAttachment({
+    required this.id,
+    required this.filename,
+    required this.mimeType,
+    required this.fileSize,
+  });
+  final int id;
+  final String filename;
+  final String mimeType;
+  final int fileSize;
+
+  factory EventAttachment.fromJson(Map<String, dynamic> json) => EventAttachment(
+        id: (json['id'] as num).toInt(),
+        filename: json['filename'] as String? ?? '',
+        mimeType: json['mime_type'] as String? ?? '',
+        fileSize: (json['file_size'] as num?)?.toInt() ?? 0,
+      );
+
+  String get formattedSize {
+    double bytes = fileSize.toDouble();
+    const units = ['B', 'KB', 'MB', 'GB'];
+    int i = 0;
+    while (bytes > 1024 && i < units.length - 1) {
+      bytes /= 1024;
+      i++;
+    }
+    return '${bytes.toStringAsFixed(i == 0 ? 0 : 1)} ${units[i]}';
+  }
+}
+
 class EventTimelineEntry {
   const EventTimelineEntry({required this.title, this.time});
   final String title;
@@ -153,6 +184,7 @@ class EventDetail {
     this.performance,
     this.wedding,
     required this.contacts,
+    required this.attachments,
   });
 
   final int id;
@@ -192,6 +224,7 @@ class EventDetail {
   final Performance? performance;
   final WeddingDetail? wedding;
   final List<EventContact> contacts;
+  final List<EventAttachment> attachments;
 
   factory EventDetail.fromJson(Map<String, dynamic> json) {
     final rawMembers = json['members'];
@@ -223,6 +256,11 @@ class EventDetail {
     final wedding = rawWedding is Map<String, dynamic>
         ? WeddingDetail.fromJson(rawWedding)
         : null;
+
+    final rawAttachments = json['attachments'];
+    final attachments = rawAttachments is List
+        ? rawAttachments.cast<Map<String, dynamic>>().map(EventAttachment.fromJson).toList()
+        : <EventAttachment>[];
 
     return EventDetail(
       id: (json['id'] as num).toInt(),
@@ -257,6 +295,7 @@ class EventDetail {
       performance: performance,
       wedding: wedding,
       contacts: contacts,
+      attachments: attachments,
     );
   }
 

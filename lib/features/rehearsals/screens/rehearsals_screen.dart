@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 import 'package:tts_bandmate/shared/widgets/app_scaffold.dart';
+import 'package:tts_bandmate/shared/utils/time_format.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/models/rehearsal_schedule.dart';
 import '../data/models/rehearsal_summary.dart';
@@ -271,13 +272,14 @@ class _RehearsalSubTile extends StatelessWidget {
       final dateStr =
           DateFormat('EEEE, MMMM d').format(rehearsal.parsedDate);
       if (rehearsal.time != null && rehearsal.time!.isNotEmpty) {
-        return '$dateStr at ${rehearsal.time}';
+        return '$dateStr at ${_toAmPm(rehearsal.time!)}';
       }
       return dateStr;
     } catch (_) {
       return rehearsal.date ?? 'Date TBD';
     }
   }
+
 }
 
 class _EmptyRehearsals extends StatelessWidget {

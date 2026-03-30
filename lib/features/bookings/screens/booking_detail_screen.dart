@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:tts_bandmate/shared/utils/time_format.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/models/booking_contact.dart';
 import '../data/models/booking_detail.dart';
@@ -180,15 +181,16 @@ class _BookingDetailView extends StatelessWidget {
       final dateStr = DateFormat('EEEE, MMMM d, yyyy').format(dt);
       if (startTime != null && startTime.isNotEmpty) {
         if (endTime != null && endTime.isNotEmpty) {
-          return '$dateStr, $startTime – $endTime';
+          return '$dateStr, ${_toAmPm(startTime)} – ${_toAmPm(endTime)}';
         }
-        return '$dateStr at $startTime';
+        return '$dateStr at ${_toAmPm(startTime)}';
       }
       return dateStr;
     } catch (_) {
-      return startTime != null ? '$date at $startTime' : date;
+      return startTime != null ? '$date at ${_toAmPm(startTime)}' : date;
     }
   }
+
 }
 
 class _InfoRow extends StatelessWidget {

@@ -9,6 +9,8 @@ import '../../features/bookings/screens/bookings_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/events/screens/events_screen.dart';
 import '../../features/events/screens/event_detail_screen.dart';
+import '../../features/events/screens/event_edit_screen.dart';
+import '../../features/events/data/models/event_detail.dart';
 import '../../features/rehearsals/screens/rehearsal_detail_by_key_screen.dart';
 import '../../features/rehearsals/screens/rehearsal_detail_screen.dart';
 import '../../features/rehearsals/screens/rehearsals_screen.dart';
@@ -125,6 +127,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/events/:key',
         builder: (_, state) =>
             EventDetailScreen(eventKey: state.pathParameters['key']!),
+      ),
+      GoRoute(
+        path: '/events/:key/edit',
+        builder: (_, state) => EventEditScreen(
+          event: state.extra as EventDetail,
+        ),
       ),
       GoRoute(
         path: '/events/:key/setlist/live',

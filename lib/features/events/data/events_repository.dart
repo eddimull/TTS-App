@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/core_providers.dart';
@@ -43,6 +45,35 @@ class EventsRepository {
 
     final data = response.data!;
     return EventDetail.fromJson(data['event'] as Map<String, dynamic>);
+  }
+
+  /// Sends a partial update for the event identified by [key].
+  Future<void> updateEvent(String key, Map<String, dynamic> data) async {
+    await _dio.patch<void>(ApiEndpoints.mobileUpdateEvent(key), data: data);
+  }
+
+  /// Uploads a single file attachment for the event identified by [key].
+  Future<EventAttachment> uploadAttachment(String key, File file) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        file.path,
+        filename: file.path.split('/').last,
+      ),
+    });
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileEventAttachments(key),
+      data: formData,
+    );
+    return EventAttachment.fromJson(
+      response.data!['attachment'] as Map<String, dynamic>,
+    );
+  }
+
+  /// Deletes the attachment with [attachmentId] from the event identified by [key].
+  Future<void> deleteAttachment(String key, int attachmentId) async {
+    await _dio.delete<void>(
+      ApiEndpoints.mobileDeleteEventAttachment(key, attachmentId),
+    );
   }
 }
 

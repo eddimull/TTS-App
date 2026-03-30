@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../data/models/event_detail.dart';
 import '../data/models/event_member.dart';
@@ -45,21 +46,8 @@ class _EventDetailView extends StatelessWidget {
         trailing: event.canWrite
             ? CupertinoButton(
                 padding: EdgeInsets.zero,
-                onPressed: () {
-                  showCupertinoDialog(
-                    context: context,
-                    builder: (_) => CupertinoAlertDialog(
-                      title: const Text('Edit Event'),
-                      content: const Text('Edit event — coming soon.'),
-                      actions: [
-                        CupertinoDialogAction(
-                          child: const Text('OK'),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                onPressed: () =>
+                    context.push('/events/${event.key}/edit', extra: event),
                 child: const Icon(CupertinoIcons.pencil),
               )
             : null,
@@ -195,10 +183,10 @@ class _EventDetailView extends StatelessWidget {
     try {
       final dt = DateTime.parse(date);
       final dateStr = DateFormat('EEEE, MMMM d, yyyy').format(dt);
-      if (time != null && time.isNotEmpty) return '$dateStr at $time';
+      if (time != null && time.isNotEmpty) return '$dateStr at ${_formatTime(time)}';
       return dateStr;
     } catch (_) {
-      return time != null ? '$date at $time' : date;
+      return time != null ? '$date at ${_formatTime(time)}' : date;
     }
   }
 }
@@ -437,24 +425,7 @@ class _TimelineSection extends StatelessWidget {
     );
   }
 
-  String _formatTime(String? raw) {
-    if (raw == null || raw.isEmpty) return '—';
-    try {
-      final dt = DateTime.parse(raw);
-      return DateFormat('h:mm a').format(dt);
-    } catch (_) {
-      // Try "HH:mm" or "HH:mm:ss"
-      try {
-        final parts = raw.split(':');
-        final h = int.parse(parts[0]);
-        final m = int.parse(parts[1]);
-        final dt = DateTime(2000, 1, 1, h, m);
-        return DateFormat('h:mm a').format(dt);
-      } catch (_) {
-        return raw;
-      }
-    }
-  }
+  String _formatTime(String? raw) => toAmPm(raw, fallback: '—');
 }
 
 // ── Notes ─────────────────────────────────────────────────────────────────────

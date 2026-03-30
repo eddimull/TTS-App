@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
+import 'package:tts_bandmate/shared/utils/time_format.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/models/booking_summary.dart';
 import '../providers/bookings_provider.dart';
@@ -278,10 +279,11 @@ class _BookingCard extends StatelessWidget {
   String _formatDate(BookingSummary booking) {
     final dateStr = DateFormat('EEEE, MMMM d').format(booking.parsedDate);
     if (booking.startTime != null && booking.startTime!.isNotEmpty) {
-      return '$dateStr at ${booking.startTime}';
+      return '$dateStr at ${_toAmPm(booking.startTime!)}';
     }
     return dateStr;
   }
+
 }
 
 class _StatusChip extends StatelessWidget {

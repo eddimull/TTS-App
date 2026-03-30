@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:timelines_plus/timelines_plus.dart';
+import '../../../shared/utils/time_format.dart';
+import '../../../shared/widgets/status_chip.dart';
 import '../data/models/event_detail.dart';
 import '../data/events_repository.dart';
 import '../providers/events_provider.dart';
@@ -79,7 +82,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     _timeline = e.timeline
         .map((t) => _TimelineEntry(
               title: t.title,
-              time: t.time != null ? _extractHHmm(t.time!) : null,
+              time: t.time != null ? _normaliseDateTime(t.time!) : null,
             ))
         .toList();
 
@@ -115,15 +118,16 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
       .trim();
 
   /// Extracts "HH:mm" from "HH:mm", "HH:mm:ss", or a full ISO datetime string.
-  String _extractHHmm(String raw) {
-    try {
-      final dt = DateTime.parse(raw);
-      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    } catch (_) {
-      final parts = raw.split(':');
-      if (parts.length >= 2) return '${parts[0].padLeft(2, '0')}:${parts[1].padLeft(2, '0')}';
-      return raw;
+  /// Normalises any datetime string to "YYYY-MM-DD HH:mm", preserving the full
+  /// date so that entries after midnight sort and display correctly.
+  String _normaliseDateTime(String raw) {
+    final dt = DateTime.tryParse(raw);
+    if (dt != null) {
+      return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-'
+          '${dt.day.toString().padLeft(2, '0')} '
+          '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     }
+    return raw;
   }
 
   // ── Save ────────────────────────────────────────────────────────────────────
@@ -280,7 +284,9 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
 
   Future<void> _addTimelineEntry() async {
     final titleCtrl = TextEditingController();
-    String? entryTime;
+    // Default to event date at 19:00; user can scroll to any date/time including next day.
+    DateTime picked = DateTime(_date.year, _date.month, _date.day, 19, 0);
+    String? entryTime; // "YYYY-MM-DD HH:mm" or null
 
     await showCupertinoDialog<void>(
       context: context,
@@ -299,18 +305,10 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                 const SizedBox(height: 8),
                 GestureDetector(
                   onTap: () async {
-                    DateTime initial = DateTime(2000, 1, 1, 19, 0);
-                    if (entryTime != null) {
-                      try {
-                        final p = entryTime!.split(':');
-                        initial = DateTime(2000, 1, 1, int.parse(p[0]), int.parse(p[1]));
-                      } catch (_) {}
-                    }
-                    DateTime picked = initial;
                     await showCupertinoModalPopup<void>(
                       context: ctx,
                       builder: (_) => Container(
-                        height: 280,
+                        height: 320,
                         color: CupertinoColors.systemBackground.resolveFrom(ctx),
                         child: Column(
                           children: [
@@ -327,9 +325,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                                 CupertinoButton(
                                   child: const Text('Done'),
                                   onPressed: () {
-                                    setDlgState(() => entryTime =
-                                        '${picked.hour.toString().padLeft(2, '0')}:'
-                                        '${picked.minute.toString().padLeft(2, '0')}');
+                                    setDlgState(() => entryTime = _normaliseDateTime(picked.toIso8601String()));
                                     Navigator.pop(ctx);
                                   },
                                 ),
@@ -337,8 +333,10 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                             ),
                             Expanded(
                               child: CupertinoDatePicker(
-                                mode: CupertinoDatePickerMode.time,
-                                initialDateTime: initial,
+                                mode: CupertinoDatePickerMode.dateAndTime,
+                                initialDateTime: entryTime != null
+                                    ? (DateTime.tryParse(entryTime!) ?? picked)
+                                    : picked,
                                 use24hFormat: true,
                                 onDateTimeChanged: (dt) => picked = dt,
                               ),
@@ -358,10 +356,12 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(CupertinoIcons.clock, size: 16),
+                        const Icon(CupertinoIcons.calendar_clock, size: 16),
                         const SizedBox(width: 6),
                         Text(
-                          entryTime ?? 'Set time (optional)',
+                          entryTime != null
+                              ? _formatEntryLabel(entryTime!)
+                              : 'Set date & time (optional)',
                           style: TextStyle(
                             fontSize: 14,
                             color: entryTime != null
@@ -389,12 +389,14 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                 if (label.isEmpty) return;
                 setState(() {
                   _timeline.add(_TimelineEntry(title: label, time: entryTime));
-                  // Sort by time, null times go last
                   _timeline.sort((a, b) {
                     if (a.time == null && b.time == null) return 0;
                     if (a.time == null) return 1;
                     if (b.time == null) return -1;
-                    return a.time!.compareTo(b.time!);
+                    final aDt = DateTime.tryParse(a.time!);
+                    final bDt = DateTime.tryParse(b.time!);
+                    if (aDt == null || bDt == null) return a.time!.compareTo(b.time!);
+                    return aDt.compareTo(bDt);
                   });
                 });
                 Navigator.pop(ctx);
@@ -407,6 +409,15 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     );
 
     titleCtrl.dispose();
+  }
+
+  /// Human-readable label for a "YYYY-MM-DD HH:mm" entry time shown in the dialog.
+  String _formatEntryLabel(String time) {
+    final dt = DateTime.tryParse(time);
+    if (dt == null) return time;
+    final sameDay = dt.year == _date.year && dt.month == _date.month && dt.day == _date.day;
+    final timeStr = toAmPm(time);
+    return sameDay ? timeStr : '$timeStr (+1 day)';
   }
 
   void _removeTimelineEntry(int index) {
@@ -787,44 +798,71 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                     color: CupertinoColors.secondaryLabel.resolveFrom(context),
                   ),
                 ),
-              ),
-            for (int i = 0; i < _timeline.length; i++) ...[
-              if (i > 0) _Divider(),
+              )
+            else
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 56,
-                      child: Text(
-                        _timeline[i].time ?? '—',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'Menlo',
-                        ),
+                padding: const EdgeInsets.only(left: 16, top: 8, bottom: 4),
+                child: FixedTimeline.tileBuilder(
+                  theme: TimelineThemeData(
+                    nodePosition: 0,
+                    color: CupertinoColors.activeBlue.resolveFrom(context),
+                    indicatorTheme: const IndicatorThemeData(size: 10, position: 0.5),
+                    connectorTheme: ConnectorThemeData(
+                      thickness: 1.5,
+                      color: CupertinoColors.separator.resolveFrom(context),
+                    ),
+                  ),
+                  builder: TimelineTileBuilder.connected(
+                    itemCount: _timeline.length,
+                    contentsBuilder: (context, i) => Padding(
+                      padding: const EdgeInsets.only(left: 12, bottom: 16),
+                      child: Row(
+                        children: [
+                          Text(
+                            toAmPm(_timeline[i].time, fallback: '—'),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'Menlo',
+                              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                            ),
+                          ),
+                          if (isNextDay(_timeline[i].time, _date)) ...[
+                            const SizedBox(width: 4),
+                            const NextDayBadge(),
+                          ],
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _timeline[i].title,
+                              style: const TextStyle(fontSize: 15),
+                            ),
+                          ),
+                          CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            minSize: 28,
+                            onPressed: () => _removeTimelineEntry(i),
+                            child: Icon(
+                              CupertinoIcons.minus_circle,
+                              size: 20,
+                              color: CupertinoColors.systemRed.resolveFrom(context),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                        ],
                       ),
                     ),
-                    Expanded(
-                      child: Text(
-                        _timeline[i].title,
-                        style: const TextStyle(fontSize: 15),
-                      ),
+                    indicatorBuilder: (context, i) => DotIndicator(
+                      color: CupertinoColors.activeBlue.resolveFrom(context),
+                      size: 10,
                     ),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      minSize: 28,
-                      onPressed: () => _removeTimelineEntry(i),
-                      child: Icon(
-                        CupertinoIcons.minus_circle,
-                        size: 20,
-                        color: CupertinoColors.systemRed.resolveFrom(context),
-                      ),
+                    connectorBuilder: (context, i, type) => SolidLineConnector(
+                      color: CupertinoColors.separator.resolveFrom(context),
+                      thickness: 1.5,
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ],
             if (_timeline.isNotEmpty) _Divider(),
             CupertinoButton(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

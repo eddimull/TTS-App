@@ -21,6 +21,7 @@ dependencies:
   timeago: ^3.6.1
   connectivity_plus: ^6.0.3
   pusher_channels_flutter: ^2.1.0
+  timelines_plus: ^2.0.0
   url_launcher: ^6.3.0
   image_picker: ^1.1.2
   file_picker: ^8.1.2

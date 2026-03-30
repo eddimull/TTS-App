@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:timelines_plus/timelines_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/error_view.dart';
@@ -98,7 +99,7 @@ class _EventDetailView extends StatelessWidget {
             const SizedBox(height: 20),
             const _SectionHeader(title: 'Timeline'),
             const SizedBox(height: 8),
-            _TimelineSection(entries: event.timeline),
+            _TimelineSection(entries: event.timeline, eventDate: event.parsedDate),
           ],
 
           // Notes
@@ -337,32 +338,45 @@ class _FlagChip extends StatelessWidget {
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
 class _TimelineSection extends StatelessWidget {
-  const _TimelineSection({required this.entries});
+  const _TimelineSection({required this.entries, required this.eventDate});
   final List<EventTimelineEntry> entries;
+  final DateTime eventDate;
 
   @override
   Widget build(BuildContext context) {
+    final accentColor = CupertinoColors.activeBlue.resolveFrom(context);
+    final connectorColor = CupertinoColors.separator.resolveFrom(context);
+
     return _Card(
-      child: Column(
-        children: [
-          for (int i = 0; i < entries.length; i++) ...[
-            if (i > 0)
-              Container(height: 0.5, color: CupertinoColors.separator.resolveFrom(context)),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: FixedTimeline.tileBuilder(
+          theme: TimelineThemeData(
+            nodePosition: 0,
+            color: accentColor,
+            indicatorTheme: IndicatorThemeData(size: 10, position: 0.5),
+            connectorTheme: ConnectorThemeData(thickness: 1.5, color: connectorColor),
+          ),
+          builder: TimelineTileBuilder.connected(
+            itemCount: entries.length,
+            contentsBuilder: (context, i) => Padding(
+              padding: const EdgeInsets.only(left: 12, bottom: 20),
               child: Row(
                 children: [
-                  SizedBox(
-                    width: 72,
-                    child: Text(
-                      toAmPm(entries[i].time, fallback: '—'),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Menlo',
-                      ),
+                  Text(
+                    toAmPm(entries[i].time, fallback: '—'),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Menlo',
+                      color: CupertinoColors.secondaryLabel.resolveFrom(context),
                     ),
                   ),
+                  if (isNextDay(entries[i].time, eventDate)) ...[
+                    const SizedBox(width: 4),
+                    const NextDayBadge(),
+                  ],
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       entries[i].title,
@@ -372,12 +386,13 @@ class _TimelineSection extends StatelessWidget {
                 ],
               ),
             ),
-          ],
-        ],
+            indicatorBuilder: (context, i) => DotIndicator(color: accentColor, size: 10),
+            connectorBuilder: (context, i, type) => SolidLineConnector(color: connectorColor, thickness: 1.5),
+          ),
+        ),
       ),
     );
   }
-
 }
 
 // ── Notes ─────────────────────────────────────────────────────────────────────

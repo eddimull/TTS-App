@@ -1,5 +1,29 @@
 import 'package:flutter/cupertino.dart';
 
+/// Small badge displayed next to a timeline entry time that falls after midnight.
+class NextDayBadge extends StatelessWidget {
+  const NextDayBadge({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemOrange.resolveFrom(context).withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        '+1',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: CupertinoColors.systemOrange.resolveFrom(context),
+        ),
+      ),
+    );
+  }
+}
+
 class StatusChip extends StatelessWidget {
   const StatusChip({super.key, required this.status});
 

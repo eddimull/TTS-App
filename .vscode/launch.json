@@ -8,23 +8,21 @@
       "program": "lib/main.dart",
       "args": [
         "--web-port=8715",
-        "--web-hostname=0.0.0.0"
+        "--web-hostname=0.0.0.0",
+        "--dart-define-from-file=.dart_defines/local.json"
       ],
       "toolArgs": [
         "-d", "web-server"
-      ],
-      "dartDefines": {
-        "BASE_URL": "https://localhost:8710"
-      }
+      ]
     },
     {
       "name": "TTS Bandmate (chrome)",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
-      "dartDefines": {
-        "BASE_URL": "https://localhost:8710"
-      }
+      "args": [
+        "--dart-define-from-file=.dart_defines/local.json"
+      ]
     }
   ]
 }

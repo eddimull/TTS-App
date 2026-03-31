@@ -1,0 +1,4 @@
+{
+  "BASE_URL": "https://localhost:8710",
+  "GOOGLE_PLACES_API_KEY": "YOUR_GOOGLE_PLACES_API_KEY"
+}

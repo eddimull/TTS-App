@@ -158,7 +158,8 @@ class _EventDetailView extends StatelessWidget {
           ],
 
           // Lodging
-          if (event.lodging.isNotEmpty) ...[
+          if (event.lodging.isNotEmpty &&
+              event.lodging.any((l) => l.title == 'Provided' && l.data == true)) ...[
             const SizedBox(height: 20),
             const _SectionHeader(title: 'Lodging'),
             const SizedBox(height: 8),

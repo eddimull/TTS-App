@@ -25,6 +25,7 @@ class _WeddingDance {
   String? data; // song name / description
 }
 
+
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 class EventEditScreen extends ConsumerStatefulWidget {
@@ -57,6 +58,12 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
   bool? _weddingOnsite;
   List<_WeddingDance>? _weddingDances;
 
+  // Lodging (fixed structure)
+  late bool _lodgingProvided;
+  late final TextEditingController _lodgingLocation;
+  late final TextEditingController _lodgingCheckIn;
+  late final TextEditingController _lodgingCheckOut;
+
   // Attachments (managed immediately via separate API calls)
   late List<EventAttachment> _attachments;
   bool _uploading = false;
@@ -75,6 +82,10 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
   bool? _initProductionNeeded;
   List<_WeddingDance>? _initWeddingDances;
   bool? _initWeddingOnsite;
+  late bool _initLodgingProvided;
+  late String _initLodgingLocation;
+  late String _initLodgingCheckIn;
+  late String _initLodgingCheckOut;
 
   bool _saving = false;
   String? _error;
@@ -111,6 +122,21 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
 
     _attachments = List.of(e.attachments);
 
+    String _lodgingVal(String key, {bool isBool = false}) {
+      final item = e.lodging.where((l) => l.title == key).firstOrNull;
+      if (isBool) return '';
+      final v = item?.data?.toString() ?? '';
+      return v == 'TBD' ? '' : v;
+    }
+    bool _lodgingBool(String key) {
+      final item = e.lodging.where((l) => l.title == key).firstOrNull;
+      return item?.data == true;
+    }
+    _lodgingProvided = _lodgingBool('Provided');
+    _lodgingLocation = TextEditingController(text: _lodgingVal('location'));
+    _lodgingCheckIn = TextEditingController(text: _lodgingVal('check_in'));
+    _lodgingCheckOut = TextEditingController(text: _lodgingVal('check_out'));
+
     // Snapshot for dirty check
     _initTitle = _title.text;
     _initVenueName = _venueName.text;
@@ -127,6 +153,10 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     _initWeddingDances = _weddingDances
         ?.map((d) => _WeddingDance(title: d.title, data: d.data))
         .toList();
+    _initLodgingProvided = _lodgingProvided;
+    _initLodgingLocation = _lodgingLocation.text;
+    _initLodgingCheckIn = _lodgingCheckIn.text;
+    _initLodgingCheckOut = _lodgingCheckOut.text;
   }
 
   @override
@@ -136,6 +166,9 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     _venueAddress.dispose();
     _notes.dispose();
     _attire.dispose();
+    _lodgingLocation.dispose();
+    _lodgingCheckIn.dispose();
+    _lodgingCheckOut.dispose();
     super.dispose();
   }
 
@@ -186,6 +219,10 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
         if (curr[i].title != init[i].title || curr[i].data != init[i].data) return true;
       }
     }
+    if (_lodgingProvided != _initLodgingProvided) return true;
+    if (_lodgingLocation.text != _initLodgingLocation) return true;
+    if (_lodgingCheckIn.text != _initLodgingCheckIn) return true;
+    if (_lodgingCheckOut.text != _initLodgingCheckOut) return true;
     return false;
   }
 
@@ -255,6 +292,14 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
             .toList(),
       };
     }
+
+    // Lodging
+    payload['lodging'] = [
+      {'type': 'checkbox', 'title': 'Provided', 'data': _lodgingProvided},
+      {'type': 'text', 'title': 'location', 'data': _lodgingLocation.text.trim().isEmpty ? 'TBD' : _lodgingLocation.text.trim()},
+      {'type': 'text', 'title': 'check_in', 'data': _lodgingCheckIn.text.trim().isEmpty ? 'TBD' : _lodgingCheckIn.text.trim()},
+      {'type': 'text', 'title': 'check_out', 'data': _lodgingCheckOut.text.trim().isEmpty ? 'TBD' : _lodgingCheckOut.text.trim()},
+    ];
 
     try {
       final repo = ref.read(eventsRepositoryProvider);
@@ -1316,6 +1361,45 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
               ),
             ]),
           ],
+
+          const SizedBox(height: 20),
+
+          // ── Lodging ─────────────────────────────────────────────────────────
+          _SectionHeader(title: 'Lodging'),
+          _FormCard(children: [
+            _ToggleRow(
+              label: 'Lodging Provided',
+              value: _lodgingProvided,
+              onChanged: (v) => setState(() => _lodgingProvided = v),
+            ),
+            if (_lodgingProvided) ...[
+              _Divider(),
+              _LabeledField(
+                label: 'Location',
+                child: CupertinoTextField.borderless(
+                  controller: _lodgingLocation,
+                  placeholder: 'TBD',
+                  textCapitalization: TextCapitalization.words,
+                ),
+              ),
+              _Divider(),
+              _LabeledField(
+                label: 'Check In',
+                child: CupertinoTextField.borderless(
+                  controller: _lodgingCheckIn,
+                  placeholder: 'TBD',
+                ),
+              ),
+              _Divider(),
+              _LabeledField(
+                label: 'Check Out',
+                child: CupertinoTextField.borderless(
+                  controller: _lodgingCheckOut,
+                  placeholder: 'TBD',
+                ),
+              ),
+            ],
+          ]),
 
           const SizedBox(height: 20),
 

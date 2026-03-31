@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
@@ -100,11 +101,16 @@ class _EventDetailView extends StatelessWidget {
           ],
 
           // Timeline
-          if (event.timeline.isNotEmpty) ...[
+          if (event.timeline.isNotEmpty || event.time != null) ...[
             const SizedBox(height: 20),
             const _SectionHeader(title: 'Timeline'),
             const SizedBox(height: 8),
-            _TimelineSection(entries: event.timeline, eventDate: event.parsedDate),
+            _TimelineSection(
+              entries: event.timeline,
+              eventDate: event.parsedDate,
+              showTime: event.time,
+              eventDateStr: event.date,
+            ),
           ],
 
           // Notes
@@ -351,57 +357,194 @@ class _FlagChip extends StatelessWidget {
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
 
-class _TimelineSection extends StatelessWidget {
-  const _TimelineSection({required this.entries, required this.eventDate});
+class _TimelineSection extends StatefulWidget {
+  const _TimelineSection({
+    required this.entries,
+    required this.eventDate,
+    this.showTime,
+    this.eventDateStr,
+  });
   final List<EventTimelineEntry> entries;
   final DateTime eventDate;
+  final String? showTime;
+  final String? eventDateStr;
+
+  @override
+  State<_TimelineSection> createState() => _TimelineSectionState();
+}
+
+class _TimelineSectionState extends State<_TimelineSection> {
+  late Timer _timer;
+  DateTime _now = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
+      setState(() => _now = DateTime.now());
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  List<({bool isShowTime, EventTimelineEntry entry})> _buildRows() {
+    final rows = <({bool isShowTime, EventTimelineEntry entry})>[
+      for (final e in widget.entries) (isShowTime: false, entry: e),
+    ];
+    if (widget.showTime != null && widget.eventDateStr != null) {
+      rows.add((
+        isShowTime: true,
+        entry: EventTimelineEntry(title: 'Show Time', time: '${widget.eventDateStr} ${widget.showTime}'),
+      ));
+    }
+    rows.sort((a, b) {
+      final aTime = a.entry.time;
+      final bTime = b.entry.time;
+      if (aTime == null && bTime == null) return 0;
+      if (aTime == null) return 1;
+      if (bTime == null) return -1;
+      final aDt = DateTime.tryParse(aTime);
+      final bDt = DateTime.tryParse(bTime);
+      if (aDt == null || bDt == null) return aTime.compareTo(bTime);
+      return aDt.compareTo(bDt);
+    });
+    return rows;
+  }
+
+  // Returns the index of the "active" row: the last row whose time <= now,
+  // as long as the next row hasn't started yet (or it's the last row).
+  int _activeIndex(List<({bool isShowTime, EventTimelineEntry entry})> rows) {
+    int active = -1;
+    for (int i = 0; i < rows.length; i++) {
+      final t = rows[i].entry.time;
+      if (t == null) continue;
+      final dt = DateTime.tryParse(t);
+      if (dt != null && !dt.isAfter(_now)) active = i;
+    }
+    return active;
+  }
 
   @override
   Widget build(BuildContext context) {
     final accentColor = CupertinoColors.activeBlue.resolveFrom(context);
     final connectorColor = CupertinoColors.separator.resolveFrom(context);
+    final rows = _buildRows();
+    final activeIdx = _activeIndex(rows);
 
     return _Card(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: FixedTimeline.tileBuilder(
           theme: TimelineThemeData(
-            nodePosition: 0,
+            nodePosition: 0.02,
             color: accentColor,
             indicatorTheme: const IndicatorThemeData(size: 10, position: 0.5),
-            connectorTheme: ConnectorThemeData(thickness: 1.5, color: connectorColor),
+            connectorTheme: ConnectorThemeData(thickness: 5, color: connectorColor),
           ),
           builder: TimelineTileBuilder.connected(
-            itemCount: entries.length,
-            contentsBuilder: (context, i) => Padding(
-              padding: const EdgeInsets.only(left: 12, bottom: 20),
-              child: Row(
-                children: [
-                  Text(
-                    toAmPm(entries[i].time, fallback: '—'),
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Menlo',
-                      color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            itemCount: rows.length,
+            contentsBuilder: (context, i) {
+              final row = rows[i];
+              final isPin = row.isShowTime;
+              final isPast = activeIdx >= 0 && i < activeIdx;
+              final isCurrent = i == activeIdx;
+              final Color labelColor;
+              final Color timeColor;
+              if (isCurrent) {
+                labelColor = accentColor;
+                timeColor = accentColor;
+              } else if (isPast) {
+                labelColor = CupertinoColors.tertiaryLabel.resolveFrom(context);
+                timeColor = CupertinoColors.tertiaryLabel.resolveFrom(context);
+              } else if (isPin) {
+                labelColor = accentColor;
+                timeColor = accentColor;
+              } else {
+                labelColor = CupertinoColors.label.resolveFrom(context);
+                timeColor = CupertinoColors.secondaryLabel.resolveFrom(context);
+              }
+
+              return Padding(
+                padding: const EdgeInsets.only(top: 10, right: 0, left: 10, bottom: 10),
+                child: Row(
+                  children: [
+                    Text(
+                      toAmPm(row.entry.time, fallback: '—'),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Menlo',
+                        color: timeColor,
+                        decoration: isPast ? TextDecoration.lineThrough : null,
+                        decorationColor: timeColor,
+                      ),
                     ),
-                  ),
-                  if (isNextDay(entries[i].time, eventDate)) ...[
-                    const SizedBox(width: 4),
-                    const NextDayBadge(),
+                    if (isNextDay(row.entry.time, widget.eventDate)) ...[
+                      const SizedBox(width: 4),
+                      const NextDayBadge(),
+                    ],
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        row.entry.title,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: (isPin || isCurrent) ? FontWeight.w600 : FontWeight.w400,
+                          color: labelColor,
+                          decoration: isPast ? TextDecoration.lineThrough : null,
+                          decorationColor: labelColor,
+                        ),
+                      ),
+                    ),
+                    if (isCurrent)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: accentColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'NOW',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: accentColor,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      entries[i].title,
-                      style: const TextStyle(fontSize: 15),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            indicatorBuilder: (context, i) => DotIndicator(color: accentColor, size: 10),
-            connectorBuilder: (context, i, type) => SolidLineConnector(color: connectorColor, thickness: 1.5),
+                ),
+              );
+            },
+            indicatorBuilder: (context, i) {
+              final isPast = activeIdx >= 0 && i < activeIdx;
+              final isCurrent = i == activeIdx;
+              final color = (isPast)
+                  ? CupertinoColors.tertiaryLabel.resolveFrom(context)
+                  : accentColor;
+              return DotIndicator(
+                color: color,
+                size: isCurrent ? 13 : 10,
+                border: isCurrent
+                    ? Border.all(color: accentColor, width: 2)
+                    : null,
+              );
+            },
+            connectorBuilder: (context, i, type) {
+              final isPast = activeIdx >= 0 && i < activeIdx;
+              final color = isPast
+                  ? CupertinoColors.tertiaryLabel.resolveFrom(context)
+                  : connectorColor;
+              return SolidLineConnector(color: color, thickness: 1.5);
+            },
           ),
         ),
       ),

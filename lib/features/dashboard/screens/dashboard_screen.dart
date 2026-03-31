@@ -10,6 +10,7 @@ import '../../../shared/widgets/error_view.dart';
 import '../../events/data/models/event_summary.dart';
 import '../providers/dashboard_provider.dart';
 import '../widgets/event_card.dart';
+import '../widgets/live_now_card.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -85,6 +86,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
             data: (state) => _DashboardContent(
               events: state.events,
+              currentEvent: state.currentEvent,
               focusedDay: _focusedDay,
               selectedDay: _selectedDay,
               onDaySelected: (selected, focused) {
@@ -130,12 +132,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 class _DashboardContent extends StatelessWidget {
   const _DashboardContent({
     required this.events,
+    required this.currentEvent,
     required this.focusedDay,
     required this.selectedDay,
     required this.onDaySelected,
   });
 
   final List<EventSummary> events;
+  final EventSummary? currentEvent;
   final DateTime focusedDay;
   final DateTime? selectedDay;
   final void Function(DateTime selected, DateTime focused) onDaySelected;
@@ -179,6 +183,12 @@ class _DashboardContent extends StatelessWidget {
     final filtered = _filteredEvents;
     return SliverList(
       delegate: SliverChildListDelegate([
+        // ── Live Now banner — only shown when an event is in progress ──────
+        if (currentEvent != null)
+          LiveNowCard(
+            event: currentEvent!,
+            onTap: () => _navigateToEvent(context, currentEvent!),
+          ),
         _CalendarSection(
           focusedDay: focusedDay,
           selectedDay: selectedDay,
@@ -200,6 +210,18 @@ class _DashboardContent extends StatelessWidget {
         const SizedBox(height: 16),
       ]),
     );
+  }
+
+  void _navigateToEvent(BuildContext context, EventSummary event) {
+    if (event.isRehearsal) {
+      if (event.id != null) {
+        context.push('/rehearsals/${event.id}');
+      } else {
+        context.push('/rehearsals/by-key/${event.key}');
+      }
+    } else {
+      context.push('/events/${event.key}');
+    }
   }
 }
 

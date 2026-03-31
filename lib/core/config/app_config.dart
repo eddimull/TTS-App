@@ -11,4 +11,9 @@ class AppConfig {
     'PUSHER_APP_CLUSTER',
     defaultValue: 'mt1',
   );
+
+  static const String googlePlacesApiKey = String.fromEnvironment(
+    'GOOGLE_PLACES_API_KEY',
+    defaultValue: '',
+  );
 }

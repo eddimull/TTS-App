@@ -122,20 +122,20 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
 
     _attachments = List.of(e.attachments);
 
-    String _lodgingVal(String key, {bool isBool = false}) {
+    String lodgingVal(String key, {bool isBool = false}) {
       final item = e.lodging.where((l) => l.title == key).firstOrNull;
       if (isBool) return '';
       final v = item?.data?.toString() ?? '';
       return v == 'TBD' ? '' : v;
     }
-    bool _lodgingBool(String key) {
+    bool lodgingBool(String key) {
       final item = e.lodging.where((l) => l.title == key).firstOrNull;
       return item?.data == true;
     }
-    _lodgingProvided = _lodgingBool('Provided');
-    _lodgingLocation = TextEditingController(text: _lodgingVal('location'));
-    _lodgingCheckIn = TextEditingController(text: _lodgingVal('check_in'));
-    _lodgingCheckOut = TextEditingController(text: _lodgingVal('check_out'));
+    _lodgingProvided = lodgingBool('Provided');
+    _lodgingLocation = TextEditingController(text: lodgingVal('location'));
+    _lodgingCheckIn = TextEditingController(text: lodgingVal('check_in'));
+    _lodgingCheckOut = TextEditingController(text: lodgingVal('check_out'));
 
     // Snapshot for dirty check
     _initTitle = _title.text;
@@ -1417,7 +1417,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                             ? _pickTime
                             : () => _editTimelineEntry(rec.timelineIndex!),
                         child: Padding(
-                          padding: const EdgeInsets.only(left: 12, bottom: 16),
+                          padding: const EdgeInsets.only(top: 16, left: 12, bottom: 16),
                           child: Row(
                             children: [
                               Text(

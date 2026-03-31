@@ -40,7 +40,11 @@ class FakeEventsRepository implements EventsRepository {
   Future<void> updateEvent(String key, Map<String, dynamic> data) async {}
 
   @override
-  Future<EventAttachment> uploadAttachment(String key, dynamic file) async =>
+  Future<EventAttachment> uploadAttachment(
+    String key, {
+    required List<int> bytes,
+    required String filename,
+  }) async =>
       throw UnimplementedError();
 
   @override

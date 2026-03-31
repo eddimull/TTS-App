@@ -54,6 +54,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
           bandId: bandId,
           filter: _filter,
           onFilterChanged: (f) => setState(() => _filter = f),
+          onNewBooking: () => context.push('/bookings/$bandId/new'),
         );
       },
     );
@@ -65,11 +66,13 @@ class _BookingsBody extends ConsumerWidget {
     required this.bandId,
     required this.filter,
     required this.onFilterChanged,
+    required this.onNewBooking,
   });
 
   final int bandId;
   final _BookingsFilter filter;
   final void Function(_BookingsFilter) onFilterChanged;
+  final VoidCallback onNewBooking;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -83,8 +86,13 @@ class _BookingsBody extends ConsumerWidget {
           onRefresh: () =>
               ref.read(bandBookingsProvider(params).notifier).refresh(),
         ),
-        const CupertinoSliverNavigationBar(
-          largeTitle: Text('Bookings'),
+        CupertinoSliverNavigationBar(
+          largeTitle: const Text('Bookings'),
+          trailing: CupertinoButton(
+            padding: EdgeInsets.zero,
+            onPressed: onNewBooking,
+            child: const Icon(CupertinoIcons.add),
+          ),
         ),
         SliverToBoxAdapter(
           child: _FilterPills(current: filter, onChanged: onFilterChanged),

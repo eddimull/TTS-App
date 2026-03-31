@@ -32,7 +32,7 @@ class FakeAuthNotifier extends AuthNotifier {
     } else {
       // Success — router would normally redirect; here we just set
       // authenticated state so the widget's post-login check passes.
-      state = AsyncValue.data(
+      state = const AsyncValue.data(
         AuthAuthenticated(
           user: _fakeUser,
           bands: [],

@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 import 'booking_contact.dart';
+import 'booking_contract.dart';
+import 'booking_payment.dart';
 
 // ── Stub for events linked to this booking ────────────────────────────────────
 
@@ -52,6 +54,9 @@ class BookingDetail {
     required this.isPaid,
     required this.contacts,
     required this.events,
+    this.contractOption,
+    this.contract,
+    this.payments = const [],
   });
 
   final int id;
@@ -82,6 +87,15 @@ class BookingDetail {
   final List<BookingContact> contacts;
   final List<BookingEvent> events;
 
+  /// Contract option: "default", "none", "external", or null.
+  final String? contractOption;
+
+  /// The associated contract record, if any.
+  final BookingContract? contract;
+
+  /// List of recorded payments for this booking.
+  final List<BookingPayment> payments;
+
   factory BookingDetail.fromJson(Map<String, dynamic> json) {
     final rawContacts = json['contacts'];
     final contacts = rawContacts is List
@@ -98,6 +112,19 @@ class BookingDetail {
             .map(BookingEvent.fromJson)
             .toList()
         : <BookingEvent>[];
+
+    final rawPayments = json['payments'];
+    final payments = rawPayments is List
+        ? rawPayments
+            .cast<Map<String, dynamic>>()
+            .map(BookingPayment.fromJson)
+            .toList()
+        : <BookingPayment>[];
+
+    final rawContract = json['contract'];
+    final contract = rawContract is Map<String, dynamic>
+        ? BookingContract.fromJson(rawContract)
+        : null;
 
     return BookingDetail(
       id: (json['id'] as num).toInt(),
@@ -118,6 +145,9 @@ class BookingDetail {
       isPaid: (json['is_paid'] as bool?) ?? false,
       contacts: contacts,
       events: events,
+      contractOption: json['contract_option'] as String?,
+      contract: contract,
+      payments: payments,
     );
   }
 

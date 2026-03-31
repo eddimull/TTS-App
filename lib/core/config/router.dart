@@ -4,7 +4,13 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/band_selector_screen.dart';
+import '../../features/bookings/data/models/booking_detail.dart';
+import '../../features/bookings/screens/booking_contacts_screen.dart';
+import '../../features/bookings/screens/booking_contract_screen.dart';
 import '../../features/bookings/screens/booking_detail_screen.dart';
+import '../../features/bookings/screens/booking_form_screen.dart';
+import '../../features/bookings/screens/booking_history_screen.dart';
+import '../../features/bookings/screens/booking_payments_screen.dart';
 import '../../features/bookings/screens/bookings_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/events/screens/events_screen.dart';
@@ -140,11 +146,53 @@ final routerProvider = Provider<GoRouter>((ref) {
           eventKey: state.pathParameters['key']!,
         ),
       ),
+      // Literal-segment routes before parameterised ones to avoid ambiguity
+      GoRoute(
+        path: '/bookings/:bandId/new',
+        builder: (_, state) => BookingFormScreen(
+          bandId: int.parse(state.pathParameters['bandId']!),
+        ),
+      ),
       GoRoute(
         path: '/bookings/:bandId/:id',
         builder: (_, state) => BookingDetailScreen(
           bandId: int.parse(state.pathParameters['bandId']!),
           bookingId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/bookings/:bandId/:bookingId/edit',
+        builder: (_, state) => BookingFormScreen(
+          bandId: int.parse(state.pathParameters['bandId']!),
+          existing: state.extra as BookingDetail?,
+        ),
+      ),
+      GoRoute(
+        path: '/bookings/:bandId/:bookingId/contacts',
+        builder: (_, state) => BookingContactsScreen(
+          bandId: int.parse(state.pathParameters['bandId']!),
+          bookingId: int.parse(state.pathParameters['bookingId']!),
+        ),
+      ),
+      GoRoute(
+        path: '/bookings/:bandId/:bookingId/payments',
+        builder: (_, state) => BookingPaymentsScreen(
+          bandId: int.parse(state.pathParameters['bandId']!),
+          bookingId: int.parse(state.pathParameters['bookingId']!),
+        ),
+      ),
+      GoRoute(
+        path: '/bookings/:bandId/:bookingId/contract',
+        builder: (_, state) => BookingContractScreen(
+          bandId: int.parse(state.pathParameters['bandId']!),
+          bookingId: int.parse(state.pathParameters['bookingId']!),
+        ),
+      ),
+      GoRoute(
+        path: '/bookings/:bandId/:bookingId/history',
+        builder: (_, state) => BookingHistoryScreen(
+          bandId: int.parse(state.pathParameters['bandId']!),
+          bookingId: int.parse(state.pathParameters['bookingId']!),
         ),
       ),
       GoRoute(

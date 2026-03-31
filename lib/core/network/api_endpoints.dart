@@ -17,6 +17,27 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/bookings';
   static String mobileBookingDetail(int bandId, int bookingId) =>
       '/api/mobile/bands/$bandId/bookings/$bookingId';
+  static String mobileBookingById(int bandId, int id) =>
+      '/api/mobile/bands/$bandId/bookings/$id';
+  static String mobileCancelBooking(int bandId, int id) =>
+      '/api/mobile/bands/$bandId/bookings/$id/cancel';
+  static String mobileBandContacts(int bandId) =>
+      '/api/mobile/bands/$bandId/contacts';
+  static String mobileBookingContacts(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/contacts';
+  static String mobileBookingContact(int bandId, int bookingId, int bcId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/contacts/$bcId';
+  static String mobileBookingPayments(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/payments';
+  static String mobileBookingPayment(int bandId, int bookingId, int paymentId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/payments/$paymentId';
+  static String mobileBookingContract(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/contract';
+  static String mobileBookingContractUpload(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/contract/upload';
+  static String mobileBookingHistory(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/history';
+  static const String mobileEventTypes = '/api/mobile/event-types';
   static String mobileBandRehearsalSchedules(int bandId) =>
       '/api/mobile/bands/$bandId/rehearsal-schedules';
   static String mobileRehearsalDetail(int rehearsalId) =>

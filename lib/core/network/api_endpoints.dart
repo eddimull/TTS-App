@@ -35,6 +35,8 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/bookings/$bookingId/contract';
   static String mobileBookingContractUpload(int bandId, int bookingId) =>
       '/api/mobile/bands/$bandId/bookings/$bookingId/contract/upload';
+  static String mobileBookingContractSend(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/contract/send';
   static String mobileBookingHistory(int bandId, int bookingId) =>
       '/api/mobile/bands/$bandId/bookings/$bookingId/history';
   static const String mobileEventTypes = '/api/mobile/event-types';

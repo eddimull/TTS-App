@@ -283,6 +283,23 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
+  String _extractErrorMessage(Object e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map) {
+        final errors = data['errors'];
+        if (errors is Map && errors.isNotEmpty) {
+          return errors.values
+              .expand((v) => v is List ? v : [v])
+              .join('\n');
+        }
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) return message;
+      }
+    }
+    return 'Could not save booking.';
+  }
+
   Future<void> _save() async {
     final nameVal = _name.text.trim();
     if (nameVal.isEmpty) {
@@ -313,7 +330,7 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
       'price': _price.text.trim().isEmpty ? null : _price.text.trim(),
       if (_eventTypeId != null) 'event_type_id': _eventTypeId,
       if (startTimeStr != null) 'start_time': startTimeStr,
-      'duration': _durations[_durationIndex],
+      'duration': (_durationIndex + 1) * 0.5,
     };
 
     // Contract option only applies on create.
@@ -334,15 +351,16 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
+        final message = _extractErrorMessage(e);
         setState(() {
           _saving = false;
-          _error = e.toString();
+          _error = message;
         });
         showCupertinoDialog<void>(
           context: context,
           builder: (_) => CupertinoAlertDialog(
             title: const Text('Error'),
-            content: Text('Could not save booking.\n$e'),
+            content: Text(message),
             actions: [
               CupertinoDialogAction(
                 onPressed: () => Navigator.pop(context),

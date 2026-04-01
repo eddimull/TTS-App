@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
@@ -18,6 +19,38 @@ import 'package:tts_bandmate/core/config/app_config.dart';
 
 // Whether the current platform supports google_maps_flutter.
 bool get _mapsSupported => kIsWeb || Platform.isAndroid || Platform.isIOS;
+
+/// Formats a numeric text field as a USD currency value (e.g. "$1,234.56").
+/// Digits are entered right-to-left like a cash register.
+class _CurrencyInputFormatter extends TextInputFormatter {
+  static final _fmt = NumberFormat.currency(symbol: r'$');
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Strip everything except digits.
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) {
+      return const TextEditingValue(text: '');
+    }
+    final cents = int.parse(digits);
+    final formatted = _fmt.format(cents / 100);
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+
+  /// Parse a formatted string back to a plain decimal string for the API.
+  static String? toDecimal(String formatted) {
+    final digits = formatted.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return null;
+    final cents = int.parse(digits);
+    return (cents / 100).toStringAsFixed(2);
+  }
+}
 
 class BookingFormScreen extends ConsumerStatefulWidget {
   const BookingFormScreen({
@@ -36,6 +69,7 @@ class BookingFormScreen extends ConsumerStatefulWidget {
 class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
   late final TextEditingController _name;
   late final TextEditingController _price;
+  final FocusNode _priceFocus = FocusNode();
   late final TextEditingController _venueName;
   late final TextEditingController _venueAddress;
   late final TextEditingController _notes;
@@ -64,7 +98,14 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
     super.initState();
     final e = widget.existing;
     _name = TextEditingController(text: e?.name ?? '');
-    _price = TextEditingController(text: e?.price ?? '');
+    final rawPrice = e?.price ?? '';
+    final initialPrice = rawPrice.isNotEmpty
+        ? () {
+            final cents = (double.tryParse(rawPrice) ?? 0) * 100;
+            return NumberFormat.currency(symbol: r'$').format(cents.round() / 100);
+          }()
+        : '';
+    _price = TextEditingController(text: initialPrice);
     _venueName = TextEditingController(text: e?.venueName ?? '');
     _venueAddress = TextEditingController(text: e?.venueAddress ?? '');
     _notes = TextEditingController(text: e?.notes ?? '');
@@ -89,6 +130,7 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
   void dispose() {
     _name.dispose();
     _price.dispose();
+    _priceFocus.dispose();
     _venueName.dispose();
     _venueAddress.dispose();
     _notes.dispose();
@@ -327,7 +369,7 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
       'venue_name': _venueName.text.trim(),
       'venue_address': _venueAddress.text.trim(),
       'notes': _notes.text.trim(),
-      'price': _price.text.trim().isEmpty ? null : _price.text.trim(),
+      'price': _CurrencyInputFormatter.toDecimal(_price.text.trim()),
       if (_eventTypeId != null) 'event_type_id': _eventTypeId,
       if (startTimeStr != null) 'start_time': startTimeStr,
       'duration': (_durationIndex + 1) * 0.5,
@@ -520,9 +562,14 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
             children: [
               CupertinoTextFormFieldRow(
                 controller: _price,
+                focusNode: _priceFocus,
+                textAlign: TextAlign.end,
                 prefix: const Text('Price'),
                 placeholder: r'$0.00',
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                onEditingComplete: () => _priceFocus.unfocus(),
+                inputFormatters: [_CurrencyInputFormatter()],
               ),
             ],
           ),
@@ -537,6 +584,7 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
                   onTap: _openVenueSearch,
                   child: CupertinoFormRow(
                     prefix: const Text('Venue'),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [

@@ -48,4 +48,11 @@ class ApiEndpoints {
       '/api/mobile/rehearsals/by-key/$key';
   static String mobileRehearsalUpdateNotes(int rehearsalId) =>
       '/api/mobile/rehearsals/$rehearsalId/notes';
+
+  static const String mobileSearch = '/api/mobile/search';
+
+  static String mobileBandSongs(int bandId) => '/api/mobile/bands/$bandId/songs';
+  static String mobileBandCharts(int bandId) => '/api/mobile/bands/$bandId/charts';
+  static String mobileBandChart(int bandId, int chartId) =>
+      '/api/mobile/bands/$bandId/charts/$chartId';
 }

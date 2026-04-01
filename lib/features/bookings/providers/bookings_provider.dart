@@ -15,11 +15,15 @@ class BandBookingsParams {
     required this.bandId,
     this.status,
     this.upcomingOnly = false,
+    this.year,
   });
 
   final int bandId;
   final String? status;
   final bool upcomingOnly;
+
+  /// When set, only bookings whose date falls in this calendar year are returned.
+  final int? year;
 
   @override
   bool operator ==(Object other) =>
@@ -28,10 +32,11 @@ class BandBookingsParams {
           runtimeType == other.runtimeType &&
           bandId == other.bandId &&
           status == other.status &&
-          upcomingOnly == other.upcomingOnly;
+          upcomingOnly == other.upcomingOnly &&
+          year == other.year;
 
   @override
-  int get hashCode => Object.hash(bandId, status, upcomingOnly);
+  int get hashCode => Object.hash(bandId, status, upcomingOnly, year);
 }
 
 class BandBookingsNotifier
@@ -43,6 +48,7 @@ class BandBookingsNotifier
       arg.bandId,
       status: arg.status,
       upcomingOnly: arg.upcomingOnly,
+      year: arg.year,
     );
   }
 
@@ -56,6 +62,7 @@ class BandBookingsNotifier
           arg.bandId,
           status: arg.status,
           upcomingOnly: arg.upcomingOnly,
+          year: arg.year,
         );
       },
     );

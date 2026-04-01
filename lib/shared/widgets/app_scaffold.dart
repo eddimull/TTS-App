@@ -24,10 +24,10 @@ const _destinations = [
     activeIcon: CupertinoIcons.house_fill,
   ),
   _NavDestination(
-    route: '/events',
-    label: 'Events',
-    icon: CupertinoIcons.calendar,
-    activeIcon: CupertinoIcons.calendar,
+    route: '/search',
+    label: 'Search',
+    icon: CupertinoIcons.search,
+    activeIcon: CupertinoIcons.search,
   ),
   _NavDestination(
     route: '/bookings',
@@ -36,10 +36,10 @@ const _destinations = [
     activeIcon: CupertinoIcons.book_fill,
   ),
   _NavDestination(
-    route: '/media',
-    label: 'Media',
-    icon: CupertinoIcons.photo_on_rectangle,
-    activeIcon: CupertinoIcons.photo_fill_on_rectangle_fill,
+    route: '/library',
+    label: 'Library',
+    icon: CupertinoIcons.music_note_list,
+    activeIcon: CupertinoIcons.music_note_list,
   ),
   _NavDestination(
     route: '/more',

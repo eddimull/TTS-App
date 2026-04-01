@@ -13,13 +13,15 @@ import '../../features/bookings/screens/booking_history_screen.dart';
 import '../../features/bookings/screens/booking_payments_screen.dart';
 import '../../features/bookings/screens/bookings_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
-import '../../features/events/screens/events_screen.dart';
 import '../../features/events/screens/event_detail_screen.dart';
+import '../../features/search/screens/search_screen.dart';
 import '../../features/events/screens/event_edit_screen.dart';
 import '../../features/events/data/models/event_detail.dart';
 import '../../features/rehearsals/screens/rehearsal_detail_by_key_screen.dart';
 import '../../features/rehearsals/screens/rehearsal_detail_screen.dart';
 import '../../features/rehearsals/screens/rehearsals_screen.dart';
+import '../../features/library/screens/chart_detail_screen.dart';
+import '../../features/library/screens/library_screen.dart';
 import '../../features/media/screens/media_screen.dart';
 import '../../features/more/screens/more_screen.dart';
 import '../../features/setlist/screens/live_session_screen.dart';
@@ -112,16 +114,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const DashboardScreen(),
           ),
           GoRoute(
-            path: '/events',
-            builder: (_, __) => const EventsScreen(),
+            path: '/search',
+            builder: (_, __) => const SearchScreen(),
           ),
           GoRoute(
             path: '/bookings',
             builder: (_, __) => const BookingsScreen(),
           ),
           GoRoute(
-            path: '/media',
-            builder: (_, __) => const MediaScreen(),
+            path: '/library',
+            builder: (_, __) => const LibraryScreen(),
           ),
           GoRoute(
             path: '/more',
@@ -209,6 +211,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/rehearsals/:id',
         builder: (_, state) => RehearsalDetailScreen(
           rehearsalId: int.tryParse(state.pathParameters['id']!),
+        ),
+      ),
+      // Media — no bottom nav, pushed from More screen
+      GoRoute(
+        path: '/media',
+        builder: (_, __) => const MediaScreen(),
+      ),
+      // Library detail — no bottom nav, pushed from LibraryScreen
+      GoRoute(
+        path: '/library/:chartId',
+        builder: (_, state) => ChartDetailScreen(
+          bandId: state.extra as int,
+          chartId: int.parse(state.pathParameters['chartId']!),
         ),
       ),
     ],

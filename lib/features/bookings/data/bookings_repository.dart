@@ -17,14 +17,17 @@ class BookingsRepository {
   ///
   /// Optional [status] filters by booking status (e.g. "confirmed", "pending").
   /// When [upcomingOnly] is true, only bookings on or after today are returned.
+  /// When [year] is provided, only bookings in that calendar year are returned.
   Future<List<BookingSummary>> getBandBookings(
     int bandId, {
     String? status,
     bool upcomingOnly = false,
+    int? year,
   }) async {
     final queryParams = <String, String>{};
     if (status != null) queryParams['status'] = status;
     if (upcomingOnly) queryParams['upcoming'] = '1';
+    if (year != null) queryParams['year'] = year.toString();
 
     final response = await _dio.get<Map<String, dynamic>>(
       ApiEndpoints.mobileBandBookings(bandId),

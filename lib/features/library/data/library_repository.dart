@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tts_bandmate/core/providers/core_providers.dart';
 import 'models/chart.dart';
@@ -30,6 +31,100 @@ class LibraryRepository {
 
     final data = response.data!;
     return Chart.fromJson(data['chart'] as Map<String, dynamic>);
+  }
+
+  /// Creates a new chart for [bandId].
+  Future<Chart> createChart(
+    int bandId, {
+    required String title,
+    String? composer,
+    String? description,
+    double? price,
+    bool isPublic = false,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandCharts(bandId),
+      data: {
+        'title': title,
+        if (composer != null && composer.isNotEmpty) 'composer': composer,
+        if (description != null && description.isNotEmpty)
+          'description': description,
+        if (price != null) 'price': price,
+        'public': isPublic,
+      },
+    );
+
+    final data = response.data!;
+    return Chart.fromJson(data['chart'] as Map<String, dynamic>);
+  }
+
+  /// Deletes the chart identified by [chartId].
+  Future<void> deleteChart(int bandId, int chartId) async {
+    await _dio.delete(ApiEndpoints.mobileBandChart(bandId, chartId));
+  }
+
+  /// Uploads a file to the given chart.
+  ///
+  /// [file] comes from the file_picker package — its [PlatformFile.bytes]
+  /// and [PlatformFile.name] are used to build the multipart request.
+  /// [uploadTypeId]: 1 = Audio, 2 = Video, 3 = Sheet Music.
+  /// [onProgress] fires with values 0.0–1.0 as bytes are sent.
+  Future<ChartUpload> uploadChartFile(
+    int bandId,
+    int chartId, {
+    required PlatformFile file,
+    required String displayName,
+    required int uploadTypeId,
+    String? notes,
+    void Function(double progress)? onProgress,
+  }) async {
+    final bytes = file.bytes;
+    if (bytes == null) {
+      throw StateError('File bytes are unavailable for "${file.name}".');
+    }
+
+    final formData = FormData.fromMap({
+      'file': MultipartFile.fromBytes(bytes, filename: file.name),
+      'display_name': displayName,
+      'upload_type_id': uploadTypeId,
+      if (notes != null && notes.isNotEmpty) 'notes': notes,
+    });
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandChartUploads(bandId, chartId),
+      data: formData,
+      onSendProgress: onProgress != null
+          ? (sent, total) {
+              if (total > 0) onProgress(sent / total);
+            }
+          : null,
+    );
+
+    final data = response.data!;
+    return ChartUpload.fromJson(data['upload'] as Map<String, dynamic>);
+  }
+
+  /// Returns a temporary signed URL for the given upload (valid ~15 min).
+  Future<String> getChartUploadDownloadUrl(
+    int bandId,
+    int chartId,
+    int uploadId,
+  ) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandChartUploadDownload(bandId, chartId, uploadId),
+    );
+    return response.data!['url'] as String;
+  }
+
+  /// Deletes a single upload from a chart.
+  Future<void> deleteChartUpload(
+    int bandId,
+    int chartId,
+    int uploadId,
+  ) async {
+    await _dio.delete(
+      ApiEndpoints.mobileBandChartUpload(bandId, chartId, uploadId),
+    );
   }
 }
 

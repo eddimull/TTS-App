@@ -187,6 +187,54 @@ class _LibraryBodyState extends ConsumerState<_LibraryBody> {
     setState(() => _query = value.trim());
   }
 
+  // ── Delete ───────────────────────────────────────────────────────────────────
+
+  Future<void> _confirmDeleteChart(BuildContext context, Chart chart) async {
+    final confirmed = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Delete Chart'),
+        content: Text(
+            'Are you sure you want to delete "${chart.title}"? This cannot be undone.'),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      await ref
+          .read(libraryProvider.notifier)
+          .deleteChart(widget.bandId, chart.id);
+    } catch (e) {
+      if (context.mounted) {
+        showCupertinoDialog<void>(
+          context: context,
+          builder: (ctx) => CupertinoAlertDialog(
+            title: const Text('Delete Failed'),
+            content: Text(e.toString()),
+            actions: [
+              CupertinoDialogAction(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
   // ── Alphabet scrubber interaction ────────────────────────────────────────────
 
   /// [dy] is the local Y position within the scrubber strip widget.
@@ -350,6 +398,8 @@ class _LibraryBodyState extends ConsumerState<_LibraryBody> {
                                           '/library/${chart.id}',
                                           extra: widget.bandId,
                                         ),
+                                        onDelete: () => _confirmDeleteChart(
+                                            context, chart),
                                       );
                                     },
                                     childCount: filtered.length,
@@ -370,6 +420,8 @@ class _LibraryBodyState extends ConsumerState<_LibraryBody> {
                               onRefresh: widget.onRefresh,
                               scrollController: _scrollController,
                               navBarBuilder: _buildNavBar,
+                              onDeleteChart: (chart) =>
+                                  _confirmDeleteChart(context, chart),
                             ),
                             // Alphabet scrubber flush to the right edge.
                             Positioned(
@@ -430,6 +482,7 @@ class _GroupedScrollView extends StatelessWidget {
     required this.onRefresh,
     required this.scrollController,
     required this.navBarBuilder,
+    required this.onDeleteChart,
   });
 
   final Map<String, List<Chart>> groups;
@@ -437,6 +490,7 @@ class _GroupedScrollView extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final ScrollController scrollController;
   final Widget Function(BuildContext) navBarBuilder;
+  final void Function(Chart) onDeleteChart;
 
   @override
   Widget build(BuildContext context) {
@@ -480,6 +534,7 @@ class _GroupedScrollView extends StatelessWidget {
                   '/library/${chart.id}',
                   extra: bandId,
                 ),
+                onDelete: () => onDeleteChart(chart),
               );
             },
             childCount: items.length,
@@ -528,16 +583,19 @@ class _SectionHeader extends StatelessWidget {
 
 /// Flat Contacts-style row: circular coloured avatar, title + composer, chevron.
 /// [showSeparator] controls the hairline bottom divider.
+/// Long-pressing the row triggers [onDelete] (confirm dialog lives in the parent).
 class _ChartRow extends StatelessWidget {
   const _ChartRow({
     required this.chart,
     required this.showSeparator,
     this.onTap,
+    this.onDelete,
   });
 
   final Chart chart;
   final bool showSeparator;
   final VoidCallback? onTap;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -546,10 +604,11 @@ class _ChartRow extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: '${chart.title}, by ${chart.composer}',
+      label: '${chart.title}, by ${chart.composer}. Long press to delete.',
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
+        onLongPress: onDelete,
         child: Container(
           height: _kRowHeight,
           // The separator sits at the very bottom of the row, inset from the

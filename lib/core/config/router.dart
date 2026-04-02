@@ -21,6 +21,7 @@ import '../../features/rehearsals/screens/rehearsal_detail_by_key_screen.dart';
 import '../../features/rehearsals/screens/rehearsal_detail_screen.dart';
 import '../../features/rehearsals/screens/rehearsals_screen.dart';
 import '../../features/library/screens/chart_detail_screen.dart';
+import '../../features/library/screens/create_chart_screen.dart';
 import '../../features/library/screens/library_screen.dart';
 import '../../features/media/screens/media_screen.dart';
 import '../../features/more/screens/more_screen.dart';
@@ -218,7 +219,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/media',
         builder: (_, __) => const MediaScreen(),
       ),
-      // Library detail — no bottom nav, pushed from LibraryScreen
+      // Library — literal segment 'new' must precede the :chartId parameter
+      // to prevent GoRouter from treating "new" as a chart ID.
+      GoRoute(
+        path: '/library/new',
+        builder: (_, state) => CreateChartScreen(
+          bandId: state.extra as int,
+        ),
+      ),
       GoRoute(
         path: '/library/:chartId',
         builder: (_, state) => ChartDetailScreen(

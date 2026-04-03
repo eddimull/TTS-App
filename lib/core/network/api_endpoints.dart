@@ -61,4 +61,11 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/charts/$chartId/uploads/$uploadId';
   static String mobileBandChartUploadDownload(int bandId, int chartId, int uploadId) =>
       '/api/mobile/bands/$bandId/charts/$chartId/uploads/$uploadId/download';
+
+  static String mobileBandFinances(int bandId) =>
+      '/api/mobile/bands/$bandId/finances';
+  static String mobileBandFinancesUnpaid(int bandId) =>
+      '/api/mobile/bands/$bandId/finances/unpaid';
+  static String mobileBandFinancesPaid(int bandId) =>
+      '/api/mobile/bands/$bandId/finances/paid';
 }

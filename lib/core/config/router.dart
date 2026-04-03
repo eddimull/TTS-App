@@ -24,6 +24,7 @@ import '../../features/library/screens/chart_detail_screen.dart';
 import '../../features/library/screens/create_chart_screen.dart';
 import '../../features/library/screens/library_screen.dart';
 import '../../features/media/screens/media_screen.dart';
+import '../../features/finances/screens/finances_screen.dart';
 import '../../features/more/screens/more_screen.dart';
 import '../../features/setlist/screens/live_session_screen.dart';
 import '../../shared/providers/selected_band_provider.dart';
@@ -129,6 +130,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/more',
             builder: (_, __) => const MoreScreen(),
+          ),
+          GoRoute(
+            path: '/finances',
+            builder: (_, __) => const FinancesScreen(),
           ),
         ],
       ),

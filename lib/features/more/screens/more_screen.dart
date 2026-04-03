@@ -13,6 +13,15 @@ class MoreScreen extends StatelessWidget {
         children: [
           const SizedBox(height: 16),
           NavRow(
+            title: 'Finances',
+            leading: Icon(
+              CupertinoIcons.money_dollar_circle,
+              size: 22,
+              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            ),
+            onTap: () => context.push('/finances'),
+          ),
+          NavRow(
             title: 'Rehearsals',
             leading: Icon(
               CupertinoIcons.person_2,

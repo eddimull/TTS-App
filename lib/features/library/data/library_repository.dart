@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -104,16 +106,26 @@ class LibraryRepository {
     return ChartUpload.fromJson(data['upload'] as Map<String, dynamic>);
   }
 
-  /// Returns a temporary signed URL for the given upload (valid ~15 min).
-  Future<String> getChartUploadDownloadUrl(
-    int bandId,
-    int chartId,
-    int uploadId,
-  ) async {
-    final response = await _dio.get<Map<String, dynamic>>(
+  /// Downloads a chart upload through the API and returns the raw bytes
+  /// along with the MIME type and filename from the response headers.
+  Future<({Uint8List bytes, String mimeType, String filename})>
+      downloadChartUpload(int bandId, int chartId, int uploadId) async {
+    final response = await _dio.get<List<int>>(
       ApiEndpoints.mobileBandChartUploadDownload(bandId, chartId, uploadId),
+      options: Options(responseType: ResponseType.bytes),
     );
-    return response.data!['url'] as String;
+    final contentType =
+        response.headers.value('content-type') ?? 'application/octet-stream';
+    final mimeType = contentType.split(';').first.trim();
+    final disposition = response.headers.value('content-disposition') ?? '';
+    final filenameMatch =
+        RegExp(r'filename="?([^"]+)"?').firstMatch(disposition);
+    final filename = filenameMatch?.group(1) ?? 'download';
+    return (
+      bytes: Uint8List.fromList(response.data!),
+      mimeType: mimeType,
+      filename: filename,
+    );
   }
 
   /// Deletes a single upload from a chart.

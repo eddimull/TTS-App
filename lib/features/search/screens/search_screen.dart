@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../../shared/widgets/status_chip.dart';
 import '../data/models/search_models.dart';
 import '../providers/search_provider.dart';
-import '../providers/music_provider.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -71,73 +70,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 }
 
-// ── Browse view (no active query) ─────────────────────────────────────────────
+// ── Idle state (no active query) ─────────────────────────────────────────────
 
-class _BrowseBody extends ConsumerWidget {
+class _BrowseBody extends StatelessWidget {
   const _BrowseBody();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final songsAsync = ref.watch(songsProvider);
-    final chartsAsync = ref.watch(chartsProvider);
-
-    return CustomScrollView(
-      slivers: [
-        // Songs section
-        const SliverToBoxAdapter(
-          child: _SectionHeaderTile(label: 'Songs'),
-        ),
-        songsAsync.when(
-          loading: () => const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Center(child: CupertinoActivityIndicator()),
-            ),
-          ),
-          error: (_, __) => const SliverToBoxAdapter(
-            child: _InlineError(message: 'Could not load songs'),
-          ),
-          data: (songs) => songs.isEmpty
-              ? const SliverToBoxAdapter(
-                  child: _EmptySection(message: 'No songs in library'),
-                )
-              : SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => _SongRow(song: songs[index]),
-                    childCount: songs.length,
-                  ),
-                ),
-        ),
-
-        // Charts section
-        const SliverToBoxAdapter(
-          child: _SectionHeaderTile(label: 'Charts'),
-        ),
-        chartsAsync.when(
-          loading: () => const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Center(child: CupertinoActivityIndicator()),
-            ),
-          ),
-          error: (_, __) => const SliverToBoxAdapter(
-            child: _InlineError(message: 'Could not load charts'),
-          ),
-          data: (charts) => charts.isEmpty
-              ? const SliverToBoxAdapter(
-                  child: _EmptySection(message: 'No charts in library'),
-                )
-              : SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => _ChartRow(chart: charts[index]),
-                    childCount: charts.length,
-                  ),
-                ),
-        ),
-
-        // Bottom padding
-        const SliverToBoxAdapter(child: SizedBox(height: 16)),
-      ],
+  Widget build(BuildContext context) {
+    return const _CenteredHint(
+      icon: CupertinoIcons.search,
+      message: 'Search songs, charts, bookings, and contacts',
     );
   }
 }
@@ -369,59 +311,67 @@ class _ChartRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-      decoration: BoxDecoration(
-        color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: CupertinoColors.systemTeal
-                  .resolveFrom(context)
-                  .withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              CupertinoIcons.doc_text,
-              size: 18,
-              color: CupertinoColors.systemTeal.resolveFrom(context),
-            ),
+    return Semantics(
+      button: true,
+      label: '${chart.title}, by ${chart.composer}',
+      child: GestureDetector(
+        onTap: () => context.push('/library/${chart.id}', extra: chart.bandId),
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+          decoration: BoxDecoration(
+            color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
+            borderRadius: BorderRadius.circular(12),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  chart.title,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemTeal
+                      .resolveFrom(context)
+                      .withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
                 ),
-                if (chart.composer.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    chart.composer,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color:
-                          CupertinoColors.secondaryLabel.resolveFrom(context),
+                child: Icon(
+                  CupertinoIcons.doc_text,
+                  size: 18,
+                  color: CupertinoColors.systemTeal.resolveFrom(context),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      chart.title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
-            ),
+                    if (chart.composer.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        chart.composer,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color:
+                              CupertinoColors.secondaryLabel.resolveFrom(context),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -711,44 +661,6 @@ class _CenteredHint extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InlineError extends StatelessWidget {
-  const _InlineError({required this.message});
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Text(
-        message,
-        style: TextStyle(
-          fontSize: 13,
-          color: CupertinoColors.systemRed.resolveFrom(context),
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptySection extends StatelessWidget {
-  const _EmptySection({required this.message});
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Text(
-        message,
-        style: TextStyle(
-          fontSize: 13,
-          color: CupertinoColors.secondaryLabel.resolveFrom(context),
         ),
       ),
     );

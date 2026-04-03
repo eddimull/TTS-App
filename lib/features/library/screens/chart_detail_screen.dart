@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show LinearProgressIndicator;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../data/library_repository.dart';
 import '../data/models/chart.dart';
 import '../providers/library_provider.dart';
@@ -67,6 +70,39 @@ class _ChartDetailBody extends ConsumerWidget {
   final Chart chart;
   final int bandId;
   final int chartId;
+
+  Future<void> _openUpload(
+    BuildContext context,
+    WidgetRef ref,
+    ChartUpload upload,
+  ) async {
+    try {
+      final result = await ref
+          .read(libraryRepositoryProvider)
+          .downloadChartUpload(bandId, chartId, upload.id);
+
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/${result.filename}');
+      await file.writeAsBytes(result.bytes);
+      await OpenFile.open(file.path, type: result.mimeType);
+    } catch (e) {
+      if (context.mounted) {
+        showCupertinoDialog<void>(
+          context: context,
+          builder: (ctx) => CupertinoAlertDialog(
+            title: const Text('Could Not Open File'),
+            content: Text(e.toString()),
+            actions: [
+              CupertinoDialogAction(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
 
   void _showAddUploadSheet(BuildContext context, WidgetRef ref) {
     // showCupertinoModalPopup creates a new route and loses the ProviderScope
@@ -191,38 +227,7 @@ class _ChartDetailBody extends ConsumerWidget {
                       ...chart.uploads.map(
                         (u) => _UploadRow(
                           upload: u,
-                          onOpen: () async {
-                            try {
-                              final signedUrl = await ref
-                                  .read(libraryRepositoryProvider)
-                                  .getChartUploadDownloadUrl(
-                                    bandId,
-                                    chartId,
-                                    u.id,
-                                  );
-                              await launchUrl(
-                                Uri.parse(signedUrl),
-                                mode: LaunchMode.externalApplication,
-                              );
-                            } catch (e) {
-                              if (context.mounted) {
-                                showCupertinoDialog<void>(
-                                  context: context,
-                                  builder: (ctx) => CupertinoAlertDialog(
-                                    title: const Text('Could Not Open File'),
-                                    content: Text(e.toString()),
-                                    actions: [
-                                      CupertinoDialogAction(
-                                        onPressed: () =>
-                                            Navigator.of(ctx).pop(),
-                                        child: const Text('OK'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }
-                            }
-                          },
+                          onOpen: () => _openUpload(context, ref, u),
                           onDelete: () =>
                               _confirmDeleteUpload(context, ref, u),
                         ),

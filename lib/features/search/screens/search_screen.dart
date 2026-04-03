@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../shared/widgets/nav_row.dart';
 import '../../../shared/widgets/status_chip.dart';
 import '../data/models/search_models.dart';
 import '../providers/search_provider.dart';
@@ -242,61 +243,15 @@ class _SongRow extends StatelessWidget {
       if (song.songKey.isNotEmpty) song.songKey,
       if (song.bpm > 0) '${song.bpm} BPM',
     ];
-    final subLabel = subParts.join(' · ');
+    final subLabel = subParts.isEmpty ? null : subParts.join(' · ');
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-      decoration: BoxDecoration(
-        color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: CupertinoColors.systemPurple
-                  .resolveFrom(context)
-                  .withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              CupertinoIcons.music_note,
-              size: 18,
-              color: CupertinoColors.systemPurple.resolveFrom(context),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  song.title,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (subLabel.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subLabel,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color:
-                          CupertinoColors.secondaryLabel.resolveFrom(context),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
+    return NavRow(
+      title: song.title,
+      subtitle: subLabel,
+      showChevron: false,
+      leading: NavRowIcon(
+        icon: CupertinoIcons.music_note,
+        color: CupertinoColors.systemPurple.resolveFrom(context),
       ),
     );
   }
@@ -311,68 +266,15 @@ class _ChartRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: '${chart.title}, by ${chart.composer}',
-      child: GestureDetector(
-        onTap: () => context.push('/library/${chart.id}', extra: chart.bandId),
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-          decoration: BoxDecoration(
-            color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: CupertinoColors.systemTeal
-                      .resolveFrom(context)
-                      .withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  CupertinoIcons.doc_text,
-                  size: 18,
-                  color: CupertinoColors.systemTeal.resolveFrom(context),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      chart.title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (chart.composer.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        chart.composer,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color:
-                              CupertinoColors.secondaryLabel.resolveFrom(context),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+    return NavRow(
+      title: chart.title,
+      subtitle: chart.composer.isNotEmpty ? chart.composer : null,
+      semanticLabel: '${chart.title}, by ${chart.composer}',
+      leading: NavRowIcon(
+        icon: CupertinoIcons.doc_text,
+        color: CupertinoColors.systemTeal.resolveFrom(context),
       ),
+      onTap: () => context.push('/library/${chart.id}', extra: chart.bandId),
     );
   }
 }
@@ -508,102 +410,38 @@ class _ContactRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Sub-label: prefer email, fall back to phone, then empty.
+    // Sub-label: prefer email, fall back to phone.
     final subLabel = contact.email.isNotEmpty
         ? contact.email
         : contact.phone.isNotEmpty
             ? contact.phone
             : null;
 
-    return Semantics(
-      button: true,
-      label: contact.name,
-      child: GestureDetector(
-        onTap: () => _showComingSoon(context),
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-          decoration: BoxDecoration(
-            color:
-                CupertinoColors.tertiarySystemBackground.resolveFrom(context),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              // Avatar circle with initial.
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: CupertinoColors.systemBlue
-                      .resolveFrom(context)
-                      .withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    contact.name.isNotEmpty
-                        ? contact.name[0].toUpperCase()
-                        : '?',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color:
-                          CupertinoColors.systemBlue.resolveFrom(context),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      contact.name,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (subLabel != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        subLabel,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    if (contact.phone.isNotEmpty &&
-                        contact.email.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        contact.phone,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Icon(
-                CupertinoIcons.chevron_right,
-                size: 14,
-                color: CupertinoColors.tertiaryLabel.resolveFrom(context),
-              ),
-            ],
+    final initial =
+        contact.name.isNotEmpty ? contact.name[0].toUpperCase() : '?';
+    final accentColor = CupertinoColors.systemBlue.resolveFrom(context);
+
+    return NavRow(
+      title: contact.name,
+      subtitle: subLabel,
+      leading: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: accentColor.withValues(alpha: 0.15),
+          shape: BoxShape.circle,
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          initial,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: accentColor,
           ),
         ),
       ),
+      onTap: () => _showComingSoon(context),
     );
   }
 

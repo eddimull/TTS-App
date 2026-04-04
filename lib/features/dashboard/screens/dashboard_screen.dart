@@ -26,9 +26,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final authAsync = ref.watch(authProvider);
-    final authState = authAsync.valueOrNull;
+    final authState = authAsync.value;
     final bandAsync = ref.watch(selectedBandProvider);
-    final bandId = bandAsync.valueOrNull;
+    final bandId = bandAsync.value;
 
     final userName =
         authState is AuthAuthenticated ? authState.user.name : 'there';

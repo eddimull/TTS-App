@@ -66,7 +66,7 @@ class LibraryNotifier extends AsyncNotifier<LibraryState> {
     );
 
     // Merge into existing list and re-sort alphabetically.
-    final current = state.valueOrNull ?? const LibraryState();
+    final current = state.value ?? const LibraryState();
     final updated = [...current.charts, newChart]
       ..sort(
           (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
@@ -80,7 +80,7 @@ class LibraryNotifier extends AsyncNotifier<LibraryState> {
     final repo = ref.read(libraryRepositoryProvider);
     await repo.deleteChart(bandId, chartId);
 
-    final current = state.valueOrNull ?? const LibraryState();
+    final current = state.value ?? const LibraryState();
     final updated =
         current.charts.where((c) => c.id != chartId).toList();
     state = AsyncData(current.copyWith(charts: updated));
@@ -134,7 +134,7 @@ class ChartUploadState {
       );
 }
 
-class ChartUploadNotifier extends AutoDisposeNotifier<ChartUploadState> {
+class ChartUploadNotifier extends Notifier<ChartUploadState> {
   @override
   ChartUploadState build() => const ChartUploadState();
 
@@ -183,6 +183,6 @@ class ChartUploadNotifier extends AutoDisposeNotifier<ChartUploadState> {
 }
 
 final chartUploadProvider =
-    AutoDisposeNotifierProvider<ChartUploadNotifier, ChartUploadState>(
+    NotifierProvider<ChartUploadNotifier, ChartUploadState>(
   ChartUploadNotifier.new,
 );

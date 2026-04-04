@@ -60,7 +60,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
     setState(() => _isSubmitting = false);
 
-    final authState = ref.read(authProvider).valueOrNull;
+    final authState = ref.read(authProvider).value;
     if (authState is AuthUnauthenticated && authState.errorMessage != null) {
       showCupertinoDialog(
         context: context,

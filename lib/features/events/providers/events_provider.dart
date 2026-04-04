@@ -3,9 +3,6 @@ import '../data/events_repository.dart';
 import '../data/models/event_detail.dart';
 import '../data/models/event_summary.dart';
 
-// ── Band events (list) ────────────────────────────────────────────────────────
-
-/// Arguments for [bandEventsProvider].
 class BandEventsParams {
   const BandEventsParams({required this.bandId, this.from, this.to});
 
@@ -26,49 +23,32 @@ class BandEventsParams {
   int get hashCode => Object.hash(bandId, from, to);
 }
 
-class BandEventsNotifier
-    extends AutoDisposeFamilyAsyncNotifier<List<EventSummary>, BandEventsParams> {
+class BandEventsNotifier extends AsyncNotifier<List<EventSummary>> {
+  BandEventsNotifier(this._params);
+  final BandEventsParams _params;
+
   @override
-  Future<List<EventSummary>> build(BandEventsParams arg) async {
+  Future<List<EventSummary>> build() async {
     final repo = ref.watch(eventsRepositoryProvider);
-    return repo.getBandEvents(arg.bandId, from: arg.from, to: arg.to);
+    return repo.getBandEvents(_params.bandId, from: _params.from, to: _params.to);
   }
 
-  /// Re-fetches the list from the server.
   Future<void> refresh() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(
-      () {
-        final repo = ref.read(eventsRepositoryProvider);
-        return repo.getBandEvents(arg.bandId, from: arg.from, to: arg.to);
-      },
-    );
+    state = await AsyncValue.guard(() {
+      final repo = ref.read(eventsRepositoryProvider);
+      return repo.getBandEvents(_params.bandId, from: _params.from, to: _params.to);
+    });
   }
 }
 
-/// Provides the list of [EventSummary] for a given band.
-///
-/// Usage:
-/// ```dart
-/// final events = ref.watch(
-///   bandEventsProvider(BandEventsParams(bandId: 42)),
-/// );
-/// ```
-final bandEventsProvider = AutoDisposeAsyncNotifierProviderFamily<
+final bandEventsProvider = AsyncNotifierProvider.family<
     BandEventsNotifier, List<EventSummary>, BandEventsParams>(
-  BandEventsNotifier.new,
+  (arg) => BandEventsNotifier(arg),
 );
 
-// ── Event detail (single) ─────────────────────────────────────────────────────
-
-/// Provides the [EventDetail] for a single event [key].
-///
-/// Usage:
-/// ```dart
-/// final detail = ref.watch(eventDetailProvider('abc123'));
-/// ```
 final eventDetailProvider =
-    AutoDisposeFutureProviderFamily<EventDetail, String>((ref, key) async {
+    FutureProvider.family<EventDetail, String>((ref, key) async {
   final repo = ref.watch(eventsRepositoryProvider);
   return repo.getEventDetail(key);
 });

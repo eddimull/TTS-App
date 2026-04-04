@@ -9,7 +9,6 @@ import '../data/models/event_type.dart';
 
 // ── Band bookings (list) ──────────────────────────────────────────────────────
 
-/// Arguments for [bandBookingsProvider].
 class BandBookingsParams {
   const BandBookingsParams({
     required this.bandId,
@@ -21,8 +20,6 @@ class BandBookingsParams {
   final int bandId;
   final String? status;
   final bool upcomingOnly;
-
-  /// When set, only bookings whose date falls in this calendar year are returned.
   final int? year;
 
   @override
@@ -39,60 +36,43 @@ class BandBookingsParams {
   int get hashCode => Object.hash(bandId, status, upcomingOnly, year);
 }
 
-class BandBookingsNotifier
-    extends AutoDisposeFamilyAsyncNotifier<List<BookingSummary>, BandBookingsParams> {
+class BandBookingsNotifier extends AsyncNotifier<List<BookingSummary>> {
+  BandBookingsNotifier(this._params);
+  final BandBookingsParams _params;
+
   @override
-  Future<List<BookingSummary>> build(BandBookingsParams arg) async {
+  Future<List<BookingSummary>> build() async {
     final repo = ref.watch(bookingsRepositoryProvider);
     return repo.getBandBookings(
-      arg.bandId,
-      status: arg.status,
-      upcomingOnly: arg.upcomingOnly,
-      year: arg.year,
+      _params.bandId,
+      status: _params.status,
+      upcomingOnly: _params.upcomingOnly,
+      year: _params.year,
     );
   }
 
-  /// Re-fetches the list from the server.
   Future<void> refresh() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(
-      () {
-        final repo = ref.read(bookingsRepositoryProvider);
-        return repo.getBandBookings(
-          arg.bandId,
-          status: arg.status,
-          upcomingOnly: arg.upcomingOnly,
-          year: arg.year,
-        );
-      },
-    );
+    state = await AsyncValue.guard(() {
+      final repo = ref.read(bookingsRepositoryProvider);
+      return repo.getBandBookings(
+        _params.bandId,
+        status: _params.status,
+        upcomingOnly: _params.upcomingOnly,
+        year: _params.year,
+      );
+    });
   }
 }
 
-/// Provides the list of [BookingSummary] for a given band.
-///
-/// Usage:
-/// ```dart
-/// final bookings = ref.watch(
-///   bandBookingsProvider(BandBookingsParams(bandId: 42)),
-/// );
-/// ```
-final bandBookingsProvider = AutoDisposeAsyncNotifierProviderFamily<
+final bandBookingsProvider = AsyncNotifierProvider.family<
     BandBookingsNotifier, List<BookingSummary>, BandBookingsParams>(
-  BandBookingsNotifier.new,
+  (arg) => BandBookingsNotifier(arg),
 );
 
 // ── Booking detail (single) ───────────────────────────────────────────────────
 
-/// Provides the [BookingDetail] for a single booking.
-///
-/// Usage:
-/// ```dart
-/// final detail = ref.watch(
-///   bookingDetailProvider((bandId: 42, bookingId: 7)),
-/// );
-/// ```
-final bookingDetailProvider = AutoDisposeFutureProviderFamily<BookingDetail,
+final bookingDetailProvider = FutureProvider.family<BookingDetail,
     ({int bandId, int bookingId})>((ref, args) async {
   final repo = ref.watch(bookingsRepositoryProvider);
   return repo.getBookingDetail(args.bandId, args.bookingId);
@@ -107,34 +87,24 @@ final eventTypesProvider = FutureProvider<List<EventType>>((ref) async {
 
 // ── Contact library (search) ──────────────────────────────────────────────────
 
-final contactLibraryProvider = FutureProvider.autoDispose
-    .family<List<ContactLibraryItem>, ({int bandId, String query})>(
-        (ref, params) async {
+final contactLibraryProvider = FutureProvider.family<
+    List<ContactLibraryItem>, ({int bandId, String query})>((ref, params) async {
   final repo = ref.watch(bookingsRepositoryProvider);
   return repo.getContactLibrary(params.bandId, query: params.query);
 });
 
 // ── Booking history ───────────────────────────────────────────────────────────
 
-final bookingHistoryProvider = FutureProvider.autoDispose
-    .family<List<BookingHistoryEntry>, ({int bandId, int bookingId})>(
-        (ref, params) async {
+final bookingHistoryProvider = FutureProvider.family<
+    List<BookingHistoryEntry>, ({int bandId, int bookingId})>((ref, params) async {
   final repo = ref.watch(bookingsRepositoryProvider);
   return repo.getHistory(params.bandId, params.bookingId);
 });
 
-// ── Date status map (used by the calendar date picker) ────────────────────────
+// ── Date status map ───────────────────────────────────────────────────────────
 
-/// Returns a map from ISO date string (e.g. "2026-05-15") to the highest-priority
-/// [BookingDateStatus] for that date.
-///
-/// Priority order: confirmed > pending > draft. If multiple bookings fall on
-/// the same date, the highest-priority status wins so the calendar never
-/// under-warns the user.
-///
-/// Only active statuses are included — cancelled bookings are excluded.
 final bookingDateStatusesProvider =
-    FutureProvider.autoDispose.family<Map<String, BookingDateStatus>, int>(
+    FutureProvider.family<Map<String, BookingDateStatus>, int>(
         (ref, bandId) async {
   final repo = ref.watch(bookingsRepositoryProvider);
   final bookings = await repo.getBandBookings(bandId);
@@ -142,7 +112,6 @@ final bookingDateStatusesProvider =
   final map = <String, BookingDateStatus>{};
   for (final b in bookings) {
     final status = b.status?.toLowerCase();
-    // Skip cancelled / unknown statuses.
     final dateStatus = switch (status) {
       'confirmed' => BookingDateStatus.confirmed,
       'pending' => BookingDateStatus.pending,
@@ -159,15 +128,8 @@ final bookingDateStatusesProvider =
   return map;
 });
 
-/// Returns a map from ISO date string (e.g. "2026-05-15") to a
-/// [BookingDateInfo] that carries both the highest-priority status and the
-/// title of the booking that earned that status.
-///
-/// When multiple bookings share a date the one with the highest-priority status
-/// wins; its [BookingSummary.name] is stored as [BookingDateInfo.bookingTitle].
-/// Cancelled / unknown statuses are excluded.
 final bookingDateInfoProvider =
-    FutureProvider.autoDispose.family<Map<String, BookingDateInfo>, int>(
+    FutureProvider.family<Map<String, BookingDateInfo>, int>(
         (ref, bandId) async {
   final repo = ref.watch(bookingsRepositoryProvider);
   final bookings = await repo.getBandBookings(bandId);

@@ -13,7 +13,7 @@ import '../data/models/rehearsal_schedule.dart';
 /// final schedules = ref.watch(schedulesProvider(bandId));
 /// ```
 final schedulesProvider =
-    AutoDisposeFutureProviderFamily<List<RehearsalSchedule>, int>(
+    FutureProvider.family<List<RehearsalSchedule>, int>(
         (ref, bandId) async {
   final repo = ref.watch(rehearsalsRepositoryProvider);
   return repo.getSchedules(bandId);
@@ -23,7 +23,7 @@ final schedulesProvider =
 
 /// Provides the [RehearsalDetail] for a single rehearsal by integer id.
 final rehearsalDetailProvider =
-    AutoDisposeFutureProviderFamily<RehearsalDetail, int>(
+    FutureProvider.family<RehearsalDetail, int>(
         (ref, rehearsalId) async {
   final repo = ref.watch(rehearsalsRepositoryProvider);
   return repo.getRehearsalDetail(rehearsalId);
@@ -32,7 +32,7 @@ final rehearsalDetailProvider =
 /// Provides the [RehearsalDetail] resolved from a virtual key string.
 /// Used when navigating from the dashboard to a virtual rehearsal.
 final rehearsalDetailByKeyProvider =
-    AutoDisposeFutureProviderFamily<RehearsalDetail, String>(
+    FutureProvider.family<RehearsalDetail, String>(
         (ref, key) async {
   final repo = ref.watch(rehearsalsRepositoryProvider);
   return repo.getRehearsalByKey(key);

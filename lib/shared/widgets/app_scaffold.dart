@@ -72,8 +72,8 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     final connectivityAsync = ref.watch(connectivityProvider);
 
     ref.listen(connectivityProvider, (previous, next) {
-      final wasOnline = previous?.valueOrNull ?? true;
-      final isOnline = next.valueOrNull ?? true;
+      final wasOnline = previous?.value ?? true;
+      final isOnline = next.value ?? true;
       if (!wasOnline && isOnline) {
         setState(() => _showBackOnline = true);
         Future.delayed(const Duration(seconds: 2), () {
@@ -82,7 +82,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       }
     });
 
-    final isOffline = connectivityAsync.valueOrNull == false;
+    final isOffline = connectivityAsync.value == false;
 
     return Column(
       children: [

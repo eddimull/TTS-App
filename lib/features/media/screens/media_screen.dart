@@ -29,7 +29,7 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
   }
 
   MediaListParams get _params {
-    final bandId = ref.read(selectedBandProvider).valueOrNull ?? 0;
+    final bandId = ref.read(selectedBandProvider).value ?? 0;
     return MediaListParams(
       bandId: bandId,
       folderPath: _folderPath,
@@ -40,7 +40,7 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bandId = ref.watch(selectedBandProvider).valueOrNull ?? 0;
+    final bandId = ref.watch(selectedBandProvider).value ?? 0;
     final listState = ref.watch(mediaListProvider(_params));
     final uploadState = ref.watch(uploadProvider);
 

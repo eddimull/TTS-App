@@ -55,15 +55,15 @@ class LiveSessionState {
 
 // ── Notifier ───────────────────────────────────────────────────────────────────
 
-class LiveSessionNotifier
-    extends AutoDisposeFamilyNotifier<LiveSessionState, String> {
-  String get _eventKey => arg;
+class LiveSessionNotifier extends Notifier<LiveSessionState> {
+  LiveSessionNotifier(this._eventKey);
+  final String _eventKey;
   SetlistRepository? _repo;
   PusherChannelsFlutter? _pusher;
   String? _token;
 
   @override
-  LiveSessionState build(String arg) {
+  LiveSessionState build() {
     ref.onDispose(_disconnect);
     return const LiveSessionState(isLoading: true);
   }
@@ -367,7 +367,7 @@ class LiveSessionNotifier
 
 // ── Provider ───────────────────────────────────────────────────────────────────
 
-final liveSessionProvider = AutoDisposeNotifierProviderFamily<
+final liveSessionProvider = NotifierProvider.family<
     LiveSessionNotifier, LiveSessionState, String>(
-  LiveSessionNotifier.new,
+  (arg) => LiveSessionNotifier(arg),
 );

@@ -83,10 +83,12 @@ class MediaListState {
       );
 }
 
-class MediaListNotifier
-    extends AutoDisposeFamilyNotifier<MediaListState, MediaListParams> {
+class MediaListNotifier extends Notifier<MediaListState> {
+  MediaListNotifier(this._arg);
+  final MediaListParams _arg;
+
   @override
-  MediaListState build(MediaListParams arg) {
+  MediaListState build() {
     Future.microtask(load);
     return const MediaListState(isLoading: true);
   }
@@ -97,10 +99,10 @@ class MediaListNotifier
     state = state.copyWith(isLoading: true, error: () => null);
     try {
       final page = await _repo.getMedia(
-        arg.bandId,
-        folderPath: arg.folderPath,
-        mediaType: arg.mediaType,
-        search: arg.search,
+        _arg.bandId,
+        folderPath: _arg.folderPath,
+        mediaType: _arg.mediaType,
+        search: _arg.search,
       );
       state = state.copyWith(
         files: page.files,
@@ -123,11 +125,11 @@ class MediaListNotifier
     state = state.copyWith(isLoadingMore: true);
     try {
       final page = await _repo.getMedia(
-        arg.bandId,
+        _arg.bandId,
         page: state.currentPage + 1,
-        folderPath: arg.folderPath,
-        mediaType: arg.mediaType,
-        search: arg.search,
+        folderPath: _arg.folderPath,
+        mediaType: _arg.mediaType,
+        search: _arg.search,
       );
       state = state.copyWith(
         files: [...state.files, ...page.files],
@@ -151,8 +153,8 @@ class MediaListNotifier
   }
 }
 
-final mediaListProvider = AutoDisposeNotifierProviderFamily<MediaListNotifier,
-    MediaListState, MediaListParams>(MediaListNotifier.new);
+final mediaListProvider = NotifierProvider.family<MediaListNotifier,
+    MediaListState, MediaListParams>((arg) => MediaListNotifier(arg));
 
 // ── Upload state ───────────────────────────────────────────────────────────────
 
@@ -184,7 +186,7 @@ class UploadState {
       );
 }
 
-class UploadNotifier extends AutoDisposeNotifier<UploadState> {
+class UploadNotifier extends Notifier<UploadState> {
   @override
   UploadState build() => const UploadState();
 
@@ -215,6 +217,6 @@ class UploadNotifier extends AutoDisposeNotifier<UploadState> {
 }
 
 final uploadProvider =
-    AutoDisposeNotifierProvider<UploadNotifier, UploadState>(
+    NotifierProvider<UploadNotifier, UploadState>(
   UploadNotifier.new,
 );

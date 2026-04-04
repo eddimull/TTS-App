@@ -57,7 +57,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // re-evaluate when refreshListenable fires after the async completes).
       if (authAsync.isLoading || bandAsync.isLoading) return null;
 
-      final authState = authAsync.valueOrNull;
+      final authState = authAsync.value;
 
       final isLoginRoute = state.matchedLocation == '/login';
       final isBandsRoute = state.matchedLocation == '/bands';
@@ -75,7 +75,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         // If already on login, clear it.
         if (isLoginRoute) return '/dashboard';
 
-        final bandId = bandAsync.valueOrNull;
+        final bandId = bandAsync.value;
 
         if (bandId == null) {
           // No band selected yet.

@@ -33,7 +33,7 @@ class SearchState {
       );
 }
 
-class SearchNotifier extends AutoDisposeNotifier<SearchState> {
+class SearchNotifier extends Notifier<SearchState> {
   Timer? _debounce;
 
   @override
@@ -85,6 +85,6 @@ class SearchNotifier extends AutoDisposeNotifier<SearchState> {
 }
 
 final searchProvider =
-    AutoDisposeNotifierProvider<SearchNotifier, SearchState>(
+    NotifierProvider<SearchNotifier, SearchState>(
   SearchNotifier.new,
 );

@@ -2,15 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/finances_repository.dart';
 import '../data/models/finance_booking.dart';
 
-// ── Params ────────────────────────────────────────────────────────────────────
-
-/// Arguments for the finances family providers.
 class FinancesParams {
   const FinancesParams({required this.bandId, required this.year});
-
   final int bandId;
   final int year;
-
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -18,71 +13,48 @@ class FinancesParams {
           runtimeType == other.runtimeType &&
           bandId == other.bandId &&
           year == other.year;
-
   @override
   int get hashCode => Object.hash(bandId, year);
 }
 
-// ── Unpaid bookings ───────────────────────────────────────────────────────────
+class _UnpaidServicesNotifier extends AsyncNotifier<List<FinanceBooking>> {
+  _UnpaidServicesNotifier(this._params);
+  final FinancesParams _params;
 
-class _UnpaidServicesNotifier
-    extends AutoDisposeFamilyAsyncNotifier<List<FinanceBooking>, FinancesParams> {
   @override
-  Future<List<FinanceBooking>> build(FinancesParams arg) async {
-    final repo = ref.watch(financesRepositoryProvider);
-    return repo.fetchUnpaid(arg.bandId, year: arg.year);
+  Future<List<FinanceBooking>> build() async {
+    return ref.watch(financesRepositoryProvider).fetchUnpaid(_params.bandId, year: _params.year);
   }
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() {
-      final repo = ref.read(financesRepositoryProvider);
-      return repo.fetchUnpaid(arg.bandId, year: arg.year);
-    });
+    state = await AsyncValue.guard(
+        () => ref.read(financesRepositoryProvider).fetchUnpaid(_params.bandId, year: _params.year));
   }
 }
 
-/// Provides the list of unpaid [FinanceBooking]s for a given band and year.
-///
-/// Usage:
-/// ```dart
-/// final bookings = ref.watch(
-///   unpaidServicesProvider(FinancesParams(bandId: 42, year: 2026)),
-/// );
-/// ```
-final unpaidServicesProvider = AutoDisposeAsyncNotifierProviderFamily<
+final unpaidServicesProvider = AsyncNotifierProvider.family<
     _UnpaidServicesNotifier, List<FinanceBooking>, FinancesParams>(
-  _UnpaidServicesNotifier.new,
+  (arg) => _UnpaidServicesNotifier(arg),
 );
 
-// ── Paid bookings ─────────────────────────────────────────────────────────────
+class _PaidServicesNotifier extends AsyncNotifier<List<FinanceBooking>> {
+  _PaidServicesNotifier(this._params);
+  final FinancesParams _params;
 
-class _PaidServicesNotifier
-    extends AutoDisposeFamilyAsyncNotifier<List<FinanceBooking>, FinancesParams> {
   @override
-  Future<List<FinanceBooking>> build(FinancesParams arg) async {
-    final repo = ref.watch(financesRepositoryProvider);
-    return repo.fetchPaid(arg.bandId, year: arg.year);
+  Future<List<FinanceBooking>> build() async {
+    return ref.watch(financesRepositoryProvider).fetchPaid(_params.bandId, year: _params.year);
   }
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() {
-      final repo = ref.read(financesRepositoryProvider);
-      return repo.fetchPaid(arg.bandId, year: arg.year);
-    });
+    state = await AsyncValue.guard(
+        () => ref.read(financesRepositoryProvider).fetchPaid(_params.bandId, year: _params.year));
   }
 }
 
-/// Provides the list of paid [FinanceBooking]s for a given band and year.
-///
-/// Usage:
-/// ```dart
-/// final bookings = ref.watch(
-///   paidServicesProvider(FinancesParams(bandId: 42, year: 2026)),
-/// );
-/// ```
-final paidServicesProvider = AutoDisposeAsyncNotifierProviderFamily<
+final paidServicesProvider = AsyncNotifierProvider.family<
     _PaidServicesNotifier, List<FinanceBooking>, FinancesParams>(
-  _PaidServicesNotifier.new,
+  (arg) => _PaidServicesNotifier(arg),
 );

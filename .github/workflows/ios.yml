@@ -60,6 +60,10 @@ jobs:
               'CODE_SIGN_STYLE = Automatic;',
               'CODE_SIGN_STYLE = Manual;'
           )
+          content = content.replace(
+              '"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";',
+              '"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";'
+          )
           content = re.sub(
               r'(CODE_SIGN_STYLE = Manual;)',
               r'\1\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "TTS Bandmate App Store";',

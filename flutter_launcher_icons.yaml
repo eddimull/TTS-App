@@ -1,0 +1,6 @@
+flutter_launcher_icons:
+  ios: true
+  android: false
+  image_path: "assets/images/app_icon.png"
+  min_ios_version: "16.6"
+  remove_alpha_ios: true

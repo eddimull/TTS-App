@@ -49,32 +49,9 @@ jobs:
 
       - name: Switch to manual code signing
         run: |
-          python3 - <<'EOF'
-          import re
-
-          path = 'ios/Runner.xcodeproj/project.pbxproj'
-          with open(path, 'r') as f:
-              content = f.read()
-
-          content = content.replace(
-              'CODE_SIGN_STYLE = Automatic;',
-              'CODE_SIGN_STYLE = Manual;'
-          )
-          content = content.replace(
-              '"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";',
-              '"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";'
-          )
-          content = re.sub(
-              r'(CODE_SIGN_STYLE = Manual;)',
-              r'\1\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "TTS Bandmate App Store";',
-              content
-          )
-
-          with open(path, 'w') as f:
-              f.write(content)
-
-          print("Switched to manual signing")
-          EOF
+          echo "CODE_SIGN_STYLE=Manual" >> ios/Flutter/Release.xcconfig
+          echo "CODE_SIGN_IDENTITY=Apple Distribution" >> ios/Flutter/Release.xcconfig
+          echo "PROVISIONING_PROFILE_SPECIFIER=TTS Bandmate App Store" >> ios/Flutter/Release.xcconfig
 
       - name: Build IPA
         run: |

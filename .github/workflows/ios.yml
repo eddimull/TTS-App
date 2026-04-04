@@ -59,6 +59,7 @@ jobs:
       - name: Build IPA
         run: |
           flutter build ipa --release \
+            --build-number=$GITHUB_RUN_NUMBER \
             --dart-define=BASE_URL=${{ secrets.BASE_URL }} \
             --dart-define=PUSHER_APP_KEY=${{ secrets.PUSHER_APP_KEY }} \
             --dart-define=PUSHER_APP_CLUSTER=${{ secrets.PUSHER_APP_CLUSTER }} \

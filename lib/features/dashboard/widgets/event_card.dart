@@ -64,6 +64,10 @@ class EventCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         if (event.status != null) StatusChip(status: event.status!),
+                        if (event.rosterStatus != null &&
+                            event.rosterStatus != 'none' &&
+                            event.rosterStatus!.isNotEmpty)
+                          _RosterDot(status: event.rosterStatus!),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -117,6 +121,33 @@ class _EventTypeIcon extends StatelessWidget {
     }
     return const Icon(CupertinoIcons.music_mic,
         size: 24, color: CupertinoColors.secondaryLabel);
+  }
+}
+
+/// A small colored dot indicating roster completion status.
+/// Hidden when [status] is unrecognised.
+class _RosterDot extends StatelessWidget {
+  const _RosterDot({required this.status});
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (status) {
+      'green' => CupertinoColors.systemGreen,
+      'yellow' => CupertinoColors.systemOrange,
+      'red' => CupertinoColors.systemRed,
+      _ => null,
+    };
+    if (color == null) return const SizedBox.shrink();
+    return Container(
+      width: 10,
+      height: 10,
+      margin: const EdgeInsets.only(left: 6),
+      decoration: BoxDecoration(
+        color: color.resolveFrom(context),
+        shape: BoxShape.circle,
+      ),
+    );
   }
 }
 

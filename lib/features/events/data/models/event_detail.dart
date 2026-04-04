@@ -188,6 +188,7 @@ class EventDetail {
     this.wedding,
     required this.contacts,
     required this.attachments,
+    this.rosterStatus,
   });
 
   final int id;
@@ -228,6 +229,9 @@ class EventDetail {
   final WeddingDetail? wedding;
   final List<EventContact> contacts;
   final List<EventAttachment> attachments;
+
+  /// One of "green", "yellow", "red", "none", or null.
+  final String? rosterStatus;
 
   factory EventDetail.fromJson(Map<String, dynamic> json) {
     final rawMembers = json['members'];
@@ -299,6 +303,7 @@ class EventDetail {
       wedding: wedding,
       contacts: contacts,
       attachments: attachments,
+      rosterStatus: json['roster_status'] as String?,
     );
   }
 

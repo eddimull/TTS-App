@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/core_providers.dart';
 import 'models/event_detail.dart';
 import 'models/event_summary.dart';
+import 'models/sub_entry.dart';
 
 class EventsRepository {
   EventsRepository(this._dio);
@@ -72,6 +73,49 @@ class EventsRepository {
   Future<void> deleteAttachment(String key, int attachmentId) async {
     await _dio.delete<void>(
       ApiEndpoints.mobileDeleteEventAttachment(key, attachmentId),
+    );
+  }
+
+  /// Fetches the substitute call list for a given role on [eventKey].
+  Future<List<SubEntry>> fetchSubs(String eventKey, int bandRoleId) async {
+    final resp = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileEventSubs(eventKey),
+      queryParameters: {'band_role_id': bandRoleId},
+    );
+    final raw = resp.data!['subs'] as List;
+    return raw.cast<Map<String, dynamic>>().map(SubEntry.fromJson).toList();
+  }
+
+  /// Assigns or clears a substitute for a roster slot on [eventKey].
+  ///
+  /// [memberId] is the EventMember id. Pass 0 when the slot has no EventMember
+  /// row yet (synthetic unfilled slot) — in that case [slotId] is required.
+  ///
+  /// Pass [clear] = true to remove the current sub.
+  /// Pass [rosterMemberId] to assign from the call list.
+  /// Pass [name] (and optionally [email]) to assign a custom sub.
+  Future<void> assignSub(
+    String eventKey,
+    int memberId, {
+    int? slotId,
+    int? rosterMemberId,
+    String? name,
+    String? email,
+    bool clear = false,
+  }) async {
+    final body = <String, dynamic>{};
+    if (slotId != null) body['slot_id'] = slotId;
+    if (clear) {
+      body['clear'] = true;
+    } else if (rosterMemberId != null) {
+      body['roster_member_id'] = rosterMemberId;
+    } else if (name != null) {
+      body['name'] = name;
+      if (email != null) body['email'] = email;
+    }
+    await _dio.post<void>(
+      ApiEndpoints.mobileEventMemberSub(eventKey, memberId),
+      data: body,
     );
   }
 }

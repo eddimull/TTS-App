@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/events_repository.dart';
 import '../data/models/event_detail.dart';
 import '../data/models/event_summary.dart';
+import '../data/models/sub_entry.dart';
 
 class BandEventsParams {
   const BandEventsParams({required this.bandId, this.from, this.to});
@@ -51,4 +52,13 @@ final eventDetailProvider =
     FutureProvider.family<EventDetail, String>((ref, key) async {
   final repo = ref.watch(eventsRepositoryProvider);
   return repo.getEventDetail(key);
+});
+
+/// Fetches the substitute call list for a specific role on an event.
+/// Keyed by a record of (eventKey, bandRoleId) so the cache is per-role.
+final eventSubsProvider = FutureProvider.autoDispose
+    .family<List<SubEntry>, ({String eventKey, int bandRoleId})>(
+        (ref, args) async {
+  final repo = ref.watch(eventsRepositoryProvider);
+  return repo.fetchSubs(args.eventKey, args.bandRoleId);
 });

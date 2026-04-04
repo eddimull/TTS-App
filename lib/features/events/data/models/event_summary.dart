@@ -11,6 +11,7 @@ class EventSummary {
     this.venueAddress,
     this.status,
     this.liveSessionId,
+    this.rosterStatus,
   });
 
   final int? id;
@@ -33,6 +34,9 @@ class EventSummary {
   final String? status;
   final int? liveSessionId;
 
+  /// One of "green", "yellow", "red", "none", or null.
+  final String? rosterStatus;
+
   factory EventSummary.fromJson(Map<String, dynamic> json) {
     return EventSummary(
       id: json['id'] == null ? null : (json['id'] as num).toInt(),
@@ -48,6 +52,7 @@ class EventSummary {
       liveSessionId: json['live_session_id'] == null
           ? null
           : (json['live_session_id'] as num).toInt(),
+      rosterStatus: json['roster_status'] as String?,
     );
   }
 

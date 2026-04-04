@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/events/data/events_repository.dart';
 import 'package:tts_bandmate/features/events/data/models/event_detail.dart';
 import 'package:tts_bandmate/features/events/data/models/event_summary.dart';
+import 'package:tts_bandmate/features/events/data/models/sub_entry.dart';
 import 'package:tts_bandmate/features/events/providers/events_provider.dart';
 
 // ── Fake repository ───────────────────────────────────────────────────────────
@@ -49,6 +50,21 @@ class FakeEventsRepository implements EventsRepository {
 
   @override
   Future<void> deleteAttachment(String key, int attachmentId) async {}
+
+  @override
+  Future<List<SubEntry>> fetchSubs(String eventKey, int bandRoleId) async =>
+      [];
+
+  @override
+  Future<void> assignSub(
+    String eventKey,
+    int memberId, {
+    int? slotId,
+    int? rosterMemberId,
+    String? name,
+    String? email,
+    bool clear = false,
+  }) async {}
 }
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────

@@ -68,4 +68,9 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/finances/unpaid';
   static String mobileBandFinancesPaid(int bandId) =>
       '/api/mobile/bands/$bandId/finances/paid';
+
+  static String mobileEventSubs(String key) =>
+      '/api/mobile/events/$key/subs';
+  static String mobileEventMemberSub(String key, int memberId) =>
+      '/api/mobile/events/$key/members/$memberId/sub';
 }

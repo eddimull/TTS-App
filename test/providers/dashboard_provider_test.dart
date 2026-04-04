@@ -26,11 +26,6 @@ class FakeDashboardRepository implements DashboardRepository {
   }
 }
 
-// Expose internal Dio field to satisfy the interface — not used by the fake.
-extension on FakeDashboardRepository {
-  dynamic get dio => throw UnimplementedError();
-}
-
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 EventSummary _makeEvent(String key) => EventSummary.fromJson({

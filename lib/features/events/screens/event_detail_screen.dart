@@ -12,8 +12,10 @@ import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/status_chip.dart';
+import '../data/events_repository.dart';
 import '../data/models/event_detail.dart';
 import '../data/models/event_member.dart';
+import '../data/models/sub_entry.dart';
 import '../providers/events_provider.dart';
 
 class EventDetailScreen extends ConsumerWidget {
@@ -180,12 +182,10 @@ class _EventDetailView extends StatelessWidget {
             ...event.contacts.map((c) => _ContactRow(contact: c)),
           ],
 
-          // Members
+          // Roster
           if (event.members.isNotEmpty) ...[
             const SizedBox(height: 20),
-            const _SectionHeader(title: 'Members'),
-            const SizedBox(height: 8),
-            ...event.members.map((m) => _MemberRow(member: m)),
+            _RosterSection(event: event),
           ],
 
           const SizedBox(height: 32),
@@ -1373,56 +1373,513 @@ class _NonImageLightboxPage extends StatelessWidget {
   }
 }
 
-// ── Members ───────────────────────────────────────────────────────────────────
+// ── Roster ────────────────────────────────────────────────────────────────────
 
-class _MemberRow extends StatelessWidget {
-  const _MemberRow({required this.member});
-  final EventMember member;
+/// Groups members by role and provides sub-assignment actions.
+/// Must be a ConsumerWidget because it reads providers for sub assignment.
+class _RosterSection extends ConsumerStatefulWidget {
+  const _RosterSection({required this.event});
+  final EventDetail event;
+
+  @override
+  ConsumerState<_RosterSection> createState() => _RosterSectionState();
+}
+
+class _RosterSectionState extends ConsumerState<_RosterSection> {
+  @override
+  Widget build(BuildContext context) {
+    final event = widget.event;
+
+    // Group members by section (BandRole), preserving insertion order.
+    final grouped = <String, List<EventMember>>{};
+    for (final m in event.members) {
+      (grouped[m.groupKey] ??= []).add(m);
+    }
+
+    final statusColor = switch (event.rosterStatus) {
+      'green' => CupertinoColors.systemGreen,
+      'yellow' => CupertinoColors.systemOrange,
+      'red' => CupertinoColors.systemRed,
+      _ => CupertinoColors.systemGrey,
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section header with roster status dot
+        Row(
+          children: [
+            const Text(
+              'Roster',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(width: 8),
+            if (event.rosterStatus != null &&
+                event.rosterStatus != 'none' &&
+                event.rosterStatus!.isNotEmpty)
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: statusColor.resolveFrom(context),
+                  shape: BoxShape.circle,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...grouped.entries.map(
+          (entry) => _RoleGroup(
+            role: entry.key,
+            members: entry.value,
+            event: event,
+            onAssignSub: (member) => _showSubPicker(member),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showSubPicker(EventMember member) async {
+    if (member.bandRoleId == null) return;
+    final event = widget.event;
+
+    final result = await showCupertinoModalPopup<_SubPickerResult>(
+      context: context,
+      builder: (_) => _SubPickerSheet(event: event, member: member),
+    );
+
+    if (result == null || !mounted) return;
+
+    final repo = ref.read(eventsRepositoryProvider);
+    // For synthetic slots (no EventMember row yet), memberId = 0 triggers creation.
+    final memberId = member.id ?? 0;
+
+    if (result.clear) {
+      await repo.assignSub(event.key, memberId, slotId: member.slotId, clear: true);
+    } else if (result.sub != null) {
+      final sub = result.sub!;
+      await repo.assignSub(
+        event.key,
+        memberId,
+        slotId: member.slotId,
+        rosterMemberId: sub.rosterMemberId,
+        name: sub.rosterMemberId == null ? sub.name : null,
+        email: sub.rosterMemberId == null ? sub.email : null,
+      );
+    }
+
+    if (mounted) {
+      ref.invalidate(eventDetailProvider(event.key));
+    }
+  }
+}
+
+class _RoleGroup extends StatelessWidget {
+  const _RoleGroup({
+    required this.role,
+    required this.members,
+    required this.event,
+    required this.onAssignSub,
+  });
+  final String role;
+  final List<EventMember> members;
+  final EventDetail event;
+  final void Function(EventMember) onAssignSub;
 
   @override
   Widget build(BuildContext context) {
-    final (icon, color) = switch (member.attendanceStatus?.toLowerCase()) {
-      'confirmed' => (CupertinoIcons.checkmark_circle, CupertinoColors.systemGreen),
-      'absent' => (CupertinoIcons.xmark_circle, CupertinoColors.systemRed),
-      _ => (CupertinoIcons.question_circle, CupertinoColors.systemOrange),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 12, bottom: 4),
+          child: Text(
+            role.toUpperCase(),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
+              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            ),
+          ),
+        ),
+        ...members.map(
+          (m) => _MemberTile(
+            member: m,
+            canWrite: event.canWrite,
+            onTap: event.canWrite ? () => onAssignSub(m) : null,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MemberTile extends StatelessWidget {
+  const _MemberTile({
+    required this.member,
+    required this.canWrite,
+    this.onTap,
+  });
+  final EventMember member;
+  final bool canWrite;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final slotLabel = member.slotName;
+
+    if (!member.isFilled) {
+      // Unfilled slot — placeholder row with instrument label + add button
+      return GestureDetector(
+        onTap: canWrite ? onTap : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemRed
+                      .resolveFrom(context)
+                      .withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: CupertinoColors.systemRed
+                        .resolveFrom(context)
+                        .withValues(alpha: 0.4),
+                    width: 1.5,
+                  ),
+                ),
+                child: Icon(
+                  CupertinoIcons.question_circle,
+                  size: 18,
+                  color: CupertinoColors.systemRed.resolveFrom(context),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (slotLabel != null)
+                      Text(
+                        slotLabel,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                        ),
+                      ),
+                    Text(
+                      '— Needed',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontStyle: FontStyle.italic,
+                        color: CupertinoColors.systemRed.resolveFrom(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (canWrite)
+                Icon(
+                  CupertinoIcons.add_circled,
+                  size: 22,
+                  color: CupertinoColors.systemBlue.resolveFrom(context),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Filled slot
+    final (icon, iconColor) = switch (member.attendanceStatus?.toLowerCase()) {
+      'confirmed' => (
+          CupertinoIcons.checkmark_circle_fill,
+          CupertinoColors.systemGreen
+        ),
+      'absent' => (CupertinoIcons.xmark_circle_fill, CupertinoColors.systemRed),
+      _ => (CupertinoIcons.circle, CupertinoColors.systemGrey),
     };
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
-              shape: BoxShape.circle,
+    return GestureDetector(
+      onTap: canWrite ? onTap : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: CupertinoColors.tertiarySystemBackground
+                    .resolveFrom(context),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  member.name.isNotEmpty ? member.name[0].toUpperCase() : '?',
+                  style:
+                      const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+              ),
             ),
-            child: Center(
-              child: Text(
-                member.name.isNotEmpty ? member.name[0].toUpperCase() : '?',
-                style:
-                    const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (slotLabel != null)
+                    Text(
+                      slotLabel,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                      ),
+                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          member.name,
+                          style: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      if (member.isSub) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: CupertinoColors.systemOrange
+                                .resolveFrom(context)
+                                .withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: CupertinoColors.systemOrange
+                                  .resolveFrom(context)
+                                  .withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: Text(
+                            'Sub',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: CupertinoColors.systemOrange
+                                  .resolveFrom(context),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Icon(icon, size: 20, color: iconColor.resolveFrom(context)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Sub picker sheet ──────────────────────────────────────────────────────────
+
+/// Return value from [_SubPickerSheet].
+/// [sub] is set when a sub was selected; [clear] is true when the slot should
+/// be cleared. Both null / false means the user dismissed without acting.
+class _SubPickerResult {
+  const _SubPickerResult({this.sub, this.clear = false});
+  final SubEntry? sub;
+  final bool clear;
+}
+
+/// Bottom sheet showing the substitute call list for a roster slot.
+/// Pops with a [_SubPickerResult] so the caller controls all async work.
+class _SubPickerSheet extends ConsumerWidget {
+  const _SubPickerSheet({required this.event, required this.member});
+
+  final EventDetail event;
+  final EventMember member;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final subsAsync = ref.watch(
+      eventSubsProvider(
+          (eventKey: event.key, bandRoleId: member.bandRoleId!)),
+    );
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.65,
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemBackground.resolveFrom(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Column(
+        children: [
+          // Drag handle
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 4),
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: CupertinoColors.systemGrey3.resolveFrom(context),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // Sheet title row
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
               children: [
-                Text(member.name,
+                Expanded(
+                  child: Text(
+                    'Add Sub \u2014 ${member.slotName ?? member.role ?? 'Member'}',
                     style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w500)),
-                if (member.role != null && member.role!.isNotEmpty)
-                  Text(member.role!,
+                        fontSize: 17, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                if (member.isFilled)
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () => Navigator.of(context)
+                        .pop(const _SubPickerResult(clear: true)),
+                    child: Text(
+                      'Clear',
                       style: TextStyle(
-                          fontSize: 13,
-                          color: CupertinoColors.secondaryLabel.resolveFrom(context))),
+                          color: CupertinoColors.systemRed.resolveFrom(context)),
+                    ),
+                  ),
+                CupertinoButton(
+                  padding: const EdgeInsets.only(left: 8),
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Icon(CupertinoIcons.xmark_circle_fill, size: 24),
+                ),
               ],
             ),
           ),
-          Icon(icon, size: 20, color: color),
+          Container(
+              height: 0.5,
+              color: CupertinoColors.separator.resolveFrom(context)),
+          // Sub list
+          Expanded(
+            child: subsAsync.when(
+              loading: () =>
+                  const Center(child: CupertinoActivityIndicator()),
+              error: (e, _) => Center(
+                child: Text(
+                  'Could not load subs.\n$e',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color:
+                          CupertinoColors.secondaryLabel.resolveFrom(context)),
+                ),
+              ),
+              data: (subs) {
+                if (subs.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Text(
+                        'No substitutes on call list for this role.',
+                        textAlign: TextAlign.center,
+                        style:
+                            TextStyle(color: CupertinoColors.secondaryLabel),
+                      ),
+                    ),
+                  );
+                }
+                return ListView.separated(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: subs.length,
+                  separatorBuilder: (_, __) => Container(
+                    height: 0.5,
+                    margin: const EdgeInsets.only(left: 16),
+                    color: CupertinoColors.separator.resolveFrom(context),
+                  ),
+                  itemBuilder: (context, index) {
+                    final sub = subs[index];
+                    return CupertinoButton(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      onPressed: () => Navigator.of(context)
+                          .pop(_SubPickerResult(sub: sub)),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      sub.name,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w500,
+                                        color: CupertinoColors.label
+                                            .resolveFrom(context),
+                                      ),
+                                    ),
+                                    if (sub.isCustom) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 5, vertical: 1),
+                                        decoration: BoxDecoration(
+                                          color: CupertinoColors.systemOrange
+                                              .resolveFrom(context)
+                                              .withValues(alpha: 0.15),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'Sub',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color: CupertinoColors.systemOrange
+                                                .resolveFrom(context),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                if (sub.email != null && sub.email!.isNotEmpty)
+                                  Text(
+                                    sub.email!,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: CupertinoColors.secondaryLabel
+                                          .resolveFrom(context),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            CupertinoIcons.add,
+                            size: 20,
+                            color:
+                                CupertinoColors.systemGreen.resolveFrom(context),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
         ],
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material, Theme, ThemeData;
+import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -96,6 +97,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   _focusedDay = focused;
                 });
               },
+              onPageChanged: (focused) {
+                setState(() {
+                  _focusedDay = focused;
+                  _selectedDay = null;
+                });
+              },
             ),
           ),
         ],
@@ -129,13 +136,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 }
 
-class _DashboardContent extends StatelessWidget {
+class _DashboardContent extends StatefulWidget {
   const _DashboardContent({
     required this.events,
     required this.currentEvent,
     required this.focusedDay,
     required this.selectedDay,
     required this.onDaySelected,
+    required this.onPageChanged,
   });
 
   final List<EventSummary> events;
@@ -143,35 +151,58 @@ class _DashboardContent extends StatelessWidget {
   final DateTime focusedDay;
   final DateTime? selectedDay;
   final void Function(DateTime selected, DateTime focused) onDaySelected;
+  final void Function(DateTime focusedDay) onPageChanged;
+
+  @override
+  State<_DashboardContent> createState() => _DashboardContentState();
+}
+
+class _DashboardContentState extends State<_DashboardContent> {
+  // +1 = forward (later month), -1 = backward (earlier month)
+  int _slideDirection = 1;
+
+  @override
+  void didUpdateWidget(_DashboardContent old) {
+    super.didUpdateWidget(old);
+    final oldMonth = DateTime(old.focusedDay.year, old.focusedDay.month);
+    final newMonth = DateTime(widget.focusedDay.year, widget.focusedDay.month);
+    if (oldMonth != newMonth) {
+      _slideDirection = newMonth.isAfter(oldMonth) ? 1 : -1;
+    }
+  }
 
   List<EventSummary> get _filteredEvents {
-    final now = DateTime.now();
-    final cutoff = now.add(const Duration(days: 30));
-
+    final focusedDay = widget.focusedDay;
+    final selectedDay = widget.selectedDay;
+    final events = widget.events;
     if (selectedDay != null) {
       final dayEvents =
-          events.where((e) => isSameDay(e.parsedDate, selectedDay!)).toList();
+          events.where((e) => isSameDay(e.parsedDate, selectedDay)).toList();
 
       if (dayEvents.isNotEmpty) return dayEvents;
 
       final later = events
-          .where((e) => !e.parsedDate.isBefore(selectedDay!))
+          .where((e) => !e.parsedDate.isBefore(selectedDay))
           .toList()
         ..sort((a, b) => a.parsedDate.compareTo(b.parsedDate));
       return later.take(1).toList();
     }
 
+    final monthStart = DateTime(focusedDay.year, focusedDay.month, 1);
+    final monthEnd = DateTime(focusedDay.year, focusedDay.month + 1, 1);
+
     return events
         .where(
           (e) =>
-              !e.parsedDate.isBefore(now) && !e.parsedDate.isAfter(cutoff),
+              !e.parsedDate.isBefore(monthStart) &&
+              e.parsedDate.isBefore(monthEnd),
         )
         .toList()
       ..sort((a, b) => a.parsedDate.compareTo(b.parsedDate));
   }
 
   Set<DateTime> get _eventDays =>
-      events.map((e) => _normalise(e.parsedDate)).toSet();
+      widget.events.map((e) => _normalise(e.parsedDate)).toSet();
 
   DateTime _normalise(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
@@ -181,32 +212,67 @@ class _DashboardContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final filtered = _filteredEvents;
+    final focusedDay = widget.focusedDay;
+    final selectedDay = widget.selectedDay;
+    final currentEvent = widget.currentEvent;
+
+    // Key by year+month so AnimatedSwitcher sees a new child on month change.
+    final eventsKey = ValueKey(
+        '${focusedDay.year}-${focusedDay.month}-${selectedDay?.day ?? ''}');
+    final slideDir = _slideDirection;
+
     return SliverList(
       delegate: SliverChildListDelegate([
         // ── Live Now banner — only shown when an event is in progress ──────
         if (currentEvent != null)
           LiveNowCard(
-            event: currentEvent!,
-            onTap: () => _navigateToEvent(context, currentEvent!),
+            event: currentEvent,
+            onTap: () => _navigateToEvent(context, currentEvent),
           ),
         _CalendarSection(
           focusedDay: focusedDay,
           selectedDay: selectedDay,
           getEventsForDay: _getEventsForDay,
-          onDaySelected: onDaySelected,
+          onDaySelected: widget.onDaySelected,
+          onPageChanged: widget.onPageChanged,
         ),
         const SizedBox(height: 8),
-        if (filtered.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 32, horizontal: 24),
-            child: EmptyStateView(
-              icon: CupertinoIcons.calendar,
-              title: 'No upcoming events',
-              subtitle: 'Your next 30 days are clear.',
-            ),
-          )
-        else
-          _EventsList(events: filtered),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 280),
+          transitionBuilder: (child, animation) {
+            final offsetTween = Tween<Offset>(
+              begin: Offset(0.15 * slideDir, 0),
+              end: Offset.zero,
+            );
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: offsetTween.animate(
+                  CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                ),
+                child: child,
+              ),
+            );
+          },
+          child: filtered.isEmpty
+              ? Padding(
+                  key: eventsKey,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+                  child: EmptyStateView(
+                    icon: CupertinoIcons.calendar,
+                    title: 'No events',
+                    subtitle: selectedDay != null
+                        ? 'Nothing on ${DateFormat('MMMM d').format(selectedDay)}.'
+                        : 'Nothing scheduled for ${DateFormat('MMMM').format(focusedDay)}.',
+                  ),
+                )
+              : _EventsList(
+                  key: eventsKey,
+                  events: filtered,
+                  focusedDay: focusedDay,
+                ),
+        ),
         const SizedBox(height: 16),
       ]),
     );
@@ -231,12 +297,14 @@ class _CalendarSection extends StatelessWidget {
     required this.selectedDay,
     required this.getEventsForDay,
     required this.onDaySelected,
+    this.onPageChanged,
   });
 
   final DateTime focusedDay;
   final DateTime? selectedDay;
   final List<Object> Function(DateTime day) getEventsForDay;
   final void Function(DateTime selected, DateTime focused) onDaySelected;
+  final void Function(DateTime focusedDay)? onPageChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -252,6 +320,7 @@ class _CalendarSection extends StatelessWidget {
           selectedDayPredicate: (day) => isSameDay(selectedDay, day),
           eventLoader: getEventsForDay,
           onDaySelected: onDaySelected,
+          onPageChanged: onPageChanged,
           calendarFormat: CalendarFormat.month,
           availableCalendarFormats: const {CalendarFormat.month: 'Month'},
           headerStyle:
@@ -272,9 +341,18 @@ class _CalendarSection extends StatelessWidget {
 }
 
 class _EventsList extends StatelessWidget {
-  const _EventsList({required this.events});
+  const _EventsList({super.key, required this.events, required this.focusedDay});
 
   final List<EventSummary> events;
+  final DateTime focusedDay;
+
+  String get _monthLabel {
+    final now = DateTime.now();
+    if (focusedDay.year == now.year && focusedDay.month == now.month) {
+      return 'Upcoming Events';
+    }
+    return 'Events in ${DateFormat('MMMM yyyy').format(focusedDay)}';
+  }
 
   void _navigateToEvent(BuildContext context, EventSummary event) {
     if (event.isRehearsal) {
@@ -293,11 +371,11 @@ class _EventsList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
           child: Text(
-            'Upcoming Events',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+            _monthLabel,
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
           ),
         ),
         ...events.map(

@@ -28,7 +28,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       loading: () => const Center(child: CupertinoActivityIndicator()),
       error: (e, _) => CupertinoPageScaffold(
         navigationBar: const CupertinoNavigationBar(middle: Text('Events')),
-        child: ErrorView(message: 'Could not determine band.\n$e'),
+        child: ErrorView(message: ErrorView.friendlyMessage(e)),
       ),
       data: (bandId) {
         if (bandId == null) {
@@ -85,7 +85,7 @@ class _EventsBody extends ConsumerWidget {
           ),
           error: (e, _) => SliverFillRemaining(
             child: ErrorView(
-              message: 'Could not load events.\n$e',
+              message: ErrorView.friendlyMessage(e),
               onRetry: () =>
                   ref.read(bandEventsProvider(params).notifier).refresh(),
             ),

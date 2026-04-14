@@ -135,7 +135,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       ),
       error: (e, _) => CupertinoPageScaffold(
         navigationBar: const CupertinoNavigationBar(middle: Text('Library')),
-        child: ErrorView(message: 'Could not determine band.\n$e'),
+        child: ErrorView(message: ErrorView.friendlyMessage(e)),
       ),
       data: (bandId) {
         if (bandId == null) {
@@ -331,7 +331,7 @@ class _LibraryBodyState extends ConsumerState<_LibraryBody> {
                           _buildNavBar(context),
                           SliverFillRemaining(
                             child: ErrorView(
-                              message: 'Could not load library.\n$e',
+                              message: ErrorView.friendlyMessage(e),
                               onRetry: widget.onRefresh,
                             ),
                           ),

@@ -52,7 +52,7 @@ class BandSelectorScreen extends ConsumerWidget {
                         size: 48,
                         color: CupertinoColors.secondaryLabel.resolveFrom(context)),
                     const SizedBox(height: 16),
-                    const Text('No bands found for your account.'),
+                    const Text('No bands found for your account. Visit https://tts.band to create or join a band.'),
                   ],
                 ),
               );

@@ -64,6 +64,8 @@ jobs:
             --dart-define=PUSHER_APP_KEY=${{ secrets.PUSHER_APP_KEY }} \
             --dart-define=PUSHER_APP_CLUSTER=${{ secrets.PUSHER_APP_CLUSTER }} \
             --dart-define=GOOGLE_PLACES_API_KEY=${{ secrets.GOOGLE_PLACES_API_KEY }} \
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
+            --dart-define=SENTRY_ENVIRONMENT=${{ secrets.SENTRY_ENVIRONMENT }} \
             --export-options-plist=ios/ExportOptions.plist
 
       - name: Upload IPA artifact

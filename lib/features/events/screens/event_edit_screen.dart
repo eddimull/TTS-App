@@ -844,25 +844,29 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
               color: bg,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
             ),
-            // Let the sheet grow with the keyboard so text fields stay visible
             child: SafeArea(
               top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Drag handle
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 4),
-                    child: Container(
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.systemFill.resolveFrom(ctx),
-                        borderRadius: BorderRadius.circular(2),
+              bottom: false,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.viewInsetsOf(ctx).bottom,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Drag handle
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, bottom: 4),
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: CupertinoColors.systemFill.resolveFrom(ctx),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                  ),
-                  // Header row: Cancel | title | Add
+                    // Header row: Cancel | title | Add
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Row(
@@ -946,7 +950,8 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                 ],
               ),
             ),
-          );
+          ),
+        );
         },
       ),
     );
@@ -984,22 +989,27 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
             ),
             child: SafeArea(
               top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Drag handle
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 4),
-                    child: Container(
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.systemFill.resolveFrom(ctx),
-                        borderRadius: BorderRadius.circular(2),
+              bottom: false,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.viewInsetsOf(ctx).bottom,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Drag handle
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, bottom: 4),
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: CupertinoColors.systemFill.resolveFrom(ctx),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
-                  ),
-                  // Header row: Cancel | title | Save
+                    // Header row: Cancel | title | Save
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Row(
@@ -1083,7 +1093,8 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                 ],
               ),
             ),
-          );
+          ),
+        );
         },
       ),
     );

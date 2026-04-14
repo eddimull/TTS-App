@@ -80,7 +80,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
             error: (e, _) => SliverFillRemaining(
               child: ErrorView(
-                message: 'Could not load dashboard.\n$e',
+                message: ErrorView.friendlyMessage(e),
                 onRetry: () =>
                     ref.read(dashboardProvider.notifier).refresh(),
               ),

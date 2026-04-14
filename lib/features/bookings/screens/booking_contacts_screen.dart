@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/bookings_repository.dart';
 import '../data/models/booking_contact.dart';
 import '../data/models/contact_library_item.dart';
@@ -153,7 +154,7 @@ class _BookingContactsScreenState
         child: detailAsync.when(
           loading: () =>
               const Center(child: CupertinoActivityIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e')),
+          error: (e, _) => ErrorView(message: ErrorView.friendlyMessage(e)),
           data: (booking) {
             if (booking.contacts.isEmpty) {
               return Column(
@@ -594,7 +595,7 @@ class _AddContactScreenState extends ConsumerState<_AddContactScreen> {
                     ),
                     error: (e, _) => Padding(
                       padding: const EdgeInsets.all(16),
-                      child: Text('Could not load contacts: $e',
+                      child: Text(ErrorView.friendlyMessage(e),
                           style: TextStyle(
                               color: CupertinoColors.systemRed
                                   .resolveFrom(context))),

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 
 class ErrorView extends StatelessWidget {
@@ -9,6 +10,20 @@ class ErrorView extends StatelessWidget {
 
   final String message;
   final VoidCallback? onRetry;
+
+  /// Extracts a human-readable message from an error.
+  /// For [DioException], checks the response body for a `message` field first.
+  /// Falls back to [e.toString()] for all other error types.
+  static String friendlyMessage(Object e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map) {
+        final msg = data['message'];
+        if (msg is String && msg.isNotEmpty) return msg;
+      }
+    }
+    return e.toString();
+  }
 
   @override
   Widget build(BuildContext context) {

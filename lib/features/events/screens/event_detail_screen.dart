@@ -34,7 +34,7 @@ class EventDetailScreen extends ConsumerWidget {
       error: (e, _) => CupertinoPageScaffold(
         navigationBar: const CupertinoNavigationBar(),
         child: ErrorView(
-          message: 'Could not load event.\n$e',
+          message: ErrorView.friendlyMessage(e),
           onRetry: () => ref.invalidate(eventDetailProvider(eventKey)),
         ),
       ),
@@ -1776,7 +1776,7 @@ class _SubPickerSheet extends ConsumerWidget {
                   const Center(child: CupertinoActivityIndicator()),
               error: (e, _) => Center(
                 child: Text(
-                  'Could not load subs.\n$e',
+                  ErrorView.friendlyMessage(e),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                       color:

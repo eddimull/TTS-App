@@ -24,7 +24,7 @@ class RehearsalsScreen extends ConsumerWidget {
         error: (e, _) => CupertinoPageScaffold(
           navigationBar:
               const CupertinoNavigationBar(middle: Text('Rehearsals')),
-          child: ErrorView(message: 'Could not determine band.\n$e'),
+          child: ErrorView(message: ErrorView.friendlyMessage(e)),
         ),
         data: (bandId) {
           if (bandId == null) {
@@ -65,7 +65,7 @@ class _RehearsalsBody extends ConsumerWidget {
           ),
           error: (e, _) => SliverFillRemaining(
             child: ErrorView(
-              message: 'Could not load rehearsal schedules.\n$e',
+              message: ErrorView.friendlyMessage(e),
               onRetry: () => ref.invalidate(schedulesProvider(bandId)),
             ),
           ),

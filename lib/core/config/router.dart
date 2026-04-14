@@ -45,17 +45,26 @@ class _RouterRefreshNotifier extends ChangeNotifier {
 
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
-
+  debugPrint('Initializing GoRouter');
   return GoRouter(
-    initialLocation: '/dashboard',
+    initialLocation: '/login',
     refreshListenable: notifier,
     redirect: (context, state) {
       final authAsync = ref.read(authProvider);
       final bandAsync = ref.read(selectedBandProvider);
 
+      debugPrint(
+        '[Router] redirect fired | location=${state.matchedLocation} '
+        'authLoading=${authAsync.isLoading} bandLoading=${bandAsync.isLoading} '
+        'authState=${authAsync.value?.runtimeType} bandId=${bandAsync.value}',
+      );
+
       // While auth or band selection is resolving, stay put (GoRouter will
       // re-evaluate when refreshListenable fires after the async completes).
-      if (authAsync.isLoading || bandAsync.isLoading) return null;
+      if (authAsync.isLoading || bandAsync.isLoading) {
+        debugPrint('[Router] still loading — staying put');
+        return null;
+      }
 
       final authState = authAsync.value;
 
@@ -64,37 +73,72 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Not authenticated → force to login.
       if (authState == null || authState is AuthUnauthenticated) {
-        return isLoginRoute ? null : '/login';
+        final dest = isLoginRoute ? null : '/login';
+        debugPrint('[Router] unauthenticated → $dest');
+        return dest;
       }
 
       // Auth is in a transient loading-within-authenticated state.
-      if (authState is AuthLoading) return null;
+      if (authState is AuthLoading) {
+        debugPrint('[Router] AuthLoading — staying put');
+        return null;
+      }
 
       // Authenticated — check band selection.
       if (authState is AuthAuthenticated) {
-        // If already on login, clear it.
-        if (isLoginRoute) return '/dashboard';
-
+        final bands = authState.bands;
         final bandId = bandAsync.value;
 
-        if (bandId == null) {
-          // No band selected yet.
-          final bands = authState.bands;
+        debugPrint(
+          '[Router] AuthAuthenticated | bands=${bands.map((b) => '${b.id}:${b.name}').toList()} '
+          'storedBandId=$bandId',
+        );
+
+        // Validate that the stored band ID belongs to this user's bands.
+        // It may be stale from a previous account's session.
+        final bandIsValid =
+            bandId != null && bands.any((b) => b.id == bandId);
+
+        debugPrint('[Router] bandIsValid=$bandIsValid');
+
+        if (!bandIsValid) {
+          // Clear any stale stored band so it doesn't interfere later.
+          if (bandId != null) {
+            debugPrint('[Router] clearing stale bandId=$bandId');
+            ref.read(selectedBandProvider.notifier).clear();
+          }
+
+          if (bands.isEmpty) {
+            final dest = isBandsRoute ? null : '/bands';
+            debugPrint('[Router] no bands → $dest');
+            return dest;
+          }
+
           if (bands.length == 1) {
-            // Auto-select the only band. Fire-and-forget — when selectBand()
-            // completes it updates selectedBandProvider state, which notifies
-            // the refreshListenable and triggers another redirect evaluation
-            // that will find bandId != null and allow through.
+            debugPrint('[Router] single band — auto-selecting ${bands.first.id}');
             ref.read(selectedBandProvider.notifier).selectBand(bands.first.id);
-            // Stay put while the async write completes.
             return null;
           }
-          return isBandsRoute ? null : '/bands';
+
+          final dest = isBandsRoute ? null : '/bands';
+          debugPrint('[Router] multiple bands, none selected → $dest');
+          return dest;
         }
 
-        // Band is selected — don't show bands screen again unless explicitly
-        // navigated there.
-        if (isBandsRoute) return '/dashboard';
+        // Band is selected and valid.
+        // Clear login screen if still showing it.
+        if (isLoginRoute) {
+          debugPrint('[Router] authenticated + valid band, on /login → /dashboard');
+          return '/dashboard';
+        }
+
+        // Don't show bands screen again unless explicitly navigated there.
+        if (isBandsRoute) {
+          debugPrint('[Router] valid band selected, on /bands → /dashboard');
+          return '/dashboard';
+        }
+
+        debugPrint('[Router] all good — no redirect');
       }
 
       return null;

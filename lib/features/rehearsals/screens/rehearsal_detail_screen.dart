@@ -34,7 +34,7 @@ class RehearsalDetailScreen extends ConsumerWidget {
       error: (e, _) => CupertinoPageScaffold(
         navigationBar: const CupertinoNavigationBar(),
         child: ErrorView(
-          message: 'Could not load rehearsal.\n$e',
+          message: ErrorView.friendlyMessage(e),
           onRetry: () =>
               ref.invalidate(rehearsalDetailProvider(rehearsalId!)),
         ),

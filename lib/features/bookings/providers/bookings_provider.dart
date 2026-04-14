@@ -36,38 +36,16 @@ class BandBookingsParams {
   int get hashCode => Object.hash(bandId, status, upcomingOnly, year);
 }
 
-class BandBookingsNotifier extends AsyncNotifier<List<BookingSummary>> {
-  BandBookingsNotifier(this._params);
-  final BandBookingsParams _params;
-
-  @override
-  Future<List<BookingSummary>> build() async {
+final bandBookingsProvider = FutureProvider.family<List<BookingSummary>, BandBookingsParams>(
+  (ref, params) {
     final repo = ref.watch(bookingsRepositoryProvider);
     return repo.getBandBookings(
-      _params.bandId,
-      status: _params.status,
-      upcomingOnly: _params.upcomingOnly,
-      year: _params.year,
+      params.bandId,
+      status: params.status,
+      upcomingOnly: params.upcomingOnly,
+      year: params.year,
     );
-  }
-
-  Future<void> refresh() async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() {
-      final repo = ref.read(bookingsRepositoryProvider);
-      return repo.getBandBookings(
-        _params.bandId,
-        status: _params.status,
-        upcomingOnly: _params.upcomingOnly,
-        year: _params.year,
-      );
-    });
-  }
-}
-
-final bandBookingsProvider = AsyncNotifierProvider.family<
-    BandBookingsNotifier, List<BookingSummary>, BandBookingsParams>(
-  (arg) => BandBookingsNotifier(arg),
+  },
 );
 
 // ── Booking detail (single) ───────────────────────────────────────────────────

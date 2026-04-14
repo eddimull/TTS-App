@@ -1,0 +1,1 @@
+- [No modify shared models](feedback_no_modify_shared_models.md) — Never alter raw models/scopes used by web app; reuse services instead

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/bookings_repository.dart';
 import '../data/models/booking_contact.dart';
@@ -93,7 +94,7 @@ class _BookingContractScreenState
         child: detailAsync.when(
           loading: () =>
               const Center(child: CupertinoActivityIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e')),
+          error: (e, _) => ErrorView(message: ErrorView.friendlyMessage(e)),
           data: (booking) {
             final option = booking.contractOption ?? 'default';
 

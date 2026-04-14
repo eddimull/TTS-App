@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/bookings_repository.dart';
 import '../data/models/booking_payment.dart';
 import '../providers/bookings_provider.dart';
@@ -34,7 +35,7 @@ class BookingPaymentsScreen extends ConsumerWidget {
         child: detailAsync.when(
           loading: () =>
               const Center(child: CupertinoActivityIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e')),
+          error: (e, _) => ErrorView(message: ErrorView.friendlyMessage(e)),
           data: (booking) {
             return CustomScrollView(
               slivers: [

@@ -44,7 +44,7 @@ class ChartDetailScreen extends ConsumerWidget {
       error: (e, _) => CupertinoPageScaffold(
         navigationBar: const CupertinoNavigationBar(middle: Text('Chart')),
         child: ErrorView(
-          message: 'Could not load chart.\n$e',
+          message: ErrorView.friendlyMessage(e),
           onRetry: () => ref.invalidate(
               chartDetailProvider((bandId: bandId, chartId: chartId))),
         ),

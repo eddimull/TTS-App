@@ -35,7 +35,7 @@ class BookingDetailScreen extends ConsumerWidget {
       error: (e, _) => CupertinoPageScaffold(
         navigationBar: const CupertinoNavigationBar(),
         child: ErrorView(
-          message: 'Could not load booking.\n$e',
+          message: ErrorView.friendlyMessage(e),
           onRetry: () => ref.invalidate(bookingDetailProvider(args)),
         ),
       ),

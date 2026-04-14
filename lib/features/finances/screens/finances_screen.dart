@@ -37,7 +37,7 @@ class _FinancesScreenState extends ConsumerState<FinancesScreen> {
       ),
       error: (e, _) => CupertinoPageScaffold(
         navigationBar: const CupertinoNavigationBar(middle: Text('Finances')),
-        child: ErrorView(message: 'Could not determine band.\n$e'),
+        child: ErrorView(message: ErrorView.friendlyMessage(e)),
       ),
       data: (bandId) {
         if (bandId == null) {
@@ -235,7 +235,7 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
             ),
             error: (e, _) => SliverFillRemaining(
               child: ErrorView(
-                message: 'Could not load finances.\n$e',
+                message: ErrorView.friendlyMessage(e),
                 onRetry: () => widget.tab == _FinancesTab.unpaid
                     ? ref.read(unpaidServicesProvider(_params).notifier).refresh()
                     : ref.read(paidServicesProvider(_params).notifier).refresh(),

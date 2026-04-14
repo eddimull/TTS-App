@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/models/booking_history_entry.dart';
 import '../providers/bookings_provider.dart';
 
@@ -26,7 +27,7 @@ class BookingHistoryScreen extends ConsumerWidget {
         child: historyAsync.when(
           loading: () =>
               const Center(child: CupertinoActivityIndicator()),
-          error: (e, _) => Center(child: Text('Error loading history: $e')),
+          error: (e, _) => ErrorView(message: ErrorView.friendlyMessage(e)),
           data: (entries) {
             if (entries.isEmpty) {
               return const Center(

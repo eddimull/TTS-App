@@ -65,7 +65,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       error: (e, _) => CupertinoPageScaffold(
         navigationBar:
             const CupertinoNavigationBar(middle: Text('Bookings')),
-        child: ErrorView(message: 'Could not determine band.\n$e'),
+        child: ErrorView(message: ErrorView.friendlyMessage(e)),
       ),
       data: (bandId) {
         if (bandId == null) {
@@ -191,9 +191,8 @@ class _BookingsBodyState extends ConsumerState<_BookingsBody> {
                 controller: _scrollController,
                 slivers: [
                   CupertinoSliverRefreshControl(
-                    onRefresh: () => ref
-                        .read(bandBookingsProvider(_params).notifier)
-                        .refresh(),
+                    onRefresh: () async =>
+                        ref.invalidate(bandBookingsProvider(_params)),
                   ),
                   CupertinoSliverNavigationBar(
                     largeTitle: const Text('Bookings'),
@@ -218,10 +217,9 @@ class _BookingsBodyState extends ConsumerState<_BookingsBody> {
                     ),
                     error: (e, _) => SliverFillRemaining(
                       child: ErrorView(
-                        message: 'Could not load bookings.\n$e',
-                        onRetry: () => ref
-                            .read(bandBookingsProvider(_params).notifier)
-                            .refresh(),
+                        message: ErrorView.friendlyMessage(e),
+                        onRetry: () =>
+                            ref.invalidate(bandBookingsProvider(_params)),
                       ),
                     ),
                     data: (bookings) {

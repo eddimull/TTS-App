@@ -120,7 +120,13 @@ class LibraryRepository {
     final disposition = response.headers.value('content-disposition') ?? '';
     final filenameMatch =
         RegExp(r'filename="?([^"]+)"?').firstMatch(disposition);
-    final filename = filenameMatch?.group(1) ?? 'download';
+    var filename = filenameMatch?.group(1) ?? 'download';
+    // If the filename has no extension, append one based on the MIME type so
+    // the OS can open it with the correct app (e.g. PDF reader).
+    if (!filename.contains('.')) {
+      final ext = _extensionFromMimeType(mimeType);
+      if (ext.isNotEmpty) filename = '$filename.$ext';
+    }
     return (
       bytes: Uint8List.fromList(response.data!),
       mimeType: mimeType,
@@ -138,6 +144,16 @@ class LibraryRepository {
       ApiEndpoints.mobileBandChartUpload(bandId, chartId, uploadId),
     );
   }
+
+  String _extensionFromMimeType(String mimeType) => switch (mimeType) {
+        'application/pdf' => 'pdf',
+        'audio/mpeg' => 'mp3',
+        'audio/wav' => 'wav',
+        'audio/mp4' => 'm4a',
+        'video/mp4' => 'mp4',
+        'video/quicktime' => 'mov',
+        _ => '',
+      };
 }
 
 final libraryRepositoryProvider = Provider<LibraryRepository>((ref) {

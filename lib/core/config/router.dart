@@ -43,12 +43,24 @@ class _RouterRefreshNotifier extends ChangeNotifier {
   final Ref _ref;
 }
 
+class _DismissKeyboardObserver extends NavigatorObserver {
+  void _dismiss() => primaryFocus?.unfocus();
+
+  @override
+  void didPush(Route route, Route? previousRoute) => _dismiss();
+  @override
+  void didPop(Route route, Route? previousRoute) => _dismiss();
+  @override
+  void didReplace({Route? newRoute, Route? oldRoute}) => _dismiss();
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
   debugPrint('Initializing GoRouter');
   return GoRouter(
     initialLocation: '/login',
     refreshListenable: notifier,
+    observers: [_DismissKeyboardObserver()],
     redirect: (context, state) {
       final authAsync = ref.read(authProvider);
       final bandAsync = ref.read(selectedBandProvider);

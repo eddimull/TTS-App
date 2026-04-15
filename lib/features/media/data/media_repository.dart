@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import '../../../core/config/app_config.dart';
 import 'models/media_file.dart';
 
 class MediaPage {
@@ -66,10 +67,22 @@ class MediaRepository {
     await _dio.delete('/api/mobile/bands/$bandId/media/$mediaId');
   }
 
-  /// Returns the serve URL for inline viewing. The token is embedded
-  /// via the Authorization interceptor on the Dio instance.
+  /// Returns the full URL for inline serving. The token must be passed as
+  /// an Authorization header by the caller (e.g. AuthThumbnail).
   String serveUrl(int bandId, int mediaId) =>
-      '/api/mobile/bands/$bandId/media/$mediaId/serve';
+      '${AppConfig.baseUrl}/media/$mediaId/serve';
+
+  // ── Folder management ──────────────────────────────────────────────────────
+
+  /// Validates a folder name on the server and returns the canonical
+  /// folder_path string to use when uploading files into that folder.
+  Future<String> createFolder(int bandId, String name) async {
+    final resp = await _dio.post(
+      '/api/mobile/bands/$bandId/media/folders',
+      data: {'name': name},
+    );
+    return resp.data['folder_path'] as String;
+  }
 
   // ── Chunked upload ─────────────────────────────────────────────────────────
 

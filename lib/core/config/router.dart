@@ -158,141 +158,206 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/login',
-        builder: (context, state) => const LoginScreen(),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: const LoginScreen(),
+        ),
       ),
       GoRoute(
         path: '/bands',
-        builder: (context, state) => const BandSelectorScreen(),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: const BandSelectorScreen(),
+        ),
       ),
       ShellRoute(
         builder: (context, state, child) => AppScaffold(child: child),
         routes: [
           GoRoute(
             path: '/dashboard',
-            builder: (context, state) => const DashboardScreen(),
+            pageBuilder: (context, state) => CupertinoPage(
+              key: state.pageKey,
+              child: const DashboardScreen(),
+            ),
           ),
           GoRoute(
             path: '/search',
-            builder: (_, __) => const SearchScreen(),
+            pageBuilder: (context, state) => CupertinoPage(
+              key: state.pageKey,
+              child: const SearchScreen(),
+            ),
           ),
           GoRoute(
             path: '/bookings',
-            builder: (_, __) => const BookingsScreen(),
+            pageBuilder: (context, state) => CupertinoPage(
+              key: state.pageKey,
+              child: const BookingsScreen(),
+            ),
           ),
           GoRoute(
             path: '/library',
-            builder: (_, __) => const LibraryScreen(),
+            pageBuilder: (context, state) => CupertinoPage(
+              key: state.pageKey,
+              child: const LibraryScreen(),
+            ),
           ),
           GoRoute(
             path: '/more',
-            builder: (_, __) => const MoreScreen(),
+            pageBuilder: (context, state) => CupertinoPage(
+              key: state.pageKey,
+              child: const MoreScreen(),
+            ),
           ),
           GoRoute(
             path: '/finances',
-            builder: (_, __) => const FinancesScreen(),
+            pageBuilder: (context, state) => CupertinoPage(
+              key: state.pageKey,
+              child: const FinancesScreen(),
+            ),
           ),
         ],
       ),
       GoRoute(
         path: '/events/:key',
-        builder: (_, state) =>
-            EventDetailScreen(eventKey: state.pathParameters['key']!),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: EventDetailScreen(eventKey: state.pathParameters['key']!),
+        ),
       ),
       GoRoute(
         path: '/events/:key/edit',
-        builder: (_, state) => EventEditScreen(
-          event: state.extra as EventDetail,
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: EventEditScreen(event: state.extra as EventDetail),
         ),
       ),
       GoRoute(
         path: '/events/:key/setlist/live',
-        builder: (_, state) => LiveSessionScreen(
-          eventKey: state.pathParameters['key']!,
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: LiveSessionScreen(eventKey: state.pathParameters['key']!),
         ),
       ),
       // Literal-segment routes before parameterised ones to avoid ambiguity
       GoRoute(
         path: '/bookings/:bandId/new',
-        builder: (_, state) => BookingFormScreen(
-          bandId: int.parse(state.pathParameters['bandId']!),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: BookingFormScreen(
+            bandId: int.parse(state.pathParameters['bandId']!),
+          ),
         ),
       ),
       GoRoute(
         path: '/bookings/:bandId/:id',
-        builder: (_, state) => BookingDetailScreen(
-          bandId: int.parse(state.pathParameters['bandId']!),
-          bookingId: int.parse(state.pathParameters['id']!),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: BookingDetailScreen(
+            bandId: int.parse(state.pathParameters['bandId']!),
+            bookingId: int.parse(state.pathParameters['id']!),
+          ),
         ),
       ),
       GoRoute(
         path: '/bookings/:bandId/:bookingId/edit',
-        builder: (_, state) => BookingFormScreen(
-          bandId: int.parse(state.pathParameters['bandId']!),
-          existing: state.extra as BookingDetail?,
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: BookingFormScreen(
+            bandId: int.parse(state.pathParameters['bandId']!),
+            existing: state.extra as BookingDetail?,
+          ),
         ),
       ),
       GoRoute(
         path: '/bookings/:bandId/:bookingId/contacts',
-        builder: (_, state) => BookingContactsScreen(
-          bandId: int.parse(state.pathParameters['bandId']!),
-          bookingId: int.parse(state.pathParameters['bookingId']!),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: BookingContactsScreen(
+            bandId: int.parse(state.pathParameters['bandId']!),
+            bookingId: int.parse(state.pathParameters['bookingId']!),
+          ),
         ),
       ),
       GoRoute(
         path: '/bookings/:bandId/:bookingId/payments',
-        builder: (_, state) => BookingPaymentsScreen(
-          bandId: int.parse(state.pathParameters['bandId']!),
-          bookingId: int.parse(state.pathParameters['bookingId']!),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: BookingPaymentsScreen(
+            bandId: int.parse(state.pathParameters['bandId']!),
+            bookingId: int.parse(state.pathParameters['bookingId']!),
+          ),
         ),
       ),
       GoRoute(
         path: '/bookings/:bandId/:bookingId/contract',
-        builder: (_, state) => BookingContractScreen(
-          bandId: int.parse(state.pathParameters['bandId']!),
-          bookingId: int.parse(state.pathParameters['bookingId']!),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: BookingContractScreen(
+            bandId: int.parse(state.pathParameters['bandId']!),
+            bookingId: int.parse(state.pathParameters['bookingId']!),
+          ),
         ),
       ),
       GoRoute(
         path: '/bookings/:bandId/:bookingId/history',
-        builder: (_, state) => BookingHistoryScreen(
-          bandId: int.parse(state.pathParameters['bandId']!),
-          bookingId: int.parse(state.pathParameters['bookingId']!),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: BookingHistoryScreen(
+            bandId: int.parse(state.pathParameters['bandId']!),
+            bookingId: int.parse(state.pathParameters['bookingId']!),
+          ),
         ),
       ),
       GoRoute(
         path: '/rehearsals',
-        builder: (_, __) => const RehearsalsScreen(),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: const RehearsalsScreen(),
+        ),
       ),
       GoRoute(
         path: '/rehearsals/by-key/:key',
-        builder: (_, state) => RehearsalDetailByKeyScreen(
-          eventKey: state.pathParameters['key']!,
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: RehearsalDetailByKeyScreen(
+            eventKey: state.pathParameters['key']!,
+          ),
         ),
       ),
       GoRoute(
         path: '/rehearsals/:id',
-        builder: (_, state) => RehearsalDetailScreen(
-          rehearsalId: int.tryParse(state.pathParameters['id']!),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: RehearsalDetailScreen(
+            rehearsalId: int.tryParse(state.pathParameters['id']!),
+          ),
         ),
       ),
       // Media — no bottom nav, pushed from More screen
       GoRoute(
         path: '/media',
-        builder: (_, __) => const MediaScreen(),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: const MediaScreen(),
+        ),
       ),
       // Library — literal segment 'new' must precede the :chartId parameter
       // to prevent GoRouter from treating "new" as a chart ID.
       GoRoute(
         path: '/library/new',
-        builder: (_, state) => CreateChartScreen(
-          bandId: state.extra as int,
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: CreateChartScreen(bandId: state.extra as int),
         ),
       ),
       GoRoute(
         path: '/library/:chartId',
-        builder: (_, state) => ChartDetailScreen(
-          bandId: state.extra as int,
-          chartId: int.parse(state.pathParameters['chartId']!),
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: ChartDetailScreen(
+            bandId: state.extra as int,
+            chartId: int.parse(state.pathParameters['chartId']!),
+          ),
         ),
       ),
     ],

@@ -18,6 +18,17 @@ class BandmateApp extends ConsumerWidget {
         scaffoldBackgroundColor: CupertinoColors.systemGroupedBackground,
       ),
       routerConfig: router,
+      builder: (context, child) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onPanDown: (_) {
+          final focus = FocusManager.instance.primaryFocus;
+          if (focus != null && focus.context != null) {
+            focus.unfocus();
+          }
+        },
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: child!,
+      ),
     );
   }
 }

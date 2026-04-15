@@ -159,6 +159,7 @@ class _ResultsList extends StatelessWidget {
     }
 
     return ListView.builder(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];

@@ -6,9 +6,10 @@ import 'app.dart';
 
 // Don't retry on definitive server errors (4xx). Only retry on network
 // failures or 5xx where a retry might succeed.
-Duration? _retryPolicy(int retryCount, Object error, StackTrace stackTrace) {
+Duration? _retryPolicy(int retryCount, Object error) {
   if (error is DioException && error.response != null) return null;
-  return ProviderContainer.defaultRetryDelay(retryCount, error, stackTrace);
+  // Exponential backoff: 200ms, 400ms, 800ms, …
+  return Duration(milliseconds: 200 * (1 << retryCount));
 }
 
 Future<void> main() async {

@@ -516,7 +516,7 @@ class _MediaTile extends ConsumerWidget {
       onTap: () => Navigator.push(
         context,
         CupertinoPageRoute(
-          builder: (_) => MediaViewer(file: file, bandId: bandId),
+          builder: (_) => MediaViewer(file: file),
         ),
       ),
       onLongPress: () => _showOptions(context, ref),

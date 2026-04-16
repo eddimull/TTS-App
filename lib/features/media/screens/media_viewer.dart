@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart' as dio_pkg;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Slider;
@@ -12,10 +13,9 @@ import '../../../shared/widgets/auth_thumbnail.dart';
 import '../data/models/media_file.dart';
 
 class MediaViewer extends ConsumerStatefulWidget {
-  const MediaViewer({super.key, required this.file, required this.bandId});
+  const MediaViewer({super.key, required this.file});
 
   final MediaFile file;
-  final int bandId;
 
   @override
   ConsumerState<MediaViewer> createState() => _MediaViewerState();
@@ -154,8 +154,7 @@ class _MediaViewerState extends ConsumerState<MediaViewer> {
   }
 
   Widget _buildImageViewer() {
-    final url = widget.file.thumbnailUrl ??
-        '${AppConfig.baseUrl}/media/${widget.file.id}/serve';
+    final url = '${AppConfig.baseUrl}/media/${widget.file.id}/serve';
     return Center(
       child: InteractiveViewer(
         minScale: 0.5,
@@ -267,10 +266,19 @@ class _VideoControls extends StatefulWidget {
 }
 
 class _VideoControlsState extends State<_VideoControls> {
+  late VoidCallback _listener;
+
   @override
   void initState() {
     super.initState();
-    widget.controller.addListener(() { if (mounted) setState(() {}); });
+    _listener = () { if (mounted) setState(() {}); };
+    widget.controller.addListener(_listener);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_listener);
+    super.dispose();
   }
 
   @override
@@ -316,11 +324,21 @@ class _AudioControls extends StatefulWidget {
 }
 
 class _AudioControlsState extends State<_AudioControls> {
+  late StreamSubscription<PlayerState> _stateSub;
+  late StreamSubscription<Duration> _posSub;
+
   @override
   void initState() {
     super.initState();
-    widget.player.playerStateStream.listen((_) { if (mounted) setState(() {}); });
-    widget.player.positionStream.listen((_) { if (mounted) setState(() {}); });
+    _stateSub = widget.player.playerStateStream.listen((_) { if (mounted) setState(() {}); });
+    _posSub   = widget.player.positionStream.listen((_) { if (mounted) setState(() {}); });
+  }
+
+  @override
+  void dispose() {
+    _stateSub.cancel();
+    _posSub.cancel();
+    super.dispose();
   }
 
   @override

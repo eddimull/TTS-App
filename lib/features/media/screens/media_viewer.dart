@@ -89,7 +89,13 @@ class _MediaViewerState extends ConsumerState<MediaViewer> {
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
+    return GestureDetector(
+      onVerticalDragEnd: (details) {
+        if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+          Navigator.pop(context);
+        }
+      },
+      child: CupertinoPageScaffold(
       backgroundColor: CupertinoColors.black,
       navigationBar: CupertinoNavigationBar(
         backgroundColor: const Color(0xCC000000),
@@ -143,6 +149,7 @@ class _MediaViewerState extends ConsumerState<MediaViewer> {
             ),
         ],
       ),
+    ),
     );
   }
 

@@ -3,13 +3,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show DefaultMaterialLocalizations, ReorderableDragStartListener, ReorderableListView;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timelines_plus/timelines_plus.dart';
-import '../../../core/config/app_config.dart';
 import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
 import '../../../shared/widgets/status_chip.dart';
 import '../data/models/event_detail.dart';
 import '../data/events_repository.dart';
 import '../providers/events_provider.dart';
+import 'attachment_widgets.dart';
 
 // ── Mutable edit-time models ──────────────────────────────────────────────────
 
@@ -1168,14 +1168,6 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
         return w[0].toUpperCase() + w.substring(1);
       }).join(' ');
 
-  IconData _attachmentIcon(String mimeType) {
-    if (mimeType.startsWith('image/')) return CupertinoIcons.photo;
-    if (mimeType == 'application/pdf') return CupertinoIcons.doc_text;
-    if (mimeType.startsWith('audio/')) return CupertinoIcons.music_note;
-    if (mimeType.startsWith('video/')) return CupertinoIcons.film;
-    return CupertinoIcons.doc;
-  }
-
   // ── Build ───────────────────────────────────────────────────────────────────
 
   @override
@@ -1277,7 +1269,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                     builder: (_) => _NotesEditorSheet(
                       initialNotes: _notes.text,
                       attachments: _attachments,
-                      attachmentIcon: _attachmentIcon,
+                      attachmentIcon: attachmentIcon,
                       onUpload: _pickAndUploadAttachment,
                       onDelete: _deleteAttachment,
                       uploading: _uploading,
@@ -1694,15 +1686,15 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                         width: 40,
                         height: 40,
                         child: _attachments[i].mimeType.startsWith('image/') &&
-                                _resolveAttachmentUrl(_attachments[i].url).isNotEmpty
+                                resolveAttachmentUrl(_attachments[i].url).isNotEmpty
                             ? AuthThumbnail(
-                                url: _resolveAttachmentUrl(_attachments[i].url))
+                                url: resolveAttachmentUrl(_attachments[i].url))
                             : ColoredBox(
                                 color: CupertinoColors.secondarySystemBackground
                                     .resolveFrom(context),
                                 child: Center(
                                   child: Icon(
-                                    _attachmentIcon(_attachments[i].mimeType),
+                                    attachmentIcon(_attachments[i].mimeType),
                                     size: 20,
                                     color: CupertinoColors.secondaryLabel
                                         .resolveFrom(context),
@@ -1780,12 +1772,6 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
       ),
     );
   }
-}
-
-String _resolveAttachmentUrl(String raw) {
-  if (raw.startsWith('http')) return raw;
-  if (raw.startsWith('/')) return '${AppConfig.baseUrl}$raw';
-  return raw;
 }
 
 // ── Layout helpers ────────────────────────────────────────────────────────────
@@ -2191,9 +2177,9 @@ class _NotesEditorSheetState extends State<_NotesEditorSheet> {
                                 width: 40,
                                 height: 40,
                                 child: _attachments[i].mimeType.startsWith('image/') &&
-                                        _resolveAttachmentUrl(_attachments[i].url).isNotEmpty
+                                        resolveAttachmentUrl(_attachments[i].url).isNotEmpty
                                     ? AuthThumbnail(
-                                        url: _resolveAttachmentUrl(_attachments[i].url))
+                                        url: resolveAttachmentUrl(_attachments[i].url))
                                     : ColoredBox(
                                         color: CupertinoColors.secondarySystemBackground
                                             .resolveFrom(context),

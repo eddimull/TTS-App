@@ -1,13 +1,9 @@
 import 'dart:async';
-import 'dart:typed_data';
-import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:timelines_plus/timelines_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../core/config/app_config.dart';
 import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
 import '../../../shared/widgets/error_view.dart';
@@ -17,6 +13,7 @@ import '../data/models/event_detail.dart';
 import '../data/models/event_member.dart';
 import '../data/models/sub_entry.dart';
 import '../providers/events_provider.dart';
+import 'attachment_widgets.dart';
 
 class EventDetailScreen extends ConsumerWidget {
   const EventDetailScreen({super.key, required this.eventKey});
@@ -1011,26 +1008,6 @@ class _ContactLink extends StatelessWidget {
 
 // ── Attachments ───────────────────────────────────────────────────────────────
 
-/// Returns the resolved, absolute URL for an attachment.
-/// If [raw] is already absolute (starts with http) it is used as-is.
-/// If it starts with `/` the app's base URL is prepended.
-String _resolveAttachmentUrl(String raw) {
-  // ignore: avoid_print
-  print('[AttachUrl] raw url from API: "$raw"');
-  if (raw.isEmpty) return raw;
-  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-  if (raw.startsWith('/')) return '${AppConfig.baseUrl}$raw';
-  return raw;
-}
-
-IconData _attachmentIcon(String mimeType) {
-  if (mimeType.startsWith('image/')) return CupertinoIcons.photo;
-  if (mimeType == 'application/pdf') return CupertinoIcons.doc_text;
-  if (mimeType.startsWith('audio/')) return CupertinoIcons.music_note;
-  if (mimeType.startsWith('video/')) return CupertinoIcons.film;
-  return CupertinoIcons.doc;
-}
-
 class _AttachmentsSection extends StatelessWidget {
   const _AttachmentsSection({required this.attachments});
   final List<EventAttachment> attachments;
@@ -1076,7 +1053,7 @@ class _AttachmentRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isImage = attachment.mimeType.startsWith('image/');
-    final resolvedUrl = _resolveAttachmentUrl(attachment.url);
+    final resolvedUrl = resolveAttachmentUrl(attachment.url);
 
     return CupertinoButton(
       padding: EdgeInsets.zero,
@@ -1100,7 +1077,7 @@ class _AttachmentRow extends StatelessWidget {
                             .withValues(alpha: 0.12),
                         child: Center(
                           child: Icon(
-                            _attachmentIcon(attachment.mimeType),
+                            attachmentIcon(attachment.mimeType),
                             size: 22,
                             color: CupertinoColors.systemBlue
                                 .resolveFrom(context),
@@ -1149,7 +1126,7 @@ class _AttachmentRow extends StatelessWidget {
       Navigator.of(context).push(
         CupertinoPageRoute<void>(
           fullscreenDialog: true,
-          builder: (_) => _AttachmentLightbox(
+          builder: (_) => AttachmentLightbox(
             attachments: imageAttachments,
             startIndex: startIndex < 0 ? 0 : startIndex,
           ),
@@ -1160,216 +1137,6 @@ class _AttachmentRow extends StatelessWidget {
       final uri = Uri.tryParse(resolvedUrl);
       if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
     }
-  }
-}
-
-// ── Lightbox image fetch (full-size, authenticated) ──────────────────────────
-
-Future<Uint8List?> _fetchImageBytes(String url) async {
-  try {
-    const s = FlutterSecureStorage(
-      aOptions: AndroidOptions(encryptedSharedPreferences: true),
-    );
-    final token = await s.read(key: 'auth_token');
-    final dio = Dio();
-    final response = await dio.get<List<int>>(
-      url,
-      options: Options(
-        responseType: ResponseType.bytes,
-        headers: {
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-        validateStatus: (_) => true,
-      ),
-    );
-    if (response.statusCode != 200) return null;
-    return Uint8List.fromList(response.data!);
-  } catch (_) {
-    return null;
-  }
-}
-
-// ── Attachment Lightbox ───────────────────────────────────────────────────────
-
-class _AttachmentLightbox extends StatefulWidget {
-  const _AttachmentLightbox({
-    required this.attachments,
-    required this.startIndex,
-  });
-
-  /// Image-only attachments to display in the PageView.
-  final List<EventAttachment> attachments;
-  final int startIndex;
-
-  @override
-  State<_AttachmentLightbox> createState() => _AttachmentLightboxState();
-}
-
-class _AttachmentLightboxState extends State<_AttachmentLightbox> {
-  late final PageController _pageController;
-  late int _currentIndex;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentIndex = widget.startIndex;
-    _pageController = PageController(initialPage: widget.startIndex);
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final attachment = widget.attachments[_currentIndex];
-    final isImage = attachment.mimeType.startsWith('image/');
-
-    return CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.black,
-      navigationBar: CupertinoNavigationBar(
-        backgroundColor: CupertinoColors.black.withValues(alpha: 0.85),
-        // Manually style nav bar text for dark background
-        middle: Text(
-          attachment.filename,
-          style: const TextStyle(color: CupertinoColors.white),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        leading: CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text(
-            'Close',
-            style: TextStyle(color: CupertinoColors.systemBlue),
-          ),
-        ),
-      ),
-      child: SafeArea(
-        child: Stack(
-          children: [
-            // ── Page content ──────────────────────────────────────────────
-            if (isImage)
-              PageView.builder(
-                controller: _pageController,
-                itemCount: widget.attachments.length,
-                onPageChanged: (i) => setState(() => _currentIndex = i),
-                itemBuilder: (context, i) {
-                  final a = widget.attachments[i];
-                  final url = _resolveAttachmentUrl(a.url);
-                  return InteractiveViewer(
-                    minScale: 0.5,
-                    maxScale: 4.0,
-                    child: Center(
-                      child: FutureBuilder<Uint8List?>(
-                        future: _fetchImageBytes(url),
-                        builder: (context, snap) {
-                          if (!snap.hasData) {
-                            return const CupertinoActivityIndicator(
-                                color: CupertinoColors.white);
-                          }
-                          final bytes = snap.data;
-                          if (bytes == null || bytes.isEmpty) {
-                            return const Icon(CupertinoIcons.photo,
-                                size: 48, color: CupertinoColors.white);
-                          }
-                          return Image.memory(bytes, fit: BoxFit.contain);
-                        },
-                      ),
-                    ),
-                  );
-                },
-              )
-            else
-              // Non-image fallback (should not normally appear since we only
-              // pass image attachments, but guard defensively)
-              _NonImageLightboxPage(attachment: attachment),
-
-            // ── Page indicator dots ───────────────────────────────────────
-            if (isImage && widget.attachments.length > 1)
-              Positioned(
-                bottom: 16,
-                left: 0,
-                right: 0,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    widget.attachments.length,
-                    (i) => AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      width: i == _currentIndex ? 10 : 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: i == _currentIndex
-                            ? CupertinoColors.white
-                            : CupertinoColors.white.withValues(alpha: 0.4),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Shown in the lightbox for non-image attachment types.
-class _NonImageLightboxPage extends StatelessWidget {
-  const _NonImageLightboxPage({required this.attachment});
-  final EventAttachment attachment;
-
-  @override
-  Widget build(BuildContext context) {
-    final resolvedUrl = _resolveAttachmentUrl(attachment.url);
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            _attachmentIcon(attachment.mimeType),
-            size: 64,
-            color: CupertinoColors.white.withValues(alpha: 0.85),
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              attachment.filename,
-              style: const TextStyle(
-                  fontSize: 17,
-                  color: CupertinoColors.white,
-                  fontWeight: FontWeight.w500),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            attachment.formattedSize,
-            style: TextStyle(
-              fontSize: 13,
-              color: CupertinoColors.white.withValues(alpha: 0.6),
-            ),
-          ),
-          const SizedBox(height: 24),
-          if (resolvedUrl.isNotEmpty)
-            CupertinoButton.filled(
-              onPressed: () async {
-                final uri = Uri.tryParse(resolvedUrl);
-                if (uri != null) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                }
-              },
-              child: const Text('Open'),
-            ),
-        ],
-      ),
-    );
   }
 }
 

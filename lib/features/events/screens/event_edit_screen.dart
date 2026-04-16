@@ -2054,17 +2054,25 @@ class _NotesEditorSheetState extends State<_NotesEditorSheet> {
   // Local copy of attachments so mutations are reflected immediately in the sheet
   late List<EventAttachment> _attachments;
   bool _uploading = false;
+  late final FocusNode _focusNode;
+  bool _drawerOpen = false;
+  bool _keyboardVisible = false;
 
   @override
   void initState() {
     super.initState();
     _ctrl = TextEditingController(text: widget.initialNotes);
     _attachments = List.of(widget.attachments);
+    _focusNode = FocusNode();
+    _focusNode.addListener(() {
+      setState(() => _keyboardVisible = _focusNode.hasFocus);
+    });
   }
 
   @override
   void dispose() {
     _ctrl.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -2091,10 +2099,6 @@ class _NotesEditorSheetState extends State<_NotesEditorSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final secondaryColor = CupertinoColors.secondaryLabel.resolveFrom(context);
-    final blueColor = CupertinoColors.activeBlue.resolveFrom(context);
-    final separatorColor = CupertinoColors.separator.resolveFrom(context);
-
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
         middle: const Text('Notes'),
@@ -2121,6 +2125,7 @@ class _NotesEditorSheetState extends State<_NotesEditorSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: CupertinoTextField(
                   controller: _ctrl,
+                  focusNode: _focusNode,
                   placeholder: 'Add notes…',
                   // expands: true requires maxLines: null
                   maxLines: null,
@@ -2135,133 +2140,27 @@ class _NotesEditorSheetState extends State<_NotesEditorSheet> {
               ),
             ),
 
-            // ── Divider before attachments ──────────────────────────────────
-            Container(height: 0.5, color: separatorColor),
-
-            // ── Attachments list + add button ───────────────────────────────
-            Container(
-              color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
-              // Constrain to a scrollable area; on small phones this caps nicely
-              constraints: const BoxConstraints(maxHeight: 280),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_attachments.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        child: Text(
-                          'No attachments',
-                          style: TextStyle(fontSize: 14, color: secondaryColor),
-                        ),
-                      ),
-                    for (int i = 0; i < _attachments.length; i++) ...[
-                      if (i > 0)
-                        Container(
-                          height: 0.5,
-                          margin: const EdgeInsets.only(left: 16),
-                          color: separatorColor,
-                        ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: SizedBox(
-                                width: 40,
-                                height: 40,
-                                child: _attachments[i].mimeType.startsWith('image/') &&
-                                        resolveAttachmentUrl(_attachments[i].url).isNotEmpty
-                                    ? AuthThumbnail(
-                                        url: resolveAttachmentUrl(_attachments[i].url))
-                                    : ColoredBox(
-                                        color: CupertinoColors.secondarySystemBackground
-                                            .resolveFrom(context),
-                                        child: Center(
-                                          child: Icon(
-                                            attachmentIcon(_attachments[i].mimeType),
-                                            size: 20,
-                                            color: secondaryColor,
-                                          ),
-                                        ),
-                                      ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _attachments[i].filename,
-                                    style: const TextStyle(fontSize: 15),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Text(
-                                    _attachments[i].formattedSize,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: secondaryColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            CupertinoButton(
-                              padding: EdgeInsets.zero,
-                              minimumSize: const Size(28, 28),
-                              onPressed: () => _handleDelete(_attachments[i]),
-                              child: Icon(
-                                CupertinoIcons.minus_circle,
-                                size: 20,
-                                color: CupertinoColors.systemRed
-                                    .resolveFrom(context),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    if (_attachments.isNotEmpty)
-                      Container(
-                        height: 0.5,
-                        margin: const EdgeInsets.only(left: 16),
-                        color: separatorColor,
-                      ),
-                    // Add attachment button
-                    CupertinoButton(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 10),
-                      onPressed: _uploading ? null : _handleUpload,
-                      child: Row(
-                        children: [
-                          if (_uploading)
-                            const CupertinoActivityIndicator()
-                          else
-                            Icon(
-                              CupertinoIcons.paperclip,
-                              size: 18,
-                              color: blueColor,
-                            ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _uploading ? 'Uploading…' : 'Add Attachment',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: _uploading ? secondaryColor : blueColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+            // ── Attachment drawer ───────────────────────────────────────────
+            if (!_keyboardVisible) ...[
+              _AttachmentDrawerBar(
+                count: _attachments.length,
+                open: _drawerOpen,
+                onTap: () => setState(() => _drawerOpen = !_drawerOpen),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                height: _drawerOpen ? 260.0 : 0.0,
+                child: ClipRect(
+                  child: _AttachmentDrawerContent(
+                    attachments: _attachments,
+                    uploading: _uploading,
+                    onUpload: _handleUpload,
+                    onDelete: _handleDelete,
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -2292,6 +2191,226 @@ class _SheetDragHandle extends StatelessWidget {
             color: CupertinoColors.systemFill.resolveFrom(context),
             borderRadius: BorderRadius.circular(2),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Attachment drawer bar ─────────────────────────────────────────────────────
+
+class _AttachmentDrawerBar extends StatelessWidget {
+  const _AttachmentDrawerBar({
+    required this.count,
+    required this.open,
+    required this.onTap,
+  });
+  final int count;
+  final bool open;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final separatorColor = CupertinoColors.separator.resolveFrom(context);
+    final secondaryBg =
+        CupertinoColors.secondarySystemBackground.resolveFrom(context);
+    final labelColor = CupertinoColors.label.resolveFrom(context);
+    final secondaryLabel =
+        CupertinoColors.secondaryLabel.resolveFrom(context);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(height: 0.5, color: separatorColor),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Container(
+            color: secondaryBg,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(CupertinoIcons.paperclip, size: 16, color: secondaryLabel),
+                const SizedBox(width: 8),
+                Text(
+                  'Attachments ($count)',
+                  style: TextStyle(fontSize: 15, color: labelColor),
+                ),
+                const Spacer(),
+                AnimatedRotation(
+                  turns: open ? 0.5 : 0.0,
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
+                  child: Icon(
+                    CupertinoIcons.chevron_up,
+                    size: 14,
+                    color: secondaryLabel,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Attachment drawer content ─────────────────────────────────────────────────
+
+class _AttachmentDrawerContent extends StatelessWidget {
+  const _AttachmentDrawerContent({
+    required this.attachments,
+    required this.uploading,
+    required this.onUpload,
+    required this.onDelete,
+  });
+  final List<EventAttachment> attachments;
+  final bool uploading;
+  final VoidCallback onUpload;
+  final Future<void> Function(EventAttachment) onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final separatorColor = CupertinoColors.separator.resolveFrom(context);
+    final secondaryBg =
+        CupertinoColors.secondarySystemBackground.resolveFrom(context);
+    final blueColor = CupertinoColors.activeBlue.resolveFrom(context);
+    final secondaryLabel =
+        CupertinoColors.secondaryLabel.resolveFrom(context);
+
+    return Container(
+      color: secondaryBg,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Add Files button ──────────────────────────────────────────
+            CupertinoButton(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              onPressed: uploading ? null : onUpload,
+              child: Row(
+                children: [
+                  if (uploading)
+                    const CupertinoActivityIndicator()
+                  else
+                    Icon(CupertinoIcons.plus_circle,
+                        size: 18, color: blueColor),
+                  const SizedBox(width: 8),
+                  Text(
+                    uploading ? 'Uploading…' : 'Add Files',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: uploading ? secondaryLabel : blueColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(height: 0.5, color: separatorColor),
+            // ── File rows ────────────────────────────────────────────────
+            for (int i = 0; i < attachments.length; i++) ...[
+              if (i > 0)
+                Container(
+                  height: 0.5,
+                  margin: const EdgeInsets.only(left: 16),
+                  color: separatorColor,
+                ),
+              Dismissible(
+                key: ValueKey(attachments[i].id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  color: CupertinoColors.systemRed.resolveFrom(context),
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20),
+                  child: const Icon(CupertinoIcons.delete,
+                      color: CupertinoColors.white, size: 20),
+                ),
+                onDismissed: (_) => onDelete(attachments[i]),
+                child: _AttachmentDrawerRow(attachment: attachments[i]),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Attachment drawer row ─────────────────────────────────────────────────────
+
+class _AttachmentDrawerRow extends StatelessWidget {
+  const _AttachmentDrawerRow({required this.attachment});
+  final EventAttachment attachment;
+
+  @override
+  Widget build(BuildContext context) {
+    final isImage = attachment.mimeType.startsWith('image/');
+    final resolvedUrl = resolveAttachmentUrl(attachment.url);
+    final secondaryLabel =
+        CupertinoColors.secondaryLabel.resolveFrom(context);
+    final secondaryBg =
+        CupertinoColors.secondarySystemBackground.resolveFrom(context);
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: isImage
+          ? () {
+              Navigator.of(context).push(
+                CupertinoPageRoute<void>(
+                  fullscreenDialog: true,
+                  builder: (_) => AttachmentLightbox(
+                    attachments: [attachment],
+                    startIndex: 0,
+                  ),
+                ),
+              );
+            }
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: SizedBox(
+                width: 36,
+                height: 36,
+                child: isImage && resolvedUrl.isNotEmpty
+                    ? AuthThumbnail(url: resolvedUrl)
+                    : ColoredBox(
+                        color: secondaryBg,
+                        child: Center(
+                          child: Icon(
+                            attachmentIcon(attachment.mimeType),
+                            size: 18,
+                            color: secondaryLabel,
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    attachment.filename,
+                    style: const TextStyle(fontSize: 15),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    attachment.formattedSize,
+                    style: TextStyle(fontSize: 12, color: secondaryLabel),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

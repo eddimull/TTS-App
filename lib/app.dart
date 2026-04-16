@@ -19,7 +19,7 @@ class BandmateApp extends ConsumerWidget {
       ),
       routerConfig: router,
       builder: (context, child) => GestureDetector(
-        behavior: HitTestBehavior.deferToChild,
+        behavior: HitTestBehavior.opaque,
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
         child: child!,
       ),

@@ -433,25 +433,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Drag handle
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onVerticalDragEnd: (details) {
-                      if ((details.primaryVelocity ?? 0) > 100) {
-                        Navigator.pop(ctx);
-                      }
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Container(
-                        width: 36,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: CupertinoColors.systemFill.resolveFrom(ctx),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                  ),
+                  _SheetDragHandle(sheetContext: ctx),
                   // Header row
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -633,25 +615,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Drag handle
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onVerticalDragEnd: (details) {
-                      if ((details.primaryVelocity ?? 0) > 100) {
-                        Navigator.pop(ctx);
-                      }
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Container(
-                        width: 36,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: CupertinoColors.systemFill.resolveFrom(ctx),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                  ),
+                  _SheetDragHandle(sheetContext: ctx),
                   // Header row
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -871,25 +835,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Drag handle
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onVerticalDragEnd: (details) {
-                        if ((details.primaryVelocity ?? 0) > 100) {
-                          Navigator.pop(ctx);
-                        }
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Container(
-                          width: 36,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: CupertinoColors.systemFill.resolveFrom(ctx),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      ),
-                    ),
+                    _SheetDragHandle(sheetContext: ctx),
                     // Header row: Cancel | title | Add
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -1022,25 +968,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Drag handle
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onVerticalDragEnd: (details) {
-                        if ((details.primaryVelocity ?? 0) > 100) {
-                          Navigator.pop(ctx);
-                        }
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Container(
-                          width: 36,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: CupertinoColors.systemFill.resolveFrom(ctx),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      ),
-                    ),
+                    _SheetDragHandle(sheetContext: ctx),
                     // Header row: Cancel | title | Save
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -2352,6 +2280,35 @@ class _NotesEditorSheetState extends State<_NotesEditorSheet> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Drag handle pill for bottom sheets — swipe down to dismiss.
+class _SheetDragHandle extends StatelessWidget {
+  const _SheetDragHandle({required this.sheetContext});
+  final BuildContext sheetContext;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onVerticalDragEnd: (details) {
+        if ((details.primaryVelocity ?? 0) > 500) {
+          Navigator.pop(sheetContext);
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Container(
+          width: 36,
+          height: 4,
+          decoration: BoxDecoration(
+            color: CupertinoColors.systemFill.resolveFrom(context),
+            borderRadius: BorderRadius.circular(2),
+          ),
         ),
       ),
     );

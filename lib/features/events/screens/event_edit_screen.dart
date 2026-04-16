@@ -1269,7 +1269,6 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                     builder: (_) => _NotesEditorSheet(
                       initialNotes: _notes.text,
                       attachments: _attachments,
-                      attachmentIcon: attachmentIcon,
                       onUpload: _pickAndUploadAttachment,
                       onDelete: _deleteAttachment,
                       uploading: _uploading,
@@ -2035,7 +2034,6 @@ class _NotesEditorSheet extends StatefulWidget {
   const _NotesEditorSheet({
     required this.initialNotes,
     required this.attachments,
-    required this.attachmentIcon,
     required this.onUpload,
     required this.onDelete,
     required this.uploading,
@@ -2043,7 +2041,6 @@ class _NotesEditorSheet extends StatefulWidget {
 
   final String initialNotes;
   final List<EventAttachment> attachments;
-  final IconData Function(String mimeType) attachmentIcon;
   final Future<List<EventAttachment>> Function() onUpload;
   final Future<List<EventAttachment>> Function(EventAttachment) onDelete;
   final bool uploading;
@@ -2185,7 +2182,7 @@ class _NotesEditorSheetState extends State<_NotesEditorSheet> {
                                             .resolveFrom(context),
                                         child: Center(
                                           child: Icon(
-                                            widget.attachmentIcon(_attachments[i].mimeType),
+                                            attachmentIcon(_attachments[i].mimeType),
                                             size: 20,
                                             color: secondaryColor,
                                           ),

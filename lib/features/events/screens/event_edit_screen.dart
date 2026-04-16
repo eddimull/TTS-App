@@ -433,14 +433,22 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Drag handle
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 4),
-                    child: Container(
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.systemFill.resolveFrom(ctx),
-                        borderRadius: BorderRadius.circular(2),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onVerticalDragEnd: (details) {
+                      if ((details.primaryVelocity ?? 0) > 100) {
+                        Navigator.pop(ctx);
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: CupertinoColors.systemFill.resolveFrom(ctx),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
                   ),
@@ -625,14 +633,22 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Drag handle
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 4),
-                    child: Container(
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.systemFill.resolveFrom(ctx),
-                        borderRadius: BorderRadius.circular(2),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onVerticalDragEnd: (details) {
+                      if ((details.primaryVelocity ?? 0) > 100) {
+                        Navigator.pop(ctx);
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: CupertinoColors.systemFill.resolveFrom(ctx),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
                   ),
@@ -855,14 +871,22 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Drag handle
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8, bottom: 4),
-                      child: Container(
-                        width: 36,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: CupertinoColors.systemFill.resolveFrom(ctx),
-                          borderRadius: BorderRadius.circular(2),
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onVerticalDragEnd: (details) {
+                        if ((details.primaryVelocity ?? 0) > 100) {
+                          Navigator.pop(ctx);
+                        }
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Container(
+                          width: 36,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: CupertinoColors.systemFill.resolveFrom(ctx),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
                       ),
                     ),
@@ -998,14 +1022,22 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Drag handle
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8, bottom: 4),
-                      child: Container(
-                        width: 36,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: CupertinoColors.systemFill.resolveFrom(ctx),
-                          borderRadius: BorderRadius.circular(2),
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onVerticalDragEnd: (details) {
+                        if ((details.primaryVelocity ?? 0) > 100) {
+                          Navigator.pop(ctx);
+                        }
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Container(
+                          width: 36,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: CupertinoColors.systemFill.resolveFrom(ctx),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
                       ),
                     ),

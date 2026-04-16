@@ -28,8 +28,9 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
     super.dispose();
   }
 
-  MediaListParams get _params {
-    final bandId = ref.read(selectedBandProvider).value ?? 0;
+  late MediaListParams _currentParams;
+
+  MediaListParams _paramsFor(int bandId) {
     return MediaListParams(
       bandId: bandId,
       folderPath: _folderPath,
@@ -41,8 +42,16 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
   @override
   Widget build(BuildContext context) {
     final bandId = ref.watch(selectedBandProvider).value ?? 0;
-    final listState = ref.watch(mediaListProvider(_params));
+    _currentParams = _paramsFor(bandId);
+    final listState = ref.watch(mediaListProvider(_currentParams));
     final uploadState = ref.watch(uploadProvider);
+
+    // Listen for successful uploads and refresh the list
+    ref.listen<UploadState>(uploadProvider, (previous, next) {
+      if (previous?.lastUploaded == null && next.lastUploaded != null) {
+        ref.read(mediaListProvider(_currentParams).notifier).load();
+      }
+    });
 
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
@@ -162,7 +171,7 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
             const SizedBox(height: 12),
             CupertinoButton.filled(
               onPressed: () =>
-                  ref.read(mediaListProvider(_params).notifier).load(),
+                  ref.read(mediaListProvider(_currentParams).notifier).load(),
               child: const Text('Retry'),
             ),
           ],
@@ -176,7 +185,7 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
             n.metrics.extentAfter < 200 &&
             state.hasMore &&
             !state.isLoadingMore) {
-          ref.read(mediaListProvider(_params).notifier).loadMore();
+          ref.read(mediaListProvider(_currentParams).notifier).loadMore();
         }
         return false;
       },
@@ -184,7 +193,7 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
         slivers: [
           CupertinoSliverRefreshControl(
             onRefresh: () =>
-                ref.read(mediaListProvider(_params).notifier).load(),
+                ref.read(mediaListProvider(_currentParams).notifier).load(),
           ),
           SliverPadding(
             padding: const EdgeInsets.all(8),
@@ -253,7 +262,7 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
         file: state.files[fileIndex],
         bandId: bandId,
         onDeleted: () => ref
-            .read(mediaListProvider(_params).notifier)
+            .read(mediaListProvider(_currentParams).notifier)
             .removeFile(state.files[fileIndex].id),
       );
     }
@@ -266,7 +275,7 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
       builder: (_) => _NewFolderDialog(
         onConfirm: (name) async {
           final path = await ref
-              .read(mediaListProvider(_params).notifier)
+              .read(mediaListProvider(_currentParams).notifier)
               .createFolder(bandId, name);
           if (path != null && mounted) {
             setState(() => _folderPath = path);
@@ -394,19 +403,20 @@ class _FolderTile extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          color: const Color(0xFFFEF3C7),
+          color: CupertinoColors.systemYellow.resolveFrom(context).withValues(alpha: 0.2),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(CupertinoIcons.folder_fill, size: 32, color: Color(0xFFF59E0B)),
+              Icon(CupertinoIcons.folder_fill, size: 32,
+                  color: CupertinoColors.systemYellow.resolveFrom(context)),
               const SizedBox(height: 4),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: Color(0xFF92400E),
+                    color: CupertinoColors.label.resolveFrom(context),
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 2,

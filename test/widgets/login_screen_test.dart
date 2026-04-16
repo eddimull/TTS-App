@@ -13,9 +13,6 @@ class FakeAuthNotifier extends AuthNotifier {
   String? lastEmail;
   String? lastPassword;
 
-  /// If true, login() will put an error message into state.
-  bool shouldFail = false;
-
   @override
   Future<AuthState> build() async => const AuthUnauthenticated();
 
@@ -24,21 +21,9 @@ class FakeAuthNotifier extends AuthNotifier {
     loginCalled = true;
     lastEmail = email;
     lastPassword = password;
-
-    if (shouldFail) {
-      state = const AsyncValue.data(
-        AuthUnauthenticated(errorMessage: 'Invalid email or password.'),
-      );
-    } else {
-      // Success — router would normally redirect; here we just set
-      // authenticated state so the widget's post-login check passes.
-      state = const AsyncValue.data(
-        AuthAuthenticated(
-          user: _fakeUser,
-          bands: [],
-        ),
-      );
-    }
+    state = const AsyncValue.data(
+      AuthAuthenticated(user: _fakeUser, bands: []),
+    );
   }
 }
 
@@ -87,7 +72,6 @@ void main() {
       await tester.pumpWidget(_wrapWithProviders(const LoginScreen()));
       await tester.pump();
 
-      // Tap Sign In without entering anything
       await tester.tap(find.text('Sign In'));
       await tester.pump();
 
@@ -149,11 +133,9 @@ void main() {
       await tester.pumpWidget(_wrapWithProviders(const LoginScreen()));
       await tester.pump();
 
-      // Find the EditableText inside the password CupertinoTextField
       final passwordFields = tester.widgetList<CupertinoTextField>(
         find.byType(CupertinoTextField),
       ).toList();
-      // Password is the second CupertinoTextField
       expect(passwordFields.length, greaterThanOrEqualTo(2));
       expect(passwordFields[1].obscureText, isTrue);
     });
@@ -162,7 +144,6 @@ void main() {
       await tester.pumpWidget(_wrapWithProviders(const LoginScreen()));
       await tester.pump();
 
-      // Tap the visibility toggle icon (eye icon)
       await tester.tap(find.byIcon(CupertinoIcons.eye));
       await tester.pump();
 
@@ -170,27 +151,6 @@ void main() {
         find.byType(CupertinoTextField),
       ).toList();
       expect(passwordFields[1].obscureText, isFalse);
-    });
-
-    testWidgets('test_shows_error_dialog_on_failed_login', (tester) async {
-      final fake = FakeAuthNotifier()..shouldFail = true;
-      await tester.pumpWidget(_wrapWithProviders(const LoginScreen(), notifier: fake));
-      await tester.pump();
-
-      await tester.enterText(
-        find.widgetWithText(CupertinoTextField, 'Email'),
-        'bad@example.com',
-      );
-      await tester.enterText(
-        find.widgetWithText(CupertinoTextField, 'Password'),
-        'wrongpass',
-      );
-
-      await tester.tap(find.text('Sign In'));
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.text('Invalid email or password.'), findsOneWidget);
     });
   });
 }

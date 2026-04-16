@@ -173,11 +173,15 @@ void main() {
       final container = makeContainer(repo);
       addTearDown(container.dispose);
 
-      final result = await container
-          .read(eventDetailProvider('missing').future)
-          .then((_) => 'ok', onError: (_) => 'error');
+      // Read the provider to trigger computation, then inspect the AsyncValue.
+      final asyncValue = await Future.microtask(
+        () => container.read(eventDetailProvider('missing')),
+      );
 
-      expect(result, 'error');
+      // Give the provider time to settle to an error state.
+      await Future<void>.delayed(Duration.zero);
+      final settled = container.read(eventDetailProvider('missing'));
+      expect(settled.hasError, isTrue);
     });
   });
 }

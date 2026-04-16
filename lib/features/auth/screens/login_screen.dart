@@ -16,6 +16,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isSubmitting = false;
   String? _emailError;
   String? _passwordError;
+  String? _loginError;
 
   @override
   void dispose() {
@@ -43,6 +44,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() {
       _emailError = emailError;
       _passwordError = passwordError;
+      _loginError = null;
     });
     return emailError == null && passwordError == null;
   }
@@ -58,24 +60,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
 
     if (!mounted) return;
-    setState(() => _isSubmitting = false);
-
     final authState = ref.read(authProvider).value;
-    if (authState is AuthUnauthenticated && authState.errorMessage != null) {
-      showCupertinoDialog(
-        context: context,
-        builder: (_) => CupertinoAlertDialog(
-          title: const Text('Sign In Failed'),
-          content: Text(authState.errorMessage!),
-          actions: [
-            CupertinoDialogAction(
-              child: const Text('OK'),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
-        ),
-      );
-    }
+    setState(() {
+      _isSubmitting = false;
+      if (authState is AuthUnauthenticated) {
+        _loginError = authState.errorMessage;
+      }
+    });
   }
 
   @override
@@ -202,6 +193,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       : const Text('Sign In',
                           style: TextStyle(fontSize: 16)),
                 ),
+                if (_loginError != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _loginError!,
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: CupertinoColors.systemRed.resolveFrom(context)),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ],
             ),
           ),

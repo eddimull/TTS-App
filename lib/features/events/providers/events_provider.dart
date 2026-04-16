@@ -50,7 +50,7 @@ final bandEventsProvider = AsyncNotifierProvider.family<
 
 final eventDetailProvider =
     FutureProvider.family<EventDetail, String>((ref, key) async {
-  final repo = ref.watch(eventsRepositoryProvider);
+  final repo = ref.read(eventsRepositoryProvider);
   return repo.getEventDetail(key);
 });
 

@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' show Material, Theme, ThemeData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -8,6 +7,7 @@ import '../../../shared/providers/selected_band_provider.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
 import '../data/models/media_file.dart';
 import '../providers/media_provider.dart';
+import 'media_viewer.dart';
 
 class MediaScreen extends ConsumerStatefulWidget {
   const MediaScreen({super.key});
@@ -45,69 +45,65 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
     final uploadState = ref.watch(uploadProvider);
 
     return CupertinoPageScaffold(
-        navigationBar: CupertinoNavigationBar(
-          middle: _folderPath != null
-              ? Text(_folderPath!.split('/').last)
-              : const Text('Media'),
-          leading: _folderPath != null
-              ? CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: () => setState(() => _folderPath = null),
-                  child: const Icon(CupertinoIcons.back),
-                )
-              : null,
-          trailing: CupertinoButton(
-            padding: EdgeInsets.zero,
-            onPressed: () => _showFilterSheet(context),
-            child: const Icon(CupertinoIcons.line_horizontal_3_decrease),
-          ),
+      navigationBar: CupertinoNavigationBar(
+        middle: _folderPath != null
+            ? Text(_folderPath!.split('/').last)
+            : const Text('Media'),
+        leading: _folderPath != null
+            ? CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () => setState(() => _folderPath = null),
+                child: const Icon(CupertinoIcons.back),
+              )
+            : null,
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: () => _showFilterSheet(context),
+          child: const Icon(CupertinoIcons.line_horizontal_3_decrease),
         ),
-        child: Column(
-          children: [
-            // Search bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-              child: CupertinoSearchTextField(
-                controller: _searchController,
-                placeholder: 'Search…',
-                onChanged: (v) => setState(() => _search = v),
-                onSuffixTap: () {
-                  _searchController.clear();
-                  setState(() => _search = '');
-                },
-              ),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: CupertinoSearchTextField(
+              controller: _searchController,
+              placeholder: 'Search…',
+              onChanged: (v) => setState(() => _search = v),
+              onSuffixTap: () {
+                _searchController.clear();
+                setState(() => _search = '');
+              },
             ),
-            // Upload progress banner.
-            if (uploadState.isUploading)
-              _UploadProgressBanner(progress: uploadState.progress),
-            if (uploadState.error != null)
-              _ErrorBanner(
-                message: uploadState.error!,
-                onDismiss: () => ref.read(uploadProvider.notifier).reset(),
-              ),
-            // Upload button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: SizedBox(
-                width: double.infinity,
-                child: CupertinoButton.filled(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  onPressed: () => _showUploadSheet(context, bandId),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(CupertinoIcons.arrow_up_circle, size: 18),
-                      SizedBox(width: 6),
-                      Text('Upload'),
-                    ],
-                  ),
+          ),
+          if (uploadState.isUploading)
+            _UploadProgressBanner(progress: uploadState.progress),
+          if (uploadState.error != null)
+            _ErrorBanner(
+              message: uploadState.error!,
+              onDismiss: () => ref.read(uploadProvider.notifier).reset(),
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: SizedBox(
+              width: double.infinity,
+              child: CupertinoButton.filled(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                onPressed: () => _showUploadSheet(context, bandId),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(CupertinoIcons.arrow_up_circle, size: 18),
+                    SizedBox(width: 6),
+                    Text('Upload'),
+                  ],
                 ),
               ),
             ),
-            // Content.
-            Expanded(child: _buildBody(listState, bandId)),
-          ],
-        ),
+          ),
+          Expanded(child: _buildBody(listState, bandId)),
+        ],
+      ),
     );
   }
 
@@ -117,91 +113,11 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
       builder: (_) => CupertinoActionSheet(
         title: const Text('Filter by Type'),
         actions: [
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() => _mediaTypeFilter = null);
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (_mediaTypeFilter == null)
-                  const Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: Icon(CupertinoIcons.checkmark, size: 16),
-                  ),
-                const Text('All'),
-              ],
-            ),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() => _mediaTypeFilter = 'image');
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (_mediaTypeFilter == 'image')
-                  const Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: Icon(CupertinoIcons.checkmark, size: 16),
-                  ),
-                const Text('Images'),
-              ],
-            ),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() => _mediaTypeFilter = 'video');
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (_mediaTypeFilter == 'video')
-                  const Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: Icon(CupertinoIcons.checkmark, size: 16),
-                  ),
-                const Text('Videos'),
-              ],
-            ),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() => _mediaTypeFilter = 'audio');
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (_mediaTypeFilter == 'audio')
-                  const Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: Icon(CupertinoIcons.checkmark, size: 16),
-                  ),
-                const Text('Audio'),
-              ],
-            ),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() => _mediaTypeFilter = 'document');
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (_mediaTypeFilter == 'document')
-                  const Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: Icon(CupertinoIcons.checkmark, size: 16),
-                  ),
-                const Text('Documents'),
-              ],
-            ),
-          ),
+          _filterAction(context, null, 'All'),
+          _filterAction(context, 'image', 'Images'),
+          _filterAction(context, 'video', 'Videos'),
+          _filterAction(context, 'audio', 'Audio'),
+          _filterAction(context, 'document', 'Documents'),
         ],
         cancelButton: CupertinoActionSheetAction(
           onPressed: () => Navigator.pop(context),
@@ -211,12 +127,33 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
     );
   }
 
+  CupertinoActionSheetAction _filterAction(
+      BuildContext context, String? type, String label) {
+    return CupertinoActionSheetAction(
+      onPressed: () {
+        Navigator.pop(context);
+        setState(() => _mediaTypeFilter = type);
+      },
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (_mediaTypeFilter == type)
+            const Padding(
+              padding: EdgeInsets.only(right: 8),
+              child: Icon(CupertinoIcons.checkmark, size: 16),
+            ),
+          Text(label),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBody(MediaListState state, int bandId) {
     if (state.isLoading) {
       return const Center(child: CupertinoActivityIndicator());
     }
 
-    if (state.error != null && state.files.isEmpty) {
+    if (state.error != null && state.files.isEmpty && state.folders.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -228,20 +165,6 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
                   ref.read(mediaListProvider(_params).notifier).load(),
               child: const Text('Retry'),
             ),
-          ],
-        ),
-      );
-    }
-
-    if (state.folders.isEmpty && state.files.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(CupertinoIcons.photo_on_rectangle, size: 48,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context)),
-            const SizedBox(height: 12),
-            const Text('No media yet.'),
           ],
         ),
       );
@@ -263,30 +186,12 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
             onRefresh: () =>
                 ref.read(mediaListProvider(_params).notifier).load(),
           ),
-          if (state.folders.isNotEmpty)
-            SliverToBoxAdapter(
-              child: _FolderRow(
-                folders: state.folders,
-                onTap: (f) => setState(() => _folderPath = f),
-              ),
-            ),
           SliverPadding(
             padding: const EdgeInsets.all(8),
             sliver: SliverGrid(
               delegate: SliverChildBuilderDelegate(
-                (context, i) {
-                  if (i < state.files.length) {
-                    return _MediaTile(
-                      file: state.files[i],
-                      bandId: bandId,
-                      onDeleted: () => ref
-                          .read(mediaListProvider(_params).notifier)
-                          .removeFile(state.files[i].id),
-                    );
-                  }
-                  return null;
-                },
-                childCount: state.files.length,
+                (context, i) => _buildGridItem(context, i, state, bandId),
+                childCount: _gridItemCount(state),
               ),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
@@ -302,7 +207,72 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
                 child: Center(child: CupertinoActivityIndicator()),
               ),
             ),
+          if (state.folders.isEmpty && state.files.isEmpty)
+            SliverToBoxAdapter(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(CupertinoIcons.photo_on_rectangle,
+                          size: 48,
+                          color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                      const SizedBox(height: 12),
+                      const Text('No media yet.'),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
+      ),
+    );
+  }
+
+  int _gridItemCount(MediaListState state) =>
+      1 + state.folders.length + state.files.length;
+
+  Widget? _buildGridItem(
+      BuildContext context, int i, MediaListState state, int bandId) {
+    if (i == 0) {
+      return _NewFolderTile(
+        onTap: () => _showNewFolderDialog(context, bandId),
+      );
+    }
+    final folderIndex = i - 1;
+    if (folderIndex < state.folders.length) {
+      return _FolderTile(
+        name: state.folders[folderIndex].split('/').last,
+        onTap: () => setState(() => _folderPath = state.folders[folderIndex]),
+      );
+    }
+    final fileIndex = folderIndex - state.folders.length;
+    if (fileIndex < state.files.length) {
+      return _MediaTile(
+        file: state.files[fileIndex],
+        bandId: bandId,
+        onDeleted: () => ref
+            .read(mediaListProvider(_params).notifier)
+            .removeFile(state.files[fileIndex].id),
+      );
+    }
+    return null;
+  }
+
+  Future<void> _showNewFolderDialog(BuildContext context, int bandId) async {
+    await showCupertinoDialog(
+      context: context,
+      builder: (_) => _NewFolderDialog(
+        onConfirm: (name) async {
+          final path = await ref
+              .read(mediaListProvider(_params).notifier)
+              .createFolder(bandId, name);
+          if (path != null && mounted) {
+            setState(() => _folderPath = path);
+          }
+          return path != null;
+        },
       ),
     );
   }
@@ -311,7 +281,9 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
     showCupertinoModalPopup(
       context: context,
       builder: (_) => CupertinoActionSheet(
-        title: const Text('Upload Media'),
+        title: _folderPath != null
+            ? Text('Uploading to 📁 ${_folderPath!.split('/').last}')
+            : const Text('Upload Media'),
         actions: [
           CupertinoActionSheetAction(
             onPressed: () async {
@@ -344,10 +316,7 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
   }
 
   Future<void> _pickAndUpload(
-    BuildContext context,
-    int bandId,
-    ImageSource source,
-  ) async {
+      BuildContext context, int bandId, ImageSource source) async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: source, imageQuality: 85);
     if (picked == null) return;
@@ -374,52 +343,161 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
   }
 }
 
-class _FolderRow extends StatelessWidget {
-  const _FolderRow({required this.folders, required this.onTap});
+// ── New Folder tile ────────────────────────────────────────────────────────────
 
-  final List<String> folders;
-  final void Function(String) onTap;
+class _NewFolderTile extends StatelessWidget {
+  const _NewFolderTile({required this.onTap});
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 56,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        itemCount: folders.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (_, i) {
-          final name = folders[i].split('/').last;
-          return GestureDetector(
-            onTap: () => onTap(folders[i]),
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
-                borderRadius: BorderRadius.circular(20),
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          color: CupertinoColors.systemBlue.resolveFrom(context).withValues(alpha: 0.12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(CupertinoIcons.folder_badge_plus,
+                  size: 28,
+                  color: CupertinoColors.systemBlue.resolveFrom(context)),
+              const SizedBox(height: 4),
+              Text(
+                'New Folder',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: CupertinoColors.systemBlue.resolveFrom(context),
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(CupertinoIcons.folder,
-                      size: 16,
-                      color: CupertinoColors.secondaryLabel.resolveFrom(context)),
-                  const SizedBox(width: 4),
-                  Text(name,
-                      style: TextStyle(
-                          fontSize: 14,
-                          color: CupertinoColors.label.resolveFrom(context))),
-                ],
-              ),
-            ),
-          );
-        },
+            ],
+          ),
+        ),
       ),
     );
   }
 }
+
+// ── Folder tile ────────────────────────────────────────────────────────────────
+
+class _FolderTile extends StatelessWidget {
+  const _FolderTile({required this.name, required this.onTap});
+  final String name;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          color: const Color(0xFFFEF3C7),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(CupertinoIcons.folder_fill, size: 32, color: Color(0xFFF59E0B)),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF92400E),
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── New Folder dialog ──────────────────────────────────────────────────────────
+
+class _NewFolderDialog extends StatefulWidget {
+  const _NewFolderDialog({required this.onConfirm});
+  final Future<bool> Function(String name) onConfirm;
+
+  @override
+  State<_NewFolderDialog> createState() => _NewFolderDialogState();
+}
+
+class _NewFolderDialogState extends State<_NewFolderDialog> {
+  final _controller = TextEditingController();
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final name = _controller.text.trim();
+    if (name.isEmpty) {
+      setState(() => _error = 'Folder name cannot be empty');
+      return;
+    }
+    setState(() { _loading = true; _error = null; });
+    final ok = await widget.onConfirm(name);
+    if (!mounted) return;
+    if (ok) {
+      Navigator.pop(context);
+    } else {
+      setState(() { _loading = false; _error = 'Could not create folder. Try a different name.'; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoAlertDialog(
+      title: const Text('New Folder'),
+      content: Column(
+        children: [
+          const SizedBox(height: 8),
+          CupertinoTextField(
+            controller: _controller,
+            placeholder: 'Folder name',
+            autofocus: true,
+            onSubmitted: (_) => _submit(),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 6),
+            Text(_error!,
+                style: const TextStyle(
+                    color: CupertinoColors.systemRed, fontSize: 12)),
+          ],
+        ],
+      ),
+      actions: [
+        CupertinoDialogAction(
+          onPressed: _loading ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        CupertinoDialogAction(
+          isDefaultAction: true,
+          onPressed: _loading ? null : _submit,
+          child: _loading
+              ? const CupertinoActivityIndicator()
+              : const Text('Create'),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Media tile ─────────────────────────────────────────────────────────────────
 
 class _MediaTile extends ConsumerWidget {
   const _MediaTile({
@@ -435,7 +513,12 @@ class _MediaTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
-      onTap: () => _showDetail(context, ref),
+      onTap: () => Navigator.push(
+        context,
+        CupertinoPageRoute(
+          builder: (_) => MediaViewer(file: file, bandId: bandId),
+        ),
+      ),
       onLongPress: () => _showOptions(context, ref),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(6),
@@ -460,8 +543,7 @@ class _MediaTile extends ConsumerWidget {
                 bottom: 4,
                 right: 4,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   decoration: BoxDecoration(
                     color: const Color(0x99000000),
                     borderRadius: BorderRadius.circular(4),
@@ -488,29 +570,6 @@ class _MediaTile extends ConsumerWidget {
         'document' => CupertinoIcons.doc_text,
         _ => CupertinoIcons.doc,
       };
-
-  void _showDetail(BuildContext context, WidgetRef ref) {
-    showCupertinoModalPopup(
-      context: context,
-      builder: (ctx) => Theme(
-        data: ThemeData(brightness: MediaQuery.platformBrightnessOf(ctx)),
-        child: Material(
-          child: DraggableScrollableSheet(
-            initialChildSize: 0.6,
-            minChildSize: 0.4,
-            maxChildSize: 0.95,
-            expand: false,
-            builder: (_, controller) => _MediaDetailSheet(
-              file: file,
-              bandId: bandId,
-              onDeleted: onDeleted,
-              scrollController: controller,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Future<void> _showOptions(BuildContext context, WidgetRef ref) async {
     showCupertinoModalPopup(
@@ -579,119 +638,10 @@ class _MediaTile extends ConsumerWidget {
   }
 }
 
-
-class _MediaDetailSheet extends StatelessWidget {
-  const _MediaDetailSheet({
-    required this.file,
-    required this.bandId,
-    required this.onDeleted,
-    required this.scrollController,
-  });
-
-  final MediaFile file;
-  final int bandId;
-  final VoidCallback onDeleted;
-  final ScrollController scrollController;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      controller: scrollController,
-      padding: const EdgeInsets.all(16),
-      children: [
-        Center(
-          child: Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: CupertinoColors.secondaryLabel.resolveFrom(context).withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(file.title,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-        if (file.description != null && file.description!.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(file.description!,
-              style: TextStyle(
-                  fontSize: 13, color: CupertinoColors.secondaryLabel.resolveFrom(context))),
-        ],
-        const SizedBox(height: 16),
-        _DetailRow(label: 'Type', value: file.mediaType),
-        _DetailRow(label: 'Size', value: file.formattedSize),
-        if (file.folderPath != null)
-          _DetailRow(label: 'Folder', value: file.folderPath!),
-        if (file.uploaderName != null)
-          _DetailRow(label: 'Uploaded by', value: file.uploaderName!),
-        if (file.tags.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 6,
-            children: file.tags
-                .map((t) => Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(t.name,
-                          style: const TextStyle(fontSize: 12)),
-                    ))
-                .toList(),
-          ),
-        ],
-        const SizedBox(height: 24),
-        CupertinoButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(CupertinoIcons.xmark, size: 16),
-              SizedBox(width: 6),
-              Text('Close'),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(label,
-                style: TextStyle(
-                    fontSize: 13,
-                    color: CupertinoColors.secondaryLabel.resolveFrom(context))),
-          ),
-          Expanded(
-              child: Text(value,
-                  style: const TextStyle(fontSize: 13))),
-        ],
-      ),
-    );
-  }
-}
+// ── Upload progress banner ─────────────────────────────────────────────────────
 
 class _UploadProgressBanner extends StatelessWidget {
   const _UploadProgressBanner({required this.progress});
-
   final double progress;
 
   @override
@@ -716,10 +666,14 @@ class _UploadProgressBanner extends StatelessWidget {
                     height: 4,
                     child: Stack(
                       children: [
-                        Container(color: CupertinoColors.systemBlue.resolveFrom(context).withValues(alpha: 0.2)),
+                        Container(
+                            color: CupertinoColors.systemBlue
+                                .resolveFrom(context)
+                                .withValues(alpha: 0.2)),
                         FractionallySizedBox(
                           widthFactor: progress.clamp(0.0, 1.0),
-                          child: Container(color: CupertinoColors.systemBlue.resolveFrom(context)),
+                          child: Container(
+                              color: CupertinoColors.systemBlue.resolveFrom(context)),
                         ),
                       ],
                     ),
@@ -729,19 +683,18 @@ class _UploadProgressBanner extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            '${(progress * 100).toInt()}%',
-            style: const TextStyle(fontSize: 12),
-          ),
+          Text('${(progress * 100).toInt()}%',
+              style: const TextStyle(fontSize: 12)),
         ],
       ),
     );
   }
 }
 
+// ── Error banner ───────────────────────────────────────────────────────────────
+
 class _ErrorBanner extends StatelessWidget {
   const _ErrorBanner({required this.message, required this.onDismiss});
-
   final String message;
   final VoidCallback onDismiss;
 
@@ -758,13 +711,15 @@ class _ErrorBanner extends StatelessWidget {
           Expanded(
             child: Text(message,
                 style: TextStyle(
-                    color: CupertinoColors.systemRed.resolveFrom(context), fontSize: 12)),
+                    color: CupertinoColors.systemRed.resolveFrom(context),
+                    fontSize: 12)),
           ),
           CupertinoButton(
             padding: EdgeInsets.zero,
             onPressed: onDismiss,
             child: Icon(CupertinoIcons.xmark,
-                size: 18, color: CupertinoColors.systemRed.resolveFrom(context)),
+                size: 18,
+                color: CupertinoColors.systemRed.resolveFrom(context)),
           ),
         ],
       ),

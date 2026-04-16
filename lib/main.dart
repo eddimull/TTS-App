@@ -26,7 +26,7 @@ Future<void> main() async {
       options.attachViewHierarchy = true;
     },
     appRunner: () => runApp(
-      ProviderScope(retry: _retryPolicy, child: const BandmateApp()),
+      const ProviderScope(retry: _retryPolicy, child: BandmateApp()),
     ),
   );
 }

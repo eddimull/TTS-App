@@ -13,7 +13,7 @@ From screenshots in `.claude/screenshots/notesInput/`:
 
 - **Default (drawer closed):** Single header row at the bottom — `📎 Attachments (N)` with a chevron-up. Text area fills remaining space.
 - **Drawer open:** Header row + `+ Add Files` button + file list (icon, name, size per row). Files support tap-to-preview and swipe-to-delete.
-- **Text input active (keyboard visible):** Attachment bar disappears entirely. Text area fills the full screen. Nav bar shows "Done" instead of "×".
+- **Text input active (keyboard visible):** Attachment bar disappears entirely by sliding down. Text area transitions to the full screen. Nav bar shows "Done" instead of "×".
 - **Attachment preview:** Tapping an image opens a fullscreen lightbox.
 
 ## Solution

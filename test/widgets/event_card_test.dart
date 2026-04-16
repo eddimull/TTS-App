@@ -100,10 +100,12 @@ void main() {
       expect(find.byIcon(CupertinoIcons.checkmark_circle), findsNothing);
     });
 
-    testWidgets('test_booking_uses_checkmark_circle_icon', (tester) async {
+    testWidgets('test_booking_uses_gig_icon_image', (tester) async {
       await tester.pumpWidget(_wrap(EventCard(event: _makeEvent(source: 'booking'))));
 
-      expect(find.byIcon(CupertinoIcons.checkmark_circle), findsOneWidget);
+      // Booking events render an asset image (gigIconPath), not a named icon.
+      expect(find.byType(Image), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.music_mic), findsNothing);
     });
 
     testWidgets('test_on_tap_callback_is_invoked', (tester) async {
@@ -119,14 +121,16 @@ void main() {
     testWidgets('test_date_includes_time_when_present', (tester) async {
       await tester.pumpWidget(_wrap(EventCard(event: _makeEvent(time: '20:00'))));
 
-      // The formatted date string should include the time
-      expect(find.textContaining('20:00'), findsOneWidget);
+      // _formatDate converts to AM/PM — 20:00 becomes "8:00 PM"
+      expect(find.textContaining('8:00 PM'), findsOneWidget);
     });
 
     testWidgets('test_date_excludes_time_when_null', (tester) async {
       await tester.pumpWidget(_wrap(EventCard(event: _makeEvent(time: null))));
 
-      expect(find.textContaining('at'), findsNothing);
+      // When time is null, the date label should not contain " at " (with spaces)
+      // to avoid false-positives on words like "Corporate" containing "at".
+      expect(find.textContaining(' at '), findsNothing);
     });
   });
 }

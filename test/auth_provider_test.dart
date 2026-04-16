@@ -125,7 +125,7 @@ void main() {
 
         await container.read(authProvider.notifier).logout();
 
-        final finalState = container.read(authProvider).valueOrNull;
+        final finalState = container.read(authProvider).value;
         expect(finalState, isA<AuthUnauthenticated>());
         expect(await storage.readToken(), isNull,
             reason: 'Token must be wiped on logout');

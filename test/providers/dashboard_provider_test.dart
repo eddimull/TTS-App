@@ -4,6 +4,7 @@ import 'package:tts_bandmate/features/dashboard/data/dashboard_repository.dart';
 import 'package:tts_bandmate/features/dashboard/data/models/upcoming_chart.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
 import 'package:tts_bandmate/features/events/data/models/event_summary.dart';
+import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 
 // ── Fake repository ───────────────────────────────────────────────────────────
 
@@ -50,6 +51,8 @@ void main() {
     ProviderContainer makeContainer(FakeDashboardRepository repo) {
       return ProviderContainer(
         overrides: [
+          // Bypass SecureStorage / FlutterSecureStorage in unit tests.
+          selectedBandProvider.overrideWith(() => _FakeSelectedBandNotifier()),
           dashboardRepositoryProvider.overrideWithValue(repo),
         ],
       );
@@ -103,6 +106,7 @@ void main() {
       // Repository that always throws
       final container = ProviderContainer(
         overrides: [
+          selectedBandProvider.overrideWith(() => _FakeSelectedBandNotifier()),
           dashboardRepositoryProvider.overrideWith((ref) {
             return _ThrowingDashboardRepository();
           }),
@@ -110,14 +114,25 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      final result = await container.read(dashboardProvider.future).then(
-            (_) => 'ok',
-            onError: (_) => 'error',
-          );
-
-      expect(result, 'error');
+      // Trigger computation and let the provider settle to an error state.
+      await Future.microtask(() => container.read(dashboardProvider));
+      await Future<void>.delayed(Duration.zero);
+      final settled = container.read(dashboardProvider);
+      expect(settled.hasError, isTrue);
     });
   });
+}
+
+class _FakeSelectedBandNotifier extends AsyncNotifier<int?>
+    implements SelectedBandNotifier {
+  @override
+  Future<int?> build() async => 1; // pretend band 1 is always selected
+
+  @override
+  Future<void> selectBand(int id) async {}
+
+  @override
+  Future<void> clear() async {}
 }
 
 class _ThrowingDashboardRepository implements DashboardRepository {

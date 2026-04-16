@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/config/app_config.dart';
 import '../data/models/event_detail.dart';
@@ -11,8 +12,11 @@ import '../data/models/event_detail.dart';
 /// If [raw] is already absolute (starts with http) it is used as-is.
 /// If it starts with `/` the app's base URL is prepended.
 String resolveAttachmentUrl(String raw) {
-  // ignore: avoid_print
-  print('[AttachUrl] raw url from API: "$raw"');
+  assert(() {
+    // ignore: avoid_print
+    print('[AttachUrl] raw url from API: "$raw"');
+    return true;
+  }());
   if (raw.isEmpty) return raw;
   if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
   if (raw.startsWith('/')) return '${AppConfig.baseUrl}$raw';
@@ -30,10 +34,10 @@ IconData attachmentIcon(String mimeType) {
 // ── Lightbox image fetch (full-size, authenticated) ──────────────────────────
 
 Future<Uint8List?> fetchImageBytes(String url) async {
+  final dio = Dio();
   try {
     const s = FlutterSecureStorage();
     final token = await s.read(key: 'auth_token');
-    final dio = Dio();
     final response = await dio.get<List<int>>(
       url,
       options: Options(
@@ -45,9 +49,11 @@ Future<Uint8List?> fetchImageBytes(String url) async {
       ),
     );
     if (response.statusCode != 200) return null;
-    return Uint8List.fromList(response.data!);
+    return Uint8List.fromList(response.data ?? []);
   } catch (_) {
     return null;
+  } finally {
+    dio.close();
   }
 }
 
@@ -71,6 +77,7 @@ class AttachmentLightbox extends StatefulWidget {
 class _AttachmentLightboxState extends State<AttachmentLightbox> {
   late final PageController _pageController;
   late int _currentIndex;
+  final Map<int, Future<Uint8List?>> _imageFutures = {};
 
   @override
   void initState() {
@@ -120,12 +127,13 @@ class _AttachmentLightboxState extends State<AttachmentLightbox> {
                 itemBuilder: (context, i) {
                   final a = widget.attachments[i];
                   final url = resolveAttachmentUrl(a.url);
+                  final future = _imageFutures.putIfAbsent(i, () => fetchImageBytes(url));
                   return InteractiveViewer(
                     minScale: 0.5,
                     maxScale: 4.0,
                     child: Center(
                       child: FutureBuilder<Uint8List?>(
-                        future: fetchImageBytes(url),
+                        future: future,
                         builder: (context, snap) {
                           if (!snap.hasData) {
                             return const CupertinoActivityIndicator(

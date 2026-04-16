@@ -2056,7 +2056,6 @@ class _NotesEditorSheetState extends State<_NotesEditorSheet> {
   bool _uploading = false;
   late final FocusNode _focusNode;
   bool _drawerOpen = false;
-  bool _keyboardVisible = false;
 
   @override
   void initState() {
@@ -2065,7 +2064,9 @@ class _NotesEditorSheetState extends State<_NotesEditorSheet> {
     _attachments = List.of(widget.attachments);
     _focusNode = FocusNode();
     _focusNode.addListener(() {
-      setState(() => _keyboardVisible = _focusNode.hasFocus);
+      if (_focusNode.hasFocus) {
+        setState(() => _drawerOpen = false);
+      }
     });
   }
 
@@ -2141,7 +2142,7 @@ class _NotesEditorSheetState extends State<_NotesEditorSheet> {
             ),
 
             // ── Attachment drawer ───────────────────────────────────────────
-            if (!_keyboardVisible) ...[
+            if (MediaQuery.viewInsetsOf(context).bottom == 0) ...[
               _AttachmentDrawerBar(
                 count: _attachments.length,
                 open: _drawerOpen,
@@ -2328,7 +2329,10 @@ class _AttachmentDrawerContent extends StatelessWidget {
                   child: const Icon(CupertinoIcons.delete,
                       color: CupertinoColors.white, size: 20),
                 ),
-                onDismissed: (_) => onDelete(attachments[i]),
+                confirmDismiss: (_) async {
+                  await onDelete(attachments[i]);
+                  return false;
+                },
                 child: _AttachmentDrawerRow(attachment: attachments[i]),
               ),
             ],

@@ -151,6 +151,16 @@ class MediaListNotifier extends Notifier<MediaListState> {
       total: state.total - 1,
     );
   }
+
+  Future<String?> createFolder(int bandId, String name) async {
+    try {
+      final folderPath = await _repo.createFolder(bandId, name);
+      await load();
+      return folderPath;
+    } catch (e) {
+      return null;
+    }
+  }
 }
 
 final mediaListProvider = NotifierProvider.family<MediaListNotifier,

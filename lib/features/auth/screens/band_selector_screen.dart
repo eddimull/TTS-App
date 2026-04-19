@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../data/models/band_summary.dart';
 import '../../../shared/providers/selected_band_provider.dart';
+import 'path_selection_screen.dart';
 
 class BandSelectorScreen extends ConsumerWidget {
   const BandSelectorScreen({super.key});
@@ -44,18 +45,7 @@ class BandSelectorScreen extends ConsumerWidget {
             final bands = authState.bands;
 
             if (bands.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(CupertinoIcons.person_2,
-                        size: 48,
-                        color: CupertinoColors.secondaryLabel.resolveFrom(context)),
-                    const SizedBox(height: 16),
-                    const Text('No bands found for your account. Visit https://tts.band to create or join a band.'),
-                  ],
-                ),
-              );
+              return const PathSelectionScreen();
             }
 
             return ListView.separated(

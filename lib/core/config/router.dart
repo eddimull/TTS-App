@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/band_selector_screen.dart';
+import '../../features/auth/screens/sign_up_screen.dart';
+import '../../features/auth/screens/path_selection_screen.dart';
+import '../../features/bands/screens/create_band_screen.dart';
+import '../../features/bands/screens/join_band_screen.dart';
 import '../../features/bookings/data/models/booking_detail.dart';
 import '../../features/bookings/screens/booking_contacts_screen.dart';
 import '../../features/bookings/screens/booking_contract_screen.dart';
@@ -81,11 +85,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authState = authAsync.value;
 
       final isLoginRoute = state.matchedLocation == '/login';
+      final isSignupRoute = state.matchedLocation == '/signup';
       final isBandsRoute = state.matchedLocation == '/bands';
+      final isBandsCreateRoute = state.matchedLocation == '/bands/create';
+      final isBandsJoinRoute = state.matchedLocation == '/bands/join';
 
-      // Not authenticated → force to login.
+      // Not authenticated → force to login (signup is also allowed).
       if (authState == null || authState is AuthUnauthenticated) {
-        final dest = isLoginRoute ? null : '/login';
+        final dest = (isLoginRoute || isSignupRoute) ? null : '/login';
         debugPrint('[Router] unauthenticated → $dest');
         return dest;
       }
@@ -144,9 +151,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           return '/dashboard';
         }
 
-        // Don't show bands screen again unless explicitly navigated there.
-        if (isBandsRoute) {
-          debugPrint('[Router] valid band selected, on /bands → /dashboard');
+        // Don't show bands/onboarding screens once band is selected.
+        if (isBandsRoute || isBandsCreateRoute || isBandsJoinRoute) {
+          debugPrint('[Router] valid band selected, on bands route → /dashboard');
           return '/dashboard';
         }
 
@@ -161,8 +168,35 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const LoginScreen(),
       ),
       GoRoute(
+        path: '/signup',
+        builder: (context, state) {
+          final email = state.uri.queryParameters['email'];
+          return SignUpScreen(prefillEmail: email);
+        },
+      ),
+      GoRoute(
+        path: '/bands/create',
+        builder: (context, state) => const CreateBandScreen(),
+      ),
+      GoRoute(
+        path: '/bands/join',
+        builder: (context, state) => const JoinBandScreen(),
+      ),
+      GoRoute(
         path: '/bands',
-        builder: (context, state) => const BandSelectorScreen(),
+        builder: (context, state) {
+          // PathSelectionScreen for new users with no bands.
+          // BandSelectorScreen for existing users with multiple bands.
+          return Consumer(
+            builder: (context, ref, _) {
+              final authState = ref.watch(authProvider).value;
+              if (authState is AuthAuthenticated && authState.bands.isNotEmpty) {
+                return const BandSelectorScreen();
+              }
+              return const PathSelectionScreen();
+            },
+          );
+        },
       ),
       ShellRoute(
         builder: (context, state, child) => AppScaffold(child: child),

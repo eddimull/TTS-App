@@ -55,9 +55,10 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     final confirm = _confirmController.text;
 
     if (name.isEmpty) nameError = 'Please enter your name.';
+    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
     if (email.isEmpty) {
       emailError = 'Please enter your email.';
-    } else if (!email.contains('@')) {
+    } else if (!emailRegex.hasMatch(email)) {
       emailError = 'Enter a valid email address.';
     }
     if (password.isEmpty) {
@@ -234,7 +235,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   CupertinoButton(
                     padding: const EdgeInsets.only(left: 4),
                     onPressed: () => context.go('/login'),
-                    child: const Text('Sign In'),
+                    child: const Text('Log in'),
                   ),
                 ],
               ),

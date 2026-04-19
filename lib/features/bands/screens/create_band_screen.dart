@@ -31,7 +31,7 @@ class _CreateBandScreenState extends ConsumerState<CreateBandScreen> {
   }
 
   void _addEmail() {
-    final email = _emailController.text.trim();
+    final email = _emailController.text.trim().toLowerCase();
     if (email.isEmpty) return;
     final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
     if (!emailRegex.hasMatch(email)) {
@@ -214,6 +214,7 @@ class _CreateBandScreenState extends ConsumerState<CreateBandScreen> {
               : const Text('Done'),
         ),
         const SizedBox(height: 12),
+        // Skip submits immediately with no invites (empty email list).
         CupertinoButton(
           onPressed: _isSubmitting ? null : _submit,
           child: const Text('Skip for now'),

@@ -36,6 +36,34 @@ class AuthRepository {
     return (token: token, user: user, bands: bandList);
   }
 
+  /// Register a new account and retrieve a Sanctum token.
+  Future<({String token, AuthUser user, List<BandSummary> bands})> register(
+    String name,
+    String email,
+    String password,
+    String deviceName,
+  ) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileRegister,
+      data: {
+        'name': name,
+        'email': email,
+        'password': password,
+        'password_confirmation': password,
+        'device_name': deviceName,
+      },
+    );
+
+    final data = response.data!;
+    final token = data['token'] as String;
+    final user = AuthUser.fromJson(data['user'] as Map<String, dynamic>);
+    final bandList = (data['bands'] as List<dynamic>)
+        .map((b) => BandSummary.fromJson(b as Map<String, dynamic>))
+        .toList();
+
+    return (token: token, user: user, bands: bandList);
+  }
+
   /// Fetch the current authenticated user and their bands.
   ///
   /// Requires a valid Bearer token already attached by the [ApiClient] interceptor.

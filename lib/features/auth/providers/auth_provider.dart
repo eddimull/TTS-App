@@ -86,6 +86,31 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     }
   }
 
+  /// Register a new account and store credentials.
+  Future<void> register(String name, String email, String password) async {
+    state = const AsyncValue.data(AuthLoading());
+
+    final storage = ref.read(secureStorageProvider);
+
+    state = await AsyncValue.guard(() async {
+      final result = await _repository.register(
+        name,
+        email,
+        password,
+        'tts_bandmate_app',
+      );
+      await storage.writeToken(result.token);
+      await storage.writeUser(result.user.toJsonString());
+      return AuthAuthenticated(user: result.user, bands: result.bands);
+    });
+
+    if (state.hasError) {
+      state = AsyncValue.data(
+        AuthUnauthenticated(errorMessage: _friendlyRegisterError(state.error)),
+      );
+    }
+  }
+
   /// Revoke token on the server and clear all local credentials.
   Future<void> logout() async {
     final storage = ref.read(secureStorageProvider);
@@ -134,6 +159,18 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       return 'Could not reach the server. Check your connection.';
     }
     return 'Login failed. Please try again.';
+  }
+
+  String _friendlyRegisterError(Object? error) {
+    if (error == null) return 'An unknown error occurred.';
+    final msg = error.toString();
+    if (msg.contains('422')) return 'Email already in use or invalid input.';
+    if (msg.contains('SocketException') ||
+        msg.contains('connection') ||
+        msg.contains('timeout')) {
+      return 'Could not reach the server. Check your connection.';
+    }
+    return 'Registration failed. Please try again.';
   }
 }
 

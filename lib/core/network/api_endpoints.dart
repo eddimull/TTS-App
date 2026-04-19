@@ -73,4 +73,12 @@ class ApiEndpoints {
       '/api/mobile/events/$key/subs';
   static String mobileEventMemberSub(String key, int memberId) =>
       '/api/mobile/events/$key/members/$memberId/sub';
+
+  // Onboarding
+  static const String mobileRegister = '/api/mobile/auth/register';
+  static const String mobileCreateBand = '/api/mobile/bands';
+  static const String mobileBandsSolo = '/api/mobile/bands/solo';
+  static const String mobileBandsJoin = '/api/mobile/bands/join';
+  static String mobileBandInvite(int bandId) => '/api/mobile/bands/$bandId/invite';
+  static String mobileBandInviteQr(int bandId) => '/api/mobile/bands/$bandId/invite-qr';
 }

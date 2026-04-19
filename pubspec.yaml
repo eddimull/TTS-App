@@ -32,6 +32,8 @@ dependencies:
   video_player: ^2.9.2
   just_audio: ^0.10.4
   sentry_flutter: ^9.17.0
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^6.0.0
 
 dev_dependencies:
   flutter_test:

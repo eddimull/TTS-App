@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../data/models/band_summary.dart';
 import '../../../shared/providers/selected_band_provider.dart';
-import 'path_selection_screen.dart';
-
 class BandSelectorScreen extends ConsumerWidget {
   const BandSelectorScreen({super.key});
 
@@ -45,7 +43,9 @@ class BandSelectorScreen extends ConsumerWidget {
             final bands = authState.bands;
 
             if (bands.isEmpty) {
-              return const PathSelectionScreen();
+              // Router guard redirects to /bands which shows PathSelectionScreen.
+              // This branch is a safety fallback only.
+              return const Center(child: CupertinoActivityIndicator());
             }
 
             return ListView.separated(

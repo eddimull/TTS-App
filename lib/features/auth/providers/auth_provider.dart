@@ -99,6 +99,24 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     state = const AsyncValue.data(AuthUnauthenticated());
   }
 
+  /// Re-fetch the user's bands from the server and update state.
+  /// Called after band creation/join/solo so the router guard reacts.
+  Future<void> refreshBands() async {
+    final currentState = state.value;
+    if (currentState is! AuthAuthenticated) return;
+
+    try {
+      final result = await _repository.getMe();
+      final storage = ref.read(secureStorageProvider);
+      await storage.writeUser(result.user.toJsonString());
+      state = AsyncValue.data(
+        AuthAuthenticated(user: result.user, bands: result.bands),
+      );
+    } catch (_) {
+      // Silently ignore — bands will refresh on next app launch
+    }
+  }
+
   /// Band selection is managed by [selectedBandProvider] directly.
   /// Call [selectedBandProvider.notifier.selectBand(id)] from the UI.
 

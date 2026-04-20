@@ -52,4 +52,18 @@ class BandDetail {
       logoUrl: logoUrl ?? this.logoUrl,
     );
   }
+
+  @override
+  String toString() =>
+      'BandDetail(id: $id, name: $name, siteName: $siteName, address: $address, city: $city, state: $state, zip: $zip, logoUrl: $logoUrl)';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BandDetail &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

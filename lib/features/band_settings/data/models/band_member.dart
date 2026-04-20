@@ -31,4 +31,18 @@ class BandMember {
       permissions: {...permissions, permission: granted},
     );
   }
+
+  @override
+  String toString() =>
+      'BandMember(id: $id, name: $name, isOwner: $isOwner, permissions: $permissions)';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BandMember &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

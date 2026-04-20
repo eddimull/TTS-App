@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -28,6 +29,7 @@ class _BandInfoEditScreenState extends ConsumerState<BandInfoEditScreen> {
   bool _saving = false;
   bool _uploadingLogo = false;
   String? _logoUrl;
+  Map<String, String> _fieldErrors = {};
 
   @override
   void initState() {
@@ -90,7 +92,10 @@ class _BandInfoEditScreenState extends ConsumerState<BandInfoEditScreen> {
   }
 
   Future<void> _save() async {
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _fieldErrors = {};
+    });
     final updated = widget.initial.copyWith(
       name: _name.text.trim(),
       siteName: _siteName.text.trim(),
@@ -105,7 +110,13 @@ class _BandInfoEditScreenState extends ConsumerState<BandInfoEditScreen> {
           .updateDetail(updated);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) {
+      if (!mounted) return;
+      // Try to extract field-level validation errors from the exception message.
+      // Server returns 422 with errors keyed by field name (e.g. name, site_name).
+      final errors = _parseValidationErrors(e);
+      if (errors.isNotEmpty) {
+        setState(() => _fieldErrors = errors);
+      } else {
         showCupertinoDialog<void>(
           context: context,
           builder: (_) => CupertinoAlertDialog(
@@ -125,11 +136,30 @@ class _BandInfoEditScreenState extends ConsumerState<BandInfoEditScreen> {
     }
   }
 
+  /// Parses Laravel 422 validation errors from a DioException.
+  /// Returns a map of field key → first error message, or empty map if not a
+  /// validation error.
+  Map<String, String> _parseValidationErrors(Object e) {
+    if (e is! DioException) return {};
+    final data = e.response?.data;
+    if (data is! Map) return {};
+    final errors = data['errors'];
+    if (errors is! Map) return {};
+    return {
+      for (final entry in errors.entries)
+        entry.key as String: (entry.value is List && (entry.value as List).isNotEmpty)
+            ? (entry.value as List).first.toString()
+            : entry.value.toString(),
+    };
+  }
+
   Widget _field(
     String label,
-    TextEditingController controller, {
+    TextEditingController controller,
+    String fieldKey, {
     TextInputType? keyboardType,
   }) {
+    final error = _fieldErrors[fieldKey];
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
@@ -147,6 +177,16 @@ class _BandInfoEditScreenState extends ConsumerState<BandInfoEditScreen> {
             controller: controller,
             keyboardType: keyboardType,
           ),
+          if (error != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              error,
+              style: const TextStyle(
+                fontSize: 12,
+                color: CupertinoColors.destructiveRed,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -157,7 +197,7 @@ class _BandInfoEditScreenState extends ConsumerState<BandInfoEditScreen> {
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
         middle: const Text('Edit Band Info'),
-        trailing: _saving
+        trailing: (_saving || _uploadingLogo)
             ? const CupertinoActivityIndicator()
             : CupertinoButton(
                 padding: EdgeInsets.zero,
@@ -203,12 +243,12 @@ class _BandInfoEditScreenState extends ConsumerState<BandInfoEditScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            _field('Band Name', _name),
-            _field('Page URL', _siteName),
-            _field('Street Address', _address),
-            _field('City', _city),
-            _field('State', _state),
-            _field('Zip', _zip, keyboardType: TextInputType.number),
+            _field('Band Name', _name, 'name'),
+            _field('Page URL', _siteName, 'site_name'),
+            _field('Street Address', _address, 'address'),
+            _field('City', _city, 'city'),
+            _field('State', _state, 'state'),
+            _field('Zip', _zip, 'zip', keyboardType: TextInputType.number),
           ],
         ),
       ),

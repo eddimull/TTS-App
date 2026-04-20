@@ -19,7 +19,7 @@ class BandMember {
       id: (json['id'] as num).toInt(),
       name: json['name'] as String,
       isOwner: (json['is_owner'] as bool?) ?? false,
-      permissions: rawPerms.cast<String, bool>(),
+      permissions: rawPerms.map((k, v) => MapEntry(k as String, v as bool)),
     );
   }
 

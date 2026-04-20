@@ -83,6 +83,19 @@ void main() {
       });
       expect(member.isOwner, true);
     });
+
+    test('test_withPermission_returns_updated_copy', () {
+      const member = BandMember(
+        id: 1,
+        name: 'Test',
+        isOwner: false,
+        permissions: {'read:events': false},
+      );
+      final updated = member.withPermission('read:events', granted: true);
+      expect(updated.permissions['read:events'], true);
+      expect(member.permissions['read:events'], false, reason: 'original unchanged');
+      expect(updated.id, member.id);
+    });
   });
 
   group('BandInvitation.fromJson', () {

@@ -28,9 +28,39 @@ class MemberPermissionsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settingsAsync = ref.watch(bandSettingsProvider(bandId));
-    final currentMember = settingsAsync.value?.members
-        .where((m) => m.id == member.id)
-        .firstOrNull ?? member;
+
+    final navBar = CupertinoNavigationBar(middle: Text(member.name));
+
+    // Show a spinner while the first load is in flight.
+    if (settingsAsync.isLoading && !settingsAsync.hasValue) {
+      return CupertinoPageScaffold(
+        navigationBar: navBar,
+        child: const SafeArea(
+          child: Center(child: CupertinoActivityIndicator()),
+        ),
+      );
+    }
+
+    // Show an error state if the provider faulted without a prior value.
+    if (settingsAsync.hasError && !settingsAsync.hasValue) {
+      return CupertinoPageScaffold(
+        navigationBar: navBar,
+        child: const SafeArea(
+          child: Center(
+            child: Text(
+              'Failed to load permissions. Please try again.',
+              style: TextStyle(color: CupertinoColors.secondaryLabel),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Safe to unwrap — we have a value (possibly stale during a background refresh).
+    final currentMember = settingsAsync.value!.members
+            .where((m) => m.id == member.id)
+            .firstOrNull ??
+        member;
 
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
@@ -57,16 +87,26 @@ class MemberPermissionsScreen extends ConsumerWidget {
                     permissionKey: 'read:$key',
                     value: currentMember.permissions['read:$key'] ?? false,
                     isOwner: currentMember.isOwner,
-                    memberId: currentMember.id,
-                    bandId: bandId,
+                    onToggle: (granted) => ref
+                        .read(bandSettingsProvider(bandId).notifier)
+                        .togglePermission(
+                          memberId: currentMember.id,
+                          permission: 'read:$key',
+                          granted: granted,
+                        ),
                   ),
                   _PermissionRow(
                     label: '$label — Write',
                     permissionKey: 'write:$key',
                     value: currentMember.permissions['write:$key'] ?? false,
                     isOwner: currentMember.isOwner,
-                    memberId: currentMember.id,
-                    bandId: bandId,
+                    onToggle: (granted) => ref
+                        .read(bandSettingsProvider(bandId).notifier)
+                        .togglePermission(
+                          memberId: currentMember.id,
+                          permission: 'write:$key',
+                          granted: granted,
+                        ),
                   ),
                 ],
               ],
@@ -78,25 +118,26 @@ class MemberPermissionsScreen extends ConsumerWidget {
   }
 }
 
-class _PermissionRow extends ConsumerWidget {
+class _PermissionRow extends StatelessWidget {
   const _PermissionRow({
     required this.label,
     required this.permissionKey,
     required this.value,
     required this.isOwner,
-    required this.memberId,
-    required this.bandId,
+    required this.onToggle,
   });
 
   final String label;
   final String permissionKey;
   final bool value;
   final bool isOwner;
-  final int memberId;
-  final int bandId;
+
+  /// Called with the new value when the switch is tapped.
+  /// The parent supplies this closure capturing [ref] from its own build method.
+  final Future<void> Function(bool granted) onToggle;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return CupertinoListTile(
       title: Text(label),
       trailing: CupertinoSwitch(
@@ -105,13 +146,7 @@ class _PermissionRow extends ConsumerWidget {
             ? null
             : (granted) async {
                 try {
-                  await ref
-                      .read(bandSettingsProvider(bandId).notifier)
-                      .togglePermission(
-                        memberId: memberId,
-                        permission: permissionKey,
-                        granted: granted,
-                      );
+                  await onToggle(granted);
                 } catch (_) {
                   if (context.mounted) {
                     showCupertinoDialog<void>(

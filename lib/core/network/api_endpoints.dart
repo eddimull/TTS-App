@@ -81,4 +81,17 @@ class ApiEndpoints {
   static const String mobileBandsJoin = '/api/mobile/bands/join';
   static String mobileBandInvite(int bandId) => '/api/mobile/bands/$bandId/invite';
   static String mobileBandInviteQr(int bandId) => '/api/mobile/bands/$bandId/invite-qr';
+
+  // Band Settings
+  static String mobileBandDetail(int bandId) => '/api/mobile/bands/$bandId';
+  static String mobileBandLogo(int bandId) => '/api/mobile/bands/$bandId/logo';
+  static String mobileBandMembers(int bandId) => '/api/mobile/bands/$bandId/members';
+  static String mobileBandMember(int bandId, int userId) =>
+      '/api/mobile/bands/$bandId/members/$userId';
+  static String mobileBandMemberPermissions(int bandId, int userId) =>
+      '/api/mobile/bands/$bandId/members/$userId/permissions';
+  static String mobileBandInvitations(int bandId) =>
+      '/api/mobile/bands/$bandId/invitations';
+  static String mobileBandInvitation(int bandId, int invitationId) =>
+      '/api/mobile/bands/$bandId/invitations/$invitationId';
 }

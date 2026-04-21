@@ -240,7 +240,7 @@ class _MemberRow extends ConsumerWidget {
     try {
       await ref
           .read(bandSettingsProvider(bandId).notifier)
-          .removeMember(bandId: bandId, userId: member.id);
+          .removeMember(userId: member.id);
     } catch (_) {
       if (context.mounted) {
         showCupertinoDialog<void>(
@@ -321,7 +321,7 @@ class _InvitationRow extends ConsumerWidget {
     try {
       await ref
           .read(bandSettingsProvider(bandId).notifier)
-          .revokeInvitation(bandId: bandId, invitationId: invite.id);
+          .revokeInvitation(invitationId: invite.id);
     } catch (_) {
       if (context.mounted) {
         showCupertinoDialog<void>(

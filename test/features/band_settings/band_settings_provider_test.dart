@@ -169,7 +169,7 @@ void main() {
 
       await container
           .read(bandSettingsProvider(10).notifier)
-          .removeMember(bandId: 10, userId: 5);
+          .removeMember(userId: 5);
 
       final state = container.read(bandSettingsProvider(10)).value!;
       expect(state.members, isEmpty);
@@ -184,7 +184,7 @@ void main() {
 
       await container
           .read(bandSettingsProvider(10).notifier)
-          .revokeInvitation(bandId: 10, invitationId: 99);
+          .revokeInvitation(invitationId: 99);
 
       final state = container.read(bandSettingsProvider(10)).value!;
       expect(state.invitations, isEmpty);

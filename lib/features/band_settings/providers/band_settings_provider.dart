@@ -94,11 +94,8 @@ class BandSettingsNotifier extends AsyncNotifier<BandSettingsState> {
     }
   }
 
-  Future<void> removeMember({
-    required int bandId,
-    required int userId,
-  }) async {
-    await _repo.removeMember(bandId, userId);
+  Future<void> removeMember({required int userId}) async {
+    await _repo.removeMember(_bandId, userId);
     final current = state.value;
     if (current == null) return;
     state = AsyncValue.data(
@@ -108,11 +105,8 @@ class BandSettingsNotifier extends AsyncNotifier<BandSettingsState> {
     );
   }
 
-  Future<void> revokeInvitation({
-    required int bandId,
-    required int invitationId,
-  }) async {
-    await _repo.revokeInvitation(bandId, invitationId);
+  Future<void> revokeInvitation({required int invitationId}) async {
+    await _repo.revokeInvitation(_bandId, invitationId);
     final current = state.value;
     if (current == null) return;
     state = AsyncValue.data(

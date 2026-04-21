@@ -47,6 +47,22 @@ class _InviteSectionState extends ConsumerState<InviteSection> {
   Future<void> _sendInvite() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) return;
+    if (!email.contains('@')) {
+      showCupertinoDialog<void>(
+        context: context,
+        builder: (_) => CupertinoAlertDialog(
+          title: const Text('Invalid Email'),
+          content: const Text('Please enter a valid email address.'),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
     setState(() => _sending = true);
     try {
       // NOTE: BandsRepository.inviteMembers takes only emails — the role

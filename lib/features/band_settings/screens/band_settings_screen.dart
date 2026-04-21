@@ -108,6 +108,15 @@ class BandSettingsScreen extends ConsumerWidget {
   }
 }
 
+// ── Shared swipe-delete background ───────────────────────────────────────────
+
+Widget _swipeDeleteBackground() => Container(
+      color: CupertinoColors.destructiveRed,
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.only(right: 20),
+      child: const Icon(CupertinoIcons.delete, color: CupertinoColors.white),
+    );
+
 // ── Band logo avatar ──────────────────────────────────────────────────────────
 
 /// Circular logo badge for the band info tile.
@@ -199,7 +208,7 @@ class _MemberRow extends ConsumerWidget {
       // The notifier updates state directly; we never let Dismissible remove
       // the widget itself — return false to keep widget management in the provider.
       confirmDismiss: (_) => _confirmRemoveMember(context, ref),
-      background: _deleteBackground(),
+      background: _swipeDeleteBackground(),
       child: tile,
     );
   }
@@ -226,7 +235,7 @@ class _MemberRow extends ConsumerWidget {
       ),
     );
 
-    if (confirmed != true) return false;
+    if (confirmed != true || !context.mounted) return false;
 
     try {
       await ref
@@ -256,17 +265,6 @@ class _MemberRow extends ConsumerWidget {
     return false;
   }
 
-  Widget _deleteBackground() {
-    return Container(
-      color: CupertinoColors.destructiveRed,
-      alignment: Alignment.centerRight,
-      padding: const EdgeInsets.only(right: 20),
-      child: const Icon(
-        CupertinoIcons.delete,
-        color: CupertinoColors.white,
-      ),
-    );
-  }
 }
 
 // ── Invitation row ────────────────────────────────────────────────────────────
@@ -291,7 +289,7 @@ class _InvitationRow extends ConsumerWidget {
       key: ValueKey('invite-${invite.id}'),
       direction: DismissDirection.endToStart,
       confirmDismiss: (_) => _confirmRevokeInvite(context, ref),
-      background: _deleteBackground(),
+      background: _swipeDeleteBackground(),
       child: tile,
     );
   }
@@ -318,7 +316,7 @@ class _InvitationRow extends ConsumerWidget {
       ),
     );
 
-    if (confirmed != true) return false;
+    if (confirmed != true || !context.mounted) return false;
 
     try {
       await ref
@@ -346,17 +344,5 @@ class _InvitationRow extends ConsumerWidget {
     // Always return false — the notifier removes the invite from state,
     // so the list rebuilds without this widget on its own.
     return false;
-  }
-
-  Widget _deleteBackground() {
-    return Container(
-      color: CupertinoColors.destructiveRed,
-      alignment: Alignment.centerRight,
-      padding: const EdgeInsets.only(right: 20),
-      child: const Icon(
-        CupertinoIcons.delete,
-        color: CupertinoColors.white,
-      ),
-    );
   }
 }

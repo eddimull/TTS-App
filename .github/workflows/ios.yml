@@ -73,12 +73,20 @@ jobs:
           retention-days: 30
 
       - name: Upload to TestFlight
-        uses: apple-actions/upload-testflight-build@v3
-        with:
-          app-path: build/ios/ipa/*.ipa
-          issuer-id: ${{ secrets.ASC_ISSUER_ID }}
-          api-key-id: ${{ secrets.ASC_API_KEY_ID }}
-          api-private-key: ${{ secrets.ASC_API_KEY_BASE64 }}
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_API_KEY_BASE64: ${{ secrets.ASC_API_KEY_BASE64 }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo -n "$ASC_API_KEY_BASE64" | base64 --decode \
+            > ~/.appstoreconnect/private_keys/AuthKey_${ASC_API_KEY_ID}.p8
+
+          xcrun altool --upload-app \
+            --type ios \
+            --file build/ios/ipa/*.ipa \
+            --apiKey "$ASC_API_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID"
 
       - name: Clean up keychain
         if: always()

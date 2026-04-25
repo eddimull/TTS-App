@@ -72,6 +72,6 @@ class ApiClient {
 /// using a navigator key after the widget tree is ready.
 final apiClientProvider = Provider<ApiClient>((ref) {
   final storage = ref.watch(secureStorageProvider);
-  final bandId = ref.watch(selectedBandProvider).valueOrNull?.toString();
+  final bandId = ref.watch(selectedBandProvider).asData?.value?.toString();
   return ApiClient(storage: storage, bandId: bandId);
 });

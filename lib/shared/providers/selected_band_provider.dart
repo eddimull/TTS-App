@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/providers/core_providers.dart';
+import '../../core/storage/secure_storage.dart';
 
 class SelectedBandNotifier extends AsyncNotifier<int?> {
   @override

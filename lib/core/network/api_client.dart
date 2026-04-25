@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_config.dart';
 import '../storage/secure_storage.dart';
+import '../../shared/providers/selected_band_provider.dart';
 
 /// A callback invoked when the server returns 401. Typically used to navigate
 /// to the login screen without requiring a BuildContext here.
@@ -10,13 +11,16 @@ typedef OnUnauthorized = void Function();
 class ApiClient {
   ApiClient({
     required SecureStorage storage,
+    String? bandId,
     OnUnauthorized? onUnauthorized,
   })  : _storage = storage,
+        _bandId = bandId,
         _onUnauthorized = onUnauthorized {
     _dio = _buildDio();
   }
 
   final SecureStorage _storage;
+  final String? _bandId;
   final OnUnauthorized? _onUnauthorized;
   late final Dio _dio;
 
@@ -43,9 +47,8 @@ class ApiClient {
             options.headers['Authorization'] = 'Bearer $token';
           }
 
-          final bandId = await _storage.readBandId();
-          if (bandId != null) {
-            options.headers['X-Band-ID'] = bandId;
+          if (_bandId != null) {
+            options.headers['X-Band-ID'] = _bandId!;
           }
 
           handler.next(options);
@@ -69,5 +72,6 @@ class ApiClient {
 /// using a navigator key after the widget tree is ready.
 final apiClientProvider = Provider<ApiClient>((ref) {
   final storage = ref.watch(secureStorageProvider);
-  return ApiClient(storage: storage);
+  final bandId = ref.watch(selectedBandProvider).valueOrNull?.toString();
+  return ApiClient(storage: storage, bandId: bandId);
 });

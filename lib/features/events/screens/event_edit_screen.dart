@@ -426,74 +426,76 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlgState) {
           final bg = CupertinoColors.systemBackground.resolveFrom(ctx);
-          return Container(
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            ),
-            child: SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Drag handle
-                  _SheetDragHandle(sheetContext: ctx),
-                  // Header row
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Row(
-                      children: [
-                        CupertinoButton(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                          onPressed: () => Navigator.pop(ctx),
-                          child: Text(
-                            'Cancel',
-                            style: TextStyle(
-                              color: CupertinoColors.destructiveRed.resolveFrom(ctx),
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+            child: Container(
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Drag handle
+                    _SheetDragHandle(sheetContext: ctx),
+                    // Header row
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Row(
+                        children: [
+                          CupertinoButton(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                            onPressed: () => Navigator.pop(ctx),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                color: CupertinoColors.destructiveRed.resolveFrom(ctx),
+                              ),
                             ),
                           ),
-                        ),
-                        const Expanded(
-                          child: Text(
-                            'Add Timeline Entry',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          const Expanded(
+                            child: Text(
+                              'Add Timeline Entry',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                            ),
                           ),
-                        ),
-                        CupertinoButton(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                          onPressed: () {
-                            final label = titleCtrl.text.trim();
-                            if (label.isEmpty) return;
-                            setState(() {
-                              _timeline.add(_TimelineEntry(title: label, time: entryTime));
-                              _timeline.sort((a, b) {
-                                if (a.time == null && b.time == null) return 0;
-                                if (a.time == null) return 1;
-                                if (b.time == null) return -1;
-                                final aDt = DateTime.tryParse(a.time!);
-                                final bDt = DateTime.tryParse(b.time!);
-                                if (aDt == null || bDt == null) return a.time!.compareTo(b.time!);
-                                return aDt.compareTo(bDt);
+                          CupertinoButton(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                            onPressed: () {
+                              final label = titleCtrl.text.trim();
+                              if (label.isEmpty) return;
+                              setState(() {
+                                _timeline.add(_TimelineEntry(title: label, time: entryTime));
+                                _timeline.sort((a, b) {
+                                  if (a.time == null && b.time == null) return 0;
+                                  if (a.time == null) return 1;
+                                  if (b.time == null) return -1;
+                                  final aDt = DateTime.tryParse(a.time!);
+                                  final bDt = DateTime.tryParse(b.time!);
+                                  if (aDt == null || bDt == null) return a.time!.compareTo(b.time!);
+                                  return aDt.compareTo(bDt);
+                                });
                               });
-                            });
-                            Navigator.pop(ctx);
-                          },
-                          child: const Text('Add'),
-                        ),
-                      ],
+                              Navigator.pop(ctx);
+                            },
+                            child: const Text('Add'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  // Label field
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: CupertinoTextField(
-                      controller: titleCtrl,
-                      placeholder: 'Label (e.g. Doors Open)',
-                      textCapitalization: TextCapitalization.sentences,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    // Label field
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: CupertinoTextField(
+                        controller: titleCtrl,
+                        placeholder: 'Label (e.g. Doors Open)',
+                        textCapitalization: TextCapitalization.sentences,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
                     ),
-                  ),
                   // Date & time picker trigger
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -567,7 +569,8 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                       ),
                     ),
                   ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
@@ -608,148 +611,151 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlgState) {
           final bg = CupertinoColors.systemBackground.resolveFrom(ctx);
-          return Container(
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            ),
-            child: SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Drag handle
-                  _SheetDragHandle(sheetContext: ctx),
-                  // Header row
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Row(
-                      children: [
-                        CupertinoButton(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                          onPressed: () => Navigator.pop(ctx),
-                          child: Text(
-                            'Cancel',
-                            style: TextStyle(
-                              color: CupertinoColors.destructiveRed.resolveFrom(ctx),
-                            ),
-                          ),
-                        ),
-                        const Expanded(
-                          child: Text(
-                            'Edit Entry',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        CupertinoButton(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                          onPressed: () {
-                            final label = titleCtrl.text.trim();
-                            if (label.isEmpty) return;
-                            setState(() {
-                              _timeline[index] = _TimelineEntry(title: label, time: entryTime);
-                              _timeline.sort((a, b) {
-                                if (a.time == null && b.time == null) return 0;
-                                if (a.time == null) return 1;
-                                if (b.time == null) return -1;
-                                final aDt = DateTime.tryParse(a.time!);
-                                final bDt = DateTime.tryParse(b.time!);
-                                if (aDt == null || bDt == null) return a.time!.compareTo(b.time!);
-                                return aDt.compareTo(bDt);
-                              });
-                            });
-                            Navigator.pop(ctx);
-                          },
-                          child: const Text('Save'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Label field
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: CupertinoTextField(
-                      controller: titleCtrl,
-                      placeholder: 'Label (e.g. Doors Open)',
-                      textCapitalization: TextCapitalization.sentences,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    ),
-                  ),
-                  // Date & time picker trigger
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: GestureDetector(
-                      onTap: () async {
-                        await showCupertinoModalPopup<void>(
-                          context: ctx,
-                          builder: (_) => Container(
-                            height: 320,
-                            color: CupertinoColors.systemBackground.resolveFrom(ctx),
-                            child: Column(
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    CupertinoButton(
-                                      child: const Text('Clear'),
-                                      onPressed: () {
-                                        setDlgState(() => entryTime = null);
-                                        Navigator.pop(ctx);
-                                      },
-                                    ),
-                                    CupertinoButton(
-                                      child: const Text('Done'),
-                                      onPressed: () {
-                                        setDlgState(() => entryTime = _normaliseDateTime(picked.toIso8601String()));
-                                        Navigator.pop(ctx);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                                Expanded(
-                                  child: CupertinoDatePicker(
-                                    mode: CupertinoDatePickerMode.dateAndTime,
-                                    initialDateTime: entryTime != null
-                                        ? (DateTime.tryParse(entryTime!) ?? picked)
-                                        : picked,
-                                    onDateTimeChanged: (dt) => picked = dt,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: CupertinoColors.separator.resolveFrom(ctx),
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(CupertinoIcons.calendar, size: 16),
-                            const SizedBox(width: 6),
-                            Text(
-                              entryTime != null
-                                  ? _formatEntryLabel(entryTime!)
-                                  : 'Set date & time (optional)',
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+            child: Container(
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Drag handle
+                    _SheetDragHandle(sheetContext: ctx),
+                    // Header row
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Row(
+                        children: [
+                          CupertinoButton(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                            onPressed: () => Navigator.pop(ctx),
+                            child: Text(
+                              'Cancel',
                               style: TextStyle(
-                                fontSize: 14,
-                                color: entryTime != null
-                                    ? CupertinoColors.label.resolveFrom(ctx)
-                                    : CupertinoColors.placeholderText.resolveFrom(ctx),
+                                color: CupertinoColors.destructiveRed.resolveFrom(ctx),
                               ),
                             ),
-                          ],
+                          ),
+                          const Expanded(
+                            child: Text(
+                              'Edit Entry',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          CupertinoButton(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                            onPressed: () {
+                              final label = titleCtrl.text.trim();
+                              if (label.isEmpty) return;
+                              setState(() {
+                                _timeline[index] = _TimelineEntry(title: label, time: entryTime);
+                                _timeline.sort((a, b) {
+                                  if (a.time == null && b.time == null) return 0;
+                                  if (a.time == null) return 1;
+                                  if (b.time == null) return -1;
+                                  final aDt = DateTime.tryParse(a.time!);
+                                  final bDt = DateTime.tryParse(b.time!);
+                                  if (aDt == null || bDt == null) return a.time!.compareTo(b.time!);
+                                  return aDt.compareTo(bDt);
+                                });
+                              });
+                              Navigator.pop(ctx);
+                            },
+                            child: const Text('Save'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Label field
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: CupertinoTextField(
+                        controller: titleCtrl,
+                        placeholder: 'Label (e.g. Doors Open)',
+                        textCapitalization: TextCapitalization.sentences,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                    // Date & time picker trigger
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: GestureDetector(
+                        onTap: () async {
+                          await showCupertinoModalPopup<void>(
+                            context: ctx,
+                            builder: (_) => Container(
+                              height: 320,
+                              color: CupertinoColors.systemBackground.resolveFrom(ctx),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      CupertinoButton(
+                                        child: const Text('Clear'),
+                                        onPressed: () {
+                                          setDlgState(() => entryTime = null);
+                                          Navigator.pop(ctx);
+                                        },
+                                      ),
+                                      CupertinoButton(
+                                        child: const Text('Done'),
+                                        onPressed: () {
+                                          setDlgState(() => entryTime = _normaliseDateTime(picked.toIso8601String()));
+                                          Navigator.pop(ctx);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  Expanded(
+                                    child: CupertinoDatePicker(
+                                      mode: CupertinoDatePickerMode.dateAndTime,
+                                      initialDateTime: entryTime != null
+                                          ? (DateTime.tryParse(entryTime!) ?? picked)
+                                          : picked,
+                                      onDateTimeChanged: (dt) => picked = dt,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: CupertinoColors.separator.resolveFrom(ctx),
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(CupertinoIcons.calendar, size: 16),
+                              const SizedBox(width: 6),
+                              Text(
+                                entryTime != null
+                                    ? _formatEntryLabel(entryTime!)
+                                    : 'Set date & time (optional)',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: entryTime != null
+                                      ? CupertinoColors.label.resolveFrom(ctx)
+                                      : CupertinoColors.placeholderText.resolveFrom(ctx),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );

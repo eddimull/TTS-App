@@ -50,6 +50,7 @@ app.*.map.json
 
 .claude/screenshots/
 .superpowers/
+.mcp.json
 
 # iOS secrets xcconfig (use ios/Flutter/Secrets.xcconfig.example as a template)
 ios/Flutter/Secrets.xcconfig

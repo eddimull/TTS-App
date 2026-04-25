@@ -138,3 +138,4 @@ bands: add is_personal boolean default false
 - Removing/leaving a band from mobile — future work
 - Acting on `is_personal` in the UI (hiding roster, etc.) — future work
 - Social sign-in (Google, Apple) — future work
+

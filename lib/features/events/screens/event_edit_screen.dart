@@ -1,5 +1,9 @@
+import 'dart:io' show Platform;
+import 'dart:typed_data' show Uint8List;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart' show DefaultMaterialLocalizations, ReorderableDragStartListener, ReorderableListView;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timelines_plus/timelines_plus.dart';
@@ -1066,20 +1070,73 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
   // ── Attachment helpers ──────────────────────────────────────────────────────
 
   Future<List<EventAttachment>> _pickAndUploadAttachment() async {
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: false,
-      withData: true,
-    );
-    if (result == null || result.files.isEmpty) return _attachments;
-    final file = result.files.first;
-    final filename = file.name;
+    // On mobile platforms the photo library is separate from the file system,
+    // so we offer an action sheet letting the user choose the source.
+    final bool useMobilePicker = !kIsWeb && (Platform.isIOS || Platform.isAndroid);
+
+    Uint8List? bytes;
+    String? filename;
+
+    if (useMobilePicker) {
+      // Show action sheet to choose source.
+      final String? choice = await showCupertinoModalPopup<String>(
+        context: context,
+        builder: (_) => CupertinoActionSheet(
+          actions: [
+            CupertinoActionSheetAction(
+              onPressed: () => Navigator.pop(context, 'photo'),
+              child: const Text('Photo Library'),
+            ),
+            CupertinoActionSheetAction(
+              onPressed: () => Navigator.pop(context, 'file'),
+              child: const Text('Choose File'),
+            ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text('Cancel'),
+          ),
+        ),
+      );
+
+      if (choice == null) return _attachments;
+
+      if (choice == 'photo') {
+        final XFile? xFile = await ImagePicker().pickImage(
+          source: ImageSource.gallery,
+        );
+        if (xFile == null) return _attachments;
+        bytes = await xFile.readAsBytes();
+        filename = xFile.name;
+      } else {
+        // 'file' — existing FilePicker path
+        final result = await FilePicker.platform.pickFiles(
+          allowMultiple: false,
+          withData: true,
+        );
+        if (result == null || result.files.isEmpty) return _attachments;
+        final file = result.files.first;
+        bytes = file.bytes!;
+        filename = file.name;
+      }
+    } else {
+      // Desktop / web: go straight to FilePicker.
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return _attachments;
+      final file = result.files.first;
+      bytes = file.bytes!;
+      filename = file.name;
+    }
 
     setState(() => _uploading = true);
     try {
       final repo = ref.read(eventsRepositoryProvider);
       final attachment = await repo.uploadAttachment(
         widget.event.key,
-        bytes: file.bytes!,
+        bytes: bytes,
         filename: filename,
       );
       setState(() => _attachments.add(attachment));

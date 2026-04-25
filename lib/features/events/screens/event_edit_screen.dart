@@ -1351,6 +1351,115 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
             ),
           ]),
 
+          const SizedBox(height: 20),
+
+          // ── Attachments ─────────────────────────────────────────────────────
+          const _SectionHeader(title: 'Attachments'),
+          _FormCard(children: [
+            if (_attachments.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Text(
+                  'No attachments',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  ),
+                ),
+              ),
+            for (int i = 0; i < _attachments.length; i++) ...[
+              if (i > 0) _Divider(),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: _attachments[i].mimeType.startsWith('image/') &&
+                                resolveAttachmentUrl(_attachments[i].url).isNotEmpty
+                            ? AuthThumbnail(
+                                url: resolveAttachmentUrl(_attachments[i].url))
+                            : ColoredBox(
+                                color: CupertinoColors.secondarySystemBackground
+                                    .resolveFrom(context),
+                                child: Center(
+                                  child: Icon(
+                                    attachmentIcon(_attachments[i].mimeType),
+                                    size: 20,
+                                    color: CupertinoColors.secondaryLabel
+                                        .resolveFrom(context),
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _attachments[i].filename,
+                            style: const TextStyle(fontSize: 15),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            _attachments[i].formattedSize,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(28, 28),
+                      onPressed: () => _deleteAttachment(_attachments[i]),
+                      child: Icon(
+                        CupertinoIcons.minus_circle,
+                        size: 20,
+                        color: CupertinoColors.systemRed.resolveFrom(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (_attachments.isNotEmpty) _Divider(),
+            CupertinoButton(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              onPressed: _uploading ? null : _pickAndUploadAttachment,
+              child: Row(
+                children: [
+                  if (_uploading)
+                    const CupertinoActivityIndicator()
+                  else
+                    Icon(
+                      CupertinoIcons.paperclip,
+                      size: 18,
+                      color: CupertinoColors.activeBlue.resolveFrom(context),
+                    ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _uploading ? 'Uploading…' : 'Add Attachment',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: _uploading
+                          ? CupertinoColors.secondaryLabel.resolveFrom(context)
+                          : CupertinoColors.activeBlue.resolveFrom(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ]),
+
           // ── Flags ───────────────────────────────────────────────────────────
           if (_isPublic != null ||
               _outside != null ||
@@ -1712,115 +1821,6 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                 ),
               ),
             ],
-          ]),
-
-          const SizedBox(height: 20),
-
-          // ── Attachments ─────────────────────────────────────────────────────
-          const _SectionHeader(title: 'Attachments'),
-          _FormCard(children: [
-            if (_attachments.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Text(
-                  'No attachments',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: CupertinoColors.secondaryLabel.resolveFrom(context),
-                  ),
-                ),
-              ),
-            for (int i = 0; i < _attachments.length; i++) ...[
-              if (i > 0) _Divider(),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: _attachments[i].mimeType.startsWith('image/') &&
-                                resolveAttachmentUrl(_attachments[i].url).isNotEmpty
-                            ? AuthThumbnail(
-                                url: resolveAttachmentUrl(_attachments[i].url))
-                            : ColoredBox(
-                                color: CupertinoColors.secondarySystemBackground
-                                    .resolveFrom(context),
-                                child: Center(
-                                  child: Icon(
-                                    attachmentIcon(_attachments[i].mimeType),
-                                    size: 20,
-                                    color: CupertinoColors.secondaryLabel
-                                        .resolveFrom(context),
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _attachments[i].filename,
-                            style: const TextStyle(fontSize: 15),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            _attachments[i].formattedSize,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: CupertinoColors.secondaryLabel.resolveFrom(context),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(28, 28),
-                      onPressed: () => _deleteAttachment(_attachments[i]),
-                      child: Icon(
-                        CupertinoIcons.minus_circle,
-                        size: 20,
-                        color: CupertinoColors.systemRed.resolveFrom(context),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (_attachments.isNotEmpty) _Divider(),
-            CupertinoButton(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              onPressed: _uploading ? null : _pickAndUploadAttachment,
-              child: Row(
-                children: [
-                  if (_uploading)
-                    const CupertinoActivityIndicator()
-                  else
-                    Icon(
-                      CupertinoIcons.paperclip,
-                      size: 18,
-                      color: CupertinoColors.activeBlue.resolveFrom(context),
-                    ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _uploading ? 'Uploading…' : 'Add Attachment',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: _uploading
-                          ? CupertinoColors.secondaryLabel.resolveFrom(context)
-                          : CupertinoColors.activeBlue.resolveFrom(context),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ]),
 
           const SizedBox(height: 40),

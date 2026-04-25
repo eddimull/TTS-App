@@ -76,5 +76,28 @@
 	<string>This app uses the camera to let you capture photos and videos for your band.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app accesses your photo library to let you upload media for your band.</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>comgooglemaps</string>
+		<string>waze</string>
+		<string>yandexmaps</string>
+		<string>yandexnavi</string>
+		<string>dgis</string>
+		<string>itunesradio</string>
+		<string>mapswithme</string>
+		<string>osmandmaps</string>
+		<string>baidu</string>
+		<string>iosamap</string>
+		<string>baidumap</string>
+		<string>sygic</string>
+		<string>here-route</string>
+		<string>uber</string>
+		<string>lyft</string>
+		<string>navigon</string>
+		<string>tomtomgo</string>
+		<string>flitsmeister</string>
+		<string>truckmap</string>
+		<string>maps</string>
+	</array>
 </dict>
 </plist>

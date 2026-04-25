@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:timelines_plus/timelines_plus.dart';
+import 'package:map_launcher/map_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
@@ -79,6 +80,40 @@ class _EventDetailView extends StatelessWidget {
                 if (event.venueAddress != null && event.venueAddress!.isNotEmpty)
                   event.venueAddress!,
               ].join('\n'),
+              onTap: () async {
+                final availableMaps = await MapLauncher.installedMaps;
+                if (availableMaps.isEmpty || !context.mounted) return;
+                final title = event.venueName!;
+                final coords = Coords(0, 0);
+                final address = [
+                  event.venueName!,
+                  if (event.venueAddress != null && event.venueAddress!.isNotEmpty)
+                    event.venueAddress!,
+                ].join(', ');
+                if (availableMaps.length == 1) {
+                  availableMaps.first.showMarker(coords: coords, title: title, extraParams: {'q': address});
+                  return;
+                }
+                showCupertinoModalPopup<void>(
+                  context: context,
+                  builder: (ctx) => CupertinoActionSheet(
+                    actions: [
+                      for (final map in availableMaps)
+                        CupertinoActionSheetAction(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            map.showMarker(coords: coords, title: title, extraParams: {'q': address});
+                          },
+                          child: Text(map.mapName),
+                        ),
+                    ],
+                    cancelButton: CupertinoActionSheetAction(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                );
+              },
             ),
           ],
 
@@ -242,15 +277,17 @@ class _InfoRow extends StatelessWidget {
     required this.label,
     required this.value,
     this.trailing,
+    this.onTap,
   });
   final IconData icon;
   final String label;
   final String value;
   final Widget? trailing;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final row = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, size: 20, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
@@ -268,7 +305,15 @@ class _InfoRow extends StatelessWidget {
               ),
               if (value.isNotEmpty) ...[
                 const SizedBox(height: 2),
-                Text(value, style: const TextStyle(fontSize: 15)),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: onTap != null
+                        ? CupertinoColors.activeBlue.resolveFrom(context)
+                        : CupertinoColors.label.resolveFrom(context),
+                  ),
+                ),
               ],
               if (trailing != null) trailing!,
             ],
@@ -276,6 +321,8 @@ class _InfoRow extends StatelessWidget {
         ),
       ],
     );
+    if (onTap == null) return row;
+    return GestureDetector(onTap: onTap, child: row);
   }
 }
 

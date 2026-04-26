@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../providers/rehearsals_provider.dart';
 import 'rehearsal_detail_screen.dart';
@@ -15,20 +16,27 @@ class RehearsalDetailByKeyScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(rehearsalDetailByKeyProvider(eventKey));
 
-    return detailAsync.when(
-      loading: () => const CupertinoPageScaffold(
-        navigationBar: CupertinoNavigationBar(),
-        child: Center(child: CupertinoActivityIndicator()),
-      ),
-      error: (e, _) => CupertinoPageScaffold(
-        navigationBar: const CupertinoNavigationBar(),
-        child: ErrorView(
-          message: ErrorView.friendlyMessage(e),
-          onRetry: () =>
-              ref.invalidate(rehearsalDetailByKeyProvider(eventKey)),
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        if ((details.primaryVelocity ?? 0) > 300 && context.canPop()) {
+          context.pop();
+        }
+      },
+      child: detailAsync.when(
+        loading: () => const CupertinoPageScaffold(
+          navigationBar: CupertinoNavigationBar(),
+          child: Center(child: CupertinoActivityIndicator()),
         ),
+        error: (e, _) => CupertinoPageScaffold(
+          navigationBar: const CupertinoNavigationBar(),
+          child: ErrorView(
+            message: ErrorView.friendlyMessage(e),
+            onRetry: () =>
+                ref.invalidate(rehearsalDetailByKeyProvider(eventKey)),
+          ),
+        ),
+        data: (rehearsal) => RehearsalDetailScreen(preloaded: rehearsal),
       ),
-      data: (rehearsal) => RehearsalDetailScreen(preloaded: rehearsal),
     );
   }
 }

@@ -3,6 +3,7 @@ import '../data/bookings_repository.dart';
 import '../data/models/booking_detail.dart';
 import '../data/models/booking_date_status.dart';
 import '../data/models/booking_history_entry.dart';
+import '../data/models/booking_payout.dart';
 import '../data/models/booking_summary.dart';
 import '../data/models/contact_library_item.dart';
 import '../data/models/event_type.dart';
@@ -54,6 +55,14 @@ final bookingDetailProvider = FutureProvider.family<BookingDetail,
     ({int bandId, int bookingId})>((ref, args) async {
   final repo = ref.watch(bookingsRepositoryProvider);
   return repo.getBookingDetail(args.bandId, args.bookingId);
+});
+
+// ── Booking payout ────────────────────────────────────────────────────────────
+
+final bookingPayoutProvider = FutureProvider.family<BookingPayout,
+    ({int bandId, int bookingId})>((ref, args) async {
+  final repo = ref.watch(bookingsRepositoryProvider);
+  return repo.getBookingPayout(args.bandId, args.bookingId);
 });
 
 // ── Event types ───────────────────────────────────────────────────────────────

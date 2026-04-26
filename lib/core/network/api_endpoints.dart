@@ -39,6 +39,8 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/bookings/$bookingId/contract/send';
   static String mobileBookingHistory(int bandId, int bookingId) =>
       '/api/mobile/bands/$bandId/bookings/$bookingId/history';
+  static String mobileBookingPayout(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/payout';
   static const String mobileEventTypes = '/api/mobile/event-types';
   static String mobileBandRehearsalSchedules(int bandId) =>
       '/api/mobile/bands/$bandId/rehearsal-schedules';

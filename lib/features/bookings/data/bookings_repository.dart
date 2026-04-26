@@ -4,6 +4,7 @@ import 'package:tts_bandmate/core/providers/core_providers.dart';
 import 'models/booking_contact.dart';
 import 'models/booking_detail.dart';
 import 'models/booking_history_entry.dart';
+import 'models/booking_payout.dart';
 import 'models/booking_summary.dart';
 import 'models/contact_library_item.dart';
 import 'models/event_type.dart';
@@ -167,6 +168,17 @@ class BookingsRepository {
         .map((e) =>
             BookingHistoryEntry.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<BookingPayout> getBookingPayout(int bandId, int bookingId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileBookingPayout(bandId, bookingId),
+    );
+    final data = response.data!;
+    final payload = data['payout'] is Map<String, dynamic>
+        ? data['payout'] as Map<String, dynamic>
+        : data;
+    return BookingPayout.fromJson(payload);
   }
 
   Future<List<EventType>> getEventTypes() async {

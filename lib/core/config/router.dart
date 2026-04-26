@@ -15,6 +15,7 @@ import '../../features/bookings/screens/booking_detail_screen.dart';
 import '../../features/bookings/screens/booking_form_screen.dart';
 import '../../features/bookings/screens/booking_history_screen.dart';
 import '../../features/bookings/screens/booking_payments_screen.dart';
+import '../../features/bookings/screens/booking_payout_screen.dart';
 import '../../features/bookings/screens/bookings_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/events/screens/event_detail_screen.dart';
@@ -294,6 +295,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/bookings/:bandId/:bookingId/history',
         builder: (_, state) => BookingHistoryScreen(
+          bandId: int.parse(state.pathParameters['bandId']!),
+          bookingId: int.parse(state.pathParameters['bookingId']!),
+        ),
+      ),
+      GoRoute(
+        path: '/bookings/:bandId/:bookingId/payout',
+        builder: (_, state) => BookingPayoutScreen(
           bandId: int.parse(state.pathParameters['bandId']!),
           bookingId: int.parse(state.pathParameters['bookingId']!),
         ),

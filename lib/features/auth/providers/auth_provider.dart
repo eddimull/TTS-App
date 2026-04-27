@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/core_providers.dart';
+import '../../../core/storage/route_storage.dart';
 import '../data/auth_repository.dart';
 import '../data/models/auth_user.dart';
 import '../data/models/band_summary.dart';
@@ -121,6 +122,10 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     } catch (_) {}
 
     await storage.clear();
+
+    final routeStorage = await ref.read(routeStorageProvider.future);
+    routeStorage.clearLastRoute();
+
     state = const AsyncValue.data(AuthUnauthenticated());
   }
 

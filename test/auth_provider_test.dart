@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tts_bandmate/core/storage/route_storage.dart';
 import 'package:tts_bandmate/core/storage/secure_storage.dart';
 import 'package:tts_bandmate/features/auth/data/models/auth_user.dart';
 import 'package:tts_bandmate/features/auth/data/models/band_summary.dart';
@@ -55,15 +57,29 @@ final _fakeBands = [
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  late RouteStorage fakeRouteStorage;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    fakeRouteStorage = RouteStorage(prefs);
+  });
+
   group('AuthNotifier', () {
-    /// Helper that builds a ProviderContainer wired to [FakeSecureStorage] and
-    /// an [ApiClient] that will never be able to reach a real server.
+    /// Helper that builds a ProviderContainer wired to [FakeSecureStorage],
+    /// an [ApiClient] that will never reach a real server, and a
+    /// [routeStorageProvider] backed by mock SharedPreferences.
     ProviderContainer makeContainer(FakeSecureStorage storage) {
       return ProviderContainer(
         overrides: [
           secureStorageProvider.overrideWithValue(storage),
           apiClientProvider.overrideWith(
             (ref) => ApiClient(storage: storage),
+          ),
+          routeStorageProvider.overrideWith(
+            (ref) async => fakeRouteStorage,
           ),
         ],
       );

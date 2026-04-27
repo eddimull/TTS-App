@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/connectivity_provider.dart';
+import '../../core/storage/route_storage.dart';
 
 class _NavDestination {
   const _NavDestination({
@@ -70,6 +71,14 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   Widget build(BuildContext context) {
     final selectedIndex = _selectedIndex(context);
     final connectivityAsync = ref.watch(connectivityProvider);
+
+    // Save the active tab root after each build so cold-start restore works.
+    // Only the tab root (e.g. /library) is saved — never nested routes that
+    // require `extra` parameters and cannot be restored via redirect alone.
+    final tabRoot = _destinations[selectedIndex].route;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(routeStorageProvider).value?.writeLastRoute(tabRoot);
+    });
 
     ref.listen(connectivityProvider, (previous, next) {
       final wasOnline = previous?.value ?? true;

@@ -76,7 +76,7 @@ const _kShellPrefixes = [
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
   debugPrint('Initializing GoRouter');
-  final router = GoRouter(
+  return GoRouter(
     initialLocation: '/login',
     refreshListenable: notifier,
     observers: [_DismissKeyboardObserver()],
@@ -377,16 +377,4 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ),
   );
-
-  // Save the current route after each navigation settles. Using a delegate
-  // listener avoids any interaction with the redirect function.
-  router.routerDelegate.addListener(() {
-    final path = router.routerDelegate.currentConfiguration.uri.path;
-    final rs = ref.read(routeStorageProvider).value;
-    if (rs != null && _kShellPrefixes.any((p) => path.startsWith(p))) {
-      rs.writeLastRoute(path);
-    }
-  });
-
-  return router;
 });

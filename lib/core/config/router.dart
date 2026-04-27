@@ -34,6 +34,7 @@ import '../../features/band_settings/screens/band_settings_screen.dart';
 import '../../features/setlist/screens/live_session_screen.dart';
 import '../../shared/providers/selected_band_provider.dart';
 import '../../shared/widgets/app_scaffold.dart';
+import '../storage/route_storage.dart';
 
 // ── Router provider ───────────────────────────────────────────────────────────
 
@@ -43,6 +44,7 @@ class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(this._ref) {
     _ref.listen(authProvider, (_, __) => notifyListeners());
     _ref.listen(selectedBandProvider, (_, __) => notifyListeners());
+    _ref.listen(routeStorageProvider, (_, __) => notifyListeners());
   }
 
   final Ref _ref;
@@ -59,13 +61,55 @@ class _DismissKeyboardObserver extends NavigatorObserver {
   void didReplace({Route? newRoute, Route? oldRoute}) => _dismiss();
 }
 
+/// The shell route prefixes that are safe to persist as a last-route.
+/// Pre-auth and deep-link-only paths are excluded.
+const _kShellPrefixes = [
+  '/dashboard',
+  '/search',
+  '/bookings',
+  '/library',
+  '/more',
+  '/band-settings',
+  '/finances',
+];
+
+class LastRouteObserver extends NavigatorObserver {
+  LastRouteObserver(this._routeStorage);
+
+  final RouteStorage _routeStorage;
+
+  void _save(Route<dynamic> route) {
+    final name = route.settings.name;
+    if (name == null) return;
+    if (_kShellPrefixes.any((p) => name.startsWith(p))) {
+      _routeStorage.writeLastRoute(name);
+    }
+  }
+
+  @override
+  void didPush(Route route, Route? previousRoute) => _save(route);
+  @override
+  void didReplace({Route? newRoute, Route? oldRoute}) {
+    if (newRoute != null) _save(newRoute);
+  }
+  @override
+  void didPop(Route route, Route? previousRoute) {
+    if (previousRoute != null) _save(previousRoute);
+  }
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
+  final routeStorageAsync = ref.watch(routeStorageProvider);
+  final routeStorage = routeStorageAsync.value;
   debugPrint('Initializing GoRouter');
   return GoRouter(
     initialLocation: '/login',
     refreshListenable: notifier,
-    observers: [_DismissKeyboardObserver()],
+    observers: [
+      _DismissKeyboardObserver(),
+      if (routeStorage != null) LastRouteObserver(routeStorage),
+    ],
     redirect: (context, state) {
       final authAsync = ref.read(authProvider);
       final bandAsync = ref.read(selectedBandProvider);

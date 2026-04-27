@@ -76,7 +76,7 @@ const _kShellPrefixes = [
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
   debugPrint('Initializing GoRouter');
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/login',
     refreshListenable: notifier,
     observers: [_DismissKeyboardObserver()],
@@ -172,6 +172,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           return '/dashboard';
         }
 
+        // Restore last route on cold start if within 24 hours (fires once —
+        // cleared immediately so subsequent navigations are not affected).
         final routeStorageAsync = ref.read(routeStorageProvider);
         if (routeStorageAsync.isLoading) {
           debugPrint('[Router] routeStorage still loading — staying put');
@@ -179,24 +181,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
         final rs = routeStorageAsync.value;
         if (rs != null) {
-          final path = state.matchedLocation;
           final lastRoute = rs.readLastRoute();
           final lastTs = rs.readLastRouteTimestamp();
           final isRecent = lastTs != null &&
               DateTime.now().difference(lastTs).inHours < 24;
           final isShellPath = lastRoute != null &&
               _kShellPrefixes.any((p) => lastRoute.startsWith(p));
-
-          // Restore: fires once on cold start, then clears so it doesn't repeat.
-          if (isRecent && isShellPath && path != lastRoute) {
+          if (isRecent && isShellPath) {
             rs.clearLastRoute();
             debugPrint('[Router] restoring last route: $lastRoute');
             return lastRoute;
-          }
-
-          // Save: record the current concrete shell path on every allowed nav.
-          if (_kShellPrefixes.any((p) => path.startsWith(p))) {
-            rs.writeLastRoute(path);
           }
         }
 
@@ -383,4 +377,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ),
   );
+
+  // Save the current route after each navigation settles. Using a delegate
+  // listener avoids any interaction with the redirect function.
+  router.routerDelegate.addListener(() {
+    final path = router.routerDelegate.currentConfiguration.uri.path;
+    final rs = ref.read(routeStorageProvider).value;
+    if (rs != null && _kShellPrefixes.any((p) => path.startsWith(p))) {
+      rs.writeLastRoute(path);
+    }
+  });
+
+  return router;
 });

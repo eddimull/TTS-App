@@ -202,6 +202,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           return '/dashboard';
         }
 
+        // Restore last route on cold start if within 24 hours.
+        final routeStorageAsync = ref.read(routeStorageProvider);
+        if (routeStorageAsync.isLoading) {
+          debugPrint('[Router] routeStorage still loading — staying put');
+          return null;
+        }
+        final rs = routeStorageAsync.value;
+        if (rs != null) {
+          final lastRoute = rs.readLastRoute();
+          final lastTs = rs.readLastRouteTimestamp();
+          final isRecent = lastTs != null &&
+              DateTime.now().difference(lastTs).inHours < 24;
+          final isShellPath = lastRoute != null &&
+              _kShellPrefixes.any((p) => lastRoute.startsWith(p));
+          if (isRecent && isShellPath && state.matchedLocation != lastRoute) {
+            debugPrint('[Router] restoring last route: $lastRoute');
+            return lastRoute;
+          }
+        }
+
         debugPrint('[Router] all good — no redirect');
       }
 

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/connectivity_provider.dart';
+import '../../core/storage/route_storage.dart';
 
 class _NavDestination {
   const _NavDestination({
@@ -95,8 +96,10 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
           child: CupertinoTabBar(
             currentIndex: selectedIndex,
             onTap: (index) {
+              final current = GoRouterState.of(context).matchedLocation;
+              ref.read(routeStorageProvider).value?.writeLastRoute(current);
               final route = _destinations[index].route;
-              if (!GoRouterState.of(context).matchedLocation.startsWith(route)) {
+              if (!current.startsWith(route)) {
                 context.go(route);
               }
             },

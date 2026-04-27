@@ -19,17 +19,17 @@ class RouteStorage {
     return DateTime.fromMillisecondsSinceEpoch(int.parse(ms));
   }
 
-  void writeLastRoute(String path) {
-    _prefs.setString(_Keys.lastRoute, path);
-    _prefs.setString(
+  Future<void> writeLastRoute(String path) async {
+    await _prefs.setString(_Keys.lastRoute, path);
+    await _prefs.setString(
       _Keys.lastRouteTimestamp,
       DateTime.now().millisecondsSinceEpoch.toString(),
     );
   }
 
-  void clearLastRoute() {
-    _prefs.remove(_Keys.lastRoute);
-    _prefs.remove(_Keys.lastRouteTimestamp);
+  Future<void> clearLastRoute() async {
+    await _prefs.remove(_Keys.lastRoute);
+    await _prefs.remove(_Keys.lastRouteTimestamp);
   }
 }
 

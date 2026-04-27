@@ -100,7 +100,7 @@ class LastRouteObserver extends NavigatorObserver {
 
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
-  final routeStorageAsync = ref.watch(routeStorageProvider);
+  final routeStorageAsync = ref.read(routeStorageProvider);
   final routeStorage = routeStorageAsync.value;
   debugPrint('Initializing GoRouter');
   return GoRouter(

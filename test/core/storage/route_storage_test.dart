@@ -27,22 +27,22 @@ void main() {
 
     test('writeLastRoute persists path and timestamp', () async {
       final storage = await build();
-      await storage.writeLastRoute('/bookings/42');
+      storage.writeLastRoute('/bookings/42');
       expect(storage.readLastRoute(), '/bookings/42');
       expect(storage.readLastRouteTimestamp(), isNotNull);
     });
 
     test('writeLastRoute overwrites previous value', () async {
       final storage = await build();
-      await storage.writeLastRoute('/dashboard');
-      await storage.writeLastRoute('/library/7');
+      storage.writeLastRoute('/dashboard');
+      storage.writeLastRoute('/library/7');
       expect(storage.readLastRoute(), '/library/7');
     });
 
     test('clearLastRoute removes path and timestamp', () async {
       final storage = await build();
-      await storage.writeLastRoute('/bookings/42');
-      await storage.clearLastRoute();
+      storage.writeLastRoute('/bookings/42');
+      storage.clearLastRoute();
       expect(storage.readLastRoute(), isNull);
       expect(storage.readLastRouteTimestamp(), isNull);
     });
@@ -50,7 +50,7 @@ void main() {
     test('timestamp is within a few seconds of now', () async {
       final before = DateTime.now().subtract(const Duration(seconds: 1));
       final storage = await build();
-      await storage.writeLastRoute('/search');
+      storage.writeLastRoute('/search');
       final ts = storage.readLastRouteTimestamp()!;
       final after = DateTime.now().add(const Duration(seconds: 1));
       expect(ts.isAfter(before), isTrue);

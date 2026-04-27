@@ -73,43 +73,13 @@ const _kShellPrefixes = [
   '/finances',
 ];
 
-class LastRouteObserver extends NavigatorObserver {
-  LastRouteObserver(this._routeStorage);
-
-  final RouteStorage _routeStorage;
-
-  void _save(Route<dynamic> route) {
-    final name = route.settings.name;
-    if (name == null) return;
-    if (_kShellPrefixes.any((p) => name.startsWith(p))) {
-      _routeStorage.writeLastRoute(name);
-    }
-  }
-
-  @override
-  void didPush(Route route, Route? previousRoute) => _save(route);
-  @override
-  void didReplace({Route? newRoute, Route? oldRoute}) {
-    if (newRoute != null) _save(newRoute);
-  }
-  @override
-  void didPop(Route route, Route? previousRoute) {
-    if (previousRoute != null) _save(previousRoute);
-  }
-}
-
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
-  final routeStorageAsync = ref.read(routeStorageProvider);
-  final routeStorage = routeStorageAsync.value;
   debugPrint('Initializing GoRouter');
   return GoRouter(
     initialLocation: '/login',
     refreshListenable: notifier,
-    observers: [
-      _DismissKeyboardObserver(),
-      if (routeStorage != null) LastRouteObserver(routeStorage),
-    ],
+    observers: [_DismissKeyboardObserver()],
     redirect: (context, state) {
       final authAsync = ref.read(authProvider);
       final bandAsync = ref.read(selectedBandProvider);
@@ -202,7 +172,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           return '/dashboard';
         }
 
-        // Restore last route on cold start if within 24 hours.
         final routeStorageAsync = ref.read(routeStorageProvider);
         if (routeStorageAsync.isLoading) {
           debugPrint('[Router] routeStorage still loading — staying put');
@@ -210,15 +179,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
         final rs = routeStorageAsync.value;
         if (rs != null) {
+          final path = state.matchedLocation;
           final lastRoute = rs.readLastRoute();
           final lastTs = rs.readLastRouteTimestamp();
           final isRecent = lastTs != null &&
               DateTime.now().difference(lastTs).inHours < 24;
           final isShellPath = lastRoute != null &&
               _kShellPrefixes.any((p) => lastRoute.startsWith(p));
-          if (isRecent && isShellPath && state.matchedLocation != lastRoute) {
+
+          // Restore: fires once on cold start, then clears so it doesn't repeat.
+          if (isRecent && isShellPath && path != lastRoute) {
+            rs.clearLastRoute();
             debugPrint('[Router] restoring last route: $lastRoute');
             return lastRoute;
+          }
+
+          // Save: record the current concrete shell path on every allowed nav.
+          if (_kShellPrefixes.any((p) => path.startsWith(p))) {
+            rs.writeLastRoute(path);
           }
         }
 

@@ -139,6 +139,9 @@ void main() {
           AuthAuthenticated(user: _fakeUser, bands: _fakeBands),
         );
 
+        // Write a last-route to verify it is cleared on logout.
+        fakeRouteStorage.writeLastRoute('/bookings/42');
+
         await container.read(authProvider.notifier).logout();
 
         final finalState = container.read(authProvider).value;
@@ -149,6 +152,8 @@ void main() {
             reason: 'Band ID must be wiped on logout');
         expect(await storage.readUser(), isNull,
             reason: 'Cached user must be wiped on logout');
+        expect(fakeRouteStorage.readLastRoute(), isNull,
+            reason: 'Last route must be cleared on logout');
       },
     );
   });

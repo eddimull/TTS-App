@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show LinearProgressIndicator;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
@@ -36,23 +37,30 @@ class ChartDetailScreen extends ConsumerWidget {
     final chartAsync =
         ref.watch(chartDetailProvider((bandId: bandId, chartId: chartId)));
 
-    return chartAsync.when(
-      loading: () => const CupertinoPageScaffold(
-        navigationBar: CupertinoNavigationBar(middle: Text('Chart')),
-        child: Center(child: CupertinoActivityIndicator()),
-      ),
-      error: (e, _) => CupertinoPageScaffold(
-        navigationBar: const CupertinoNavigationBar(middle: Text('Chart')),
-        child: ErrorView(
-          message: ErrorView.friendlyMessage(e),
-          onRetry: () => ref.invalidate(
-              chartDetailProvider((bandId: bandId, chartId: chartId))),
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        if ((details.primaryVelocity ?? 0) > 300 && context.canPop()) {
+          context.pop();
+        }
+      },
+      child: chartAsync.when(
+        loading: () => const CupertinoPageScaffold(
+          navigationBar: CupertinoNavigationBar(middle: Text('Chart')),
+          child: Center(child: CupertinoActivityIndicator()),
         ),
-      ),
-      data: (chart) => _ChartDetailBody(
-        chart: chart,
-        bandId: bandId,
-        chartId: chartId,
+        error: (e, _) => CupertinoPageScaffold(
+          navigationBar: const CupertinoNavigationBar(middle: Text('Chart')),
+          child: ErrorView(
+            message: ErrorView.friendlyMessage(e),
+            onRetry: () => ref.invalidate(
+                chartDetailProvider((bandId: bandId, chartId: chartId))),
+          ),
+        ),
+        data: (chart) => _ChartDetailBody(
+          chart: chart,
+          bandId: bandId,
+          chartId: chartId,
+        ),
       ),
     );
   }

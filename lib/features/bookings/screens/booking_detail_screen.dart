@@ -27,22 +27,29 @@ class BookingDetailScreen extends ConsumerWidget {
     final args = (bandId: bandId, bookingId: bookingId);
     final detailAsync = ref.watch(bookingDetailProvider(args));
 
-    return detailAsync.when(
-      loading: () => const CupertinoPageScaffold(
-        navigationBar: CupertinoNavigationBar(),
-        child: Center(child: CupertinoActivityIndicator()),
-      ),
-      error: (e, _) => CupertinoPageScaffold(
-        navigationBar: const CupertinoNavigationBar(),
-        child: ErrorView(
-          message: ErrorView.friendlyMessage(e),
-          onRetry: () => ref.invalidate(bookingDetailProvider(args)),
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        if ((details.primaryVelocity ?? 0) > 300 && context.canPop()) {
+          context.pop();
+        }
+      },
+      child: detailAsync.when(
+        loading: () => const CupertinoPageScaffold(
+          navigationBar: CupertinoNavigationBar(),
+          child: Center(child: CupertinoActivityIndicator()),
         ),
-      ),
-      data: (booking) => _BookingDetailView(
-        bandId: bandId,
-        bookingId: bookingId,
-        booking: booking,
+        error: (e, _) => CupertinoPageScaffold(
+          navigationBar: const CupertinoNavigationBar(),
+          child: ErrorView(
+            message: ErrorView.friendlyMessage(e),
+            onRetry: () => ref.invalidate(bookingDetailProvider(args)),
+          ),
+        ),
+        data: (booking) => _BookingDetailView(
+          bandId: bandId,
+          bookingId: bookingId,
+          booking: booking,
+        ),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:tts_bandmate/shared/utils/time_format.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
@@ -20,6 +21,17 @@ class RehearsalDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        if ((details.primaryVelocity ?? 0) > 300 && context.canPop()) {
+          context.pop();
+        }
+      },
+      child: _buildBody(ref),
+    );
+  }
+
+  Widget _buildBody(WidgetRef ref) {
     if (preloaded != null) {
       return _RehearsalDetailView(rehearsal: preloaded!);
     }

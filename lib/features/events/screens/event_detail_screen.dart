@@ -24,19 +24,26 @@ class EventDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(eventDetailProvider(eventKey));
 
-    return detailAsync.when(
-      loading: () => const CupertinoPageScaffold(
-        navigationBar: CupertinoNavigationBar(),
-        child: Center(child: CupertinoActivityIndicator()),
-      ),
-      error: (e, _) => CupertinoPageScaffold(
-        navigationBar: const CupertinoNavigationBar(),
-        child: ErrorView(
-          message: ErrorView.friendlyMessage(e),
-          onRetry: () => ref.invalidate(eventDetailProvider(eventKey)),
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        if ((details.primaryVelocity ?? 0) > 300 && context.canPop()) {
+          context.pop();
+        }
+      },
+      child: detailAsync.when(
+        loading: () => const CupertinoPageScaffold(
+          navigationBar: CupertinoNavigationBar(),
+          child: Center(child: CupertinoActivityIndicator()),
         ),
+        error: (e, _) => CupertinoPageScaffold(
+          navigationBar: const CupertinoNavigationBar(),
+          child: ErrorView(
+            message: ErrorView.friendlyMessage(e),
+            onRetry: () => ref.invalidate(eventDetailProvider(eventKey)),
+          ),
+        ),
+        data: (event) => _EventDetailView(event: event),
       ),
-      data: (event) => _EventDetailView(event: event),
     );
   }
 }

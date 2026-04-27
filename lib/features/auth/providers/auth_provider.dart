@@ -123,8 +123,11 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
     await storage.clear();
 
-    final routeStorage = await ref.read(routeStorageProvider.future);
-    routeStorage.clearLastRoute();
+    // Best-effort route cleanup — don't let storage failure block logout.
+    try {
+      final routeStorage = await ref.read(routeStorageProvider.future);
+      routeStorage.clearLastRoute();
+    } catch (_) {}
 
     state = const AsyncValue.data(AuthUnauthenticated());
   }

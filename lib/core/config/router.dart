@@ -76,6 +76,13 @@ const _kShellPrefixes = [
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
   debugPrint('Initializing GoRouter');
+
+  // Cold-start restore is a one-shot. Once we've considered (and possibly
+  // returned) a saved route, subsequent navigations must not re-enter the
+  // restore branch — otherwise mid-session writes (e.g. tab taps that save
+  // the current route) get bounced back as redirects, breaking navigation.
+  bool didConsiderRestore = false;
+
   return GoRouter(
     initialLocation: '/login',
     refreshListenable: notifier,
@@ -172,25 +179,29 @@ final routerProvider = Provider<GoRouter>((ref) {
           return '/dashboard';
         }
 
-        // Restore last route on cold start if within 24 hours (fires once —
-        // cleared immediately so subsequent navigations are not affected).
-        final routeStorageAsync = ref.read(routeStorageProvider);
-        if (routeStorageAsync.isLoading) {
-          debugPrint('[Router] routeStorage still loading — staying put');
-          return null;
-        }
-        final rs = routeStorageAsync.value;
-        if (rs != null) {
-          final lastRoute = rs.readLastRoute();
-          final lastTs = rs.readLastRouteTimestamp();
-          final isRecent = lastTs != null &&
-              DateTime.now().difference(lastTs).inHours < 24;
-          final isShellPath = lastRoute != null &&
-              _kShellPrefixes.any((p) => lastRoute.startsWith(p));
-          if (isRecent && isShellPath) {
-            rs.clearLastRoute();
-            debugPrint('[Router] restoring last route: $lastRoute');
-            return lastRoute;
+        // Cold-start restore: fires at most once per app launch. Skipped on
+        // every subsequent redirect so mid-session route writes (e.g. tab
+        // taps recording the current route) are not echoed back as redirects.
+        if (!didConsiderRestore) {
+          final routeStorageAsync = ref.read(routeStorageProvider);
+          if (routeStorageAsync.isLoading) {
+            debugPrint('[Router] routeStorage still loading — staying put');
+            return null;
+          }
+          didConsiderRestore = true;
+          final rs = routeStorageAsync.value;
+          if (rs != null) {
+            final lastRoute = rs.readLastRoute();
+            final lastTs = rs.readLastRouteTimestamp();
+            final isRecent = lastTs != null &&
+                DateTime.now().difference(lastTs).inHours < 24;
+            final isShellPath = lastRoute != null &&
+                _kShellPrefixes.any((p) => lastRoute.startsWith(p));
+            if (isRecent && isShellPath) {
+              rs.clearLastRoute();
+              debugPrint('[Router] restoring last route: $lastRoute');
+              return lastRoute;
+            }
           }
         }
 

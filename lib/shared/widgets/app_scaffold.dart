@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/storage/route_storage.dart';
 import '../providers/connectivity_provider.dart';
 
 class _NavDestination {
@@ -97,7 +96,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             currentIndex: selectedIndex,
             onTap: (index) {
               final current = GoRouterState.of(context).matchedLocation;
-              ref.read(routeStorageProvider).value?.writeLastRoute(current);
               final route = _destinations[index].route;
               if (!current.startsWith(route)) {
                 context.go(route);

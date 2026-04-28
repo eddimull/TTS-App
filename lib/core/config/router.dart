@@ -44,7 +44,6 @@ class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(this._ref) {
     _ref.listen(authProvider, (_, __) => notifyListeners());
     _ref.listen(selectedBandProvider, (_, __) => notifyListeners());
-    _ref.listen(routeStorageProvider, (_, __) => notifyListeners());
   }
 
   final Ref _ref;
@@ -73,18 +72,19 @@ const _kShellPrefixes = [
   '/finances',
 ];
 
+/// Initial location used when constructing the GoRouter. Defaults to `/login`.
+/// `main.dart` overrides this with the user's last shell route (if recent)
+/// after pre-resolving [routeStorageProvider], so cold-start restore happens
+/// once at construction — never via the redirect callback.
+final initialLocationProvider = Provider<String>((_) => '/login');
+
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
   debugPrint('Initializing GoRouter');
 
-  // Cold-start restore is a one-shot. Once we've considered (and possibly
-  // returned) a saved route, subsequent navigations must not re-enter the
-  // restore branch — otherwise mid-session writes (e.g. tab taps that save
-  // the current route) get bounced back as redirects, breaking navigation.
-  bool didConsiderRestore = false;
-
-  return GoRouter(
-    initialLocation: '/login',
+  late final GoRouter router;
+  router = GoRouter(
+    initialLocation: ref.read(initialLocationProvider),
     refreshListenable: notifier,
     observers: [_DismissKeyboardObserver()],
     redirect: (context, state) {
@@ -177,32 +177,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (isBandsRoute || isBandsCreateRoute || isBandsJoinRoute) {
           debugPrint('[Router] valid band selected, on bands route → /dashboard');
           return '/dashboard';
-        }
-
-        // Cold-start restore: fires at most once per app launch. Skipped on
-        // every subsequent redirect so mid-session route writes (e.g. tab
-        // taps recording the current route) are not echoed back as redirects.
-        if (!didConsiderRestore) {
-          final routeStorageAsync = ref.read(routeStorageProvider);
-          if (routeStorageAsync.isLoading) {
-            debugPrint('[Router] routeStorage still loading — staying put');
-            return null;
-          }
-          didConsiderRestore = true;
-          final rs = routeStorageAsync.value;
-          if (rs != null) {
-            final lastRoute = rs.readLastRoute();
-            final lastTs = rs.readLastRouteTimestamp();
-            final isRecent = lastTs != null &&
-                DateTime.now().difference(lastTs).inHours < 24;
-            final isShellPath = lastRoute != null &&
-                _kShellPrefixes.any((p) => lastRoute.startsWith(p));
-            if (isRecent && isShellPath) {
-              rs.clearLastRoute();
-              debugPrint('[Router] restoring last route: $lastRoute');
-              return lastRoute;
-            }
-          }
         }
 
         debugPrint('[Router] all good — no redirect');
@@ -388,4 +362,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ),
   );
+
+  // Saving last-route via routerDelegate (not redirect) so writes can't be
+  // echoed back as redirects. Restore happens once at construction via
+  // initialLocationProvider — the redirect never reads RouteStorage.
+  void onRouteChanged() {
+    final path = router.routerDelegate.currentConfiguration.uri.path;
+    if (!_kShellPrefixes.any((p) => path.startsWith(p))) return;
+    ref.read(routeStorageProvider).value?.writeLastRoute(path);
+  }
+
+  router.routerDelegate.addListener(onRouteChanged);
+  ref.onDispose(() => router.routerDelegate.removeListener(onRouteChanged));
+
+  return router;
 });

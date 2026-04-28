@@ -22,44 +22,28 @@ class SpyRouteStorage extends RouteStorage {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-/// Build a GoRouter that starts at [initialLocation] and wraps every shell
-/// route inside [AppScaffold].
-GoRouter _makeRouter(String initialLocation) {
-  return GoRouter(
-    initialLocation: initialLocation,
-    routes: _shellRoutes(),
-  );
-}
-
 const _shellPrefixes = ['/dashboard', '/search', '/bookings', '/library', '/more'];
 
-/// Build a GoRouter whose redirect mirrors the production "restore last route
-/// on cold start" behaviour: the restore branch is gated by a one-shot flag
-/// so it can only fire on the first redirect after construction. This is
-/// what `lib/core/config/router.dart` does, and the regression we want to
-/// lock down is: tapping a tab must not be redirected back to the just-saved
-/// route. Without the one-shot gate, mid-session writes would be echoed.
-GoRouter _makeRouterWithRestore(String initialLocation, RouteStorage rs) {
-  bool didConsiderRestore = false;
-  return GoRouter(
+/// Build a GoRouter that mirrors production: the only side-effect on
+/// navigation is a `routerDelegate` listener that persists the active shell
+/// route to [RouteStorage]. There is no save logic in the redirect callback
+/// and none in the tab tap handler — that's the bug we're locking out.
+GoRouter _makeRouter(String initialLocation, RouteStorage rs) {
+  late final GoRouter router;
+  router = GoRouter(
     initialLocation: initialLocation,
-    redirect: (context, state) {
-      if (didConsiderRestore) return null;
-      didConsiderRestore = true;
-      final lastRoute = rs.readLastRoute();
-      final lastTs = rs.readLastRouteTimestamp();
-      final isRecent =
-          lastTs != null && DateTime.now().difference(lastTs).inHours < 24;
-      final isShellPath = lastRoute != null &&
-          _shellPrefixes.any((p) => lastRoute.startsWith(p));
-      if (isRecent && isShellPath) {
-        rs.clearLastRoute();
-        return lastRoute;
-      }
-      return null;
-    },
     routes: _shellRoutes(),
   );
+
+  void onRouteChanged() {
+    final path = router.routerDelegate.currentConfiguration.uri.path;
+    if (!_shellPrefixes.any((p) => path.startsWith(p))) return;
+    rs.writeLastRoute(path);
+  }
+
+  router.routerDelegate.addListener(onRouteChanged);
+  addTearDown(() => router.routerDelegate.removeListener(onRouteChanged));
+  return router;
 }
 
 List<RouteBase> _shellRoutes() {
@@ -106,68 +90,50 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'tapping a tab saves the current matchedLocation to RouteStorage',
+    'navigating to a shell route saves that destination to RouteStorage',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final spy = SpyRouteStorage(prefs);
 
-      // Start on /bookings so a tap on Dashboard triggers navigation.
-      final router = _makeRouter('/bookings');
+      // Start on /bookings so the initial navigation is captured.
+      final router = _makeRouter('/bookings', spy);
 
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            // Override with a pre-resolved value so .value is non-null immediately.
             routeStorageProvider.overrideWithValue(AsyncValue.data(spy)),
           ],
-          child: CupertinoApp.router(
-            routerConfig: router,
-          ),
+          child: CupertinoApp.router(routerConfig: router),
         ),
       );
-
       await tester.pumpAndSettle();
 
-      // Confirm we are on /bookings.
-      expect(router.routerDelegate.currentConfiguration.last.matchedLocation,
-          '/bookings');
-      expect(spy.savedRoutes, isEmpty,
-          reason: 'No route saved before any tab tap');
+      expect(spy.savedRoutes.last, '/bookings',
+          reason: 'Initial shell location must be persisted');
 
-      // Tap the Dashboard tab (index 0).
+      // Tap the Dashboard tab.
       final tabBar = find.byType(CupertinoTabBar);
-      expect(tabBar, findsOneWidget);
-
       await tester.tap(find.descendant(
         of: tabBar,
         matching: find.byIcon(CupertinoIcons.home),
       ));
       await tester.pumpAndSettle();
 
-      // The route that was active at the time of the tap (/bookings) should
-      // have been saved before navigation switched to /dashboard.
-      expect(spy.savedRoutes, isNotEmpty,
-          reason: 'Route must be saved when a tab is tapped');
-      expect(spy.savedRoutes.last, '/bookings',
-          reason: 'Saved path must be the route active at the time of the tap');
+      expect(spy.savedRoutes.last, '/dashboard',
+          reason: 'Saved path must be the destination, not the departing route');
     },
   );
 
   testWidgets(
-    'tapping a tab navigates to that tab, not back to the route just saved '
-    '(regression: redirect-based restore must not consume mid-session writes)',
+    'tapping a tab navigates to that tab — no bounce-back from a save side-effect '
+    '(regression: writes must not be echoed as redirects)',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final rs = RouteStorage(prefs);
 
-      // Build a router whose redirect mirrors production: it restores the
-      // last saved route if it's recent and a shell path. The bug: AppScaffold
-      // writes the *current* route to storage before calling context.go(),
-      // so the redirect then "restores" that just-written route — sending the
-      // user back where they started. This test asserts that does NOT happen.
-      final router = _makeRouterWithRestore('/dashboard', rs);
+      final router = _makeRouter('/dashboard', rs);
 
       await tester.pumpWidget(
         ProviderScope(
@@ -179,12 +145,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // We start on /dashboard. No route has been saved yet, so the redirect
-      // should not redirect anywhere.
       expect(router.routerDelegate.currentConfiguration.last.matchedLocation,
           '/dashboard');
-      expect(rs.readLastRoute(), isNull,
-          reason: 'No route should be persisted at startup');
 
       // Tap the Bookings tab.
       final tabBar = find.byType(CupertinoTabBar);
@@ -194,27 +156,19 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      // The user MUST land on /bookings. With the bug, they get bounced back
-      // to /dashboard because the redirect reads the just-saved /dashboard
-      // route and returns it.
       expect(
         router.routerDelegate.currentConfiguration.last.matchedLocation,
         '/bookings',
-        reason: 'Tapping the Bookings tab must navigate to /bookings, not be '
-            'redirected back to the route that was just persisted',
+        reason: 'Tapping Bookings must navigate to /bookings on the FIRST tap',
       );
-      // Body of the Bookings page is rendered (the placeholder text appears
-      // both as the tab label and as the page body — both are fine).
-      expect(find.text('Bookings'), findsWidgets);
     },
   );
 
   testWidgets(
-    'each remaining tab (Search, Library, More) is reachable from /dashboard '
-    'without being bounced by the restore redirect',
+    'every shell tab is reachable from /dashboard with a single tap',
     (tester) async {
-      // This locks down the user-reported symptom: "search, bookings, library,
-      // more are all unavailable" from the dashboard.
+      // Locks down the user-reported symptom: tabs were unreachable on first
+      // tap because the redirect was bouncing back to the just-saved route.
       final cases = <(IconData, String, String)>[
         (CupertinoIcons.search, '/search', 'Search'),
         (CupertinoIcons.book, '/bookings', 'Bookings'),
@@ -226,7 +180,7 @@ void main() {
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
         final rs = RouteStorage(prefs);
-        final router = _makeRouterWithRestore('/dashboard', rs);
+        final router = _makeRouter('/dashboard', rs);
 
         await tester.pumpWidget(
           ProviderScope(

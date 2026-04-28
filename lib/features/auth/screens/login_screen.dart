@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
@@ -62,6 +63,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     if (!mounted) return;
     final authState = ref.read(authProvider).value;
+    if (authState is! AuthUnauthenticated) {
+      TextInput.finishAutofillContext();
+    }
     setState(() {
       _isSubmitting = false;
       if (authState is AuthUnauthenticated) {
@@ -77,7 +81,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Column(
+            child: AutofillGroup(
+              child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -113,6 +118,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   autocorrect: false,
+                  autofillHints: const [AutofillHints.username],
                   placeholder: 'Email',
                   prefix: Padding(
                     padding: const EdgeInsets.only(left: 12),
@@ -144,6 +150,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   controller: _passwordController,
                   obscureText: !_passwordVisible,
                   textInputAction: TextInputAction.done,
+                  autofillHints: const [AutofillHints.password],
                   placeholder: 'Password',
                   prefix: Padding(
                     padding: const EdgeInsets.only(left: 12),
@@ -222,6 +229,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                 ),
               ],
+            ),
             ),
           ),
         ),

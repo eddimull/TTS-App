@@ -72,6 +72,24 @@ jobs:
           path: build/ios/ipa/*.ipa
           retention-days: 30
 
+      - name: Generate apple-app-site-association
+        run: |
+          mkdir -p build/aasa
+          cat > build/aasa/apple-app-site-association <<'EOF'
+          {
+            "webcredentials": {
+              "apps": ["FBE5WVZKNK.band.tts.mate"]
+            }
+          }
+          EOF
+
+      - name: Upload AASA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apple-app-site-association-${{ github.sha }}
+          path: build/aasa/apple-app-site-association
+          retention-days: 90
+
       - name: Upload to TestFlight
         env:
           ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}

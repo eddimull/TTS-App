@@ -348,78 +348,79 @@ void main() {
 
       // mobile_scanner only parses barcode events on Android/iOS/macOS.
       // Override the platform for the duration of this test so the parser
-      // doesn't throw on Linux.
+      // doesn't throw on Linux. Use try/finally so the override is reset
+      // before _verifyInvariants runs even if the test body throws — note
+      // that addTearDown fires AFTER _verifyInvariants and so cannot do this.
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      try {
+        _stubScannerMethodChannel();
 
-      _stubScannerMethodChannel();
+        final harness = await bootstrapApp(
+          handler: (options) async {
+            final path = options.path;
+            if (path.endsWith(ApiEndpoints.mobileRegister)) {
+              return json(200, {
+                'token': 'tok',
+                'user': user,
+                'bands': <Map<String, dynamic>>[],
+              });
+            }
+            if (path.endsWith(ApiEndpoints.mobileBandsJoin)) {
+              return json(200, {
+                'bands': [band],
+              });
+            }
+            if (path.endsWith(ApiEndpoints.mobileMe)) {
+              return json(200, {
+                'user': user,
+                'bands': [band],
+              });
+            }
+            return json(200, {'data': []});
+          },
+        );
 
-      final harness = await bootstrapApp(
-        handler: (options) async {
-          final path = options.path;
-          if (path.endsWith(ApiEndpoints.mobileRegister)) {
-            return json(200, {
-              'token': 'tok',
-              'user': user,
-              'bands': <Map<String, dynamic>>[],
-            });
-          }
-          if (path.endsWith(ApiEndpoints.mobileBandsJoin)) {
-            return json(200, {
-              'bands': [band],
-            });
-          }
-          if (path.endsWith(ApiEndpoints.mobileMe)) {
-            return json(200, {
-              'user': user,
-              'bands': [band],
-            });
-          }
-          return json(200, {'data': []});
-        },
-      );
+        await tester.pumpWidget(harness.widget);
+        await tester.pumpAndSettle();
 
-      await tester.pumpWidget(harness.widget);
-      await tester.pumpAndSettle();
+        await signUpAs(tester);
 
-      await signUpAs(tester);
+        // /bands → "Join a Band" → /bands/join
+        await tester.tap(find.text('Join a Band'));
+        await tester.pumpAndSettle();
 
-      // /bands → "Join a Band" → /bands/join
-      await tester.tap(find.text('Join a Band'));
-      await tester.pumpAndSettle();
+        // /bands/join → tap "Scan QR Code" → scanner mounts.
+        await tester.tap(find.text('Scan QR Code'));
+        // Pump enough frames for the MobileScanner widget to subscribe to its
+        // event channel. We don't pumpAndSettle because the scanner has
+        // continuous frames that never quiesce.
+        for (var i = 0; i < 10; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
 
-      // /bands/join → tap "Scan QR Code" → scanner mounts.
-      await tester.tap(find.text('Scan QR Code'));
-      // Pump enough frames for the MobileScanner widget to subscribe to its
-      // event channel. We don't pumpAndSettle because the scanner has
-      // continuous frames that never quiesce.
-      for (var i = 0; i < 10; i++) {
-        await tester.pump(const Duration(milliseconds: 50));
+        // Synthesize a barcode detection — the screen's onDetect calls
+        // _joinWithKey with the rawValue.
+        await _emitScannerBarcode(tester, 'ABC123');
+
+        // Pump for the join request → refreshBands → /me → router redirect.
+        for (var i = 0; i < 30; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+
+        final joinBodies =
+            harness.capturedBodies[ApiEndpoints.mobileBandsJoin];
+        expect(joinBodies, isNotNull,
+            reason: 'Expected at least one POST to mobileBandsJoin');
+        expect(joinBodies!.first, {'key': 'ABC123'});
+
+        expect(await harness.storage.readToken(), 'tok');
+        expect(find.text('Sign In'), findsNothing);
+        expect(find.text('Scan QR Code'), findsNothing);
+
+        await snap(tester, 'join_qr_01_dashboard');
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
       }
-
-      // Synthesize a barcode detection — the screen's onDetect calls
-      // _joinWithKey with the rawValue.
-      await _emitScannerBarcode(tester, 'ABC123');
-
-      // Pump for the join request → refreshBands → /me → router redirect.
-      for (var i = 0; i < 30; i++) {
-        await tester.pump(const Duration(milliseconds: 50));
-      }
-
-      final joinBodies =
-          harness.capturedBodies[ApiEndpoints.mobileBandsJoin];
-      expect(joinBodies, isNotNull,
-          reason: 'Expected at least one POST to mobileBandsJoin');
-      expect(joinBodies!.first, {'key': 'ABC123'});
-
-      expect(await harness.storage.readToken(), 'tok');
-      expect(find.text('Sign In'), findsNothing);
-      expect(find.text('Scan QR Code'), findsNothing);
-
-      await snap(tester, 'join_qr_01_dashboard');
-
-      // Reset the platform override before _verifyInvariants runs.
-      debugDefaultTargetPlatformOverride = null;
     });
   });
 }

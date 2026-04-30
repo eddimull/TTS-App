@@ -226,10 +226,14 @@ class Harness {
 ///
 /// [initialLocation] is the first route the router lands on. Defaults to
 /// `/login` (the same path the production app uses for a logged-out user).
+///
+/// Callers must invoke [stubConnectivityChannel] in `setUp` (or once in
+/// `main`) before pumping; this factory does not stub platform channels.
 Future<Harness> bootstrapApp({
   required Future<ResponseBody> Function(RequestOptions options) handler,
   String initialLocation = '/login',
 }) async {
+  // Resets SharedPreferences mock state — assumes one bootstrap per test.
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
   final routeStorage = RouteStorage(prefs);

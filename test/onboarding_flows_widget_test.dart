@@ -156,6 +156,7 @@ void main() {
       }
 
       expect(await harness.storage.readToken(), 'tok');
+      expect(find.text('Sign In'), findsNothing);
       expect(find.text('Skip for now'), findsNothing);
 
       await snap(tester, 'create_skip_01_dashboard');

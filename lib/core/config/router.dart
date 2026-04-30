@@ -150,7 +150,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
 
           if (bands.isEmpty) {
-            final dest = isBandsRoute ? null : '/bands';
+            final dest = (isBandsRoute || isBandsCreateRoute || isBandsJoinRoute)
+                ? null
+                : '/bands';
             debugPrint('[Router] no bands → $dest');
             return dest;
           }

@@ -161,5 +161,103 @@ void main() {
 
       await snap(tester, 'create_skip_01_dashboard');
     });
+
+    testWidgets('signup → create band (with invites) → dashboard',
+        (tester) async {
+      const user = {
+        'id': 1,
+        'name': 'Eddie',
+        'email': 'eddie@example.com',
+      };
+      const band = {
+        'id': 11,
+        'name': 'The Eds',
+        'is_owner': true,
+      };
+
+      final harness = await bootstrapApp(
+        handler: (options) async {
+          final path = options.path;
+          if (path.endsWith(ApiEndpoints.mobileRegister)) {
+            return json(200, {
+              'token': 'tok',
+              'user': user,
+              'bands': <Map<String, dynamic>>[],
+            });
+          }
+          if (path.endsWith(ApiEndpoints.mobileCreateBand)) {
+            return json(200, {'band': band});
+          }
+          if (path.endsWith(ApiEndpoints.mobileBandInvite(11))) {
+            return json(200, <String, dynamic>{});
+          }
+          if (path.endsWith(ApiEndpoints.mobileMe)) {
+            return json(200, {
+              'user': user,
+              'bands': [band],
+            });
+          }
+          return json(200, {'data': []});
+        },
+      );
+
+      await tester.pumpWidget(harness.widget);
+      await tester.pumpAndSettle();
+
+      await signUpAs(tester);
+
+      // /bands → tap "Create a Band" → /bands/create
+      await tester.tap(find.text('Create a Band'));
+      await tester.pumpAndSettle();
+
+      // Step 1
+      await tester.enterText(
+          find.byType(CupertinoTextField).first, 'The Eds');
+      await tester.pump();
+      await tester.tap(
+        find.ancestor(
+          of: find.text('Next'),
+          matching: find.byType(CupertinoButton),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Step 2: type an invitee email and tap the + button.
+      await tester.enterText(
+          find.byType(CupertinoTextField).first, 'bandmate@example.com');
+      await tester.pump();
+      await tester.tap(find.byIcon(CupertinoIcons.add_circled_solid));
+      await tester.pump();
+
+      // The chip should now appear with the email.
+      expect(find.text('bandmate@example.com'), findsOneWidget);
+
+      // Submit. Tap the Done button (button-ancestor pattern in case the
+      // text appears elsewhere).
+      await tester.tap(
+        find.ancestor(
+          of: find.text('Done'),
+          matching: find.byType(CupertinoButton),
+        ),
+      );
+      for (var i = 0; i < 30; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      // Assert the captured invite request body.
+      final invitePath = ApiEndpoints.mobileBandInvite(11);
+      final inviteBodies = harness.capturedBodies[invitePath];
+      expect(inviteBodies, isNotNull,
+          reason: 'Expected at least one POST to $invitePath');
+      expect(inviteBodies!.first, {
+        'emails': ['bandmate@example.com']
+      });
+
+      expect(await harness.storage.readToken(), 'tok');
+      expect(find.text('Sign In'), findsNothing);
+      expect(find.text('Done'), findsNothing);
+
+      await snap(tester, 'create_invite_01_dashboard');
+    });
   });
 }

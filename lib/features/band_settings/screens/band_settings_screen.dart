@@ -279,7 +279,7 @@ class _InvitationRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tile = CupertinoListTile(
       leading: const Icon(CupertinoIcons.envelope),
-      title: Text(invite.email),
+      title: Text(invite.email ?? 'Shareable invite link'),
       subtitle: Text(
         invite.inviteType == 'owner' ? 'Owner invite' : 'Member invite',
       ),
@@ -300,7 +300,7 @@ class _InvitationRow extends ConsumerWidget {
       context: context,
       builder: (_) => CupertinoAlertDialog(
         title: const Text('Revoke Invitation'),
-        content: Text('Revoke invite to ${invite.email}?'),
+        content: Text('Revoke invite to ${invite.email ?? 'this shareable link'}?'),
         actions: [
           CupertinoDialogAction(
             isDestructiveAction: true,

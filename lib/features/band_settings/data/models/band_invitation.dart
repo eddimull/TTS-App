@@ -7,7 +7,7 @@ class BandInvitation {
   });
 
   final int id;
-  final String email;
+  final String? email;
 
   /// 'owner' or 'member'
   final String inviteType;
@@ -16,7 +16,7 @@ class BandInvitation {
   factory BandInvitation.fromJson(Map<String, dynamic> json) {
     return BandInvitation(
       id: (json['id'] as num).toInt(),
-      email: json['email'] as String,
+      email: json['email'] as String?,
       inviteType: json['invite_type'] as String,
       key: json['key'] as String,
     );

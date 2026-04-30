@@ -101,31 +101,10 @@ class _InviteSectionState extends ConsumerState<InviteSection> {
   void _showQrModal() {
     if (_inviteKey == null) return;
     final key = _inviteKey!;
-    showCupertinoModalPopup<void>(
-      context: context,
-      builder: (_) => CupertinoActionSheet(
-        title: const Text('Invite QR Code'),
-        message: Column(
-          children: [
-            // Fixed size keeps the sheet from expanding unpredictably.
-            QrImageView(data: key, size: 200),
-            const SizedBox(height: 8),
-            const Text('Anyone with this code can join your band.'),
-          ],
-        ),
-        actions: [
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Share.share(key);
-              Navigator.of(context).pop();
-            },
-            child: const Text('Share Code'),
-          ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
-        ),
+    Navigator.of(context, rootNavigator: true).push<void>(
+      CupertinoPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _QrFullScreen(inviteKey: key),
       ),
     );
   }
@@ -191,6 +170,62 @@ class _InviteSectionState extends ConsumerState<InviteSection> {
             onTap: _showQrModal,
           ),
       ],
+    );
+  }
+}
+
+class _QrFullScreen extends StatelessWidget {
+  const _QrFullScreen({required this.inviteKey});
+
+  final String inviteKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text('Invite QR Code'),
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: () => Share.share(inviteKey),
+          child: const Icon(CupertinoIcons.share),
+        ),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final size = constraints.biggest.shortestSide;
+                    return Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        color: CupertinoColors.white,
+                        child: QrImageView(
+                          data: inviteKey,
+                          size: size - 32,
+                          backgroundColor: CupertinoColors.white,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Anyone with this code can join your band.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

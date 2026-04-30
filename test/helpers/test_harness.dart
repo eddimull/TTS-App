@@ -2,10 +2,14 @@
 // test files lives here.
 
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:dio/dio.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'package:tts_bandmate/core/network/api_client.dart';
 import 'package:tts_bandmate/core/storage/secure_storage.dart';
@@ -107,4 +111,39 @@ class StubApiClient extends ApiClient {
 
   @override
   Dio get dio => _stubDio;
+}
+
+/// Captures the current widget tree to a PNG under `test/screenshots/<name>.png`.
+///
+/// Walks the render tree to find the first [RenderRepaintBoundary] (CupertinoApp
+/// wraps its root in one) and rasterizes it via [RenderRepaintBoundary.toImage].
+/// The rasterize + PNG-encode runs inside [WidgetTester.runAsync] so it executes
+/// in real time outside the test's fake-async zone. Without this, follow-up
+/// pumps hang because dart:ui's image work never completes inside fake-async.
+Future<void> snap(WidgetTester tester, String name) async {
+  final outDir = Directory('test/screenshots');
+  if (!outDir.existsSync()) outDir.createSync(recursive: true);
+
+  RenderRepaintBoundary? findBoundary(RenderObject node) {
+    if (node is RenderRepaintBoundary) return node;
+    RenderRepaintBoundary? found;
+    node.visitChildren((child) {
+      found ??= findBoundary(child);
+    });
+    return found;
+  }
+
+  await tester.runAsync(() async {
+    final root = tester.binding.rootElement?.renderObject;
+    if (root == null) return;
+    final boundary = findBoundary(root);
+    if (boundary == null) return;
+
+    final image = await boundary.toImage(pixelRatio: 2.0);
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    if (bytes == null) return;
+    File('test/screenshots/$name.png')
+        .writeAsBytesSync(bytes.buffer.asUint8List());
+  });
 }

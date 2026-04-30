@@ -8,6 +8,7 @@ import 'dart:ui' as ui;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -156,4 +157,24 @@ Future<void> snap(WidgetTester tester, String name) async {
     File('test/screenshots/$name.png')
         .writeAsBytesSync(bytes.buffer.asUint8List());
   });
+}
+
+/// Stub `connectivity_plus` platform channels so tests don't crash on the
+/// `MissingPluginException` thrown when the connectivity provider tries to
+/// listen to its event channel.
+///
+/// Call this from a test's `setUp` (or once in `main()`). It's safe to call
+/// repeatedly — the binding's mock handler map just gets overwritten.
+void stubConnectivityChannel() {
+  const eventChannel = MethodChannel(
+    'dev.fluttercommunity.plus/connectivity_status',
+  );
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(eventChannel, (_) async => null);
+
+  const methodChannel = MethodChannel(
+    'dev.fluttercommunity.plus/connectivity',
+  );
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(methodChannel, (_) async => ['wifi']);
 }

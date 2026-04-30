@@ -135,14 +135,24 @@ Future<void> snap(WidgetTester tester, String name) async {
 
   await tester.runAsync(() async {
     final root = tester.binding.rootElement?.renderObject;
-    if (root == null) return;
+    if (root == null) {
+      fail('snap("$name"): no root render object — did you pump?');
+    }
     final boundary = findBoundary(root);
-    if (boundary == null) return;
+    if (boundary == null) {
+      fail('snap("$name"): no RenderRepaintBoundary found in tree');
+    }
 
     final image = await boundary.toImage(pixelRatio: 2.0);
-    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    image.dispose();
-    if (bytes == null) return;
+    final ByteData? bytes;
+    try {
+      bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    } finally {
+      image.dispose();
+    }
+    if (bytes == null) {
+      fail('snap("$name"): toByteData returned null');
+    }
     File('test/screenshots/$name.png')
         .writeAsBytesSync(bytes.buffer.asUint8List());
   });

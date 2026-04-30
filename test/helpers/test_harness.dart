@@ -261,3 +261,47 @@ Future<Harness> bootstrapApp({
     capturedBodies: capturedBodies,
   );
 }
+
+/// Drive the signup flow from `/login`: tap "Sign up", fill the four signup
+/// fields, tap "Create Account", and pump frames until the post-register
+/// redirect settles.
+///
+/// Assumes the harness was bootstrapped at `/login` (the default) and that the
+/// caller has already called `pumpWidget` + `pumpAndSettle` so the login screen
+/// is visible. Returns once the bounded pump loop has finished — the caller
+/// should immediately assert their expected destination state.
+///
+/// Field finders use placeholder text (with `.last` where the login screen's
+/// fields would otherwise match first) because `/signup` is pushed via
+/// `context.push`, leaving the login screen in the tree. The "Create Account"
+/// tap targets the button ancestor (not the bare Text) because the signup nav
+/// bar also displays "Create Account" as its title.
+Future<void> signUpAs(
+  WidgetTester tester, {
+  String name = 'Eddie Mullins',
+  String email = 'eddie@example.com',
+  String password = 'password123',
+}) async {
+  await tester.tap(find.text('Sign up'));
+  await tester.pumpAndSettle();
+
+  await tester.enterText(
+      find.widgetWithText(CupertinoTextField, 'Full Name'), name);
+  await tester.enterText(
+      find.widgetWithText(CupertinoTextField, 'Email').last, email);
+  await tester.enterText(
+      find.widgetWithText(CupertinoTextField, 'Password').last, password);
+  await tester.enterText(
+      find.widgetWithText(CupertinoTextField, 'Confirm Password'), password);
+  await tester.pump();
+
+  await tester.tap(
+    find.ancestor(
+      of: find.text('Create Account'),
+      matching: find.byType(CupertinoButton),
+    ),
+  );
+  for (var i = 0; i < 30; i++) {
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+}

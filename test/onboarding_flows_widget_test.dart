@@ -7,7 +7,6 @@
 // Run with:
 //   flutter test test/onboarding_flows_widget_test.dart
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:tts_bandmate/core/network/api_endpoints.dart';
@@ -60,39 +59,7 @@ void main() {
       await tester.pumpWidget(harness.widget);
       await tester.pumpAndSettle();
 
-      // /login → tap "Sign up" → /signup
-      await tester.tap(find.text('Sign up'));
-      await tester.pumpAndSettle();
-
-      // Fill signup: name, email, password, confirm.
-      // Use placeholder text to find fields unambiguously; login screen's
-      // fields are still in the tree beneath the pushed signup screen.
-      await tester.enterText(
-          find.widgetWithText(CupertinoTextField, 'Full Name'), 'Eddie Mullins');
-      await tester.enterText(
-          find.widgetWithText(CupertinoTextField, 'Email').last,
-          'eddie@example.com');
-      await tester.enterText(
-          find.widgetWithText(CupertinoTextField, 'Password').last,
-          'password123');
-      await tester.enterText(
-          find.widgetWithText(CupertinoTextField, 'Confirm Password'),
-          'password123');
-      await tester.pump();
-
-      // Submit. After register completes, router redirects to /bands
-      // because bands list is empty.
-      // The nav bar also shows "Create Account" as its title; tap the ancestor
-      // CupertinoButton (not the raw Text node) so the onPressed fires.
-      await tester.tap(
-        find.ancestor(
-          of: find.text('Create Account'),
-          matching: find.byType(CupertinoButton),
-        ),
-      );
-      for (var i = 0; i < 30; i++) {
-        await tester.pump(const Duration(milliseconds: 50));
-      }
+      await signUpAs(tester);
 
       // Path-selection screen heading.
       expect(find.text('How would you like to use Bandmate?'), findsOneWidget);

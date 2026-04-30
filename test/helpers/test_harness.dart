@@ -164,7 +164,13 @@ Future<void> snap(WidgetTester tester, String name) async {
 ///
 /// Call this from a test's `setUp` (or once in `main()`). It's safe to call
 /// repeatedly — the binding's mock handler map just gets overwritten.
+///
+/// Note: these channel names are internal to `connectivity_plus` and may need
+/// updating on major-version bumps of the package.
 void stubConnectivityChannel() {
+  // EventChannel is implemented on top of a MethodChannel with the same name;
+  // intercepting `listen`/`cancel` here suppresses the broadcast subscription
+  // and the stream emits no events.
   const eventChannel = MethodChannel(
     'dev.fluttercommunity.plus/connectivity_status',
   );

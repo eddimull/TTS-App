@@ -6,12 +6,18 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:tts_bandmate/app.dart';
+import 'package:tts_bandmate/core/config/router.dart';
 import 'package:tts_bandmate/core/network/api_client.dart';
+import 'package:tts_bandmate/core/storage/route_storage.dart';
 import 'package:tts_bandmate/core/storage/secure_storage.dart';
 
 /// In-memory replacement for [SecureStorage]. Bypasses [FlutterSecureStorage]
@@ -182,4 +188,72 @@ void stubConnectivityChannel() {
   );
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(methodChannel, (_) async => ['wifi']);
+}
+
+/// Result of [bootstrapApp]. Hold on to it for the duration of a test so you
+/// can read the resulting state (token in [storage], request bodies in
+/// [capturedBodies]) after driving the UI.
+class Harness {
+  Harness({
+    required this.widget,
+    required this.storage,
+    required this.routeStorage,
+    required this.capturedBodies,
+  });
+
+  /// The fully configured [ProviderScope] wrapping [BandmateApp]. Pass to
+  /// `tester.pumpWidget`.
+  final Widget widget;
+
+  /// In-memory secure storage. Read it after the test to assert what the app
+  /// stored (e.g. auth token).
+  final FakeSecureStorage storage;
+
+  /// SharedPreferences-backed route storage. Read it after the test to assert
+  /// the saved last-route, if relevant.
+  final RouteStorage routeStorage;
+
+  /// Map of request path → list of captured request bodies (parsed JSON).
+  /// One list per path, ordered by the order the requests were made.
+  final Map<String, List<dynamic>> capturedBodies;
+}
+
+/// Build a fully wired [Harness] suitable for `tester.pumpWidget`.
+///
+/// [handler] is a Dio response handler — given a [RequestOptions], returns a
+/// canned [ResponseBody]. The harness will dispatch every HTTP call through
+/// this function.
+///
+/// [initialLocation] is the first route the router lands on. Defaults to
+/// `/login` (the same path the production app uses for a logged-out user).
+Future<Harness> bootstrapApp({
+  required Future<ResponseBody> Function(RequestOptions options) handler,
+  String initialLocation = '/login',
+}) async {
+  SharedPreferences.setMockInitialValues({});
+  final prefs = await SharedPreferences.getInstance();
+  final routeStorage = RouteStorage(prefs);
+  final storage = FakeSecureStorage();
+  final capturedBodies = <String, List<dynamic>>{};
+
+  final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+    ..httpClientAdapter = StubAdapter(handler, capturedBodies: capturedBodies);
+  final apiClient = StubApiClient(storage: storage, dio: dio);
+
+  final widget = ProviderScope(
+    overrides: [
+      secureStorageProvider.overrideWithValue(storage),
+      apiClientProvider.overrideWithValue(apiClient),
+      routeStorageProvider.overrideWith((_) async => routeStorage),
+      initialLocationProvider.overrideWithValue(initialLocation),
+    ],
+    child: const BandmateApp(),
+  );
+
+  return Harness(
+    widget: widget,
+    storage: storage,
+    routeStorage: routeStorage,
+    capturedBodies: capturedBodies,
+  );
 }

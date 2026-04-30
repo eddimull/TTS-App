@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import 'package:tts_bandmate/core/network/api_client.dart';
 import 'package:tts_bandmate/core/storage/secure_storage.dart';
 
 /// In-memory replacement for [SecureStorage]. Bypasses [FlutterSecureStorage]
@@ -94,4 +95,16 @@ ResponseBody json(int status, Object body) {
       'content-type': ['application/json'],
     },
   );
+}
+
+/// An [ApiClient] that uses a pre-built Dio (typically wired to a [StubAdapter])
+/// instead of the real one. Tests construct one of these and pass it to the
+/// `apiClientProvider` override.
+class StubApiClient extends ApiClient {
+  StubApiClient({required super.storage, required Dio dio}) : _stubDio = dio;
+
+  final Dio _stubDio;
+
+  @override
+  Dio get dio => _stubDio;
 }

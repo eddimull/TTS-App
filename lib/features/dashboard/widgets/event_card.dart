@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import '../../events/data/models/event_summary.dart';
 import '../../../shared/utils/time_format.dart';
+import '../../../shared/widgets/band_identity_chip.dart';
 import '../../../shared/widgets/status_chip.dart';
 
 class EventCard extends StatelessWidget {
@@ -77,6 +78,12 @@ class EventCard extends StatelessWidget {
                           fontSize: 13,
                           color: CupertinoColors.secondaryLabel.resolveFrom(context)),
                     ),
+                    // Band identity chip — visible only when the event carries
+                    // band metadata (absent on legacy payloads).
+                    if (event.band != null) ...[
+                      const SizedBox(height: 4),
+                      BandIdentityChip(band: event.band!),
+                    ],
                     if (event.venueName != null &&
                         event.venueName!.isNotEmpty) ...[
                       const SizedBox(height: 2),

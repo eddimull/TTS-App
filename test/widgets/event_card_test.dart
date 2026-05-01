@@ -1,8 +1,21 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tts_bandmate/features/auth/data/models/auth_user.dart';
+import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
 import 'package:tts_bandmate/features/dashboard/widgets/event_card.dart';
 import 'package:tts_bandmate/features/events/data/models/event_summary.dart';
+
+// Pins authProvider to a fixed state so BandIdentityChip can resolve it in
+// tests that render events with a band.
+class _FixedAuthNotifier extends AuthNotifier {
+  _FixedAuthNotifier(this._fixed);
+  final AuthState _fixed;
+
+  @override
+  Future<AuthState> build() async => _fixed;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -34,6 +47,22 @@ Widget _wrap(Widget child) => CupertinoApp(
       ),
       home: Material(child: child),
     );
+
+// Wraps child in a ProviderScope with authProvider pinned — required when the
+// card contains BandIdentityChip (a ConsumerWidget).
+Widget _wrapWithAuth(Widget child, {required AuthState auth}) => ProviderScope(
+      overrides: [
+        authProvider.overrideWith(() => _FixedAuthNotifier(auth)),
+      ],
+      child: CupertinoApp(
+        home: CupertinoPageScaffold(child: child),
+      ),
+    );
+
+const _defaultAuth = AuthAuthenticated(
+  user: AuthUser(id: 1, name: 'Eddie', email: 'e@e.com'),
+  bands: [],
+);
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -131,6 +160,68 @@ void main() {
       // When time is null, the date label should not contain " at " (with spaces)
       // to avoid false-positives on words like "Corporate" containing "at".
       expect(find.textContaining(' at '), findsNothing);
+    });
+
+    // ── Band identity chip tests ──────────────────────────────────────────────
+
+    testWidgets('shows band name when event has a non-personal band', (tester) async {
+      final event = EventSummary.fromJson({
+        'key': 'evt-1',
+        'title': 'A Gig',
+        'date': '2026-06-01',
+        'event_source': 'booking',
+        'band': {
+          'id': 10,
+          'name': 'The Rocking Eds',
+          'is_owner': true,
+          'is_personal': false,
+          'logo_url': null,
+        },
+      });
+      await tester.pumpWidget(_wrapWithAuth(
+        EventCard(event: event),
+        auth: _defaultAuth,
+      ));
+      await tester.pumpAndSettle();
+      expect(find.text('The Rocking Eds'), findsOneWidget);
+    });
+
+    testWidgets('shows "Personal" when event is on a personal band', (tester) async {
+      final event = EventSummary.fromJson({
+        'key': 'evt-2',
+        'title': 'Church',
+        'date': '2026-06-02',
+        'event_source': 'booking',
+        'band': {
+          'id': 99,
+          'name': "Eddie's Band",
+          'is_owner': true,
+          'is_personal': true,
+          'logo_url': null,
+        },
+      });
+      await tester.pumpWidget(_wrapWithAuth(
+        EventCard(event: event),
+        auth: _defaultAuth,
+      ));
+      await tester.pumpAndSettle();
+      expect(find.text('Personal'), findsOneWidget);
+      expect(find.text("Eddie's Band"), findsNothing);
+    });
+
+    testWidgets('renders title without band chip when band is missing', (tester) async {
+      final event = EventSummary.fromJson({
+        'key': 'evt-3',
+        'title': 'Old',
+        'date': '2026-06-03',
+        'event_source': 'band_event',
+      });
+      // No ProviderScope needed — BandIdentityChip is not rendered when band is
+      // null, so authProvider is never accessed.
+      await tester.pumpWidget(_wrap(EventCard(event: event)));
+      await tester.pumpAndSettle();
+      // Must not crash and must still render title.
+      expect(find.text('Old'), findsOneWidget);
     });
   });
 }

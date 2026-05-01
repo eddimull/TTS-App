@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:tts_bandmate/shared/utils/time_format.dart';
+import 'package:tts_bandmate/shared/widgets/band_identity_chip.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import 'package:tts_bandmate/shared/widgets/status_chip.dart';
 import '../data/bookings_repository.dart';
@@ -240,6 +241,20 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
           SliverSafeArea(
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                // ── Band identity ─────────────────────────────────────────
+                // Shows "Personal + user avatar" for personal gigs; band
+                // name + logo for regular band bookings. Omitted when the
+                // backend hasn't yet returned a band payload (legacy cache).
+                if (b.band != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                    child: BandIdentityChip(
+                      band: b.band!,
+                      size: 22,
+                    ),
+                  ),
+                ],
+
                 // ── Info card ─────────────────────────────────────────────
                 const SizedBox(height: 12),
                 _InfoCard(booking: b),

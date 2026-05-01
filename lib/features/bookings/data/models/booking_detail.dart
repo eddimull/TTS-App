@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import '../../../auth/data/models/band_summary.dart';
 import 'booking_contact.dart';
 import 'booking_contract.dart';
 import 'booking_payment.dart';
@@ -57,6 +58,7 @@ class BookingDetail {
     this.contractOption,
     this.contract,
     this.payments = const [],
+    this.band,
   });
 
   final int id;
@@ -96,6 +98,10 @@ class BookingDetail {
   /// List of recorded payments for this booking.
   final List<BookingPayment> payments;
 
+  /// Optional nested band identity. Present on the booking-detail payload
+  /// once the backend eager-loads `band`; absent on legacy cached payloads.
+  final BandSummary? band;
+
   factory BookingDetail.fromJson(Map<String, dynamic> json) {
     final rawContacts = json['contacts'];
     final contacts = rawContacts is List
@@ -126,6 +132,11 @@ class BookingDetail {
         ? BookingContract.fromJson(rawContract)
         : null;
 
+    final rawBand = json['band'];
+    final band = rawBand is Map<String, dynamic>
+        ? BandSummary.fromJson(rawBand)
+        : null;
+
     return BookingDetail(
       id: (json['id'] as num).toInt(),
       name: json['name'] as String,
@@ -148,6 +159,7 @@ class BookingDetail {
       contractOption: json['contract_option'] as String?,
       contract: contract,
       payments: payments,
+      band: band,
     );
   }
 

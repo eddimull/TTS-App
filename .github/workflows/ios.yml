@@ -53,6 +53,16 @@ jobs:
           echo "CODE_SIGN_IDENTITY=Apple Distribution" >> ios/Flutter/Release.xcconfig
           echo "PROVISIONING_PROFILE_SPECIFIER=TTS Bandmate App Store" >> ios/Flutter/Release.xcconfig
 
+      - name: Inject Google Maps API key
+        env:
+          GOOGLE_MAPS_IOS_API_KEY: ${{ secrets.GOOGLE_MAPS_IOS_API_KEY }}
+        run: |
+          if [ -z "$GOOGLE_MAPS_IOS_API_KEY" ]; then
+            echo "::error::GOOGLE_MAPS_IOS_API_KEY secret is not set; cannot inject GMSApiKey for Google Maps."
+            exit 1
+          fi
+          echo "GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_IOS_API_KEY" >> ios/Flutter/Release.xcconfig
+
       - name: Build IPA
         run: |
           flutter build ipa --release \

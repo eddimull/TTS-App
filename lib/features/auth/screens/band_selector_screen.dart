@@ -40,7 +40,7 @@ class BandSelectorScreen extends ConsumerWidget {
               return const Center(child: Text('Not authenticated.'));
             }
 
-            final bands = authState.bands;
+            final bands = authState.bands.where((b) => !b.isPersonal).toList();
 
             if (bands.isEmpty) {
               // Router guard redirects to /bands which shows PathSelectionScreen.

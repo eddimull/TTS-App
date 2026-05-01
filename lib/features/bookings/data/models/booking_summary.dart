@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import '../../../auth/data/models/band_summary.dart';
 import 'booking_contact.dart';
 
 class BookingSummary {
@@ -18,6 +19,7 @@ class BookingSummary {
     this.amountDue,
     required this.isPaid,
     required this.contacts,
+    this.band,
   });
 
   final int id;
@@ -47,6 +49,10 @@ class BookingSummary {
   final bool isPaid;
   final List<BookingContact> contacts;
 
+  /// Optional nested band identity. Present on the new `/me/bookings` payload
+  /// and on per-band `/bookings` responses; absent on legacy cached payloads.
+  final BandSummary? band;
+
   factory BookingSummary.fromJson(Map<String, dynamic> json) {
     final rawContacts = json['contacts'];
     final contacts = rawContacts is List
@@ -55,6 +61,11 @@ class BookingSummary {
             .map(BookingContact.fromJson)
             .toList()
         : <BookingContact>[];
+
+    final rawBand = json['band'];
+    final band = rawBand is Map<String, dynamic>
+        ? BandSummary.fromJson(rawBand)
+        : null;
 
     return BookingSummary(
       id: (json['id'] as num).toInt(),
@@ -74,6 +85,7 @@ class BookingSummary {
       amountDue: json['amount_due'] as String?,
       isPaid: (json['is_paid'] as bool?) ?? false,
       contacts: contacts,
+      band: band,
     );
   }
 
@@ -87,9 +99,9 @@ class BookingSummary {
   }
 
   /// Formats [price] as a currency string, e.g. "$3,500.00".
-  /// Returns [price] as-is if it cannot be parsed, or "—" if null.
+  /// Returns [price] as-is if it cannot be parsed, or "$0.00" if null.
   String get displayPrice {
-    if (price == null) return '—';
+    if (price == null) return r'$0.00';
     final parsed = double.tryParse(price!);
     if (parsed == null) return price!;
     return NumberFormat.currency(symbol: '\$').format(parsed);

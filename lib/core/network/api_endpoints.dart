@@ -3,6 +3,7 @@ class ApiEndpoints {
 
   static const String mobileToken = '/api/mobile/auth/token';
   static const String mobileMe = '/api/mobile/auth/me';
+  static const String mobileMeBookings = '/api/mobile/me/bookings';
   static const String mobileLogout = '/api/mobile/auth/token';
 
   static const String mobileDashboard = '/api/mobile/dashboard';

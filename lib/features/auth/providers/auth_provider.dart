@@ -138,6 +138,10 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     final currentState = state.value;
     if (currentState is! AuthAuthenticated) return;
 
+    // Lazily initialize _repo in case build() was overridden in tests without
+    // calling super (e.g. a FixedAuthNotifier that stubs build()).
+    _repo ??= AuthRepository(ref.read(apiClientProvider).dio);
+
     try {
       final result = await _repository.getMe();
       final storage = ref.read(secureStorageProvider);

@@ -8,6 +8,7 @@ import '../../../features/auth/providers/auth_provider.dart';
 import '../../../shared/providers/selected_band_provider.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/error_view.dart';
+import '../../bookings/widgets/create_booking_sheet.dart';
 import '../../events/data/models/event_summary.dart';
 import '../providers/dashboard_provider.dart';
 import '../widgets/event_card.dart';
@@ -53,25 +54,50 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
           CupertinoSliverNavigationBar(
             largeTitle: Text(bandName),
-            trailing: GestureDetector(
-              onTap: () => _showLogoutDialog(context),
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: const BoxDecoration(
-                  color: CupertinoColors.systemBlue,
-                  shape: BoxShape.circle,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // "+" button — opens the band-picker sheet so the user can
+                // create a booking (real band or personal gig) without leaving
+                // the Dashboard.
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: () async {
+                    await showCupertinoModalPopup<void>(
+                      context: context,
+                      builder: (sheetContext) => CreateBookingSheet(
+                        onBandSelected: (bandId) {
+                          Navigator.of(sheetContext).pop();
+                          context.push('/bookings/$bandId/new');
+                        },
+                      ),
+                    );
+                  },
+                  child: const Icon(CupertinoIcons.add),
                 ),
-                child: Center(
-                  child: Text(
-                    userName.isNotEmpty ? userName[0].toUpperCase() : '?',
-                    style: const TextStyle(
-                      color: CupertinoColors.white,
-                      fontWeight: FontWeight.bold,
+                const SizedBox(width: 4),
+                // Avatar circle — tap to log out.
+                GestureDetector(
+                  onTap: () => _showLogoutDialog(context),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: const BoxDecoration(
+                      color: CupertinoColors.systemBlue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                          color: CupertinoColors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
           dashboardAsync.when(

@@ -48,6 +48,44 @@ final bandBookingsProvider = FutureProvider.family<List<BookingSummary>, BandBoo
   },
 );
 
+// ── User bookings (multi-band) ────────────────────────────────────────────────
+
+class UserBookingsParams {
+  const UserBookingsParams({
+    this.status,
+    this.upcomingOnly = false,
+    this.year,
+  });
+
+  final String? status;
+  final bool upcomingOnly;
+  final int? year;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UserBookingsParams &&
+          runtimeType == other.runtimeType &&
+          status == other.status &&
+          upcomingOnly == other.upcomingOnly &&
+          year == other.year;
+
+  @override
+  int get hashCode => Object.hash(status, upcomingOnly, year);
+}
+
+final userBookingsProvider =
+    FutureProvider.family<List<BookingSummary>, UserBookingsParams>(
+  (ref, params) {
+    final repo = ref.watch(bookingsRepositoryProvider);
+    return repo.getAllUserBookings(
+      status: params.status,
+      upcomingOnly: params.upcomingOnly,
+      year: params.year,
+    );
+  },
+);
+
 // ── Booking detail (single) ───────────────────────────────────────────────────
 
 final bookingDetailProvider = FutureProvider.family<BookingDetail,

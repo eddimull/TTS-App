@@ -42,6 +42,34 @@ class BookingsRepository {
         .toList();
   }
 
+  /// Fetches bookings across all bands the authenticated user belongs to
+  /// (owners + members only — subs are excluded server-side because bookings
+  /// carry money/contract info subs shouldn't see).
+  ///
+  /// Used by the multi-band Bookings tab. Filters mirror [getBandBookings].
+  Future<List<BookingSummary>> getAllUserBookings({
+    String? status,
+    bool upcomingOnly = false,
+    int? year,
+  }) async {
+    final queryParams = <String, String>{};
+    if (status != null) queryParams['status'] = status;
+    if (upcomingOnly) queryParams['upcoming'] = '1';
+    if (year != null) queryParams['year'] = year.toString();
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileMeBookings,
+      queryParameters: queryParams.isEmpty ? null : queryParams,
+    );
+
+    final data = response.data!;
+    final rawList = data['bookings'] as List<dynamic>;
+    return rawList
+        .cast<Map<String, dynamic>>()
+        .map(BookingSummary.fromJson)
+        .toList();
+  }
+
   /// Fetches the full detail for the booking identified by [bookingId].
   Future<BookingDetail> getBookingDetail(int bandId, int bookingId) async {
     final response = await _dio.get<Map<String, dynamic>>(

@@ -99,9 +99,9 @@ class BookingSummary {
   }
 
   /// Formats [price] as a currency string, e.g. "$3,500.00".
-  /// Returns [price] as-is if it cannot be parsed, or "—" if null.
+  /// Returns [price] as-is if it cannot be parsed, or "$0.00" if null.
   String get displayPrice {
-    if (price == null) return '—';
+    if (price == null) return r'$0.00';
     final parsed = double.tryParse(price!);
     if (parsed == null) return price!;
     return NumberFormat.currency(symbol: '\$').format(parsed);

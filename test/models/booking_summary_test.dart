@@ -68,4 +68,44 @@ void main() {
       expect(booking.band, isNull);
     });
   });
+
+  group('BookingSummary.displayPrice', () {
+    test('formats null price as \$0.00', () {
+      final booking = BookingSummary.fromJson({
+        'id': 1,
+        'name': 'Free Gig',
+        'date': '2026-06-01',
+        'is_paid': false,
+        'contacts': [],
+        // no 'price' key
+      });
+      expect(booking.displayPrice, equals(r'$0.00'));
+    });
+
+    test('formats numeric string price', () {
+      final booking = BookingSummary.fromJson({
+        'id': 2,
+        'name': 'Paid',
+        'date': '2026-06-01',
+        'is_paid': false,
+        'contacts': [],
+        'price': '3500.00',
+      });
+      // Output is locale-dependent; just verify $ + digits + decimals show up.
+      expect(booking.displayPrice, contains('3,500'));
+      expect(booking.displayPrice, startsWith(r'$'));
+    });
+
+    test('returns raw price when not parseable', () {
+      final booking = BookingSummary.fromJson({
+        'id': 3,
+        'name': 'Weird',
+        'date': '2026-06-01',
+        'is_paid': false,
+        'contacts': [],
+        'price': 'free',
+      });
+      expect(booking.displayPrice, equals('free'));
+    });
+  });
 }

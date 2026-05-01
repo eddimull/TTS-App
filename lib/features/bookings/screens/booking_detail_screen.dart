@@ -409,18 +409,24 @@ class _InfoCard extends StatelessWidget {
               value: formatDateWithTimeRange(
                   booking.date, booking.startTime, booking.endTime),
             ),
-            if (booking.venueName != null &&
-                booking.venueName!.isNotEmpty) ...[
+            // Always render the venue row; show TBD when null/empty.
+            // (List cards keep the conditional-render behavior — dense rows
+            // benefit from skipping empty fields. Detail screen always shows it.)
+            ...[
               const SizedBox(height: 12),
               _InfoRow(
                 icon: CupertinoIcons.location,
                 label: 'Venue',
-                value: [
-                  booking.venueName!,
-                  if (booking.venueAddress != null &&
-                      booking.venueAddress!.isNotEmpty)
-                    booking.venueAddress!,
-                ].join('\n'),
+                value: () {
+                  final venueName =
+                      (booking.venueName != null && booking.venueName!.isNotEmpty)
+                          ? booking.venueName!
+                          : 'TBD';
+                  final hasAddress = booking.venueAddress != null &&
+                      booking.venueAddress!.isNotEmpty;
+                  return [venueName, if (hasAddress) booking.venueAddress!]
+                      .join('\n');
+                }(),
                 trailing: booking.venueAddress != null &&
                         booking.venueAddress!.isNotEmpty
                     ? CupertinoButton(

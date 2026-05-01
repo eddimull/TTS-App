@@ -4,13 +4,14 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 import 'package:tts_bandmate/shared/utils/time_format.dart';
+import 'package:tts_bandmate/shared/widgets/band_identity_chip.dart';
 import 'package:tts_bandmate/shared/widgets/empty_state_view.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import 'package:tts_bandmate/shared/widgets/status_chip.dart';
 import '../data/models/booking_summary.dart';
 import '../providers/bookings_provider.dart';
+import '../widgets/create_booking_sheet.dart';
 
 // ── Filter ────────────────────────────────────────────────────────────────────
 
@@ -53,37 +54,28 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   _BookingsFilter _filter = _BookingsFilter.all;
   int _selectedYear = DateTime.now().year;
 
-  @override
-  Widget build(BuildContext context) {
-    final bandAsync = ref.watch(selectedBandProvider);
-
-    return bandAsync.when(
-      loading: () => const CupertinoPageScaffold(
-        navigationBar: CupertinoNavigationBar(middle: Text('Bookings')),
-        child: Center(child: CupertinoActivityIndicator()),
-      ),
-      error: (e, _) => CupertinoPageScaffold(
-        navigationBar:
-            const CupertinoNavigationBar(middle: Text('Bookings')),
-        child: ErrorView(message: ErrorView.friendlyMessage(e)),
-      ),
-      data: (bandId) {
-        if (bandId == null) {
-          return const CupertinoPageScaffold(
-            navigationBar:
-                CupertinoNavigationBar(middle: Text('Bookings')),
-            child: ErrorView(message: 'No band selected.'),
-          );
-        }
-        return _BookingsBody(
-          bandId: bandId,
-          filter: _filter,
-          selectedYear: _selectedYear,
-          onFilterChanged: (f) => setState(() => _filter = f),
-          onYearChanged: (y) => setState(() => _selectedYear = y),
-          onNewBooking: () => context.push('/bookings/$bandId/new'),
+  Future<void> _onNewBooking(BuildContext context) async {
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (sheetContext) {
+        return CreateBookingSheet(
+          onBandSelected: (bandId) {
+            Navigator.of(sheetContext).pop();
+            context.push('/bookings/$bandId/new');
+          },
         );
       },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _BookingsBody(
+      filter: _filter,
+      selectedYear: _selectedYear,
+      onFilterChanged: (f) => setState(() => _filter = f),
+      onYearChanged: (y) => setState(() => _selectedYear = y),
+      onNewBooking: () => _onNewBooking(context),
     );
   }
 }
@@ -92,7 +84,6 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
 
 class _BookingsBody extends ConsumerStatefulWidget {
   const _BookingsBody({
-    required this.bandId,
     required this.filter,
     required this.selectedYear,
     required this.onFilterChanged,
@@ -100,7 +91,6 @@ class _BookingsBody extends ConsumerStatefulWidget {
     required this.onNewBooking,
   });
 
-  final int bandId;
   final _BookingsFilter filter;
   final int selectedYear;
   final void Function(_BookingsFilter) onFilterChanged;
@@ -118,10 +108,8 @@ class _BookingsBodyState extends ConsumerState<_BookingsBody> {
   int? _lastScrolledYear;
   _BookingsFilter? _lastScrolledFilter;
 
-  BandBookingsParams get _params => BandBookingsParams(
-        bandId: widget.bandId,
-        year: widget.selectedYear,
-      );
+  UserBookingsParams get _params =>
+      UserBookingsParams(year: widget.selectedYear);
 
   @override
   void dispose() {
@@ -177,7 +165,7 @@ class _BookingsBodyState extends ConsumerState<_BookingsBody> {
 
   @override
   Widget build(BuildContext context) {
-    final bookingsAsync = ref.watch(bandBookingsProvider(_params));
+    final bookingsAsync = ref.watch(userBookingsProvider(_params));
 
     return CupertinoPageScaffold(
       child: LayoutBuilder(
@@ -192,7 +180,7 @@ class _BookingsBodyState extends ConsumerState<_BookingsBody> {
                 slivers: [
                   CupertinoSliverRefreshControl(
                     onRefresh: () async =>
-                        ref.invalidate(bandBookingsProvider(_params)),
+                        ref.invalidate(userBookingsProvider(_params)),
                   ),
                   CupertinoSliverNavigationBar(
                     largeTitle: const Text('Bookings'),
@@ -219,7 +207,7 @@ class _BookingsBodyState extends ConsumerState<_BookingsBody> {
                       child: ErrorView(
                         message: ErrorView.friendlyMessage(e),
                         onRetry: () =>
-                            ref.invalidate(bandBookingsProvider(_params)),
+                            ref.invalidate(userBookingsProvider(_params)),
                       ),
                     ),
                     data: (bookings) {
@@ -244,9 +232,16 @@ class _BookingsBodyState extends ConsumerState<_BookingsBody> {
                                 _MonthHeader(label: label),
                               _CardItem(:final booking) => _BookingCard(
                                   booking: booking,
-                                  onTap: () => context.push(
-                                    '/bookings/${widget.bandId}/${booking.id}',
-                                  ),
+                                  onTap: () {
+                                    // Derive bandId from the booking's own nested
+                                    // band — null-safe: skip the tap if absent.
+                                    final bandId = booking.band?.id;
+                                    if (bandId != null) {
+                                      context.push(
+                                        '/bookings/$bandId/${booking.id}',
+                                      );
+                                    }
+                                  },
                                 ),
                             };
                           },
@@ -342,30 +337,37 @@ class _StickyControls extends SliverPersistentHeaderDelegate {
         MediaQuery.platformBrightnessOf(context);
     final isDark = brightness == Brightness.dark;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            decoration: BoxDecoration(
-              color: (isDark
-                      ? CupertinoColors.systemBackground.darkColor
-                      : CupertinoColors.systemBackground)
-                  .withValues(alpha: 0.72),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: (isDark ? CupertinoColors.white : CupertinoColors.black)
-                    .withValues(alpha: 0.08),
+    // SizedBox constrains the child to exactly _height so the delegate's
+    // declared extent always matches the rendered child — prevents the
+    // layoutExtent > paintExtent assertion in SliverGeometry.
+    return SizedBox(
+      height: _height,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: (isDark
+                        ? CupertinoColors.systemBackground.darkColor
+                        : CupertinoColors.systemBackground)
+                    .withValues(alpha: 0.72),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color:
+                      (isDark ? CupertinoColors.white : CupertinoColors.black)
+                          .withValues(alpha: 0.08),
+                ),
               ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _FilterPills(current: filter, onChanged: onFilterChanged),
-                _YearStepper(year: year, onChanged: onYearChanged),
-              ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _FilterPills(current: filter, onChanged: onFilterChanged),
+                  _YearStepper(year: year, onChanged: onYearChanged),
+                ],
+              ),
             ),
           ),
         ),
@@ -556,6 +558,12 @@ class _BookingCard extends StatelessWidget {
                             StatusChip(status: booking.status!),
                         ],
                       ),
+                      // BandIdentityChip between title and date — identifies
+                      // which band this booking belongs to in the multi-band view.
+                      if (booking.band != null) ...[
+                        const SizedBox(height: 4),
+                        BandIdentityChip(band: booking.band!),
+                      ],
                       const SizedBox(height: 4),
                       Text(
                         _formatDate(booking),

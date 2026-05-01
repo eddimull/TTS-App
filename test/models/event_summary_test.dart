@@ -103,4 +103,64 @@ void main() {
       expect(a, equals(b));
     });
   });
+
+  group('EventSummary.fromJson — band field', () {
+    test('parses nested band when present', () {
+      final event = EventSummary.fromJson({
+        'key': 'evt-1',
+        'title': 'A Gig',
+        'date': '2026-06-01',
+        'event_source': 'booking',
+        'band': {
+          'id': 7,
+          'name': 'Test Band',
+          'is_owner': true,
+          'is_personal': false,
+          'logo_url': null,
+        },
+      });
+      expect(event.band, isNotNull);
+      expect(event.band!.id, equals(7));
+      expect(event.band!.isPersonal, isFalse);
+    });
+
+    test('parses personal band', () {
+      final event = EventSummary.fromJson({
+        'key': 'evt-3',
+        'title': 'Church',
+        'date': '2026-06-03',
+        'event_source': 'booking',
+        'band': {
+          'id': 99,
+          'name': "Eddie's Band",
+          'is_owner': true,
+          'is_personal': true,
+          'logo_url': null,
+        },
+      });
+      expect(event.band, isNotNull);
+      expect(event.band!.isPersonal, isTrue);
+    });
+
+    test('tolerates missing band field', () {
+      final event = EventSummary.fromJson({
+        'key': 'evt-2',
+        'title': 'Old',
+        'date': '2026-06-02',
+        'event_source': 'band_event',
+      });
+      expect(event.band, isNull);
+    });
+
+    test('tolerates explicit null band', () {
+      final event = EventSummary.fromJson({
+        'key': 'evt-4',
+        'title': 'Defensive',
+        'date': '2026-06-04',
+        'event_source': 'booking',
+        'band': null,
+      });
+      expect(event.band, isNull);
+    });
+  });
 }

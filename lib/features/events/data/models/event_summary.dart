@@ -1,3 +1,5 @@
+import '../../../auth/data/models/band_summary.dart';
+
 class EventSummary {
   const EventSummary({
     this.id,
@@ -12,6 +14,7 @@ class EventSummary {
     this.status,
     this.liveSessionId,
     this.rosterStatus,
+    this.band,
   });
 
   final int? id;
@@ -37,7 +40,16 @@ class EventSummary {
   /// One of "green", "yellow", "red", "none", or null.
   final String? rosterStatus;
 
+  /// Optional nested band identity for rendering a band/personal chip on the
+  /// dashboard. Absent on legacy payloads.
+  final BandSummary? band;
+
   factory EventSummary.fromJson(Map<String, dynamic> json) {
+    final rawBand = json['band'];
+    final band = rawBand is Map<String, dynamic>
+        ? BandSummary.fromJson(rawBand)
+        : null;
+
     return EventSummary(
       id: json['id'] == null ? null : (json['id'] as num).toInt(),
       key: json['key'] as String,
@@ -53,6 +65,7 @@ class EventSummary {
           ? null
           : (json['live_session_id'] as num).toInt(),
       rosterStatus: json['roster_status'] as String?,
+      band: band,
     );
   }
 

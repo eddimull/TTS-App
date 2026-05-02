@@ -225,6 +225,23 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
 
   DateTime _normalise(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
+  bool _isInCurrentRange(EventSummary event) {
+    final selectedDay = widget.selectedDay;
+    if (selectedDay != null) {
+      // When a day is selected, an event is "in range" if it falls on that
+      // day OR is the next-upcoming event. The latter requires sorting and is
+      // more expensive than worth it for the tiebreaker — fall back to the
+      // simpler "any event >= selectedDay" check, which is sufficient for the
+      // empty-state branching decision.
+      return !event.parsedDate.isBefore(selectedDay);
+    }
+    final focusedDay = widget.focusedDay;
+    final monthStart = DateTime(focusedDay.year, focusedDay.month, 1);
+    final monthEnd = DateTime(focusedDay.year, focusedDay.month + 1, 1);
+    return !event.parsedDate.isBefore(monthStart) &&
+        event.parsedDate.isBefore(monthEnd);
+  }
+
   List<EventSummary> _filterByDayOrMonth(List<EventSummary> events) {
     final focusedDay = widget.focusedDay;
     final selectedDay = widget.selectedDay;
@@ -262,8 +279,11 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     }
 
     final filtered = _filterByDayOrMonth(visibleEvents);
-    final unfilteredForCurrentRange =
-        _filterByDayOrMonth(widget.events);
+    // `filterIsHidingEvents` is true when the filter is the reason the list is
+    // empty — i.e. there are events in the current range that are being hidden.
+    final filterIsHidingEvents = filterState.isActive &&
+        filtered.isEmpty &&
+        widget.events.any(_isInCurrentRange);
 
     final focusedDay = widget.focusedDay;
     final selectedDay = widget.selectedDay;
@@ -310,9 +330,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                   key: eventsKey,
                   selectedDay: selectedDay,
                   focusedDay: focusedDay,
-                  filterIsActive: filterState.isActive,
-                  filterIsHidingEverything: filterState.isActive &&
-                      unfilteredForCurrentRange.isNotEmpty,
+                  filterIsHidingEvents: filterIsHidingEvents,
                   onClearFilters: () =>
                       ref.read(calendarFilterProvider.notifier).clear(),
                 )
@@ -455,20 +473,18 @@ class _EmptyState extends StatelessWidget {
     super.key,
     required this.selectedDay,
     required this.focusedDay,
-    required this.filterIsActive,
-    required this.filterIsHidingEverything,
+    required this.filterIsHidingEvents,
     required this.onClearFilters,
   });
 
   final DateTime? selectedDay;
   final DateTime focusedDay;
-  final bool filterIsActive;
-  final bool filterIsHidingEverything;
+  final bool filterIsHidingEvents;
   final VoidCallback onClearFilters;
 
   @override
   Widget build(BuildContext context) {
-    if (filterIsActive && filterIsHidingEverything) {
+    if (filterIsHidingEvents) {
       return Padding(
         padding:
             const EdgeInsets.symmetric(vertical: 32, horizontal: 24),

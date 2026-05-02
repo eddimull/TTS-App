@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 import '../data/models/band_detail.dart';
 import '../providers/band_settings_provider.dart';
 
@@ -67,6 +68,9 @@ class _BandInfoEditScreenState extends ConsumerState<BandInfoEditScreen> {
           .uploadLogo(widget.bandId, bytes, file.name);
       // Re-fetch detail to get updated logo_url
       await ref.read(bandSettingsProvider(widget.bandId).notifier).load();
+      // Refresh authProvider.bands so every other screen (dashboard, nav,
+      // BandIdentityChip, etc.) picks up the new logo_url too.
+      await ref.read(cacheInvalidatorProvider).onBandIdentityChanged();
       final detail =
           ref.read(bandSettingsProvider(widget.bandId)).value?.detail;
       if (mounted) setState(() => _logoUrl = detail?.logoUrl);

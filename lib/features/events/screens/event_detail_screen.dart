@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:timelines_plus/timelines_plus.dart';
 import 'package:map_launcher/map_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../shared/cache/cache_invalidator.dart';
 import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
 import '../../../shared/widgets/error_view.dart';
@@ -1284,7 +1285,7 @@ class _RosterSectionState extends ConsumerState<_RosterSection> {
     }
 
     if (mounted) {
-      ref.invalidate(eventDetailProvider(event.key));
+      ref.read(cacheInvalidatorProvider).onEventChanged(eventKey: event.key);
     }
   }
 }

@@ -7,12 +7,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart' show DefaultMaterialLocalizations, ReorderableDragStartListener, ReorderableListView;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timelines_plus/timelines_plus.dart';
+import '../../../shared/cache/cache_invalidator.dart';
 import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
 import '../../../shared/widgets/status_chip.dart';
 import '../data/models/event_detail.dart';
 import '../data/events_repository.dart';
-import '../providers/events_provider.dart';
 import 'attachment_widgets.dart';
 
 // ── Mutable edit-time models ──────────────────────────────────────────────────
@@ -308,7 +308,9 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     try {
       final repo = ref.read(eventsRepositoryProvider);
       await repo.updateEvent(widget.event.key, payload);
-      ref.invalidate(eventDetailProvider(widget.event.key));
+      ref
+          .read(cacheInvalidatorProvider)
+          .onEventChanged(eventKey: widget.event.key);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       setState(() {

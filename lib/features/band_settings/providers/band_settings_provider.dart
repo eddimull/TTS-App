@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/core_providers.dart';
+import '../../../shared/cache/cache_invalidator.dart';
 import '../data/band_settings_repository.dart';
 import '../data/models/band_detail.dart';
 import '../data/models/band_invitation.dart';
@@ -128,8 +129,12 @@ class BandSettingsNotifier extends AsyncNotifier<BandSettingsState> {
       zip: detail.zip,
     );
     final current = state.value;
-    if (current == null) return;
-    state = AsyncValue.data(current.copyWith(detail: detail));
+    if (current != null) {
+      state = AsyncValue.data(current.copyWith(detail: detail));
+    }
+    // Band name flows into authProvider.bands, which is read by the dashboard,
+    // bottom nav, BandIdentityChip, etc. Refresh so they see the new name.
+    await ref.read(cacheInvalidatorProvider).onBandIdentityChanged();
   }
 }
 

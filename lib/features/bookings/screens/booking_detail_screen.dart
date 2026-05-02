@@ -7,6 +7,7 @@ import 'package:tts_bandmate/shared/utils/time_format.dart';
 import 'package:tts_bandmate/shared/widgets/band_identity_chip.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import 'package:tts_bandmate/shared/widgets/status_chip.dart';
+import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 import '../data/bookings_repository.dart';
 import '../data/models/booking_contact.dart';
 import '../data/models/booking_detail.dart';
@@ -136,10 +137,10 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
       final repo = ref.read(bookingsRepositoryProvider);
       await repo.cancelBooking(widget.bandId, widget.bookingId);
       if (!mounted) return;
-      ref.invalidate(
-          bookingDetailProvider((bandId: widget.bandId, bookingId: widget.bookingId)));
-      ref.invalidate(bandBookingsProvider(
-          BandBookingsParams(bandId: widget.bandId)));
+      ref.read(cacheInvalidatorProvider).onBookingChanged(
+            bandId: widget.bandId,
+            bookingId: widget.bookingId,
+          );
     } catch (e) {
       if (!mounted) return;
       _showErrorDialog('Could not cancel booking.\n$e');
@@ -175,8 +176,10 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
       final repo = ref.read(bookingsRepositoryProvider);
       await repo.deleteBooking(widget.bandId, widget.bookingId);
       if (!mounted) return;
-      ref.invalidate(bandBookingsProvider(
-          BandBookingsParams(bandId: widget.bandId)));
+      ref.read(cacheInvalidatorProvider).onBookingDeleted(
+            bandId: widget.bandId,
+            bookingId: widget.bookingId,
+          );
       context.go('/bookings');
     } catch (e) {
       if (!mounted) return;

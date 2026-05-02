@@ -16,6 +16,7 @@ import '../data/venue_search_service.dart';
 import '../providers/bookings_provider.dart';
 import '../widgets/booking_calendar_picker.dart';
 import 'package:tts_bandmate/core/config/app_config.dart';
+import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 
 // Whether the current platform supports google_maps_flutter.
 bool get _mapsSupported => kIsWeb || Platform.isAndroid || Platform.isIOS;
@@ -383,13 +384,13 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
       if (_isEdit) {
         await repo.updateBooking(
             widget.bandId, widget.existing!.id, body);
-        ref.invalidate(bookingDetailProvider(
-            (bandId: widget.bandId, bookingId: widget.existing!.id)));
       } else {
         await repo.createBooking(widget.bandId, body);
       }
-      ref.invalidate(
-          bandBookingsProvider(BandBookingsParams(bandId: widget.bandId)));
+      ref.read(cacheInvalidatorProvider).onBookingChanged(
+            bandId: widget.bandId,
+            bookingId: _isEdit ? widget.existing!.id : null,
+          );
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {

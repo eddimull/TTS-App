@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/bookings_repository.dart';
@@ -28,8 +29,10 @@ class _BookingContractScreenState
   bool _uploading = false;
 
   void _invalidate() {
-    ref.invalidate(bookingDetailProvider(
-        (bandId: widget.bandId, bookingId: widget.bookingId)));
+    ref.read(cacheInvalidatorProvider).onBookingDetailChanged(
+          bandId: widget.bandId,
+          bookingId: widget.bookingId,
+        );
   }
 
   Future<void> _openUrl(String url) async {
@@ -302,8 +305,10 @@ class _DefaultViewState extends ConsumerState<_DefaultView> {
       await repo.sendContract(widget.bandId, widget.bookingId, signer.id);
 
       // Refresh the detail so contract status updates everywhere.
-      ref.invalidate(bookingDetailProvider(
-          (bandId: widget.bandId, bookingId: widget.bookingId)));
+      ref.read(cacheInvalidatorProvider).onBookingDetailChanged(
+            bandId: widget.bandId,
+            bookingId: widget.bookingId,
+          );
 
       if (mounted) {
         showCupertinoDialog<void>(

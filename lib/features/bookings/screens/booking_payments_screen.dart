@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/bookings_repository.dart';
 import '../data/models/booking_payment.dart';
@@ -114,8 +115,10 @@ class BookingPaymentsScreen extends ConsumerWidget {
   }
 
   void _invalidate(WidgetRef ref) {
-    ref.invalidate(bookingDetailProvider(
-        (bandId: bandId, bookingId: bookingId)));
+    ref.read(cacheInvalidatorProvider).onBookingDetailChanged(
+          bandId: bandId,
+          bookingId: bookingId,
+        );
   }
 
   Future<void> _confirmDelete(

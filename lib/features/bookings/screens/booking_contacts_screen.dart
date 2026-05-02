@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/bookings_repository.dart';
 import '../data/models/booking_contact.dart';
@@ -28,8 +29,10 @@ class _BookingContactsScreenState
   bool _actioning = false;
 
   void _invalidateDetail() {
-    ref.invalidate(bookingDetailProvider(
-        (bandId: widget.bandId, bookingId: widget.bookingId)));
+    ref.read(cacheInvalidatorProvider).onBookingDetailChanged(
+          bandId: widget.bandId,
+          bookingId: widget.bookingId,
+        );
   }
 
   // ── Delete contact ────────────────────────────────────────────────────────

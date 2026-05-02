@@ -65,6 +65,9 @@ void main() {
 
   testWidgets('hiding a band hides its event from the events list',
       (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
     final events = [
       evt(key: 'a', date: '2026-05-10', band: bandA),
       evt(key: 'b', date: '2026-05-11', band: bandB),
@@ -90,6 +93,9 @@ void main() {
 
   testWidgets('filter-aware empty state shows Clear filters button',
       (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
     final events = [evt(key: 'a', date: '2026-05-10', band: bandA)];
 
     await tester.pumpWidget(host(events: events));

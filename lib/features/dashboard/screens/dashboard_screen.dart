@@ -324,7 +324,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
         ),
         // Extra bottom padding so the floating filter button doesn't cover
         // the last event card.
-        const SizedBox(height: 72),
+        const SizedBox(height: 80),
       ]),
     );
   }
@@ -374,6 +374,7 @@ class _CalendarSection extends StatelessWidget {
           eventLoader: (day) => eventsByDay[_normalise(day)] ?? const [],
           onDaySelected: onDaySelected,
           onPageChanged: onPageChanged,
+          rowHeight: 56,
           calendarFormat: CalendarFormat.month,
           availableCalendarFormats: const {CalendarFormat.month: 'Month'},
           headerStyle: const HeaderStyle(
@@ -470,24 +471,15 @@ class _EmptyState extends StatelessWidget {
     if (filterIsActive && filterIsHidingEverything) {
       return Padding(
         padding:
-            const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+            const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
         child: Column(
           children: [
-            const Icon(
-              CupertinoIcons.line_horizontal_3_decrease,
-              size: 36,
-              color: CupertinoColors.systemBlue,
+            const EmptyStateView(
+              icon: CupertinoIcons.line_horizontal_3_decrease,
+              title: 'No events match your filters',
+              subtitle: '',
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'No events match your filters',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w500,
-                color: CupertinoColors.secondaryLabel,
-              ),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             CupertinoButton.filled(
               onPressed: onClearFilters,
               child: const Text('Clear filters'),

@@ -68,5 +68,60 @@ void main() {
       await tester.tap(find.byType(CalendarFilterButton));
       expect(tapped, true);
     });
+
+    testWidgets('uses tertiarySystemBackground fill when no filters active',
+        (tester) async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: container,
+        child: CupertinoApp(
+          home: Center(child: CalendarFilterButton(onPressed: () {})),
+        ),
+      ));
+
+      // The visible circle is the inner Container with margin EdgeInsets.all(4).
+      // Find it by walking down from the GestureDetector.
+      final circleContainer = tester.widget<Container>(
+        find.descendant(
+          of: find.byType(GestureDetector),
+          matching: find.byType(Container),
+        ).first,
+      );
+      final decoration = circleContainer.decoration as BoxDecoration;
+      final element = tester.element(find.byType(CalendarFilterButton));
+      expect(
+        decoration.color,
+        CupertinoColors.tertiarySystemBackground.resolveFrom(element),
+      );
+    });
+
+    testWidgets('flips fill to systemBlue when filters active',
+        (tester) async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      container.read(calendarFilterProvider.notifier).toggleBand(1);
+
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: container,
+        child: CupertinoApp(
+          home: Center(child: CalendarFilterButton(onPressed: () {})),
+        ),
+      ));
+
+      final circleContainer = tester.widget<Container>(
+        find.descendant(
+          of: find.byType(GestureDetector),
+          matching: find.byType(Container),
+        ).first,
+      );
+      final decoration = circleContainer.decoration as BoxDecoration;
+      final element = tester.element(find.byType(CalendarFilterButton));
+      expect(
+        decoration.color,
+        CupertinoColors.systemBlue.resolveFrom(element),
+      );
+    });
   });
 }

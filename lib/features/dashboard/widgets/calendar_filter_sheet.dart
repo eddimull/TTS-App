@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/data/models/band_summary.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../../shared/widgets/band_avatar.dart';
 import '../providers/calendar_filter_provider.dart';
 
@@ -164,7 +165,7 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _BandsRow extends StatelessWidget {
+class _BandsRow extends ConsumerWidget {
   const _BandsRow({
     required this.bands,
     required this.hiddenBandIds,
@@ -176,7 +177,9 @@ class _BandsRow extends StatelessWidget {
   final void Function(int bandId) onToggle;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider).value;
+    final user = (auth is AuthAuthenticated) ? auth.user : null;
     return SizedBox(
       height: 80,
       child: ListView.separated(
@@ -187,11 +190,20 @@ class _BandsRow extends StatelessWidget {
         itemBuilder: (context, i) {
           final band = bands[i];
           final isVisible = !hiddenBandIds.contains(band.id);
+          final isPersonal = band.isPersonal;
+          final avatar = isPersonal
+              ? BandAvatar.forUser(
+                  imageUrl: user?.avatarUrl,
+                  name: user?.name ?? 'You',
+                  size: 36,
+                )
+              : BandAvatar.forBand(band: band, size: 36);
+          final label = isPersonal ? 'Personal' : band.name;
           return GestureDetector(
             onTap: () => onToggle(band.id),
             behavior: HitTestBehavior.opaque,
             child: Semantics(
-              label: band.name,
+              label: label,
               selected: isVisible,
               button: true,
               child: SizedBox(
@@ -214,14 +226,14 @@ class _BandsRow extends StatelessWidget {
                           ),
                         ),
                         padding: const EdgeInsets.all(2),
-                        child: BandAvatar.forBand(band: band, size: 36),
+                        child: avatar,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Opacity(
                       opacity: isVisible ? 1.0 : 0.4,
                       child: Text(
-                        band.name,
+                        label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 12),

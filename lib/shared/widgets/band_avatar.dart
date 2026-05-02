@@ -26,6 +26,7 @@ class BandAvatar extends StatelessWidget {
         _imageUrl = imageUrl,
         _name = name;
 
+  /// Non-null only when constructed via [BandAvatar.forBand].
   final BandSummary? band;
   final String? _imageUrl;
   final String? _name;

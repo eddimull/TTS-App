@@ -58,9 +58,6 @@ void main() {
       await tester.pumpWidget(_wrap(
           const BandAvatar.forBand(band: band, size: 40)));
 
-      final container = tester.widget<Container>(find.byType(Container).first);
-      final box = container.constraints?.biggest;
-      // The widget pins width and height directly on the Container.
       expect(tester.getSize(find.byType(Container).first),
           const Size(40, 40));
     });

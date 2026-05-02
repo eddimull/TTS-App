@@ -17,7 +17,7 @@ A second, smaller problem: the library `+` button always creates a chart in the 
 1. Library screen displays charts from every band the user belongs to in a single alphabetized list.
 2. A filter sheet (modeled on `CalendarFilterSheet`) lets the user hide bands; the list and alphabet scrubber update live.
 3. Each row shows the band's avatar (replacing the per-chart initials avatar), making the band of origin instantly readable.
-4. The `+` button opens a band-picker sheet (modeled on `CreateBookingSheet`) listing real bands and a "Personal" row. Single-band users skip the sheet.
+4. The `+` button opens a band-picker sheet (modeled on `CreateBookingSheet`) listing real bands and a "Personal" row. Solo users (no real bands yet, or exactly one real band and no personal band yet) skip the sheet and go straight to the create form for that band; everyone else sees the picker.
 5. After creating a chart, the user lands on the chart detail screen so they can immediately upload PDFs.
 
 ## Non-goals
@@ -113,7 +113,7 @@ Modeled on `CreateBookingSheet`:
 
 ### On `+` create
 1. Tap `+` → screen calls `_handleAddTapped(context)`.
-2. Picker shown (or skipped per single-band rules above).
+2. Picker shown, except solo users (no real bands or exactly one real band and no personal band yet) — for them, skip the sheet and push the create form for the resolved band directly.
 3. Selected band id flows into `CreateChartScreen(bandId: pickedId)`.
 4. `CreateChartScreen` calls `LibraryNotifier.createChart(bandId, ...)`; the resulting `Chart` is optimistically inserted into the merged list (the new chart's `band` field is set from the sheet selection so it can be filtered/avatared correctly).
 5. `CreateChartScreen.pop(chart)` returns. Library screen routes to chart detail.

@@ -258,9 +258,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       await showCupertinoModalPopup<void>(
         context: context,
         builder: (sheetCtx) => CreateChartSheet(
-          onBandSelected: (band) {
+          onBandSelected: (band) async {
             Navigator.of(sheetCtx).pop();
-            _pushCreateAndMaybeOpenDetail(band);
+            await _pushCreateAndMaybeOpenDetail(band);
           },
         ),
       );
@@ -389,9 +389,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                           return Stack(children: [
                             CustomScrollView(
                               slivers: [
+                                CupertinoSliverRefreshControl(onRefresh: _refresh),
                                 _buildNavBar(context),
-                                CupertinoSliverRefreshControl(
-                                    onRefresh: _refresh),
                                 if (filtered.isEmpty)
                                   const SliverFillRemaining(
                                     child: Center(
@@ -810,6 +809,7 @@ class _BottomSearchBar extends StatelessWidget {
           const SizedBox(width: 10),
           Semantics(
             button: true,
+            enabled: onAdd != null,
             label: 'Add chart',
             child: CupertinoButton(
               padding: EdgeInsets.zero,

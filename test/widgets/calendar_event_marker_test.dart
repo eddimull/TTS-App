@@ -108,5 +108,41 @@ void main() {
       // The dashed ring is drawn via a CustomPaint with our painter.
       expect(find.byType(CustomPaint), findsWidgets);
     });
+
+    testWidgets('cancelled booking fades the avatar to 40% opacity',
+        (tester) async {
+      await tester.pumpWidget(_wrap(
+          CalendarEventMarker(event: _evt(status: 'cancelled'))));
+
+      // The marker wraps its avatar in an Opacity with 0.4 alpha when cancelled.
+      final opacity = tester.widget<Opacity>(find.byType(Opacity));
+      expect(opacity.opacity, 0.4);
+    });
+
+    testWidgets('non-cancelled booking renders the avatar at full opacity',
+        (tester) async {
+      await tester.pumpWidget(_wrap(
+          CalendarEventMarker(event: _evt(status: 'confirmed'))));
+
+      final opacity = tester.widget<Opacity>(find.byType(Opacity));
+      expect(opacity.opacity, 1.0);
+    });
+
+    testWidgets('renders without crashing when event.band is null',
+        (tester) async {
+      const eventNoBand = EventSummary(
+        key: 'no-band',
+        title: 'Legacy Event',
+        date: '2026-05-02',
+        eventSource: 'band_event',
+      );
+
+      await tester.pumpWidget(_wrap(const CalendarEventMarker(event: eventNoBand)));
+
+      // Avatar is replaced by a SizedBox placeholder, so no BandAvatar is rendered
+      // — but the marker still renders (no crash, ring is still drawn).
+      expect(find.byType(BandAvatar), findsNothing);
+      expect(find.byType(CustomPaint), findsWidgets);
+    });
   });
 }

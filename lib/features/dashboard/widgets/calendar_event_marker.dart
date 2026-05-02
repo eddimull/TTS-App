@@ -105,18 +105,21 @@ class CalendarDayMarkers extends StatelessWidget {
       children: [
         CalendarEventMarker(event: sorted[0], size: avatarSize),
         const SizedBox(width: 2),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-          decoration: BoxDecoration(
-            color: CupertinoColors.systemGrey5.resolveFrom(context),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            '+$overflow',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: CupertinoColors.label.resolveFrom(context),
+        Semantics(
+          label: '$overflow more events',
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: BoxDecoration(
+              color: CupertinoColors.systemGrey5.resolveFrom(context),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '+$overflow',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: CupertinoColors.label.resolveFrom(context),
+              ),
             ),
           ),
         ),

@@ -28,6 +28,30 @@ class ChartUpload {
       );
 }
 
+/// Lightweight band identifier carried on a [Chart] when fetched from the
+/// aggregated `GET /api/mobile/charts` endpoint. Nullable on [Chart] because
+/// per-band endpoint responses do not include this block.
+class ChartBand {
+  const ChartBand({
+    required this.id,
+    required this.name,
+    required this.isPersonal,
+    this.logoUrl,
+  });
+
+  final int id;
+  final String name;
+  final bool isPersonal;
+  final String? logoUrl;
+
+  factory ChartBand.fromJson(Map<String, dynamic> json) => ChartBand(
+        id: (json['id'] as num).toInt(),
+        name: json['name'] as String? ?? '',
+        isPersonal: json['is_personal'] as bool? ?? false,
+        logoUrl: json['logo_url'] as String?,
+      );
+}
+
 class Chart {
   final int id;
   final int bandId;
@@ -38,6 +62,7 @@ class Chart {
   final bool isPublic;
   final int uploadsCount;
   final List<ChartUpload> uploads;
+  final ChartBand? band;
 
   const Chart({
     required this.id,
@@ -49,6 +74,7 @@ class Chart {
     required this.isPublic,
     required this.uploadsCount,
     required this.uploads,
+    this.band,
   });
 
   factory Chart.fromJson(Map<String, dynamic> json) => Chart(
@@ -64,5 +90,8 @@ class Chart {
                 ?.map((u) => ChartUpload.fromJson(u as Map<String, dynamic>))
                 .toList() ??
             [],
+        band: json['band'] is Map<String, dynamic>
+            ? ChartBand.fromJson(json['band'] as Map<String, dynamic>)
+            : null,
       );
 }

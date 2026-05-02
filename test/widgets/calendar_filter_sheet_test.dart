@@ -11,7 +11,7 @@ const _bandB = BandSummary(id: 2, name: 'Bravo', isOwner: false);
 Widget _hostWith(ProviderContainer container) =>
     UncontrolledProviderScope(
       container: container,
-      child: CupertinoApp(
+      child: const CupertinoApp(
         home: CupertinoPageScaffold(
           child: CalendarFilterSheet(bands: [_bandA, _bandB]),
         ),

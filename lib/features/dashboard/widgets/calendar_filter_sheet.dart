@@ -26,9 +26,7 @@ class CalendarFilterSheet extends ConsumerWidget {
         color: CupertinoColors.systemBackground.resolveFrom(context),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).padding.bottom + 12,
-      ),
+      padding: const EdgeInsets.only(bottom: 12),
       child: SafeArea(
         top: false,
         child: Column(
@@ -59,7 +57,6 @@ class CalendarFilterSheet extends ConsumerWidget {
             const _SectionLabel(label: 'EVENT TYPES'),
             _EventTypeSwitch(
               label: 'Performances',
-              source: 'booking',
               hidden: filter.hiddenEventTypes.contains('booking'),
               onToggle: () {
                 HapticFeedback.selectionClick();
@@ -68,7 +65,6 @@ class CalendarFilterSheet extends ConsumerWidget {
             ),
             _EventTypeSwitch(
               label: 'Rehearsals',
-              source: 'rehearsal',
               hidden: filter.hiddenEventTypes.contains('rehearsal'),
               onToggle: () {
                 HapticFeedback.selectionClick();
@@ -77,7 +73,6 @@ class CalendarFilterSheet extends ConsumerWidget {
             ),
             _EventTypeSwitch(
               label: 'Other Events',
-              source: 'band_event',
               hidden: filter.hiddenEventTypes.contains('band_event'),
               onToggle: () {
                 HapticFeedback.selectionClick();
@@ -246,13 +241,11 @@ class _BandsRow extends StatelessWidget {
 class _EventTypeSwitch extends StatelessWidget {
   const _EventTypeSwitch({
     required this.label,
-    required this.source,
     required this.hidden,
     required this.onToggle,
   });
 
   final String label;
-  final String source;
   final bool hidden;
   final VoidCallback onToggle;
 

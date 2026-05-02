@@ -94,11 +94,7 @@ void main() {
       await tester.pumpWidget(_hostWith(container));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(Row, 'Performances')
-          .evaluate()
-          .isNotEmpty
-          ? find.byType(CupertinoSwitch).first
-          : find.byType(CupertinoSwitch).first);
+      await tester.tap(find.byType(CupertinoSwitch).first);
       await tester.pumpAndSettle();
 
       expect(container.read(calendarFilterProvider).hiddenEventTypes,

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/data/models/band_summary.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import 'band_avatar.dart';
 
 /// A horizontal `[avatar] [label]` row identifying a band — or, for personal
 /// bands, the authenticated user.
@@ -31,9 +32,9 @@ class BandIdentityChip extends ConsumerWidget {
       final auth = ref.watch(authProvider).value;
       final user = (auth is AuthAuthenticated) ? auth.user : null;
       return _ChipRow(
-        avatar: _Avatar(
+        avatar: BandAvatar.forUser(
           imageUrl: user?.avatarUrl,
-          fallbackInitial: _initial(user?.name ?? 'You'),
+          name: user?.name ?? 'You',
           size: size,
         ),
         label: 'Personal',
@@ -41,20 +42,10 @@ class BandIdentityChip extends ConsumerWidget {
       );
     }
     return _ChipRow(
-      avatar: _Avatar(
-        imageUrl: band.logoUrl,
-        fallbackInitial: _initial(band.name),
-        size: size,
-      ),
+      avatar: BandAvatar.forBand(band: band, size: size),
       label: band.name,
       textStyle: textStyle,
     );
-  }
-
-  static String _initial(String name) {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) return '?';
-    return trimmed.substring(0, 1).toUpperCase();
   }
 }
 
@@ -85,50 +76,6 @@ class _ChipRow extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _Avatar extends StatelessWidget {
-  const _Avatar({
-    required this.imageUrl,
-    required this.fallbackInitial,
-    required this.size,
-  });
-
-  final String? imageUrl;
-  final String fallbackInitial;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: CupertinoColors.systemBlue
-            .resolveFrom(context)
-            .withValues(alpha: 0.15),
-        image: imageUrl != null
-            ? DecorationImage(
-                image: NetworkImage(imageUrl!),
-                fit: BoxFit.cover,
-              )
-            : null,
-      ),
-      child: imageUrl != null
-          ? null
-          : Center(
-              child: Text(
-                fallbackInitial,
-                style: TextStyle(
-                  fontSize: size * 0.55,
-                  fontWeight: FontWeight.w600,
-                  color: CupertinoColors.systemBlue.resolveFrom(context),
-                ),
-              ),
-            ),
     );
   }
 }

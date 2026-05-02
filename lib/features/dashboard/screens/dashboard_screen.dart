@@ -8,9 +8,14 @@ import '../../../features/auth/providers/auth_provider.dart';
 import '../../../shared/providers/selected_band_provider.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/error_view.dart';
+import '../../auth/data/models/band_summary.dart';
 import '../../bookings/widgets/create_booking_sheet.dart';
 import '../../events/data/models/event_summary.dart';
+import '../providers/calendar_filter_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../widgets/calendar_event_marker.dart';
+import '../widgets/calendar_filter_button.dart';
+import '../widgets/calendar_filter_sheet.dart';
 import '../widgets/event_card.dart';
 import '../widgets/live_now_card.dart';
 
@@ -47,92 +52,113 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final dashboardAsync = ref.watch(dashboardProvider);
 
     return CupertinoPageScaffold(
-        child: CustomScrollView(
-        slivers: [
-          CupertinoSliverRefreshControl(
-            onRefresh: () => ref.read(dashboardProvider.notifier).refresh(),
-          ),
-          CupertinoSliverNavigationBar(
-            largeTitle: Text(bandName),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // "+" button — opens the band-picker sheet so the user can
-                // create a booking (real band or personal gig) without leaving
-                // the Dashboard.
-                CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: () async {
-                    await showCupertinoModalPopup<void>(
-                      context: context,
-                      builder: (sheetContext) => CreateBookingSheet(
-                        onBandSelected: (bandId) {
-                          Navigator.of(sheetContext).pop();
-                          context.push('/bookings/$bandId/new');
-                        },
-                      ),
-                    );
-                  },
-                  child: const Icon(CupertinoIcons.add),
-                ),
-                const SizedBox(width: 4),
-                // Avatar circle — tap to log out.
-                GestureDetector(
-                  onTap: () => _showLogoutDialog(context),
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: const BoxDecoration(
-                      color: CupertinoColors.systemBlue,
-                      shape: BoxShape.circle,
+      child: Stack(
+        children: [
+          CustomScrollView(
+            slivers: [
+              CupertinoSliverRefreshControl(
+                onRefresh: () => ref.read(dashboardProvider.notifier).refresh(),
+              ),
+              CupertinoSliverNavigationBar(
+                largeTitle: Text(bandName),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: () async {
+                        await showCupertinoModalPopup<void>(
+                          context: context,
+                          builder: (sheetContext) => CreateBookingSheet(
+                            onBandSelected: (bandId) {
+                              Navigator.of(sheetContext).pop();
+                              context.push('/bookings/$bandId/new');
+                            },
+                          ),
+                        );
+                      },
+                      child: const Icon(CupertinoIcons.add),
                     ),
-                    child: Center(
-                      child: Text(
-                        userName.isNotEmpty ? userName[0].toUpperCase() : '?',
-                        style: const TextStyle(
-                          color: CupertinoColors.white,
-                          fontWeight: FontWeight.bold,
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: () => _showLogoutDialog(context),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: const BoxDecoration(
+                          color: CupertinoColors.systemBlue,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            userName.isNotEmpty
+                                ? userName[0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                              color: CupertinoColors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
                     ),
+                  ],
+                ),
+              ),
+              dashboardAsync.when(
+                loading: () => const SliverFillRemaining(
+                  child: Center(child: CupertinoActivityIndicator()),
+                ),
+                error: (e, _) => SliverFillRemaining(
+                  child: ErrorView(
+                    message: ErrorView.friendlyMessage(e),
+                    onRetry: () =>
+                        ref.read(dashboardProvider.notifier).refresh(),
                   ),
                 ),
-              ],
-            ),
-          ),
-          dashboardAsync.when(
-            loading: () => const SliverFillRemaining(
-              child: Center(child: CupertinoActivityIndicator()),
-            ),
-            error: (e, _) => SliverFillRemaining(
-              child: ErrorView(
-                message: ErrorView.friendlyMessage(e),
-                onRetry: () =>
-                    ref.read(dashboardProvider.notifier).refresh(),
+                data: (state) => _DashboardContent(
+                  events: state.events,
+                  currentEvent: state.currentEvent,
+                  focusedDay: _focusedDay,
+                  selectedDay: _selectedDay,
+                  onDaySelected: (selected, focused) {
+                    setState(() {
+                      _selectedDay =
+                          isSameDay(_selectedDay, selected) ? null : selected;
+                      _focusedDay = focused;
+                    });
+                  },
+                  onPageChanged: (focused) {
+                    setState(() {
+                      _focusedDay = focused;
+                      _selectedDay = null;
+                    });
+                  },
+                ),
               ),
-            ),
-            data: (state) => _DashboardContent(
-              events: state.events,
-              currentEvent: state.currentEvent,
-              focusedDay: _focusedDay,
-              selectedDay: _selectedDay,
-              onDaySelected: (selected, focused) {
-                setState(() {
-                  _selectedDay =
-                      isSameDay(_selectedDay, selected) ? null : selected;
-                  _focusedDay = focused;
-                });
-              },
-              onPageChanged: (focused) {
-                setState(() {
-                  _focusedDay = focused;
-                  _selectedDay = null;
-                });
-              },
+            ],
+          ),
+          // Floating filter button — sits above the bottom tab bar.
+          Positioned(
+            right: 16,
+            bottom: 16 + MediaQuery.of(context).padding.bottom,
+            child: CalendarFilterButton(
+              onPressed: () => _openFilterSheet(context),
             ),
           ),
         ],
-        ),
+      ),
+    );
+  }
+
+  void _openFilterSheet(BuildContext context) {
+    final auth = ref.read(authProvider).value;
+    final bands = (auth is AuthAuthenticated)
+        ? auth.bands
+        : const <BandSummary>[];
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (_) => CalendarFilterSheet(bands: bands),
     );
   }
 
@@ -162,7 +188,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 }
 
-class _DashboardContent extends StatefulWidget {
+class _DashboardContent extends ConsumerStatefulWidget {
   const _DashboardContent({
     required this.events,
     required this.currentEvent,
@@ -180,11 +206,11 @@ class _DashboardContent extends StatefulWidget {
   final void Function(DateTime focusedDay) onPageChanged;
 
   @override
-  State<_DashboardContent> createState() => _DashboardContentState();
+  ConsumerState<_DashboardContent> createState() =>
+      _DashboardContentState();
 }
 
-class _DashboardContentState extends State<_DashboardContent> {
-  // +1 = forward (later month), -1 = backward (earlier month)
+class _DashboardContentState extends ConsumerState<_DashboardContent> {
   int _slideDirection = 1;
 
   @override
@@ -197,26 +223,40 @@ class _DashboardContentState extends State<_DashboardContent> {
     }
   }
 
-  List<EventSummary> get _filteredEvents {
+  DateTime _normalise(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
+
+  bool _isInCurrentRange(EventSummary event) {
+    final selectedDay = widget.selectedDay;
+    if (selectedDay != null) {
+      // When a day is selected, an event is "in range" if it falls on that
+      // day OR is the next-upcoming event. The latter requires sorting and is
+      // more expensive than worth it for the tiebreaker — fall back to the
+      // simpler "any event >= selectedDay" check, which is sufficient for the
+      // empty-state branching decision.
+      return !event.parsedDate.isBefore(selectedDay);
+    }
+    final focusedDay = widget.focusedDay;
+    final monthStart = DateTime(focusedDay.year, focusedDay.month, 1);
+    final monthEnd = DateTime(focusedDay.year, focusedDay.month + 1, 1);
+    return !event.parsedDate.isBefore(monthStart) &&
+        event.parsedDate.isBefore(monthEnd);
+  }
+
+  List<EventSummary> _filterByDayOrMonth(List<EventSummary> events) {
     final focusedDay = widget.focusedDay;
     final selectedDay = widget.selectedDay;
-    final events = widget.events;
     if (selectedDay != null) {
       final dayEvents =
           events.where((e) => isSameDay(e.parsedDate, selectedDay)).toList();
-
       if (dayEvents.isNotEmpty) return dayEvents;
-
       final later = events
           .where((e) => !e.parsedDate.isBefore(selectedDay))
           .toList()
         ..sort((a, b) => a.parsedDate.compareTo(b.parsedDate));
       return later.take(1).toList();
     }
-
     final monthStart = DateTime(focusedDay.year, focusedDay.month, 1);
     final monthEnd = DateTime(focusedDay.year, focusedDay.month + 1, 1);
-
     return events
         .where(
           (e) =>
@@ -227,29 +267,34 @@ class _DashboardContentState extends State<_DashboardContent> {
       ..sort((a, b) => a.parsedDate.compareTo(b.parsedDate));
   }
 
-  Set<DateTime> get _eventDays =>
-      widget.events.map((e) => _normalise(e.parsedDate)).toSet();
-
-  DateTime _normalise(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
-
-  List<Object> _getEventsForDay(DateTime day) =>
-      _eventDays.contains(_normalise(day)) ? [Object()] : [];
-
   @override
   Widget build(BuildContext context) {
-    final filtered = _filteredEvents;
+    final filterState = ref.watch(calendarFilterProvider);
+    final visibleEvents =
+        widget.events.where(filterState.isEventVisible).toList();
+
+    final eventsByDay = <DateTime, List<EventSummary>>{};
+    for (final e in visibleEvents) {
+      eventsByDay.putIfAbsent(_normalise(e.parsedDate), () => []).add(e);
+    }
+
+    final filtered = _filterByDayOrMonth(visibleEvents);
+    // `filterIsHidingEvents` is true when the filter is the reason the list is
+    // empty — i.e. there are events in the current range that are being hidden.
+    final filterIsHidingEvents = filterState.isActive &&
+        filtered.isEmpty &&
+        widget.events.any(_isInCurrentRange);
+
     final focusedDay = widget.focusedDay;
     final selectedDay = widget.selectedDay;
     final currentEvent = widget.currentEvent;
 
-    // Key by year+month so AnimatedSwitcher sees a new child on month change.
     final eventsKey = ValueKey(
-        '${focusedDay.year}-${focusedDay.month}-${selectedDay?.day ?? ''}');
+        '${focusedDay.year}-${focusedDay.month}-${selectedDay?.day ?? ''}-${filterState.activeCount}');
     final slideDir = _slideDirection;
 
     return SliverList(
       delegate: SliverChildListDelegate([
-        // ── Live Now banner — only shown when an event is in progress ──────
         if (currentEvent != null)
           LiveNowCard(
             event: currentEvent,
@@ -258,7 +303,7 @@ class _DashboardContentState extends State<_DashboardContent> {
         _CalendarSection(
           focusedDay: focusedDay,
           selectedDay: selectedDay,
-          getEventsForDay: _getEventsForDay,
+          eventsByDay: eventsByDay,
           onDaySelected: widget.onDaySelected,
           onPageChanged: widget.onPageChanged,
         ),
@@ -281,17 +326,13 @@ class _DashboardContentState extends State<_DashboardContent> {
             );
           },
           child: filtered.isEmpty
-              ? Padding(
+              ? _EmptyState(
                   key: eventsKey,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
-                  child: EmptyStateView(
-                    icon: CupertinoIcons.calendar,
-                    title: 'No events',
-                    subtitle: selectedDay != null
-                        ? 'Nothing on ${DateFormat('MMMM d').format(selectedDay)}.'
-                        : 'Nothing scheduled for ${DateFormat('MMMM').format(focusedDay)}.',
-                  ),
+                  selectedDay: selectedDay,
+                  focusedDay: focusedDay,
+                  filterIsHidingEvents: filterIsHidingEvents,
+                  onClearFilters: () =>
+                      ref.read(calendarFilterProvider.notifier).clear(),
                 )
               : _EventsList(
                   key: eventsKey,
@@ -299,7 +340,9 @@ class _DashboardContentState extends State<_DashboardContent> {
                   focusedDay: focusedDay,
                 ),
         ),
-        const SizedBox(height: 16),
+        // Extra bottom padding so the floating filter button doesn't cover
+        // the last event card.
+        const SizedBox(height: 80),
       ]),
     );
   }
@@ -321,16 +364,18 @@ class _CalendarSection extends StatelessWidget {
   const _CalendarSection({
     required this.focusedDay,
     required this.selectedDay,
-    required this.getEventsForDay,
+    required this.eventsByDay,
     required this.onDaySelected,
     this.onPageChanged,
   });
 
   final DateTime focusedDay;
   final DateTime? selectedDay;
-  final List<Object> Function(DateTime day) getEventsForDay;
+  final Map<DateTime, List<EventSummary>> eventsByDay;
   final void Function(DateTime selected, DateTime focused) onDaySelected;
   final void Function(DateTime focusedDay)? onPageChanged;
+
+  DateTime _normalise(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
   @override
   Widget build(BuildContext context) {
@@ -339,26 +384,34 @@ class _CalendarSection extends StatelessWidget {
       data: ThemeData(brightness: brightness),
       child: Material(
         color: CupertinoColors.systemBackground.resolveFrom(context),
-        child: TableCalendar<Object>(
+        child: TableCalendar<EventSummary>(
           firstDay: DateTime.now().subtract(const Duration(days: 365)),
           lastDay: DateTime.now().add(const Duration(days: 365)),
           focusedDay: focusedDay,
           selectedDayPredicate: (day) => isSameDay(selectedDay, day),
-          eventLoader: getEventsForDay,
+          eventLoader: (day) => eventsByDay[_normalise(day)] ?? const [],
           onDaySelected: onDaySelected,
           onPageChanged: onPageChanged,
+          rowHeight: 56,
           calendarFormat: CalendarFormat.month,
           availableCalendarFormats: const {CalendarFormat.month: 'Month'},
-          headerStyle:
-              const HeaderStyle(formatButtonVisible: false, titleCentered: true),
+          headerStyle: const HeaderStyle(
+              formatButtonVisible: false, titleCentered: true),
           calendarStyle: const CalendarStyle(
-            markerDecoration: BoxDecoration(
-                color: CupertinoColors.systemBlue, shape: BoxShape.circle),
             selectedDecoration: BoxDecoration(
                 color: CupertinoColors.systemBlue, shape: BoxShape.circle),
             todayDecoration: BoxDecoration(
                 color: CupertinoColors.systemBlue, shape: BoxShape.circle),
             todayTextStyle: TextStyle(color: CupertinoColors.white),
+          ),
+          calendarBuilders: CalendarBuilders<EventSummary>(
+            markerBuilder: (context, day, dayEvents) {
+              if (dayEvents.isEmpty) return null;
+              return Padding(
+                padding: const EdgeInsets.only(top: 28),
+                child: CalendarDayMarkers(events: dayEvents),
+              );
+            },
           ),
         ),
       ),
@@ -415,3 +468,52 @@ class _EventsList extends StatelessWidget {
   }
 }
 
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({
+    super.key,
+    required this.selectedDay,
+    required this.focusedDay,
+    required this.filterIsHidingEvents,
+    required this.onClearFilters,
+  });
+
+  final DateTime? selectedDay;
+  final DateTime focusedDay;
+  final bool filterIsHidingEvents;
+  final VoidCallback onClearFilters;
+
+  @override
+  Widget build(BuildContext context) {
+    if (filterIsHidingEvents) {
+      return Padding(
+        padding:
+            const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+        child: Column(
+          children: [
+            const EmptyStateView(
+              icon: CupertinoIcons.line_horizontal_3_decrease,
+              title: 'No events match your filters',
+              subtitle: '',
+            ),
+            const SizedBox(height: 12),
+            CupertinoButton.filled(
+              onPressed: onClearFilters,
+              child: const Text('Clear filters'),
+            ),
+          ],
+        ),
+      );
+    }
+    final selected = selectedDay;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+      child: EmptyStateView(
+        icon: CupertinoIcons.calendar,
+        title: 'No events',
+        subtitle: selected != null
+            ? 'Nothing on ${DateFormat('MMMM d').format(selected)}.'
+            : 'Nothing scheduled for ${DateFormat('MMMM').format(focusedDay)}.',
+      ),
+    );
+  }
+}

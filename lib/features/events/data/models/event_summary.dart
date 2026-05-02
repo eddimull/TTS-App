@@ -1,5 +1,13 @@
 import '../../../auth/data/models/band_summary.dart';
 
+String _normalizeEventSource(String? raw) {
+  // Backend emits both 'rehearsal' (completed/scheduled) and
+  // 'rehearsal_schedule' (virtual recurring) — collapse to one bucket so
+  // filtering and rendering only have to handle three values.
+  if (raw == 'rehearsal_schedule') return 'rehearsal';
+  return raw ?? 'band_event';
+}
+
 class EventSummary {
   const EventSummary({
     this.id,
@@ -57,7 +65,7 @@ class EventSummary {
       date: json['date'] as String,
       time: json['time'] as String?,
       eventType: json['event_type'] as String?,
-      eventSource: json['event_source'] as String? ?? 'band_event',
+      eventSource: _normalizeEventSource(json['event_source'] as String?),
       venueName: json['venue_name'] as String?,
       venueAddress: json['venue_address'] as String?,
       status: json['status'] as String?,

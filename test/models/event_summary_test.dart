@@ -91,6 +91,24 @@ void main() {
       expect(event.eventSource, 'band_event');
     });
 
+    test('normalizes rehearsal_schedule to rehearsal', () {
+      final event = EventSummary.fromJson({
+        'id': 10, 'key': 'rs001', 'title': 'Virtual Rehearsal',
+        'date': '2026-05-10', 'event_source': 'rehearsal_schedule',
+      });
+      expect(event.eventSource, 'rehearsal');
+      expect(event.isRehearsal, isTrue);
+    });
+
+    test('preserves rehearsal as rehearsal', () {
+      final event = EventSummary.fromJson({
+        'id': 11, 'key': 'rh001', 'title': 'Weekly Rehearsal',
+        'date': '2026-05-11', 'event_source': 'rehearsal',
+      });
+      expect(event.eventSource, 'rehearsal');
+      expect(event.isRehearsal, isTrue);
+    });
+
     test('test_equality_based_on_key', () {
       final a = EventSummary.fromJson({
         'id': 1, 'key': 'same-key', 'title': 'A', 'date': '2026-01-01',

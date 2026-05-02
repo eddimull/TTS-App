@@ -1,17 +1,18 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../auth/data/models/band_summary.dart';
 import '../providers/library_provider.dart';
 
 /// Full-screen modal form for creating a new chart.
 ///
-/// Pushed via `context.push('/library/new', extra: bandId)` from
+/// Pushed via `context.push('/library/new', extra: band)` from
 /// [LibraryScreen].  Pops with the newly created [Chart] on success so the
 /// caller can navigate into the detail screen if desired.
 class CreateChartScreen extends ConsumerStatefulWidget {
-  const CreateChartScreen({super.key, required this.bandId});
+  const CreateChartScreen({super.key, required this.band});
 
-  final int bandId;
+  final BandSummary band;
 
   @override
   ConsumerState<CreateChartScreen> createState() => _CreateChartScreenState();
@@ -53,8 +54,8 @@ class _CreateChartScreenState extends ConsumerState<CreateChartScreen> {
 
     try {
       final chart = await ref.read(libraryProvider.notifier).createChart(
-            widget.bandId,
-            title,
+            widget.band,
+            title: title,
             composer: _composerController.text.trim().isEmpty
                 ? null
                 : _composerController.text.trim(),

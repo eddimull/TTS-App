@@ -24,6 +24,7 @@ import '../../features/events/data/models/event_detail.dart';
 import '../../features/rehearsals/screens/rehearsal_detail_by_key_screen.dart';
 import '../../features/rehearsals/screens/rehearsal_detail_screen.dart';
 import '../../features/rehearsals/screens/rehearsals_screen.dart';
+import '../../features/auth/data/models/band_summary.dart';
 import '../../features/library/screens/chart_detail_screen.dart';
 import '../../features/library/screens/create_chart_screen.dart';
 import '../../features/library/screens/library_screen.dart';
@@ -347,7 +348,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/library/new',
         builder: (_, state) => CreateChartScreen(
-          bandId: state.extra as int,
+          band: state.extra as BandSummary,
         ),
       ),
       GoRoute(

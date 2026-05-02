@@ -51,6 +51,21 @@ void main() {
       expect(state.isEventVisible(eventWithoutBand), true);
     });
 
+    test('combines band and event-type filters with OR (either hides)', () {
+      const state = CalendarFilterState(
+        hiddenBandIds: {1},
+        hiddenEventTypes: {'rehearsal'},
+      );
+      // Hidden band, allowed type → hidden.
+      expect(state.isEventVisible(_event(bandId: 1, source: 'booking')), false);
+      // Allowed band, hidden type → hidden.
+      expect(state.isEventVisible(_event(bandId: 2, source: 'rehearsal')), false);
+      // Hidden band AND hidden type → hidden.
+      expect(state.isEventVisible(_event(bandId: 1, source: 'rehearsal')), false);
+      // Allowed band, allowed type → visible.
+      expect(state.isEventVisible(_event(bandId: 2, source: 'booking')), true);
+    });
+
     test('activeCount sums hidden bands + hidden types', () {
       const state = CalendarFilterState(
         hiddenBandIds: {1, 2},
@@ -101,6 +116,33 @@ void main() {
 
       notifier.clear();
       expect(container.read(calendarFilterProvider).isActive, false);
+    });
+  });
+
+  group('CalendarFilterState equality', () {
+    test('two states with same content compare equal and share hashCode', () {
+      const a = CalendarFilterState(
+        hiddenBandIds: {1, 2},
+        hiddenEventTypes: {'rehearsal'},
+      );
+      const b = CalendarFilterState(
+        hiddenBandIds: {1, 2},
+        hiddenEventTypes: {'rehearsal'},
+      );
+      expect(a, equals(b));
+      expect(a.hashCode, b.hashCode);
+    });
+
+    test('states with different bandIds are not equal', () {
+      const a = CalendarFilterState(hiddenBandIds: {1});
+      const b = CalendarFilterState(hiddenBandIds: {2});
+      expect(a, isNot(equals(b)));
+    });
+
+    test('states with different event types are not equal', () {
+      const a = CalendarFilterState(hiddenEventTypes: {'booking'});
+      const b = CalendarFilterState(hiddenEventTypes: {'rehearsal'});
+      expect(a, isNot(equals(b)));
     });
   });
 }

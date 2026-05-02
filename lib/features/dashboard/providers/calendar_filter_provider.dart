@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../events/data/models/event_summary.dart';
 
@@ -29,6 +30,20 @@ class CalendarFilterState {
     if (hiddenEventTypes.contains(event.eventSource)) return false;
     return true;
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CalendarFilterState &&
+          const SetEquality<int>().equals(hiddenBandIds, other.hiddenBandIds) &&
+          const SetEquality<String>()
+              .equals(hiddenEventTypes, other.hiddenEventTypes);
+
+  @override
+  int get hashCode => Object.hash(
+        const SetEquality<int>().hash(hiddenBandIds),
+        const SetEquality<String>().hash(hiddenEventTypes),
+      );
 
   CalendarFilterState copyWith({
     Set<int>? hiddenBandIds,

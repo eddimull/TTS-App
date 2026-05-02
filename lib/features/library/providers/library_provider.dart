@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../auth/data/models/band_summary.dart';
 import '../data/library_repository.dart';
 import '../data/models/chart.dart';
 
@@ -33,31 +34,36 @@ class LibraryState {
 class LibraryNotifier extends AsyncNotifier<LibraryState> {
   @override
   Future<LibraryState> build() async {
-    // Start with an empty state; callers invoke load() after selecting a band.
-    return const LibraryState();
+    final repo = ref.read(libraryRepositoryProvider);
+    final charts = await repo.getAllCharts();
+    return LibraryState(charts: charts);
   }
 
-  Future<void> load(int bandId) async {
+  /// Re-fetches the merged charts list. Used by pull-to-refresh.
+  Future<void> refresh() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repo = ref.read(libraryRepositoryProvider);
-      final charts = await repo.getCharts(bandId);
+      final charts = await repo.getAllCharts();
       return LibraryState(charts: charts);
     });
   }
 
-  /// Creates a new chart and inserts it into the state list sorted by title.
+  /// Creates a new chart for [band], optimistically inserting it (sorted) into
+  /// the merged list. The new chart is stamped with a [ChartBand] derived from
+  /// [band] so the row avatar and band filter both work without a full reload.
   Future<Chart> createChart(
-    int bandId,
-    String title, {
+    BandSummary band,
+    {
+    required String title,
     String? composer,
     String? description,
     double? price,
     bool isPublic = false,
   }) async {
     final repo = ref.read(libraryRepositoryProvider);
-    final newChart = await repo.createChart(
-      bandId,
+    final created = await repo.createChart(
+      band.id,
       title: title,
       composer: composer,
       description: description,
@@ -65,17 +71,34 @@ class LibraryNotifier extends AsyncNotifier<LibraryState> {
       isPublic: isPublic,
     );
 
-    // Merge into existing list and re-sort alphabetically.
+    final stamped = Chart(
+      id: created.id,
+      bandId: created.bandId,
+      title: created.title,
+      composer: created.composer,
+      description: created.description,
+      price: created.price,
+      isPublic: created.isPublic,
+      uploadsCount: created.uploadsCount,
+      uploads: created.uploads,
+      band: ChartBand(
+        id: band.id,
+        name: band.name,
+        isPersonal: band.isPersonal,
+        logoUrl: band.logoUrl,
+      ),
+    );
+
     final current = state.value ?? const LibraryState();
-    final updated = [...current.charts, newChart]
+    final updated = [...current.charts, stamped]
       ..sort(
           (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
     state = AsyncData(current.copyWith(charts: updated));
-    return newChart;
+    return stamped;
   }
 
-  /// Removes a chart from the state list and calls the delete API.
+  /// Removes a chart from local state and the server.
   Future<void> deleteChart(int bandId, int chartId) async {
     final repo = ref.read(libraryRepositoryProvider);
     await repo.deleteChart(bandId, chartId);
@@ -93,11 +116,6 @@ final libraryProvider =
 // ── Chart detail ──────────────────────────────────────────────────────────────
 
 /// Fetches a single [Chart] by band + chart ID.
-///
-/// Usage:
-/// ```dart
-/// final chart = ref.watch(chartDetailProvider((bandId: 42, chartId: 7)));
-/// ```
 final chartDetailProvider = FutureProvider.autoDispose
     .family<Chart, ({int bandId, int chartId})>((ref, args) async {
   final repo = ref.watch(libraryRepositoryProvider);
@@ -115,7 +133,7 @@ class ChartUploadState {
   });
 
   final bool isUploading;
-  final double progress; // 0.0 – 1.0
+  final double progress;
   final String? error;
   final ChartUpload? lastUploaded;
 

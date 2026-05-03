@@ -145,7 +145,23 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     }
     if (topMonth != null && topMonth != _selectedMonthKey) {
       setState(() => _selectedMonthKey = topMonth);
+      _ensureChipVisible(topMonth);
     }
+  }
+
+  /// Scrolls the horizontal month strip so the chip for [monthKey] is
+  /// visible. Safe to call from any state-mutation site — the chip lives
+  /// in its own ListView (not the booking list's scrollable), so this
+  /// only affects the strip's horizontal scroll.
+  void _ensureChipVisible(String monthKey) {
+    final chipCtx = _chipKeys[monthKey]?.currentContext;
+    if (chipCtx == null) return;
+    Scrollable.ensureVisible(
+      chipCtx,
+      alignment: 0.5,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
   }
 
   void _onMonthChipTap(String monthKey) {
@@ -158,6 +174,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
         curve: Curves.easeOut,
       );
     }
+    _ensureChipVisible(monthKey);
   }
 
   /// Called from the ref.listen on userBookingsProvider (or
@@ -184,6 +201,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       if (_itemScrollController.isAttached) {
         _itemScrollController.jumpTo(index: headerIndex);
       }
+      _ensureChipVisible(target);
     });
   }
 

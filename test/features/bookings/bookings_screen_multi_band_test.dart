@@ -72,6 +72,20 @@ void main() {
     final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
       ..httpClientAdapter = _StubAdapter((req) async {
         if (req.path == '/api/mobile/me/bookings') {
+          // The bookings screen now uses a windowed provider that requests
+          // a from/to range and may auto-load adjacent windows. Honor those
+          // params and return empty when the fixture dates fall outside
+          // the requested range, so loadEarlier / loadLater settle on
+          // reachedEarliest / reachedLatest instead of looping.
+          final from = req.queryParameters['from'] as String?;
+          final to = req.queryParameters['to'] as String?;
+          final fixtureDate = '${DateTime.now().year}-06-01';
+          if (from != null && to != null) {
+            if (from.compareTo(fixtureDate) > 0 ||
+                to.compareTo(fixtureDate) < 0) {
+              return _json(200, {'bookings': const []});
+            }
+          }
           return _json(200, {
             'bookings': [
               {

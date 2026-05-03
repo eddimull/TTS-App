@@ -14,7 +14,7 @@ import 'package:tts_bandmate/shared/widgets/status_chip.dart';
 import '../data/models/booking_status.dart';
 import '../data/models/booking_summary.dart';
 import '../providers/bookings_filter_provider.dart';
-import '../providers/bookings_provider.dart';
+import '../providers/bookings_window_provider.dart';
 import '../utils/booking_month_strip.dart';
 import '../utils/booking_search.dart';
 import '../widgets/bookings_bottom_bar.dart';
@@ -73,6 +73,11 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   // key to its chip index for chip-strip scrolling.
   List<String> _monthKeys = const [];
 
+  // Edge detection / scroll anchor (windowed loading).
+  int _renderedItemCount = 0;
+  List<_ListItem> _currentItems = const [];
+  ({int bookingId, double leadingEdge})? _scrollAnchor;
+
   @override
   void initState() {
     super.initState();
@@ -121,6 +126,22 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
 
   // ── Month strip / scrolling ─────────────────────────────────────────────────
 
+  // ── Sentinel index helpers (windowed loading) ──────────────────────────────
+
+  /// Number of spinner sentinel rows currently rendered above the real
+  /// items list. Either 0 or 1, mirroring `window.isLoadingEarlier`.
+  int get _topSentinels {
+    final w = ref.read(bookingsWindowProvider).value;
+    return (w?.isLoadingEarlier ?? false) ? 1 : 0;
+  }
+
+  /// Number of spinner sentinel rows currently rendered below the real
+  /// items list.
+  int get _bottomSentinels {
+    final w = ref.read(bookingsWindowProvider).value;
+    return (w?.isLoadingLater ?? false) ? 1 : 0;
+  }
+
   /// Called whenever the visible item set changes. Picks the month key
   /// of the topmost rendered _HeaderItem (by index) and updates the
   /// chip highlight if it changed.
@@ -129,30 +150,93 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     final positions = _itemPositionsListener.itemPositions.value;
     if (positions.isEmpty) return;
 
-    // Find the smallest index whose item is at least partially visible
-    // below the viewport's leading edge. Then walk back to find its
-    // enclosing month header (which may not itself be in the visible set).
-    final firstVisible = positions
-        .where((p) => p.itemTrailingEdge > 0)
-        .map((p) => p.index)
-        .fold<int?>(null, (a, b) => a == null || b < a ? b : a);
-    if (firstVisible == null) return;
+    final topSentinels = _topSentinels;
 
-    // Walk backward from firstVisible to find the most recent header.
-    // _monthHeaderIndex maps month-key -> header item index, so iterate
-    // its entries to find the largest header-index <= firstVisible.
-    String? topMonth;
-    int bestIdx = -1;
-    for (final entry in _monthHeaderIndex.entries) {
-      if (entry.value <= firstVisible && entry.value > bestIdx) {
-        bestIdx = entry.value;
-        topMonth = entry.key;
+    // Translate raw builder indices into data.items indices and drop the
+    // sentinels (negative indices, or indices beyond the real list).
+    final itemIndices = positions
+        .map((p) => p.index - topSentinels)
+        .where((i) => i >= 0 && i < _renderedItemCount)
+        .toList();
+
+    // ── Chip-highlight ──
+    if (itemIndices.isNotEmpty) {
+      final firstVisible =
+          itemIndices.fold<int>(itemIndices.first, (a, b) => a < b ? a : b);
+      String? topMonth;
+      int bestIdx = -1;
+      for (final entry in _monthHeaderIndex.entries) {
+        if (entry.value <= firstVisible && entry.value > bestIdx) {
+          bestIdx = entry.value;
+          topMonth = entry.key;
+        }
+      }
+      if (topMonth != null && topMonth != _selectedMonthKey) {
+        setState(() => _selectedMonthKey = topMonth);
+        _ensureChipVisible(topMonth);
       }
     }
-    if (topMonth != null && topMonth != _selectedMonthKey) {
-      setState(() => _selectedMonthKey = topMonth);
-      _ensureChipVisible(topMonth);
+
+    // ── Edge detection (auto-load) ──
+    final window = ref.read(bookingsWindowProvider).value;
+    if (window == null || _renderedItemCount == 0) return;
+    final notifier = ref.read(bookingsWindowProvider.notifier);
+
+    // Use raw positions for edge math (so the sentinel itself counts as
+    // "near the edge" — that's correct: if the spinner is on screen, we
+    // have already scrolled to the boundary).
+    final firstRaw =
+        positions.map((p) => p.index).reduce((a, b) => a < b ? a : b);
+    final lastRaw =
+        positions.map((p) => p.index).reduce((a, b) => a > b ? a : b);
+    final totalCount = _renderedItemCount + topSentinels + _bottomSentinels;
+
+    // Only auto-load when the list actually overflows the viewport. If the
+    // entire loaded slice is visible, there's no real "edge" to be near —
+    // firing loadEarlier/loadLater here would burn round-trips on every
+    // cold start of a small library.
+    final listOverflowsViewport = positions.length < totalCount;
+    if (!listOverflowsViewport) return;
+
+    if (firstRaw <= 10 &&
+        !window.reachedEarliest &&
+        !window.isLoadingEarlier) {
+      _captureScrollAnchor();
+      notifier.loadEarlier();
     }
+    if (lastRaw >= totalCount - 10 &&
+        !window.reachedLatest &&
+        !window.isLoadingLater) {
+      notifier.loadLater();
+    }
+  }
+
+  /// Captures the topmost visible `_CardItem`'s booking ID + leading edge
+  /// so the screen can restore scroll position after `loadEarlier`
+  /// prepends new items.
+  void _captureScrollAnchor() {
+    final positions = _itemPositionsListener.itemPositions.value;
+    if (positions.isEmpty) return;
+    final topSentinels = _topSentinels;
+
+    // Walk visible positions from top down; pick the first one whose
+    // data.items entry is a _CardItem.
+    final sorted = positions.toList()
+      ..sort((a, b) => a.index.compareTo(b.index));
+
+    for (final pos in sorted) {
+      final dataIdx = pos.index - topSentinels;
+      if (dataIdx < 0 || dataIdx >= _renderedItemCount) continue;
+      final item = _currentItems.elementAtOrNull(dataIdx);
+      if (item is _CardItem) {
+        _scrollAnchor = (
+          bookingId: item.booking.id,
+          leadingEdge: pos.itemLeadingEdge,
+        );
+        return;
+      }
+    }
+    // No card visible — leave anchor null.
   }
 
   /// Scrolls the horizontal month strip so the chip for [monthKey] is
@@ -177,7 +261,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     final index = _monthHeaderIndex[monthKey];
     if (index != null && _itemScrollController.isAttached) {
       _itemScrollController.scrollTo(
-        index: index,
+        index: index + _topSentinels,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
@@ -185,7 +269,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     _ensureChipVisible(monthKey);
   }
 
-  /// Called from the ref.listen on userBookingsProvider (or
+  /// Called from the ref.listen on bookingsWindowProvider (or
   /// bookingsFilterProvider) when fresh data arrives. Sets
   /// `_selectedMonthKey` to the month containing the nearest-upcoming
   /// booking and scrolls the list to it. Deduped by
@@ -207,7 +291,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       final headerIndex = _monthHeaderIndex[target];
       if (headerIndex == null) return;
       if (_itemScrollController.isAttached) {
-        _itemScrollController.jumpTo(index: headerIndex);
+        _itemScrollController.jumpTo(index: headerIndex + _topSentinels);
       }
       _ensureChipVisible(target);
     });
@@ -307,22 +391,24 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     final filter = ref.watch(bookingsFilterProvider);
 
     // Jump to nearest-upcoming booking whenever the data payload changes.
-    ref.listen<AsyncValue<List<BookingSummary>>>(userBookingsProvider,
+    ref.listen<AsyncValue<BookingsWindow>>(bookingsWindowProvider,
         (_, next) {
-      final data = next.value;
-      if (data == null) return;
-      _maybeJumpToNearest(_filteredSorted(data, ref.read(bookingsFilterProvider)));
+      final window = next.value;
+      if (window == null) return;
+      _maybeJumpToNearest(
+          _filteredSorted(window.bookings, ref.read(bookingsFilterProvider)));
     });
 
     // Also re-jump when the filter changes (since the filtered list may
     // shift the nearest upcoming).
     ref.listen<BookingsFilterState>(bookingsFilterProvider, (_, __) {
-      final data = ref.read(userBookingsProvider).value;
-      if (data == null) return;
-      _maybeJumpToNearest(_filteredSorted(data, ref.read(bookingsFilterProvider)));
+      final window = ref.read(bookingsWindowProvider).value;
+      if (window == null) return;
+      _maybeJumpToNearest(
+          _filteredSorted(window.bookings, ref.read(bookingsFilterProvider)));
     });
 
-    final bookingsAsync = ref.watch(userBookingsProvider);
+    final bookingsAsync = ref.watch(bookingsWindowProvider);
 
     return CupertinoPageScaffold(
       navigationBar: const CupertinoNavigationBar(
@@ -346,19 +432,42 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                         ),
                         error: (e, _) => ErrorView(
                           message: ErrorView.friendlyMessage(e),
-                          onRetry: () => ref.invalidate(userBookingsProvider),
+                          onRetry: () => ref.invalidate(bookingsWindowProvider),
                         ),
-                        data: (bookings) {
+                        data: (window) {
                           final data =
-                              _buildListData(bookings, filter, _query);
+                              _buildListData(window.bookings, filter, _query);
                           _monthHeaderIndex = data.monthHeaderIndex;
                           _monthKeys = data.monthKeys;
+                          _currentItems = data.items;
+                          _renderedItemCount = data.items.length;
 
                           if (!_initialJumpDone) {
                             _initialJumpDone = true;
                             WidgetsBinding.instance.addPostFrameCallback((_) {
                               if (!mounted) return;
                               _maybeJumpToNearest(data.visibleAfterFilter);
+                            });
+                          }
+
+                          // Restore scroll anchor after a prepend (loadEarlier).
+                          final anchor = _scrollAnchor;
+                          if (anchor != null) {
+                            _scrollAnchor = null;
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (!mounted) return;
+                              if (!_itemScrollController.isAttached) return;
+                              for (var i = 0; i < data.items.length; i++) {
+                                final item = data.items[i];
+                                if (item is _CardItem &&
+                                    item.booking.id == anchor.bookingId) {
+                                  _itemScrollController.jumpTo(
+                                    index: i + _topSentinels,
+                                    alignment: anchor.leadingEdge,
+                                  );
+                                  break;
+                                }
+                              }
                             });
                           }
 
@@ -372,7 +481,8 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                                   chipScrollController: _chipScrollController,
                                 ),
                               Expanded(
-                                child: _buildContent(context, ref, data, filter),
+                                child: _buildContent(context, ref, data, filter,
+                                    window: window),
                               ),
                             ],
                           );
@@ -403,8 +513,9 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       List<String> monthKeys,
       Map<String, int> monthHeaderIndex,
     }) data,
-    BookingsFilterState filter,
-  ) {
+    BookingsFilterState filter, {
+    required BookingsWindow window,
+  }) {
     // All bookings hidden by filter → dedicated empty state.
     if (data.visibleAfterFilter.isEmpty && filter.isActive) {
       return Stack(
@@ -458,11 +569,21 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                 ),
               )
             : ScrollablePositionedList.builder(
-                itemCount: data.items.length,
+                itemCount: data.items.length +
+                    (window.isLoadingEarlier ? 1 : 0) +
+                    (window.isLoadingLater ? 1 : 0),
                 itemScrollController: _itemScrollController,
                 itemPositionsListener: _itemPositionsListener,
                 itemBuilder: (context, index) {
-                  final item = data.items[index];
+                  final topSentinels = window.isLoadingEarlier ? 1 : 0;
+                  final dataIdx = index - topSentinels;
+                  if (dataIdx < 0) {
+                    return const _LoadingSentinel();
+                  }
+                  if (dataIdx >= data.items.length) {
+                    return const _LoadingSentinel();
+                  }
+                  final item = data.items[dataIdx];
                   return switch (item) {
                     _HeaderItem(:final label) => _MonthHeader(label: label),
                     _CardItem(:final booking) => _BookingCard(
@@ -654,4 +775,18 @@ class _BookingCard extends StatelessWidget {
           CupertinoColors.systemRed.resolveFrom(context),
         _ => CupertinoColors.systemFill.resolveFrom(context),
       };
+}
+
+class _LoadingSentinel extends StatelessWidget {
+  const _LoadingSentinel();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: CupertinoActivityIndicator(),
+      ),
+    );
+  }
 }

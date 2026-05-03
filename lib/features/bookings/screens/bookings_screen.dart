@@ -53,6 +53,8 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
 
   String? _selectedMonthKey;
   String? _lastJumpedFingerprint;
+  bool _initialJumpDone = false;
+  double _stripBottomY = 0;
 
   // Keys for vertical month-header widgets and horizontal chip widgets.
   // Owned by the screen so we can call Scrollable.ensureVisible on them.
@@ -151,7 +153,6 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   String? _findTopVisibleMonthKey() {
     // Threshold: anything whose top edge is within the visible viewport
     // and at-or-below the strip counts as "in view".
-    const stripBottom = BookingsMonthStrip.height + 8;
     String? lastAbove;
     for (final entry in _headerKeys.entries) {
       final ctx = entry.value.currentContext;
@@ -159,7 +160,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       final box = ctx.findRenderObject();
       if (box is! RenderBox || !box.hasSize) continue;
       final dy = box.localToGlobal(Offset.zero).dy;
-      if (dy >= stripBottom) {
+      if (dy >= _stripBottomY) {
         return lastAbove ?? entry.key;
       }
       lastAbove = entry.key;
@@ -309,6 +310,8 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
 
     final bookingsAsync = ref.watch(userBookingsProvider);
 
+    _stripBottomY = MediaQuery.of(context).padding.top + 44 + BookingsMonthStrip.height;
+
     return CupertinoPageScaffold(
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -355,6 +358,14 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                             (k, _) => !data.monthKeys.contains(k));
                         for (final k in data.monthKeys) {
                           _headerKeys.putIfAbsent(k, GlobalKey.new);
+                        }
+
+                        if (!_initialJumpDone) {
+                          _initialJumpDone = true;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted) return;
+                            _maybeJumpToNearest(data.visibleAfterFilter);
+                          });
                         }
 
                         return _buildContent(context, ref, data, filter);

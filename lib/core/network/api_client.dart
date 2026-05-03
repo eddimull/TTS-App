@@ -48,7 +48,7 @@ class ApiClient {
           }
 
           if (_bandId != null) {
-            options.headers['X-Band-ID'] = _bandId!;
+            options.headers['X-Band-ID'] = _bandId;
           }
 
           handler.next(options);

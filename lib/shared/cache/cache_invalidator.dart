@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/bookings/providers/bookings_provider.dart';
+import '../../features/bookings/providers/bookings_window_provider.dart';
 import '../../features/dashboard/providers/dashboard_provider.dart';
 import '../../features/events/providers/events_provider.dart';
 import '../../features/rehearsals/providers/rehearsals_provider.dart';
@@ -64,7 +65,7 @@ class CacheInvalidator {
     // Cheaper than enumerating every (status, year, upcomingOnly) tuple any
     // screen may have queried.
     _ref.invalidate(bandBookingsProvider);
-    _ref.invalidate(userBookingsProvider);
+    _ref.invalidate(bookingsWindowProvider);
     _ref.invalidate(bookingDateInfoProvider(bandId));
     _ref.invalidate(bookingDateStatusesProvider(bandId));
     // Dashboard surfaces upcoming events/charts derived from band data.

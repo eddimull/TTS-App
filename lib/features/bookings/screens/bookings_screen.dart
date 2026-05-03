@@ -55,17 +55,23 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   String? _lastJumpedFingerprint;
   bool _initialJumpDone = false;
 
-  // Keys for horizontal chip widgets in the month strip.
-  final Map<String, GlobalKey> _chipKeys = {};
-
-  // ScrollablePositionedList controllers.
+  // ScrollablePositionedList controllers for the booking list.
   final ItemScrollController _itemScrollController = ItemScrollController();
   final ItemPositionsListener _itemPositionsListener =
       ItemPositionsListener.create();
 
+  // Controller for the horizontal month-chip strip. Index-based scrolling
+  // works regardless of which chips are currently rendered (the strip is
+  // also a ScrollablePositionedList).
+  final ItemScrollController _chipScrollController = ItemScrollController();
+
   // Cached lookup: for each month key, the index of its _HeaderItem in
   // the current data.items list. Rebuilt every time data changes.
   Map<String, int> _monthHeaderIndex = {};
+
+  // Cached list of month keys in display order — used to map a month
+  // key to its chip index for chip-strip scrolling.
+  List<String> _monthKeys = const [];
 
   @override
   void initState() {
@@ -150,15 +156,17 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   }
 
   /// Scrolls the horizontal month strip so the chip for [monthKey] is
-  /// visible. Safe to call from any state-mutation site — the chip lives
-  /// in its own ListView (not the booking list's scrollable), so this
-  /// only affects the strip's horizontal scroll.
+  /// visible. Uses the chip strip's own ItemScrollController so it
+  /// works even when the chip hasn't been rendered yet (e.g. during the
+  /// initial jump-to-nearest, before the strip's lazy ListView has
+  /// built the off-screen chips).
   void _ensureChipVisible(String monthKey) {
-    final chipCtx = _chipKeys[monthKey]?.currentContext;
-    if (chipCtx == null) return;
-    Scrollable.ensureVisible(
-      chipCtx,
-      alignment: 0.5,
+    final index = _monthKeys.indexOf(monthKey);
+    if (index < 0) return;
+    if (!_chipScrollController.isAttached) return;
+    _chipScrollController.scrollTo(
+      index: index,
+      alignment: 0.4,
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOut,
     );
@@ -344,6 +352,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                           final data =
                               _buildListData(bookings, filter, _query);
                           _monthHeaderIndex = data.monthHeaderIndex;
+                          _monthKeys = data.monthKeys;
 
                           if (!_initialJumpDone) {
                             _initialJumpDone = true;
@@ -360,7 +369,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                                   monthKeys: data.monthKeys,
                                   selectedKey: _selectedMonthKey,
                                   onTap: _onMonthChipTap,
-                                  chipKeys: _chipKeys,
+                                  chipScrollController: _chipScrollController,
                                 ),
                               Expanded(
                                 child: _buildContent(context, ref, data, filter),

@@ -147,13 +147,12 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   }
 
   /// Returns the month key of the topmost rendered `_HeaderItem` whose
-  /// vertical position is below the strip. If none is currently below the
-  /// strip, returns the key of the last header above it (so the chip stays
-  /// "stuck" on the month the user is scrolled into).
+  /// header is visible in the list area (i.e. its top edge is at or below
+  /// the strip's bottom). If every rendered header has scrolled past the
+  /// strip, returns the last one seen — meaning the user is deep into the
+  /// most recent rendered month.
   String? _findTopVisibleMonthKey() {
-    // Threshold: anything whose top edge is within the visible viewport
-    // and at-or-below the strip counts as "in view".
-    String? lastAbove;
+    String? lastSeen;
     for (final entry in _headerKeys.entries) {
       final ctx = entry.value.currentContext;
       if (ctx == null) continue;
@@ -161,11 +160,15 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       if (box is! RenderBox || !box.hasSize) continue;
       final dy = box.localToGlobal(Offset.zero).dy;
       if (dy >= _stripBottomY) {
-        return lastAbove ?? entry.key;
+        // First header still visible in the list area = the month the user
+        // is currently looking at.
+        return entry.key;
       }
-      lastAbove = entry.key;
+      // Header has scrolled above the strip — remember it as the latest
+      // month the user has scrolled past.
+      lastSeen = entry.key;
     }
-    return lastAbove;
+    return lastSeen;
   }
 
   /// Called from the ref.listen on userBookingsProvider (or

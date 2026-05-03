@@ -53,6 +53,7 @@ class ApiEndpoints {
   static const String mobileSearch = '/api/mobile/search';
 
   static String mobileBandSongs(int bandId) => '/api/mobile/bands/$bandId/songs';
+  static const String mobileChartsAll = '/api/mobile/charts';
   static String mobileBandCharts(int bandId) => '/api/mobile/bands/$bandId/charts';
   static String mobileBandChart(int bandId, int chartId) =>
       '/api/mobile/bands/$bandId/charts/$chartId';

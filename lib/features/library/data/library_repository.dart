@@ -25,6 +25,23 @@ class LibraryRepository {
         .toList();
   }
 
+  /// Fetches every chart across all bands the authenticated user belongs to.
+  ///
+  /// Each [Chart] in the returned list has its [Chart.band] populated, which
+  /// the merged Library screen uses to render avatars and apply band filters.
+  Future<List<Chart>> getAllCharts() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileChartsAll,
+    );
+
+    final data = response.data!;
+    final rawList = data['charts'] as List<dynamic>;
+    return rawList
+        .cast<Map<String, dynamic>>()
+        .map(Chart.fromJson)
+        .toList();
+  }
+
   /// Fetches the full detail for a single chart identified by [chartId].
   Future<Chart> getChart(int bandId, int chartId) async {
     final response = await _dio.get<Map<String, dynamic>>(

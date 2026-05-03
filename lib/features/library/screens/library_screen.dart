@@ -24,7 +24,6 @@ const double _kSectionHeaderHeight = 20.0;
 const double _kSearchBarHeight = 56.0;
 const double _kIndexWidth = 16.0;
 const double _kAvatarSize = 38.0;
-const double _kFilterButtonTopInset = 8.0;
 
 const List<String> _kAlphabetLetters = [
   '#',
@@ -368,7 +367,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                                   ),
                                 ],
                               ),
-                              _filterButtonOverlay(),
+                              _filterButtonOverlay(context),
                             ],
                           );
                         }
@@ -422,7 +421,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                                     child: SizedBox(height: 16)),
                               ],
                             ),
-                            _filterButtonOverlay(),
+                            _filterButtonOverlay(context),
                           ]);
                         }
 
@@ -447,7 +446,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                                     _onIndexSelect(dy, height, groups),
                               ),
                             ),
-                            _filterButtonOverlay(),
+                            _filterButtonOverlay(context),
                             if (_overlayLetter != null)
                               Center(
                                 child: _LetterOverlay(letter: _overlayLetter!),
@@ -477,8 +476,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     );
   }
 
-  Widget _filterButtonOverlay() => Positioned(
-        top: _kFilterButtonTopInset,
+  Widget _filterButtonOverlay(BuildContext context) => Positioned(
+        top: MediaQuery.of(context).padding.top + 50,
         right: _kIndexWidth + 4,
         child: LibraryFilterButton(onPressed: _openFilterSheet),
       );

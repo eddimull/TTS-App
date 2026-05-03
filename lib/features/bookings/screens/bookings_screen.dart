@@ -170,12 +170,19 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     return lastSeen;
   }
 
+  // Approximate item heights for the lazy-list jump math. Headers are
+  // padding-24 + text-~16 + padding-6. Cards vary with optional band/venue
+  // rows but average around 120pt; over a few months the error is
+  // negligible because ensureVisible refines on the next frame once the
+  // target header is rendered.
+  static const double _approxHeaderHeight = 46.0;
+  static const double _approxCardHeight = 120.0;
+
   /// Called from the ref.listen on userBookingsProvider (or
   /// bookingsFilterProvider) when fresh data arrives. Sets
   /// `_selectedMonthKey` to the month containing the nearest-upcoming
-  /// booking and scrolls both the vertical list and horizontal strip to it.
-  /// Deduped by `_lastJumpedFingerprint` so we don't re-jump after the
-  /// user scrolls.
+  /// booking and scrolls the vertical list to it. Deduped by
+  /// `_lastJumpedFingerprint` so we don't re-jump after the user scrolls.
   void _maybeJumpToNearest(List<BookingSummary> sortedFiltered) {
     final fingerprint = _fingerprint(sortedFiltered);
     if (fingerprint == _lastJumpedFingerprint) return;
@@ -186,25 +193,66 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
         ? null
         : monthKeyFor(sortedFiltered[idx].parsedDate);
 
+    // Pre-compute the approximate scroll offset for the target month
+    // header. SliverList builds children lazily, so calling
+    // ensureVisible before the target is rendered is a no-op. We jumpTo
+    // an approximate offset first to force the target into the build
+    // window, then refine with ensureVisible on the next frame.
+    final approxOffset = (target == null)
+        ? 0.0
+        : _approximateOffsetForMonth(sortedFiltered, target);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       setState(() => _selectedMonthKey = target);
       if (target == null) return;
 
-      // Scroll the vertical list to the target month's header. We do NOT
-      // call ensureVisible on the chip here: the chip lives inside the
-      // pinned strip which is a descendant of the same CustomScrollView,
-      // so ensureVisible on the chip would scroll the vertical list back.
-      final headerCtx = _headerKeys[target]?.currentContext;
-      if (headerCtx != null) {
-        Scrollable.ensureVisible(
-          headerCtx,
-          alignment: 0.0,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOut,
-        );
+      if (_scrollController.hasClients) {
+        final maxOffset = _scrollController.position.maxScrollExtent;
+        _scrollController.jumpTo(approxOffset.clamp(0.0, maxOffset));
       }
+
+      // After the jumpTo, the target header should be in the build
+      // window. Refine on the next frame so the alignment is exact.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final headerCtx = _headerKeys[target]?.currentContext;
+        if (headerCtx != null) {
+          Scrollable.ensureVisible(
+            headerCtx,
+            alignment: 0.0,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+          );
+        }
+      });
     });
+  }
+
+  /// Estimates the vertical pixel offset of the [targetMonth]'s header by
+  /// walking [sortedFiltered] and summing approximate item heights for
+  /// each card and each month transition encountered before the target.
+  /// Returns 0 if [targetMonth] never appears.
+  double _approximateOffsetForMonth(
+    List<BookingSummary> sortedFiltered,
+    String targetMonth,
+  ) {
+    double offset = 0;
+    String? lastMonth;
+    for (final b in sortedFiltered) {
+      final mk = monthKeyFor(b.parsedDate);
+      if (mk != lastMonth) {
+        if (mk == targetMonth) {
+          // Stop right at the target's header — caller wants the header
+          // at the top of the viewport.
+          return offset;
+        }
+        offset += _approxHeaderHeight;
+        lastMonth = mk;
+      }
+      offset += _approxCardHeight;
+    }
+    return 0; // target month not found — don't jump.
   }
 
   /// Stable fingerprint for the booking list — used to dedupe initial

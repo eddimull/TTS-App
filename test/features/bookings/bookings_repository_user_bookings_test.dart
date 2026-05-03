@@ -114,5 +114,50 @@ void main() {
 
       expect(adapter.lastRequest!.queryParameters, equals({'year': '2026'}));
     });
+
+    test('passes from + to as YYYY-MM-DD query params', () async {
+      final adapter = _StubAdapter((req) async {
+        return _json(200, {'bookings': []});
+      });
+      final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+        ..httpClientAdapter = adapter;
+
+      final repo = BookingsRepository(dio);
+      await repo.getAllUserBookings(
+        from: DateTime(2026, 1, 1),
+        to: DateTime(2026, 6, 30),
+      );
+
+      expect(adapter.lastRequest!.queryParameters, equals({
+        'from': '2026-01-01',
+        'to': '2026-06-30',
+      }));
+    });
+
+    test('passes only from when to is null', () async {
+      final adapter = _StubAdapter((req) async {
+        return _json(200, {'bookings': []});
+      });
+      final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+        ..httpClientAdapter = adapter;
+
+      final repo = BookingsRepository(dio);
+      await repo.getAllUserBookings(from: DateTime(2026, 3, 15));
+
+      expect(adapter.lastRequest!.queryParameters, equals({'from': '2026-03-15'}));
+    });
+
+    test('passes only to when from is null', () async {
+      final adapter = _StubAdapter((req) async {
+        return _json(200, {'bookings': []});
+      });
+      final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+        ..httpClientAdapter = adapter;
+
+      final repo = BookingsRepository(dio);
+      await repo.getAllUserBookings(to: DateTime(2026, 12, 31));
+
+      expect(adapter.lastRequest!.queryParameters, equals({'to': '2026-12-31'}));
+    });
   });
 }

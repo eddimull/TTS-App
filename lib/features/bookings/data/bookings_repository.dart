@@ -47,15 +47,21 @@ class BookingsRepository {
   /// carry money/contract info subs shouldn't see).
   ///
   /// Used by the multi-band Bookings tab. Filters mirror [getBandBookings].
+  /// [from] / [to] narrow to a date range (inclusive); pass either or both
+  /// in `YYYY-MM-DD` form on the wire.
   Future<List<BookingSummary>> getAllUserBookings({
     String? status,
     bool upcomingOnly = false,
     int? year,
+    DateTime? from,
+    DateTime? to,
   }) async {
     final queryParams = <String, String>{};
     if (status != null) queryParams['status'] = status;
     if (upcomingOnly) queryParams['upcoming'] = '1';
     if (year != null) queryParams['year'] = year.toString();
+    if (from != null) queryParams['from'] = _formatDate(from);
+    if (to != null) queryParams['to'] = _formatDate(to);
 
     final response = await _dio.get<Map<String, dynamic>>(
       ApiEndpoints.mobileMeBookings,
@@ -68,6 +74,13 @@ class BookingsRepository {
         .cast<Map<String, dynamic>>()
         .map(BookingSummary.fromJson)
         .toList();
+  }
+
+  /// Formats [d] as `YYYY-MM-DD`. Time-of-day is dropped.
+  static String _formatDate(DateTime d) {
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return '${d.year}-$m-$day';
   }
 
   /// Fetches the full detail for the booking identified by [bookingId].

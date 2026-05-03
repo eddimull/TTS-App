@@ -48,13 +48,6 @@ final bandBookingsProvider = FutureProvider.family<List<BookingSummary>, BandBoo
   },
 );
 
-// ── User bookings (multi-band) ────────────────────────────────────────────────
-
-final userBookingsProvider = FutureProvider<List<BookingSummary>>((ref) {
-  final repo = ref.watch(bookingsRepositoryProvider);
-  return repo.getAllUserBookings();
-});
-
 // ── Booking detail (single) ───────────────────────────────────────────────────
 
 final bookingDetailProvider = FutureProvider.family<BookingDetail,

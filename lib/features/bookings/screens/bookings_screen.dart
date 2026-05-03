@@ -183,11 +183,11 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
         ? null
         : monthKeyFor(sortedFiltered[idx].parsedDate);
 
-    setState(() => _selectedMonthKey = target);
-
-    if (target == null) return;
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _selectedMonthKey = target);
+      if (target == null) return;
+
       final headerCtx = _headerKeys[target]?.currentContext;
       if (headerCtx != null) {
         Scrollable.ensureVisible(

@@ -60,47 +60,11 @@ void main() {
     ]);
     addTearDown(container.dispose);
 
-    final result = await container
-        .read(userBookingsProvider(const UserBookingsParams()).future);
+    final result = await container.read(userBookingsProvider.future);
 
     expect(adapter.lastRequest!.path, equals('/api/mobile/me/bookings'));
+    expect(adapter.lastRequest!.queryParameters, isEmpty);
     expect(result, hasLength(1));
     expect(result.first.band!.id, equals(10));
-  });
-
-  test('UserBookingsParams forwards status/upcoming/year as query params', () async {
-    final adapter = _StubAdapter((req) async {
-      return _json(200, {'bookings': []});
-    });
-    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
-      ..httpClientAdapter = adapter;
-
-    final container = ProviderContainer(overrides: [
-      bookingsRepositoryProvider.overrideWithValue(BookingsRepository(dio)),
-    ]);
-    addTearDown(container.dispose);
-
-    await container.read(userBookingsProvider(const UserBookingsParams(
-      status: 'confirmed',
-      upcomingOnly: true,
-      year: 2026,
-    )).future);
-
-    expect(adapter.lastRequest!.queryParameters, equals({
-      'status': 'confirmed',
-      'upcoming': '1',
-      'year': '2026',
-    }));
-  });
-
-  test('UserBookingsParams equality is value-based', () {
-    expect(
-      const UserBookingsParams(status: 'confirmed', year: 2026),
-      equals(const UserBookingsParams(status: 'confirmed', year: 2026)),
-    );
-    expect(
-      const UserBookingsParams(status: 'confirmed'),
-      isNot(equals(const UserBookingsParams(status: 'pending'))),
-    );
   });
 }

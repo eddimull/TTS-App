@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:tts_bandmate/features/auth/data/models/band_summary.dart';
 import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
 import 'package:tts_bandmate/shared/utils/time_format.dart';
@@ -47,30 +48,34 @@ class BookingsScreen extends ConsumerStatefulWidget {
 }
 
 class _BookingsScreenState extends ConsumerState<BookingsScreen> {
-  final _scrollController = ScrollController();
   final _searchController = TextEditingController();
   String _query = '';
 
   String? _selectedMonthKey;
   String? _lastJumpedFingerprint;
   bool _initialJumpDone = false;
-  double _stripBottomY = 0;
 
-  // Keys for vertical month-header widgets and horizontal chip widgets.
-  // Owned by the screen so we can call Scrollable.ensureVisible on them.
-  final Map<String, GlobalKey> _headerKeys = {};
+  // Keys for horizontal chip widgets in the month strip.
   final Map<String, GlobalKey> _chipKeys = {};
+
+  // ScrollablePositionedList controllers.
+  final ItemScrollController _itemScrollController = ItemScrollController();
+  final ItemPositionsListener _itemPositionsListener =
+      ItemPositionsListener.create();
+
+  // Cached lookup: for each month key, the index of its _HeaderItem in
+  // the current data.items list. Rebuilt every time data changes.
+  Map<String, int> _monthHeaderIndex = {};
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onVerticalScroll);
+    _itemPositionsListener.itemPositions.addListener(_onItemPositionsChange);
   }
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onVerticalScroll);
-    _scrollController.dispose();
+    _itemPositionsListener.itemPositions.removeListener(_onItemPositionsChange);
     _searchController.dispose();
     super.dispose();
   }
@@ -110,78 +115,55 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
 
   // ── Month strip / scrolling ─────────────────────────────────────────────────
 
+  /// Called whenever the visible item set changes. Picks the month key
+  /// of the topmost rendered _HeaderItem (by index) and updates the
+  /// chip highlight if it changed.
+  void _onItemPositionsChange() {
+    if (!mounted) return;
+    final positions = _itemPositionsListener.itemPositions.value;
+    if (positions.isEmpty) return;
+
+    // Find the smallest index whose item is at least partially visible
+    // below the viewport's leading edge. Then walk back to find its
+    // enclosing month header (which may not itself be in the visible set).
+    final firstVisible = positions
+        .where((p) => p.itemTrailingEdge > 0)
+        .map((p) => p.index)
+        .fold<int?>(null, (a, b) => a == null || b < a ? b : a);
+    if (firstVisible == null) return;
+
+    // Walk backward from firstVisible to find the most recent header.
+    // _monthHeaderIndex maps month-key -> header item index, so iterate
+    // its entries to find the largest header-index <= firstVisible.
+    String? topMonth;
+    int bestIdx = -1;
+    for (final entry in _monthHeaderIndex.entries) {
+      if (entry.value <= firstVisible && entry.value > bestIdx) {
+        bestIdx = entry.value;
+        topMonth = entry.key;
+      }
+    }
+    if (topMonth != null && topMonth != _selectedMonthKey) {
+      setState(() => _selectedMonthKey = topMonth);
+    }
+  }
+
   void _onMonthChipTap(String monthKey) {
     setState(() => _selectedMonthKey = monthKey);
-    final headerKey = _headerKeys[monthKey];
-    final ctx = headerKey?.currentContext;
-    if (ctx != null) {
-      Scrollable.ensureVisible(
-        ctx,
-        alignment: 0.0,
+    final index = _monthHeaderIndex[monthKey];
+    if (index != null && _itemScrollController.isAttached) {
+      _itemScrollController.scrollTo(
+        index: index,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
     }
   }
 
-  /// On vertical scroll, find the topmost visible `_HeaderItem` and update
-  /// `_selectedMonthKey` if it changed. Frame-aligned to avoid jank.
-  ///
-  /// Note: we do NOT call `Scrollable.ensureVisible` on the chip from here.
-  /// The chip lives inside the pinned month strip, which is itself a
-  /// descendant of the outer vertical CustomScrollView; `ensureVisible`
-  /// walks all ancestor scrollables and would scroll the vertical list
-  /// back to the top while trying to center the chip horizontally. The
-  /// chip highlight updates from the setState below; horizontal scrolling
-  /// of the strip is left to the user.
-  void _onVerticalScroll() {
-    if (!_scrollController.hasClients) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final topKey = _findTopVisibleMonthKey();
-      if (topKey != null && topKey != _selectedMonthKey) {
-        setState(() => _selectedMonthKey = topKey);
-      }
-    });
-  }
-
-  /// Returns the month key of the topmost rendered `_HeaderItem` whose
-  /// header is visible in the list area (i.e. its top edge is at or below
-  /// the strip's bottom). If every rendered header has scrolled past the
-  /// strip, returns the last one seen — meaning the user is deep into the
-  /// most recent rendered month.
-  String? _findTopVisibleMonthKey() {
-    String? lastSeen;
-    for (final entry in _headerKeys.entries) {
-      final ctx = entry.value.currentContext;
-      if (ctx == null) continue;
-      final box = ctx.findRenderObject();
-      if (box is! RenderBox || !box.hasSize) continue;
-      final dy = box.localToGlobal(Offset.zero).dy;
-      if (dy >= _stripBottomY) {
-        // First header still visible in the list area = the month the user
-        // is currently looking at.
-        return entry.key;
-      }
-      // Header has scrolled above the strip — remember it as the latest
-      // month the user has scrolled past.
-      lastSeen = entry.key;
-    }
-    return lastSeen;
-  }
-
-  // Approximate item heights for the lazy-list jump math. Headers are
-  // padding-24 + text-~16 + padding-6. Cards vary with optional band/venue
-  // rows but average around 120pt; over a few months the error is
-  // negligible because ensureVisible refines on the next frame once the
-  // target header is rendered.
-  static const double _approxHeaderHeight = 46.0;
-  static const double _approxCardHeight = 120.0;
-
   /// Called from the ref.listen on userBookingsProvider (or
   /// bookingsFilterProvider) when fresh data arrives. Sets
   /// `_selectedMonthKey` to the month containing the nearest-upcoming
-  /// booking and scrolls the vertical list to it. Deduped by
+  /// booking and scrolls the list to it. Deduped by
   /// `_lastJumpedFingerprint` so we don't re-jump after the user scrolls.
   void _maybeJumpToNearest(List<BookingSummary> sortedFiltered) {
     final fingerprint = _fingerprint(sortedFiltered);
@@ -193,66 +175,16 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
         ? null
         : monthKeyFor(sortedFiltered[idx].parsedDate);
 
-    // Pre-compute the approximate scroll offset for the target month
-    // header. SliverList builds children lazily, so calling
-    // ensureVisible before the target is rendered is a no-op. We jumpTo
-    // an approximate offset first to force the target into the build
-    // window, then refine with ensureVisible on the next frame.
-    final approxOffset = (target == null)
-        ? 0.0
-        : _approximateOffsetForMonth(sortedFiltered, target);
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       setState(() => _selectedMonthKey = target);
       if (target == null) return;
-
-      if (_scrollController.hasClients) {
-        final maxOffset = _scrollController.position.maxScrollExtent;
-        _scrollController.jumpTo(approxOffset.clamp(0.0, maxOffset));
+      final headerIndex = _monthHeaderIndex[target];
+      if (headerIndex == null) return;
+      if (_itemScrollController.isAttached) {
+        _itemScrollController.jumpTo(index: headerIndex);
       }
-
-      // After the jumpTo, the target header should be in the build
-      // window. Refine on the next frame so the alignment is exact.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final headerCtx = _headerKeys[target]?.currentContext;
-        if (headerCtx != null) {
-          Scrollable.ensureVisible(
-            headerCtx,
-            alignment: 0.0,
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOut,
-          );
-        }
-      });
     });
-  }
-
-  /// Estimates the vertical pixel offset of the [targetMonth]'s header by
-  /// walking [sortedFiltered] and summing approximate item heights for
-  /// each card and each month transition encountered before the target.
-  /// Returns 0 if [targetMonth] never appears.
-  double _approximateOffsetForMonth(
-    List<BookingSummary> sortedFiltered,
-    String targetMonth,
-  ) {
-    double offset = 0;
-    String? lastMonth;
-    for (final b in sortedFiltered) {
-      final mk = monthKeyFor(b.parsedDate);
-      if (mk != lastMonth) {
-        if (mk == targetMonth) {
-          // Stop right at the target's header — caller wants the header
-          // at the top of the viewport.
-          return offset;
-        }
-        offset += _approxHeaderHeight;
-        lastMonth = mk;
-      }
-      offset += _approxCardHeight;
-    }
-    return 0; // target month not found — don't jump.
   }
 
   /// Stable fingerprint for the booking list — used to dedupe initial
@@ -286,17 +218,19 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     }).toList();
   }
 
-  /// Returns `(visibleAfterFilter, items, monthKeys)`.
+  /// Returns `(visibleAfterFilter, items, monthKeys, monthHeaderIndex)`.
   ///   - visibleAfterFilter: filtered by status + hidden bands; sorted asc
   ///     by date. Used for "jump to nearest" and the month strip.
   ///   - items: visible-after-search list interleaved with month headers.
-  ///     Used to render the SliverList.
+  ///     Used to render the ScrollablePositionedList.
   ///   - monthKeys: chronological unique keys from visibleAfterFilter
   ///     (NOT the search-narrowed list — strip stays stable while typing).
+  ///   - monthHeaderIndex: maps month key -> index of its _HeaderItem in items.
   ({
     List<BookingSummary> visibleAfterFilter,
     List<_ListItem> items,
     List<String> monthKeys,
+    Map<String, int> monthHeaderIndex,
   }) _buildListData(
     List<BookingSummary> all,
     BookingsFilterState filter,
@@ -323,10 +257,20 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       }
       items.add(_CardItem(booking));
     }
+
+    final monthHeaderIndex = <String, int>{};
+    for (var i = 0; i < items.length; i++) {
+      final item = items[i];
+      if (item is _HeaderItem) {
+        monthHeaderIndex[item.monthKey] = i;
+      }
+    }
+
     return (
       visibleAfterFilter: afterFilter,
       items: items,
       monthKeys: monthKeys,
+      monthHeaderIndex: monthHeaderIndex,
     );
   }
 
@@ -337,7 +281,6 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     final filter = ref.watch(bookingsFilterProvider);
 
     // Jump to nearest-upcoming booking whenever the data payload changes.
-    // Listener fires post-frame, so it's safe to call setState here.
     ref.listen<AsyncValue<List<BookingSummary>>>(userBookingsProvider,
         (_, next) {
       final data = next.value;
@@ -355,78 +298,71 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
 
     final bookingsAsync = ref.watch(userBookingsProvider);
 
-    _stripBottomY = MediaQuery.of(context).padding.top + 44 + BookingsMonthStrip.height;
-
     return CupertinoPageScaffold(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final maxWidth =
-              constraints.maxWidth > 700 ? 700.0 : constraints.maxWidth;
-          return Center(
-            child: SizedBox(
-              width: maxWidth,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: bookingsAsync.when(
-                      loading: () => const CustomScrollView(
-                        slivers: [
-                          CupertinoSliverNavigationBar(
-                            largeTitle: Text('Bookings'),
-                          ),
-                          SliverFillRemaining(
-                            child:
-                                Center(child: CupertinoActivityIndicator()),
-                          ),
-                        ],
+      navigationBar: const CupertinoNavigationBar(
+        middle: Text('Bookings'),
+      ),
+      child: SafeArea(
+        top: false,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final maxWidth =
+                constraints.maxWidth > 700 ? 700.0 : constraints.maxWidth;
+            return Center(
+              child: SizedBox(
+                width: maxWidth,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: bookingsAsync.when(
+                        loading: () => const Center(
+                          child: CupertinoActivityIndicator(),
+                        ),
+                        error: (e, _) => ErrorView(
+                          message: ErrorView.friendlyMessage(e),
+                          onRetry: () => ref.invalidate(userBookingsProvider),
+                        ),
+                        data: (bookings) {
+                          final data =
+                              _buildListData(bookings, filter, _query);
+                          _monthHeaderIndex = data.monthHeaderIndex;
+
+                          if (!_initialJumpDone) {
+                            _initialJumpDone = true;
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (!mounted) return;
+                              _maybeJumpToNearest(data.visibleAfterFilter);
+                            });
+                          }
+
+                          return Column(
+                            children: [
+                              if (data.monthKeys.isNotEmpty)
+                                BookingsMonthStrip(
+                                  monthKeys: data.monthKeys,
+                                  selectedKey: _selectedMonthKey,
+                                  onTap: _onMonthChipTap,
+                                  chipKeys: _chipKeys,
+                                ),
+                              Expanded(
+                                child: _buildContent(context, ref, data, filter),
+                              ),
+                            ],
+                          );
+                        },
                       ),
-                      error: (e, _) => CustomScrollView(
-                        slivers: [
-                          const CupertinoSliverNavigationBar(
-                            largeTitle: Text('Bookings'),
-                          ),
-                          SliverFillRemaining(
-                            child: ErrorView(
-                              message: ErrorView.friendlyMessage(e),
-                              onRetry: () =>
-                                  ref.invalidate(userBookingsProvider),
-                            ),
-                          ),
-                        ],
-                      ),
-                      data: (bookings) {
-                        final data =
-                            _buildListData(bookings, filter, _query);
-
-                        // Refresh keys: drop stale ones, keep current.
-                        _headerKeys.removeWhere(
-                            (k, _) => !data.monthKeys.contains(k));
-                        for (final k in data.monthKeys) {
-                          _headerKeys.putIfAbsent(k, GlobalKey.new);
-                        }
-
-                        if (!_initialJumpDone) {
-                          _initialJumpDone = true;
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (!mounted) return;
-                            _maybeJumpToNearest(data.visibleAfterFilter);
-                          });
-                        }
-
-                        return _buildContent(context, ref, data, filter);
-                      },
                     ),
-                  ),
-                  BookingsBottomBar(
-                    controller: _searchController,
-                    onChanged: _onQueryChanged,
-                    onAdd: _onNewBooking,
-                  ),
-                ],
+                    BookingsBottomBar(
+                      controller: _searchController,
+                      onChanged: _onQueryChanged,
+                      onAdd: _onNewBooking,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -438,6 +374,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       List<BookingSummary> visibleAfterFilter,
       List<_ListItem> items,
       List<String> monthKeys,
+      Map<String, int> monthHeaderIndex,
     }) data,
     BookingsFilterState filter,
   ) {
@@ -445,36 +382,25 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     if (data.visibleAfterFilter.isEmpty && filter.isActive) {
       return Stack(
         children: [
-          CustomScrollView(
-            slivers: [
-              const CupertinoSliverNavigationBar(
-                largeTitle: Text('Bookings'),
-              ),
-              SliverFillRemaining(
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        CupertinoIcons.eye_slash,
-                        size: 48,
-                        color: CupertinoColors.secondaryLabel
-                            .resolveFrom(context),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text('No bookings match your filters'),
-                      const SizedBox(height: 12),
-                      CupertinoButton(
-                        onPressed: () => ref
-                            .read(bookingsFilterProvider.notifier)
-                            .clear(),
-                        child: const Text('Show all'),
-                      ),
-                    ],
-                  ),
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  CupertinoIcons.eye_slash,
+                  size: 48,
+                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                const Text('No bookings match your filters'),
+                const SizedBox(height: 12),
+                CupertinoButton(
+                  onPressed: () =>
+                      ref.read(bookingsFilterProvider.notifier).clear(),
+                  child: const Text('Show all'),
+                ),
+              ],
+            ),
           ),
           _filterButtonOverlay(context),
         ],
@@ -485,23 +411,10 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     if (data.visibleAfterFilter.isEmpty) {
       return Stack(
         children: [
-          CustomScrollView(
-            slivers: [
-              CupertinoSliverRefreshControl(
-                onRefresh: () async =>
-                    ref.invalidate(userBookingsProvider),
-              ),
-              const CupertinoSliverNavigationBar(
-                largeTitle: Text('Bookings'),
-              ),
-              const SliverFillRemaining(
-                child: EmptyStateView(
-                  icon: CupertinoIcons.calendar_badge_minus,
-                  title: 'No bookings yet',
-                  subtitle: 'Tap + below to add one.',
-                ),
-              ),
-            ],
+          const EmptyStateView(
+            icon: CupertinoIcons.calendar_badge_minus,
+            title: 'No bookings yet',
+            subtitle: 'Tap + below to add one.',
           ),
           _filterButtonOverlay(context),
         ],
@@ -510,65 +423,35 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
 
     return Stack(
       children: [
-        CustomScrollView(
-          controller: _scrollController,
-          slivers: [
-            CupertinoSliverRefreshControl(
-              onRefresh: () async =>
-                  ref.invalidate(userBookingsProvider),
-            ),
-            const CupertinoSliverNavigationBar(
-              largeTitle: Text('Bookings'),
-            ),
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: BookingsMonthStripDelegate(
-                monthKeys: data.monthKeys,
-                selectedKey: _selectedMonthKey,
-                onTap: _onMonthChipTap,
-                chipKeys: _chipKeys,
-              ),
-            ),
-            if (data.items.isEmpty)
-              const SliverFillRemaining(
-                child: Center(
-                  child: Text(
-                    'No matching bookings',
-                    style: TextStyle(
-                        color: CupertinoColors.secondaryLabel),
-                  ),
+        data.items.isEmpty
+            ? const Center(
+                child: Text(
+                  'No matching bookings',
+                  style: TextStyle(color: CupertinoColors.secondaryLabel),
                 ),
               )
-            else
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final item = data.items[index];
-                    return switch (item) {
-                      _HeaderItem(:final label, :final monthKey) =>
-                        _MonthHeader(
-                          key: _headerKeys[monthKey],
-                          label: label,
-                        ),
-                      _CardItem(:final booking) => _BookingCard(
-                          booking: booking,
-                          onTap: () {
-                            final bandId = booking.band?.id;
-                            if (bandId != null) {
-                              context.push(
-                                '/bookings/$bandId/${booking.id}',
-                              );
-                            }
-                          },
-                        ),
-                    };
-                  },
-                  childCount: data.items.length,
-                ),
+            : ScrollablePositionedList.builder(
+                itemCount: data.items.length,
+                itemScrollController: _itemScrollController,
+                itemPositionsListener: _itemPositionsListener,
+                itemBuilder: (context, index) {
+                  final item = data.items[index];
+                  return switch (item) {
+                    _HeaderItem(:final label) => _MonthHeader(label: label),
+                    _CardItem(:final booking) => _BookingCard(
+                        booking: booking,
+                        onTap: () {
+                          final bandId = booking.band?.id;
+                          if (bandId != null) {
+                            context.push(
+                              '/bookings/$bandId/${booking.id}',
+                            );
+                          }
+                        },
+                      ),
+                  };
+                },
               ),
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          ],
-        ),
         _filterButtonOverlay(context),
       ],
     );
@@ -587,7 +470,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
 // ── Month header ──────────────────────────────────────────────────────────────
 
 class _MonthHeader extends StatelessWidget {
-  const _MonthHeader({super.key, required this.label});
+  const _MonthHeader({required this.label});
 
   final String label;
 

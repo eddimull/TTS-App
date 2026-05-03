@@ -38,6 +38,7 @@ dependencies:
   share_plus: ^10.0.0
   map_launcher: ^4.5.0
   collection: any
+  scrollable_positioned_list: ^0.3.8
 
 dev_dependencies:
   flutter_test:

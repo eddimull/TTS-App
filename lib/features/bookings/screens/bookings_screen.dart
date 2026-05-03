@@ -126,22 +126,21 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
 
   /// On vertical scroll, find the topmost visible `_HeaderItem` and update
   /// `_selectedMonthKey` if it changed. Frame-aligned to avoid jank.
+  ///
+  /// Note: we do NOT call `Scrollable.ensureVisible` on the chip from here.
+  /// The chip lives inside the pinned month strip, which is itself a
+  /// descendant of the outer vertical CustomScrollView; `ensureVisible`
+  /// walks all ancestor scrollables and would scroll the vertical list
+  /// back to the top while trying to center the chip horizontally. The
+  /// chip highlight updates from the setState below; horizontal scrolling
+  /// of the strip is left to the user.
   void _onVerticalScroll() {
     if (!_scrollController.hasClients) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final topKey = _findTopVisibleMonthKey();
       if (topKey != null && topKey != _selectedMonthKey) {
         setState(() => _selectedMonthKey = topKey);
-        // Keep the chip visible.
-        final chipCtx = _chipKeys[topKey]?.currentContext;
-        if (chipCtx != null) {
-          Scrollable.ensureVisible(
-            chipCtx,
-            alignment: 0.5,
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-          );
-        }
       }
     });
   }
@@ -192,20 +191,15 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       setState(() => _selectedMonthKey = target);
       if (target == null) return;
 
+      // Scroll the vertical list to the target month's header. We do NOT
+      // call ensureVisible on the chip here: the chip lives inside the
+      // pinned strip which is a descendant of the same CustomScrollView,
+      // so ensureVisible on the chip would scroll the vertical list back.
       final headerCtx = _headerKeys[target]?.currentContext;
       if (headerCtx != null) {
         Scrollable.ensureVisible(
           headerCtx,
           alignment: 0.0,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOut,
-        );
-      }
-      final chipCtx = _chipKeys[target]?.currentContext;
-      if (chipCtx != null) {
-        Scrollable.ensureVisible(
-          chipCtx,
-          alignment: 0.5,
           duration: const Duration(milliseconds: 400),
           curve: Curves.easeOut,
         );

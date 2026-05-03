@@ -1,9 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/band_settings/data/band_settings_repository.dart';
-import 'package:tts_bandmate/features/band_settings/data/models/band_detail.dart';
-import 'package:tts_bandmate/features/band_settings/data/models/band_member.dart';
-import 'package:tts_bandmate/features/band_settings/data/models/band_invitation.dart';
 
 // Minimal Dio fake — returns pre-configured responses per path.
 class _FakeDio extends Fake implements Dio {

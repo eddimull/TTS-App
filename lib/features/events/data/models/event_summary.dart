@@ -15,6 +15,9 @@ class EventSummary {
     required this.title,
     required this.date,
     this.time,
+    this.startTime,
+    this.endTime,
+    this.price,
     this.eventType,
     required this.eventSource,
     this.venueName,
@@ -32,8 +35,19 @@ class EventSummary {
   /// ISO date string, e.g. "2026-04-15".
   final String date;
 
-  /// Time string, e.g. "19:00", or null.
+  /// Legacy single time field, e.g. "19:00", or null. Maintained for
+  /// backward compat with older payloads that haven't switched to the
+  /// split start_time / end_time shape. New code should read [startTime].
   final String? time;
+
+  /// Event start time, e.g. "19:00", or null.
+  final String? startTime;
+
+  /// Event end time, e.g. "22:00", or null.
+  final String? endTime;
+
+  /// Per-event price string, e.g. "1500.00", or null when not itemized.
+  final String? price;
 
   final String? eventType;
 
@@ -64,6 +78,9 @@ class EventSummary {
       title: json['title'] as String,
       date: json['date'] as String,
       time: json['time'] as String?,
+      startTime: (json['start_time'] as String?) ?? (json['time'] as String?),
+      endTime: json['end_time'] as String?,
+      price: json['price'] as String?,
       eventType: json['event_type'] as String?,
       eventSource: _normalizeEventSource(json['event_source'] as String?),
       venueName: json['venue_name'] as String?,

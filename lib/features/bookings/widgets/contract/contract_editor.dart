@@ -173,19 +173,20 @@ class _ContractEditorState extends ConsumerState<ContractEditor> {
     return CupertinoPageScaffold(
       resizeToAvoidBottomInset: true,
       navigationBar: CupertinoNavigationBar(
-        leading: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+        leading: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
           child: CupertinoSlidingSegmentedControl<bool>(
             groupValue: _editMode,
             onValueChanged: (v) => setState(() => _editMode = v ?? true),
             children: const {
               true: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Text('Edit'),
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                child: Text('Edit', style: TextStyle(fontSize: 13)),
               ),
               false: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Text('Preview'),
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                child: Text('Preview', style: TextStyle(fontSize: 13)),
               ),
             },
           ),

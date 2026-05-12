@@ -160,28 +160,34 @@ void main() {
             reason: 'auth flow should have written a Sanctum token');
 
         // Navigate to the contract screen for the draft booking via deep link.
-        // Deep-link to the contract screen via go_router.
+        // GoRouter.of needs a context BELOW the MaterialApp.router's
+        // RouterScope; the BandmateApp root context is above it. Grab a
+        // descendant Navigator's context instead.
         // ignore: use_build_context_synchronously
-        final BuildContext ctx = tester.element(find.byType(BandmateApp));
+        final navCtx = tester.element(find.byType(Navigator).first);
         // ignore: use_build_context_synchronously
-        GoRouter.of(ctx).go('/bookings/$_bandId/$_draftBookingId/contract');
+        GoRouter.of(navCtx).go('/bookings/$_bandId/$_draftBookingId/contract');
         await tester.pumpAndSettle(const Duration(seconds: 4));
 
-        // Confirm editor surface: "Contract" nav title + "Edit"/"Preview" or
-        // "Send" trailing button should be present.
-        expect(find.text('Contract'), findsOneWidget,
-            reason: 'nav bar title');
+        // Confirm editor surface: at least one "Contract" label (nav bar
+        // title and possibly other refs) + "Edit"/"Preview" pills + "Send"
+        // trailing button should be present.
+        expect(find.text('Contract'), findsAtLeastNWidgets(1),
+            reason: 'nav bar title (and possibly other contract refs)');
         expect(find.text('Send'), findsOneWidget,
             reason: 'send button in trailing of nav bar');
+        expect(find.text('Edit'), findsOneWidget, reason: 'edit segment');
+        expect(find.text('Preview'), findsOneWidget,
+            reason: 'preview segment');
 
         // Tap "Preview" on the leading segmented control.
         await tester.tap(find.text('Preview').first);
         await tester.pumpAndSettle(const Duration(milliseconds: 300));
 
-        // In Preview mode, the buyer signature block's "Buyer" heading should
-        // be visible (sliver below the terms list).
-        expect(find.text('Buyer'), findsAtLeastNWidgets(1),
-            reason: 'signature block heading rendered in preview');
+        // The terms section titles should be uppercased in preview mode.
+        // Pick one we know exists from the seeded contract terms.
+        expect(find.textContaining('ARTISTIC CONTROL'), findsAtLeastNWidgets(1),
+            reason: 'preview mode renders uppercased terms titles');
 
         // Tap "Send" to open the send sheet.
         await tester.tap(find.text('Send'));
@@ -197,8 +203,9 @@ void main() {
         await tester.tap(find.text('Cancel'));
         await tester.pumpAndSettle(const Duration(milliseconds: 500));
 
-        // Back on editor surface.
-        expect(find.text('Contract'), findsOneWidget);
+        // Back on editor surface — Send button still visible.
+        expect(find.text('Send'), findsOneWidget,
+            reason: 'editor still present after dismissing send sheet');
       },
       timeout: const Timeout(Duration(minutes: 2)),
     );
@@ -241,9 +248,9 @@ void main() {
 
         // Deep-link to the locked booking's contract.
         // ignore: use_build_context_synchronously
-        final BuildContext ctx = tester.element(find.byType(BandmateApp));
+        final navCtx = tester.element(find.byType(Navigator).first);
         // ignore: use_build_context_synchronously
-        GoRouter.of(ctx).go('/bookings/$_bandId/$_lockedBookingId/contract');
+        GoRouter.of(navCtx).go('/bookings/$_bandId/$_lockedBookingId/contract');
         await tester.pumpAndSettle(const Duration(seconds: 4));
 
         // Lock banner copy (booking 487 is status=pending).

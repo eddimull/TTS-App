@@ -37,6 +37,15 @@ class ContractFixedHeader extends StatelessWidget {
 
   int get _eventCount => booking.eventCount > 0 ? booking.eventCount : 1;
 
+  static bool _isAbsoluteHttpUrl(String? s) {
+    if (s == null || s.isEmpty) return false;
+    final uri = Uri.tryParse(s);
+    return uri != null &&
+        uri.hasScheme &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty;
+  }
+
   String get _overtimeRate {
     final price = _parsePrice();
     final duration = _parseDuration();
@@ -106,12 +115,17 @@ class ContractFixedHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (band.logo != null && band.logo!.isNotEmpty)
+          if (_isAbsoluteHttpUrl(band.logo))
             Center(
               child: ConstrainedBox(
                 constraints:
                     const BoxConstraints(maxWidth: 200, maxHeight: 100),
-                child: Image.network(band.logo!),
+                child: Image.network(
+                  band.logo!,
+                  // Broken/unreachable logo shouldn't crash the contract
+                  // screen — render nothing so the contract still renders.
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
               ),
             ),
           const SizedBox(height: 12),

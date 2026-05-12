@@ -1,3 +1,6 @@
+import 'package:dio/dio.dart';
+import '../../events/data/events_repository.dart';
+import '../data/bookings_repository.dart';
 import '../data/models/event_draft.dart';
 
 /// Sealed status of one sub-operation in a booking save.
@@ -144,5 +147,139 @@ class BookingSaveResult {
         yield MapEntry('EVT-${e.key}', e.value as OperationFailure);
       }
     }
+  }
+}
+
+/// Runs a [BookingFormSnapshot] sequentially against the server, capturing
+/// each sub-op's outcome. The booking PATCH runs first; if it fails the
+/// event sub-ops are skipped (they may depend on the booking-level diff).
+/// Event sub-ops run in the order: updates → creates → deletes; failures
+/// in one don't block subsequent ops in the chain.
+class BookingSaveOrchestrator {
+  BookingSaveOrchestrator({
+    required this.bookingsRepository,
+    required this.eventsRepository,
+  });
+
+  final BookingsRepository bookingsRepository;
+  final EventsRepository eventsRepository;
+
+  Future<BookingSaveResult> save({
+    required int bandId,
+    required int bookingId,
+    required BookingFormSnapshot snapshot,
+  }) async {
+    OperationStatus bookingPatch = const OperationPending();
+    final eventUpdates = <String, OperationStatus>{};
+    final eventCreates = <String, OperationStatus>{};
+    final eventDeletes = <int, OperationStatus>{};
+
+    // ── Booking PATCH ──────────────────────────────────────────────────
+    final patch = snapshot.bookingPatch;
+    if (patch == null || patch.isEmpty) {
+      // No booking-level diff — treat as success so allSucceeded works.
+      bookingPatch = const OperationSuccess();
+    } else {
+      try {
+        await bookingsRepository.updateBooking(
+          bandId,
+          bookingId,
+          name: patch.name,
+          eventTypeId: patch.eventTypeId,
+          price: patch.price,
+          status: patch.status,
+          contractOption: patch.contractOption,
+          notes: patch.notes,
+        );
+        bookingPatch = const OperationSuccess();
+      } catch (e) {
+        bookingPatch = OperationFailure(_messageFor(e));
+        // Skip every event sub-op; mark them all pending so the UI
+        // knows they haven't run.
+        for (final key in snapshot.eventUpdates.keys) {
+          eventUpdates[key] = const OperationPending();
+        }
+        for (final k in snapshot.eventCreates.keys) {
+          eventCreates[k] = const OperationPending();
+        }
+        for (final id in snapshot.eventDeletes) {
+          eventDeletes[id] = const OperationPending();
+        }
+        return BookingSaveResult(
+          bookingPatch: bookingPatch,
+          eventUpdates: eventUpdates,
+          eventCreates: eventCreates,
+          eventDeletes: eventDeletes,
+        );
+      }
+    }
+
+    // ── Event updates (PUT) ────────────────────────────────────────────
+    for (final entry in snapshot.eventUpdates.entries) {
+      try {
+        final draft = entry.value;
+        await eventsRepository.updateEvent(
+          entry.key,
+          title: draft.title,
+          date: draft.date,
+          startTime: draft.startTime,
+          endTime: draft.endTime,
+          venueName: draft.venueName,
+          venueAddress: draft.venueAddress,
+          price: draft.price,
+        );
+        eventUpdates[entry.key] = const OperationSuccess();
+      } catch (e) {
+        eventUpdates[entry.key] = OperationFailure(_messageFor(e));
+      }
+    }
+
+    // ── Event creates (POST) ───────────────────────────────────────────
+    for (final entry in snapshot.eventCreates.entries) {
+      try {
+        await bookingsRepository.addEventToBooking(
+          bandId,
+          bookingId,
+          entry.value,
+        );
+        eventCreates[entry.key] = const OperationSuccess();
+      } catch (e) {
+        eventCreates[entry.key] = OperationFailure(_messageFor(e));
+      }
+    }
+
+    // ── Event deletes (DELETE) ─────────────────────────────────────────
+    for (final id in snapshot.eventDeletes) {
+      try {
+        await bookingsRepository.removeEventFromBooking(
+          bandId,
+          bookingId,
+          id,
+        );
+        eventDeletes[id] = const OperationSuccess();
+      } catch (e) {
+        eventDeletes[id] = OperationFailure(_messageFor(e));
+      }
+    }
+
+    return BookingSaveResult(
+      bookingPatch: bookingPatch,
+      eventUpdates: eventUpdates,
+      eventCreates: eventCreates,
+      eventDeletes: eventDeletes,
+    );
+  }
+
+  /// Best-effort error message extraction for the inline UI.
+  String _messageFor(Object e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map<String, dynamic>) {
+        final msg = data['message'];
+        if (msg is String && msg.isNotEmpty) return msg;
+      }
+      return e.message ?? 'Network error';
+    }
+    return e.toString();
   }
 }

@@ -282,7 +282,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     final idx = findNearestUpcomingIndex(sortedFiltered, DateTime.now());
     final target = idx == null
         ? null
-        : monthKeyFor(sortedFiltered[idx].parsedDate);
+        : monthKeyFor(sortedFiltered[idx].parsedStartDate);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -315,7 +315,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     BookingsFilterState filter,
   ) {
     final sorted = [...all]
-      ..sort((a, b) => a.parsedDate.compareTo(b.parsedDate));
+      ..sort((a, b) => a.parsedStartDate.compareTo(b.parsedStartDate));
     return sorted.where((b) {
       if (filter.status != BookingStatus.all) {
         if ((b.status?.toLowerCase()) != filter.status.apiKey) return false;
@@ -357,10 +357,10 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     final items = <_ListItem>[];
     String? lastMonthKey;
     for (final booking in searched) {
-      final mk = monthKeyFor(booking.parsedDate);
+      final mk = monthKeyFor(booking.parsedStartDate);
       if (mk != lastMonthKey) {
         items.add(_HeaderItem(
-          DateFormat('MMMM yyyy').format(booking.parsedDate),
+          DateFormat('MMMM yyyy').format(booking.parsedStartDate),
           mk,
         ));
         lastMonthKey = mk;
@@ -683,6 +683,26 @@ class _BookingCard extends StatelessWidget {
                               ),
                             ),
                           ),
+                          if (booking.isMultiEvent) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: CupertinoColors.activeBlue
+                                    .withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '${booking.eventCount} events',
+                                style: const TextStyle(
+                                  color: CupertinoColors.activeBlue,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(width: 8),
                           if (booking.status != null)
                             StatusChip(status: booking.status!),
@@ -694,15 +714,15 @@ class _BookingCard extends StatelessWidget {
                       ],
                       const SizedBox(height: 4),
                       Text(
-                        _formatDate(booking),
+                        _subtitleFor(booking),
                         style: TextStyle(
                           fontSize: 13,
                           color: CupertinoColors.secondaryLabel
                               .resolveFrom(context),
                         ),
                       ),
-                      if (booking.venueName != null &&
-                          booking.venueName!.isNotEmpty) ...[
+                      if (booking.venueSummary != null &&
+                          booking.venueSummary!.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Row(
                           children: [
@@ -715,7 +735,7 @@ class _BookingCard extends StatelessWidget {
                             const SizedBox(width: 3),
                             Expanded(
                               child: Text(
-                                booking.venueName!,
+                                booking.venueSummary!,
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: CupertinoColors.secondaryLabel
@@ -757,13 +777,21 @@ class _BookingCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(BookingSummary booking) {
-    final dateStr =
-        DateFormat('EEE, MMM d, yyyy').format(booking.parsedDate);
-    if (booking.startTime != null && booking.startTime!.isNotEmpty) {
-      return '$dateStr at ${toAmPm(booking.startTime!)}';
+  String _subtitleFor(BookingSummary booking) {
+    if (booking.isMultiEvent) {
+      final venue = booking.venueSummary ?? 'Multiple venues';
+      return '${booking.eventCount} events · ${booking.displayDateRange} · $venue';
     }
-    return dateStr;
+    final primary = booking.events.isNotEmpty ? booking.events.first : null;
+    final dateStr = booking.displayDateRange;
+    final time = primary?.startTime;
+    final venue = booking.venueSummary ?? '';
+    final parts = <String>[
+      dateStr,
+      if (time != null && time.isNotEmpty) toAmPm(time),
+      if (venue.isNotEmpty) venue,
+    ];
+    return parts.join(' · ');
   }
 
   Color _accentColor(BuildContext context, String? status) =>

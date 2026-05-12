@@ -200,7 +200,7 @@ class BookingsWindowNotifier extends AsyncNotifier<BookingsWindow> {
 
   static List<BookingSummary> _sortAscByDate(List<BookingSummary> input) {
     final sorted = [...input];
-    sorted.sort((a, b) => a.parsedDate.compareTo(b.parsedDate));
+    sorted.sort((a, b) => a.parsedStartDate.compareTo(b.parsedStartDate));
     return sorted;
   }
 }

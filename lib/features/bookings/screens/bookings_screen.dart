@@ -5,11 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:tts_bandmate/features/auth/data/models/band_summary.dart';
 import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
-import 'package:tts_bandmate/shared/utils/time_format.dart';
-import 'package:tts_bandmate/shared/widgets/band_identity_chip.dart';
 import 'package:tts_bandmate/shared/widgets/empty_state_view.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
-import 'package:tts_bandmate/shared/widgets/status_chip.dart';
 
 import '../data/models/booking_status.dart';
 import '../data/models/booking_summary.dart';
@@ -17,6 +14,7 @@ import '../providers/bookings_filter_provider.dart';
 import '../providers/bookings_window_provider.dart';
 import '../utils/booking_month_strip.dart';
 import '../utils/booking_search.dart';
+import '../widgets/booking_list_card.dart';
 import '../widgets/bookings_bottom_bar.dart';
 import '../widgets/bookings_filter_button.dart';
 import '../widgets/bookings_filter_sheet.dart';
@@ -282,7 +280,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     final idx = findNearestUpcomingIndex(sortedFiltered, DateTime.now());
     final target = idx == null
         ? null
-        : monthKeyFor(sortedFiltered[idx].parsedDate);
+        : monthKeyFor(sortedFiltered[idx].parsedStartDate);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -315,7 +313,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     BookingsFilterState filter,
   ) {
     final sorted = [...all]
-      ..sort((a, b) => a.parsedDate.compareTo(b.parsedDate));
+      ..sort((a, b) => a.parsedStartDate.compareTo(b.parsedStartDate));
     return sorted.where((b) {
       if (filter.status != BookingStatus.all) {
         if ((b.status?.toLowerCase()) != filter.status.apiKey) return false;
@@ -357,10 +355,10 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     final items = <_ListItem>[];
     String? lastMonthKey;
     for (final booking in searched) {
-      final mk = monthKeyFor(booking.parsedDate);
+      final mk = monthKeyFor(booking.parsedStartDate);
       if (mk != lastMonthKey) {
         items.add(_HeaderItem(
-          DateFormat('MMMM yyyy').format(booking.parsedDate),
+          DateFormat('MMMM yyyy').format(booking.parsedStartDate),
           mk,
         ));
         lastMonthKey = mk;
@@ -586,7 +584,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                   final item = data.items[dataIdx];
                   return switch (item) {
                     _HeaderItem(:final label) => _MonthHeader(label: label),
-                    _CardItem(:final booking) => _BookingCard(
+                    _CardItem(:final booking) => BookingListCard(
                         booking: booking,
                         onTap: () {
                           final bandId = booking.band?.id;
@@ -637,144 +635,6 @@ class _MonthHeader extends StatelessWidget {
       ),
     );
   }
-}
-
-// ── Booking card ──────────────────────────────────────────────────────────────
-
-class _BookingCard extends StatelessWidget {
-  const _BookingCard({required this.booking, this.onTap});
-
-  final BookingSummary booking;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final accentColor = _accentColor(context, booking.status);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-        decoration: BoxDecoration(
-          color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(width: 3, color: accentColor),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              booking.name,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          if (booking.status != null)
-                            StatusChip(status: booking.status!),
-                        ],
-                      ),
-                      if (booking.band != null) ...[
-                        const SizedBox(height: 4),
-                        BandIdentityChip(band: booking.band!),
-                      ],
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatDate(booking),
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context),
-                        ),
-                      ),
-                      if (booking.venueName != null &&
-                          booking.venueName!.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Icon(
-                              CupertinoIcons.location,
-                              size: 11,
-                              color: CupertinoColors.tertiaryLabel
-                                  .resolveFrom(context),
-                            ),
-                            const SizedBox(width: 3),
-                            Expanded(
-                              child: Text(
-                                booking.venueName!,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: CupertinoColors.secondaryLabel
-                                      .resolveFrom(context),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                      const SizedBox(height: 5),
-                      Text(
-                        booking.displayPrice,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: CupertinoColors.systemBlue
-                              .resolveFrom(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: Icon(
-                  CupertinoIcons.chevron_right,
-                  size: 14,
-                  color: CupertinoColors.tertiaryLabel.resolveFrom(context),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(BookingSummary booking) {
-    final dateStr =
-        DateFormat('EEE, MMM d, yyyy').format(booking.parsedDate);
-    if (booking.startTime != null && booking.startTime!.isNotEmpty) {
-      return '$dateStr at ${toAmPm(booking.startTime!)}';
-    }
-    return dateStr;
-  }
-
-  Color _accentColor(BuildContext context, String? status) =>
-      switch (status?.toLowerCase()) {
-        'confirmed' => CupertinoColors.systemGreen.resolveFrom(context),
-        'pending' => CupertinoColors.systemOrange.resolveFrom(context),
-        'draft' => CupertinoColors.systemBlue.resolveFrom(context),
-        'cancelled' || 'canceled' =>
-          CupertinoColors.systemRed.resolveFrom(context),
-        _ => CupertinoColors.systemFill.resolveFrom(context),
-      };
 }
 
 class _LoadingSentinel extends StatelessWidget {

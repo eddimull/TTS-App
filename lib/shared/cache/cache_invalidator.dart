@@ -60,6 +60,16 @@ class CacheInvalidator {
     _ref.invalidate(contactLibraryProvider);
   }
 
+  /// Call after adding, removing, or updating an event under a booking.
+  /// Refreshes the booking's detail cache and the band's bookings list
+  /// (the list subtitle / event count depend on the events).
+  void onBookingEventsChanged({required int bandId, required int bookingId}) {
+    _ref.invalidate(
+      bookingDetailProvider((bandId: bandId, bookingId: bookingId)),
+    );
+    _invalidateBookingCollections(bandId);
+  }
+
   void _invalidateBookingCollections(int bandId) {
     // Family-root invalidation — drops every cached parameterization.
     // Cheaper than enumerating every (status, year, upcomingOnly) tuple any

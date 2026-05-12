@@ -48,7 +48,8 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
   late final TextEditingController _attire;
 
   late DateTime _date;
-  String? _time; // "HH:mm" or null
+  String? _startTime; // "HH:mm" or null
+  String? _endTime;   // "HH:mm" or null
 
   late bool? _isPublic;
   late bool? _outside;
@@ -79,7 +80,8 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
   late String _initNotes;
   late String _initAttire;
   late DateTime _initDate;
-  String? _initTime;
+  String? _initStartTime;
+  String? _initEndTime;
   bool? _initIsPublic;
   bool? _initOutside;
   bool? _initBacklineProvided;
@@ -104,7 +106,8 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     _notes = TextEditingController(text: _stripHtml(e.notes ?? ''));
     _attire = TextEditingController(text: e.attire ?? '');
     _date = e.parsedDate;
-    _time = e.time;
+    _startTime = e.startTime;
+    _endTime = e.endTime;
     _isPublic = e.isPublic;
     _outside = e.outside;
     _backlineProvided = e.backlineProvided;
@@ -148,7 +151,8 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     _initNotes = _notes.text;
     _initAttire = _attire.text;
     _initDate = _date;
-    _initTime = _time;
+    _initStartTime = _startTime;
+    _initEndTime = _endTime;
     _initIsPublic = _isPublic;
     _initOutside = _outside;
     _initBacklineProvided = _backlineProvided;
@@ -209,7 +213,8 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     if (_notes.text != _initNotes) return true;
     if (_attire.text != _initAttire) return true;
     if (_date != _initDate) return true;
-    if (_time != _initTime) return true;
+    if (_startTime != _initStartTime) return true;
+    if (_endTime != _initEndTime) return true;
     if (_isPublic != _initIsPublic) return true;
     if (_outside != _initOutside) return true;
     if (_backlineProvided != _initBacklineProvided) return true;
@@ -265,49 +270,22 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
       _error = null;
     });
 
-    final payload = <String, dynamic>{
-      'title': _title.text.trim(),
-      'date': '${_date.year.toString().padLeft(4, '0')}-'
-          '${_date.month.toString().padLeft(2, '0')}-'
-          '${_date.day.toString().padLeft(2, '0')}',
-      'venue_name': _venueName.text.trim(),
-      'venue_address': _venueAddress.text.trim(),
-      'notes': _notes.text.trim(),
-      'attire': _attire.text.trim(),
-    };
-
-    if (_time != null) payload['time'] = _time;
-    if (_isPublic != null) payload['is_public'] = _isPublic;
-    if (_outside != null) payload['outside'] = _outside;
-    if (_backlineProvided != null) payload['backline_provided'] = _backlineProvided;
-    if (_productionNeeded != null) payload['production_needed'] = _productionNeeded;
-
-    // Timeline
-    payload['timeline'] = _timeline
-        .map((e) => {'title': e.title, 'time': e.time})
-        .toList();
-
-    // Wedding
-    if (_weddingDances != null) {
-      payload['wedding'] = {
-        'onsite': _weddingOnsite,
-        'dances': _weddingDances!
-            .map((d) => {'title': d.title, 'data': d.data})
-            .toList(),
-      };
-    }
-
-    // Lodging
-    payload['lodging'] = [
-      {'type': 'checkbox', 'title': 'Provided', 'data': _lodgingProvided},
-      {'type': 'text', 'title': 'location', 'data': _lodgingLocation.text.trim().isEmpty ? 'TBD' : _lodgingLocation.text.trim()},
-      {'type': 'text', 'title': 'check_in', 'data': _lodgingCheckIn.text.trim().isEmpty ? 'TBD' : _lodgingCheckIn.text.trim()},
-      {'type': 'text', 'title': 'check_out', 'data': _lodgingCheckOut.text.trim().isEmpty ? 'TBD' : _lodgingCheckOut.text.trim()},
-    ];
+    final dateStr = '${_date.year.toString().padLeft(4, '0')}-'
+        '${_date.month.toString().padLeft(2, '0')}-'
+        '${_date.day.toString().padLeft(2, '0')}';
 
     try {
       final repo = ref.read(eventsRepositoryProvider);
-      await repo.updateEvent(widget.event.key, payload);
+      await repo.updateEvent(
+        widget.event.key,
+        title: _title.text.trim().isEmpty ? null : _title.text.trim(),
+        date: dateStr,
+        startTime: _startTime,
+        endTime: _endTime,
+        venueName: _venueName.text.trim().isEmpty ? null : _venueName.text.trim(),
+        venueAddress: _venueAddress.text.trim().isEmpty ? null : _venueAddress.text.trim(),
+        notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+      );
       ref
           .read(cacheInvalidatorProvider)
           .onEventChanged(eventKey: widget.event.key);
@@ -360,17 +338,40 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     );
   }
 
-  Future<void> _pickTime() async {
+  Future<void> _pickStartTime() async {
+    await _pickTimePicker(
+      current: _startTime,
+      defaultHour: 19,
+      onClear: () => setState(() => _startTime = null),
+      onPick: (hhmm) => setState(() => _startTime = hhmm),
+    );
+  }
+
+  Future<void> _pickEndTime() async {
+    await _pickTimePicker(
+      current: _endTime,
+      defaultHour: 22,
+      onClear: () => setState(() => _endTime = null),
+      onPick: (hhmm) => setState(() => _endTime = hhmm),
+    );
+  }
+
+  Future<void> _pickTimePicker({
+    required String? current,
+    required int defaultHour,
+    required VoidCallback onClear,
+    required void Function(String hhmm) onPick,
+  }) async {
     DateTime initial;
-    if (_time != null) {
+    if (current != null) {
       try {
-        final parts = _time!.split(':');
+        final parts = current.split(':');
         initial = DateTime(2000, 1, 1, int.parse(parts[0]), int.parse(parts[1]));
       } catch (_) {
-        initial = DateTime(2000, 1, 1, 19, 0);
+        initial = DateTime(2000, 1, 1, defaultHour, 0);
       }
     } else {
-      initial = DateTime(2000, 1, 1, 19, 0);
+      initial = DateTime(2000, 1, 1, defaultHour, 0);
     }
 
     DateTime picked = initial;
@@ -387,16 +388,17 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                 CupertinoButton(
                   child: const Text('Clear'),
                   onPressed: () {
-                    setState(() => _time = null);
+                    onClear();
                     Navigator.pop(context);
                   },
                 ),
                 CupertinoButton(
                   child: const Text('Done'),
                   onPressed: () {
-                    setState(() => _time =
-                        '${picked.hour.toString().padLeft(2, '0')}:'
-                        '${picked.minute.toString().padLeft(2, '0')}');
+                    onPick(
+                      '${picked.hour.toString().padLeft(2, '0')}:'
+                      '${picked.minute.toString().padLeft(2, '0')}',
+                    );
                     Navigator.pop(context);
                   },
                 ),
@@ -769,14 +771,14 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
   }
 
   /// Builds a display-only sorted list that merges the pinned Show Time entry
-  /// (derived from [widget.event.time]) with the editable [_timeline] entries.
+  /// (derived from [_startTime]) with the editable [_timeline] entries.
   ///
   /// Each record carries whether it is the pinned show-time row and, for
   /// editable entries, the index into [_timeline] so tap/delete can target
   /// the correct entry.
   List<({bool isShowTime, _TimelineEntry entry, int? timelineIndex})>
       _buildDisplayEntries() {
-    final showTime = widget.event.time;
+    final showTime = _startTime;
 
     // Build the editable entries list with their original indices.
     final editable = <({bool isShowTime, _TimelineEntry entry, int? timelineIndex})>[
@@ -1293,6 +1295,18 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
               onTap: _pickDate,
               value: _formatDate(_date),
             ),
+            _Divider(),
+            _LabeledRow(
+              label: 'Start Time',
+              onTap: _pickStartTime,
+              value: _startTime ?? 'Not set',
+            ),
+            _Divider(),
+            _LabeledRow(
+              label: 'End Time',
+              onTap: _pickEndTime,
+              value: _endTime ?? 'Not set',
+            ),
           ]),
 
           const SizedBox(height: 20),
@@ -1550,7 +1564,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                       return GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: isPin
-                            ? _pickTime
+                            ? _pickStartTime
                             : () => _editTimelineEntry(rec.timelineIndex!),
                         child: Padding(
                           padding: const EdgeInsets.only(top: 16, left: 12, bottom: 16),

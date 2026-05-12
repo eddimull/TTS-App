@@ -22,6 +22,14 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/bookings/$id';
   static String mobileCancelBooking(int bandId, int id) =>
       '/api/mobile/bands/$bandId/bookings/$id/cancel';
+
+  /// POST: create a new event under a booking.
+  static String mobileBookingEvents(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/events';
+
+  /// PUT / DELETE: update or remove an existing event under a booking.
+  static String mobileBookingEvent(int bandId, int bookingId, int eventId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/events/$eventId';
   static String mobileBandContacts(int bandId) =>
       '/api/mobile/bands/$bandId/contacts';
   static String mobileBookingContacts(int bandId, int bookingId) =>

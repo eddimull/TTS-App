@@ -258,8 +258,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/events/:key',
-        builder: (_, state) =>
-            EventDetailScreen(eventKey: state.pathParameters['key']!),
+        builder: (_, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return EventDetailScreen(
+            eventKey: state.pathParameters['key']!,
+            parentBookingName: extra?['parentBookingName'] as String?,
+            parentBookingId: extra?['parentBookingId'] as int?,
+            parentBandId: extra?['parentBandId'] as int?,
+          );
+        },
       ),
       GoRoute(
         path: '/events/:key/edit',

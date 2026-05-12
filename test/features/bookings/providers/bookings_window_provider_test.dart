@@ -87,7 +87,10 @@ class _ThrowingRepo implements BookingsRepository {
 BookingSummary _b(int id, String date) => BookingSummary(
       id: id,
       name: 'b$id',
-      date: date,
+      startDate: date,
+      endDate: date,
+      eventCount: 1,
+      isMultiEvent: false,
       isPaid: false,
       contacts: const [],
     );

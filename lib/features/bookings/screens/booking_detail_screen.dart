@@ -2,16 +2,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:tts_bandmate/shared/utils/time_format.dart';
 import 'package:tts_bandmate/shared/widgets/band_identity_chip.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import 'package:tts_bandmate/shared/widgets/status_chip.dart';
 import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
+import '../../events/data/models/event_summary.dart';
 import '../data/bookings_repository.dart';
 import '../data/models/booking_contact.dart';
 import '../data/models/booking_detail.dart';
 import '../providers/bookings_provider.dart';
+import '../widgets/booking_engagement_summary.dart';
 import '../widgets/booking_section_tile.dart';
 
 class BookingDetailScreen extends ConsumerWidget {
@@ -225,9 +225,168 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
   String _capitalise(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
+  // ── Events section ────────────────────────────────────────────────────────
+
+  String _formatEventDate(String iso) {
+    try {
+      return DateFormat('EEE M/d').format(DateTime.parse(iso));
+    } catch (_) {
+      return iso;
+    }
+  }
+
+  String _eventCardSubtitle(EventSummary e) {
+    final parts = <String>[];
+    parts.add(_formatEventDate(e.date));
+    if (e.startTime != null && e.startTime!.isNotEmpty) {
+      if (e.endTime != null && e.endTime!.isNotEmpty) {
+        parts.add('${e.startTime} – ${e.endTime}');
+      } else {
+        parts.add(e.startTime!);
+      }
+    }
+    if (e.venueName != null && e.venueName!.isNotEmpty) {
+      parts.add(e.venueName!);
+    }
+    return parts.join(' · ');
+  }
+
+  Widget _eventCard(EventSummary e) {
+    return GestureDetector(
+      onTap: () => context.push(
+        '/events/${e.key}',
+        extra: {
+          'parentBookingName': widget.booking.name,
+          'parentBookingId': widget.booking.id,
+          'parentBandId': widget.bandId,
+        },
+      ),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: CupertinoColors.systemBackground.resolveFrom(context),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: CupertinoColors.separator.resolveFrom(context),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    e.title,
+                    style: CupertinoTheme.of(context).textTheme.textStyle.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _eventCardSubtitle(e),
+                    style: TextStyle(
+                      color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              CupertinoIcons.chevron_right,
+              size: 16,
+              color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _eventsSection(BookingDetail booking) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Events',
+            style: CupertinoTheme.of(context).textTheme.navTitleTextStyle,
+          ),
+          const SizedBox(height: 8),
+          ...booking.events.map((e) => _eventCard(e)),
+          CupertinoButton(
+            padding: EdgeInsets.zero,
+            child: const Text('+ Add event'),
+            onPressed: () {
+              context.push(
+                '/bookings/${widget.bandId}/${widget.bookingId}/edit',
+                extra: widget.booking,
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Itemization summary ───────────────────────────────────────────────────
+
+  Widget? _itemizationSummary(BookingDetail booking) {
+    if (!booking.isMultiEvent) return null;
+    final hasPrice = booking.events.any(
+      (e) => e.price != null && (double.tryParse(e.price!) ?? 0) > 0,
+    );
+    if (!hasPrice) return null;
+
+    final total = double.tryParse(booking.price ?? '') ?? 0;
+    final allocated = booking.events.fold<double>(
+      0,
+      (sum, e) => sum + (double.tryParse(e.price ?? '') ?? 0),
+    );
+    final unallocated = total - allocated;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Itemization',
+            style: CupertinoTheme.of(context).textTheme.navTitleTextStyle,
+          ),
+          const SizedBox(height: 8),
+          Text('Total: \$${total.toStringAsFixed(2)}'),
+          ...booking.events
+              .where((e) => (double.tryParse(e.price ?? '') ?? 0) > 0)
+              .map(
+                (e) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text(
+                    '${_formatEventDate(e.date)} — \$${e.price}',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ),
+          if (unallocated.abs() > 0.01)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                'Other / Unallocated: \$${unallocated.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 13),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final b = widget.booking;
+    final itemization = _itemizationSummary(b);
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
         middle: Text(b.name),
@@ -258,9 +417,17 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
                   ),
                 ],
 
-                // ── Info card ─────────────────────────────────────────────
-                const SizedBox(height: 12),
-                _InfoCard(booking: b),
+                // ── Engagement summary strip ───────────────────────────────
+                const SizedBox(height: 8),
+                BookingEngagementSummary(booking: b),
+
+                // ── Status row ────────────────────────────────────────────
+                if (b.status != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    child: StatusChip(status: b.status!),
+                  ),
+                ],
 
                 // ── Financial summary ─────────────────────────────────────
                 const SizedBox(height: 16),
@@ -268,6 +435,18 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: _FinancialsCard(booking: b),
                 ),
+
+                // ── Events section ────────────────────────────────────────
+                const SizedBox(height: 16),
+                const _SectionHeader(label: 'Events'),
+                _eventsSection(b),
+
+                // ── Itemization summary ───────────────────────────────────
+                if (itemization != null) ...[
+                  const SizedBox(height: 8),
+                  const _SectionHeader(label: 'Itemization'),
+                  itemization,
+                ],
 
                 // ── Section tiles ─────────────────────────────────────────
                 const SizedBox(height: 24),
@@ -325,27 +504,6 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
                   ),
                 ],
 
-                // ── Linked events ─────────────────────────────────────────
-                if (b.events.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  const _SectionHeader(label: 'Linked Events'),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.tertiarySystemBackground
-                            .resolveFrom(context),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(
-                        children: b.events
-                            .map((e) => _EventRow(event: e))
-                            .toList(),
-                      ),
-                    ),
-                  ),
-                ],
-
                 // ── History ───────────────────────────────────────────────
                 const SizedBox(height: 16),
                 const _SectionHeader(label: 'History'),
@@ -385,132 +543,6 @@ class _SectionHeader extends StatelessWidget {
           letterSpacing: 0.5,
         ),
       ),
-    );
-  }
-}
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.booking});
-  final BookingDetail booking;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _InfoRow(
-              icon: CupertinoIcons.calendar,
-              label: 'Date',
-              value: formatDateWithTimeRange(
-                  booking.date, booking.startTime, booking.endTime),
-            ),
-            // Always render the venue row; show TBD when null/empty.
-            // (List cards keep the conditional-render behavior — dense rows
-            // benefit from skipping empty fields. Detail screen always shows it.)
-            ...[
-              const SizedBox(height: 12),
-              _InfoRow(
-                icon: CupertinoIcons.location,
-                label: 'Venue',
-                value: () {
-                  final venueName =
-                      (booking.venueName != null && booking.venueName!.isNotEmpty)
-                          ? booking.venueName!
-                          : 'TBD';
-                  final hasAddress = booking.venueAddress != null &&
-                      booking.venueAddress!.isNotEmpty;
-                  return [venueName, if (hasAddress) booking.venueAddress!]
-                      .join('\n');
-                }(),
-                trailing: booking.venueAddress != null &&
-                        booking.venueAddress!.isNotEmpty
-                    ? CupertinoButton(
-                        padding: const EdgeInsets.only(top: 4),
-                        onPressed: () async {
-                          final uri = Uri.parse(
-                              'https://maps.google.com/?q=${Uri.encodeComponent(booking.venueAddress!)}');
-                          if (await canLaunchUrl(uri)) {
-                            await launchUrl(uri,
-                                mode: LaunchMode.externalApplication);
-                          }
-                        },
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(CupertinoIcons.map_pin, size: 14),
-                            SizedBox(width: 4),
-                            Text('View in Maps',
-                                style: TextStyle(fontSize: 13)),
-                          ],
-                        ),
-                      )
-                    : null,
-              ),
-            ],
-            if (booking.status != null) ...[
-              const SizedBox(height: 12),
-              _InfoRow(
-                icon: CupertinoIcons.info_circle,
-                label: 'Status',
-                value: '',
-                trailing: StatusChip(status: booking.status!),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.trailing,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon,
-            size: 20,
-            color: CupertinoColors.secondaryLabel.resolveFrom(context)),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label,
-                  style: TextStyle(
-                      fontSize: 12,
-                      color:
-                          CupertinoColors.secondaryLabel.resolveFrom(context))),
-              if (value.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(value, style: const TextStyle(fontSize: 15)),
-              ],
-              if (trailing != null) trailing!,
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
@@ -661,60 +693,5 @@ class _InlineContactRow extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _EventRow extends StatelessWidget {
-  const _EventRow({required this.event});
-  final BookingEvent event;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => GoRouter.of(context).push('/events/${event.key}'),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Icon(CupertinoIcons.calendar,
-                size: 20,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(event.title,
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w500)),
-                  Text(
-                    _formatDate(event.date, event.time),
-                    style: TextStyle(
-                        fontSize: 13,
-                        color: CupertinoColors.secondaryLabel
-                            .resolveFrom(context)),
-                  ),
-                ],
-              ),
-            ),
-            Icon(CupertinoIcons.chevron_right,
-                size: 16,
-                color:
-                    CupertinoColors.tertiaryLabel.resolveFrom(context)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(String date, String? time) {
-    try {
-      final dt = DateTime.parse(date);
-      final dateStr = DateFormat('MMM d, yyyy').format(dt);
-      if (time != null && time.isNotEmpty) return '$dateStr at $time';
-      return dateStr;
-    } catch (_) {
-      return time != null ? '$date at $time' : date;
-    }
   }
 }

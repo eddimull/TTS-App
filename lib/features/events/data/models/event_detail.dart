@@ -166,6 +166,9 @@ class EventDetail {
     required this.title,
     required this.date,
     this.time,
+    this.startTime,
+    this.endTime,
+    this.price,
     this.notes,
     this.eventType,
     this.eventTypeId,
@@ -198,8 +201,18 @@ class EventDetail {
   /// ISO date string, e.g. "2026-04-15".
   final String date;
 
-  /// Time string, e.g. "19:00", or null.
+  /// Legacy single time field, e.g. "19:00", or null. Maintained for backward
+  /// compat with older payloads. New code should read [startTime].
   final String? time;
+
+  /// Event start time, e.g. "19:00", or null.
+  final String? startTime;
+
+  /// Event end time, e.g. "22:00", or null.
+  final String? endTime;
+
+  /// Per-event price string, e.g. "1500.00", or null.
+  final String? price;
 
   final String? notes;
   final String? eventType;
@@ -275,6 +288,10 @@ class EventDetail {
       title: json['title'] as String,
       date: json['date'] as String,
       time: _toHHmm(json['time'] as String?),
+      startTime: _toHHmm(
+          (json['start_time'] as String?) ?? (json['time'] as String?)),
+      endTime: _toHHmm(json['end_time'] as String?),
+      price: json['price'] as String?,
       notes: json['notes'] as String?,
       eventType: json['event_type'] as String?,
       eventTypeId: json['event_type_id'] == null

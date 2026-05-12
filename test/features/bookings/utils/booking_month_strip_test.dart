@@ -5,7 +5,10 @@ import 'package:tts_bandmate/features/bookings/utils/booking_month_strip.dart';
 BookingSummary _b(int id, String date) => BookingSummary(
       id: id,
       name: 'b$id',
-      date: date,
+      startDate: date,
+      endDate: date,
+      eventCount: 1,
+      isMultiEvent: false,
       isPaid: false,
       contacts: const [],
     );

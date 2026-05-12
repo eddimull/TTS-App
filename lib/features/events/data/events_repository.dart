@@ -46,9 +46,32 @@ class EventsRepository {
     return EventDetail.fromJson(data['event'] as Map<String, dynamic>);
   }
 
-  /// Sends a partial update for the event identified by [key].
-  Future<void> updateEvent(String key, Map<String, dynamic> data) async {
-    await _dio.patch<void>(ApiEndpoints.mobileUpdateEvent(key), data: data);
+  /// Update an existing event's fields. All parameters are optional;
+  /// only keys with non-null values are sent in the payload.
+  ///
+  /// Mirrors the backend's `Mobile/UpdateBookingEventRequest` shape.
+  Future<void> updateEvent(
+    String key, {
+    String? title,
+    String? date,
+    String? startTime,
+    String? endTime,
+    String? venueName,
+    String? venueAddress,
+    String? price,
+    String? notes,
+  }) async {
+    final body = <String, dynamic>{
+      if (title != null) 'title': title,
+      if (date != null) 'date': date,
+      if (startTime != null) 'start_time': startTime,
+      if (endTime != null) 'end_time': endTime,
+      if (venueName != null) 'venue_name': venueName,
+      if (venueAddress != null) 'venue_address': venueAddress,
+      if (price != null) 'price': price,
+      if (notes != null) 'notes': notes,
+    };
+    await _dio.patch<void>(ApiEndpoints.mobileUpdateEvent(key), data: body);
   }
 
   /// Uploads a single file attachment for the event identified by [key].

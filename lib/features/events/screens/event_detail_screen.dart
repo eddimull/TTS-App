@@ -16,10 +16,21 @@ import '../data/models/event_member.dart';
 import '../data/models/sub_entry.dart';
 import '../providers/events_provider.dart';
 import 'attachment_widgets.dart';
+import '../widgets/part_of_booking_row.dart';
 
 class EventDetailScreen extends ConsumerWidget {
-  const EventDetailScreen({super.key, required this.eventKey});
+  const EventDetailScreen({
+    super.key,
+    required this.eventKey,
+    this.parentBookingName,
+    this.parentBookingId,
+    this.parentBandId,
+  });
+
   final String eventKey;
+  final String? parentBookingName;
+  final int? parentBookingId;
+  final int? parentBandId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -37,14 +48,28 @@ class EventDetailScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(eventDetailProvider(eventKey)),
         ),
       ),
-      data: (event) => _EventDetailView(event: event),
+      data: (event) => _EventDetailView(
+        event: event,
+        parentBookingName: parentBookingName,
+        parentBookingId: parentBookingId,
+        parentBandId: parentBandId,
+      ),
     );
   }
 }
 
 class _EventDetailView extends StatelessWidget {
-  const _EventDetailView({required this.event});
+  const _EventDetailView({
+    required this.event,
+    this.parentBookingName,
+    this.parentBookingId,
+    this.parentBandId,
+  });
+
   final EventDetail event;
+  final String? parentBookingName;
+  final int? parentBookingId;
+  final int? parentBandId;
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +88,19 @@ class _EventDetailView extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // "Part of: <booking>" backlink — shown only when opened from booking detail
+          if (parentBookingName != null &&
+              parentBookingId != null &&
+              parentBandId != null) ...[
+            PartOfBookingRow(
+              bookingName: parentBookingName!,
+              onTap: () => context.push(
+                '/bookings/$parentBandId/$parentBookingId',
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
           // Date / Time
           _InfoRow(
             icon: CupertinoIcons.calendar,

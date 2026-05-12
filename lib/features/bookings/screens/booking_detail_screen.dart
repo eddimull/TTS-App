@@ -311,7 +311,14 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
 
   Widget _eventCard(EventSummary e) {
     return GestureDetector(
-      onTap: () => context.push('/events/${e.key}'),
+      onTap: () => context.push(
+        '/events/${e.key}',
+        extra: {
+          'parentBookingName': widget.booking.name,
+          'parentBookingId': widget.booking.id,
+          'parentBandId': widget.bandId,
+        },
+      ),
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.all(12),

@@ -12,6 +12,7 @@ import '../providers/bookings_provider.dart';
 import '../services/booking_save_orchestrator.dart';
 import '../widgets/booking_form_navigation_guard.dart';
 import '../widgets/booking_form_partial_failure_banner.dart';
+import '../widgets/booking_save_button.dart';
 import '../widgets/event_sub_form_card.dart';
 import '../../events/data/events_repository.dart';
 import '../../events/data/models/event_summary.dart';
@@ -416,10 +417,6 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
   Widget build(BuildContext context) {
     final eventTypesAsync = ref.watch(eventTypesProvider);
 
-    final saveButtonLabel = _lastSaveResult?.partiallySucceeded == true
-        ? 'Retry Failed (${_lastSaveResult!.failedCount})'
-        : (_isEdit ? 'Save Booking' : 'Create Booking');
-
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -434,21 +431,11 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
       child: CupertinoPageScaffold(
         navigationBar: CupertinoNavigationBar(
           middle: Text(_isEdit ? 'Edit Booking' : 'New Booking'),
-          trailing: _saving
-              ? const CupertinoActivityIndicator()
-              : CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: _onSavePressed,
-                  child: Text(
-                    saveButtonLabel,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: _lastSaveResult?.partiallySucceeded == true
-                          ? CupertinoColors.destructiveRed
-                          : CupertinoColors.activeBlue,
-                    ),
-                  ),
-                ),
+          trailing: BookingSaveButton(
+            isSaving: _saving,
+            lastResult: _lastSaveResult,
+            onPressed: _onSavePressed,
+          ),
         ),
         child: ListView(
           children: [

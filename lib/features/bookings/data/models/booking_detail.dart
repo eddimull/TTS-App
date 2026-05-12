@@ -1,51 +1,19 @@
 import 'package:intl/intl.dart';
 import '../../../auth/data/models/band_summary.dart';
+import '../../../events/data/models/event_summary.dart';
 import 'booking_contact.dart';
 import 'booking_contract.dart';
 import 'booking_payment.dart';
-
-// ── Stub for events linked to this booking ────────────────────────────────────
-
-class BookingEvent {
-  const BookingEvent({
-    required this.id,
-    required this.key,
-    required this.title,
-    required this.date,
-    this.time,
-  });
-
-  final int id;
-  final String key;
-  final String title;
-  final String date;
-  final String? time;
-
-  factory BookingEvent.fromJson(Map<String, dynamic> json) {
-    return BookingEvent(
-      id: (json['id'] as num).toInt(),
-      key: json['key'] as String,
-      title: json['title'] as String,
-      date: json['date'] as String,
-      time: json['time'] as String?,
-    );
-  }
-
-  @override
-  String toString() => 'BookingEvent(id: $id, key: $key, title: $title)';
-}
-
-// ── Full booking detail ───────────────────────────────────────────────────────
 
 class BookingDetail {
   const BookingDetail({
     required this.id,
     required this.name,
-    required this.date,
-    this.startTime,
-    this.endTime,
-    this.venueName,
-    this.venueAddress,
+    required this.startDate,
+    required this.endDate,
+    required this.eventCount,
+    required this.isMultiEvent,
+    this.venueSummary,
     this.status,
     this.price,
     this.eventTypeId,
@@ -64,30 +32,30 @@ class BookingDetail {
   final int id;
   final String name;
 
-  /// ISO date string, e.g. "2026-05-15".
-  final String date;
+  /// ISO date string of the chronologically-first event.
+  final String startDate;
 
-  final String? startTime;
-  final String? endTime;
-  final String? venueName;
-  final String? venueAddress;
+  /// ISO date string of the chronologically-last event. Equals [startDate]
+  /// for single-event bookings.
+  final String endDate;
+
+  final int eventCount;
+  final bool isMultiEvent;
+
+  /// Display-ready venue summary across all events.
+  final String? venueSummary;
+
   final String? status;
-
-  /// Raw price string from the API, e.g. "3500.00".
   final String? price;
-
   final int? eventTypeId;
   final String? notes;
-
-  /// Raw amount-paid string, e.g. "1000.00".
   final String? amountPaid;
-
-  /// Raw amount-due string, e.g. "2500.00".
   final String? amountDue;
-
   final bool isPaid;
   final List<BookingContact> contacts;
-  final List<BookingEvent> events;
+
+  /// Full per-event records for the detail screen.
+  final List<EventSummary> events;
 
   /// Contract option: "default", "none", "external", or null.
   final String? contractOption;
@@ -98,8 +66,7 @@ class BookingDetail {
   /// List of recorded payments for this booking.
   final List<BookingPayment> payments;
 
-  /// Optional nested band identity. Present on the booking-detail payload
-  /// once the backend eager-loads `band`; absent on legacy cached payloads.
+  /// Optional nested band identity.
   final BandSummary? band;
 
   factory BookingDetail.fromJson(Map<String, dynamic> json) {
@@ -115,9 +82,9 @@ class BookingDetail {
     final events = rawEvents is List
         ? rawEvents
             .cast<Map<String, dynamic>>()
-            .map(BookingEvent.fromJson)
+            .map(EventSummary.fromJson)
             .toList()
-        : <BookingEvent>[];
+        : <EventSummary>[];
 
     final rawPayments = json['payments'];
     final payments = rawPayments is List
@@ -140,11 +107,11 @@ class BookingDetail {
     return BookingDetail(
       id: (json['id'] as num).toInt(),
       name: json['name'] as String,
-      date: json['date'] as String,
-      startTime: json['start_time'] as String?,
-      endTime: json['end_time'] as String?,
-      venueName: json['venue_name'] as String?,
-      venueAddress: json['venue_address'] as String?,
+      startDate: (json['start_date'] as String?) ?? '',
+      endDate: (json['end_date'] as String?) ?? '',
+      eventCount: (json['event_count'] as num?)?.toInt() ?? 0,
+      isMultiEvent: (json['is_multi_event'] as bool?) ?? false,
+      venueSummary: json['venue_summary'] as String?,
       status: json['status'] as String?,
       price: json['price'] as String?,
       eventTypeId: json['event_type_id'] == null
@@ -163,17 +130,14 @@ class BookingDetail {
     );
   }
 
-  /// Parses [date] into a [DateTime]. Returns [DateTime.now()] as a fallback.
-  DateTime get parsedDate {
+  DateTime get parsedStartDate {
     try {
-      return DateTime.parse(date);
+      return DateTime.parse(startDate);
     } catch (_) {
       return DateTime.now();
     }
   }
 
-  /// Formats [price] as a currency string, e.g. "$3,500.00".
-  /// Returns [price] as-is if it cannot be parsed, or "$0.00" if null.
   String get displayPrice {
     if (price == null) return r'$0.00';
     final parsed = double.tryParse(price!);
@@ -181,7 +145,6 @@ class BookingDetail {
     return NumberFormat.currency(symbol: '\$').format(parsed);
   }
 
-  /// Formats [amountPaid] as a currency string.
   String get displayAmountPaid {
     if (amountPaid == null) return '—';
     final parsed = double.tryParse(amountPaid!);
@@ -189,7 +152,6 @@ class BookingDetail {
     return NumberFormat.currency(symbol: '\$').format(parsed);
   }
 
-  /// Formats [amountDue] as a currency string.
   String get displayAmountDue {
     if (amountDue == null) return '—';
     final parsed = double.tryParse(amountDue!);
@@ -198,7 +160,8 @@ class BookingDetail {
   }
 
   @override
-  String toString() => 'BookingDetail(id: $id, name: $name, date: $date)';
+  String toString() =>
+      'BookingDetail(id: $id, name: $name, startDate: $startDate, events: $eventCount)';
 
   @override
   bool operator ==(Object other) =>

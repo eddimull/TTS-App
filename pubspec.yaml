@@ -44,8 +44,11 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_driver:
+    sdk: flutter
   integration_test:
     sdk: flutter
+  test: any
   flutter_lints: ^6.0.0
   build_runner: ^2.4.9
   riverpod_generator: ^4.0.3

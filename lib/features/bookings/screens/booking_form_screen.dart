@@ -96,6 +96,7 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
 
   int? _eventTypeId;
   String _contractOption = 'default';
+  String? _status;
 
   // ── Multi-event state ─────────────────────────────────────────────────────
   List<_EventFormRow> _eventRows = [];
@@ -128,6 +129,7 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
     _notes = TextEditingController(text: e?.notes ?? '');
     _eventTypeId = e?.eventTypeId;
     _contractOption = e?.contractOption ?? 'default';
+    _status = e?.status;
 
     if (e != null) {
       _initEventRows(e);
@@ -201,6 +203,34 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
             setState(() => _eventTypeId = types.isEmpty ? null : types[temp].id),
       ),
     );
+  }
+
+  // ── Status picker ────────────────────────────────────────────────────────
+
+  static const _statusOptions = ['pending', 'confirmed', 'cancelled', 'completed'];
+
+  Future<void> _pickStatus(BuildContext context) async {
+    final picked = await showCupertinoModalPopup<String>(
+      context: context,
+      builder: (ctx) => CupertinoActionSheet(
+        title: const Text('Booking Status'),
+        actions: _statusOptions
+            .map((s) => CupertinoActionSheetAction(
+                  onPressed: () => Navigator.of(ctx).pop(s),
+                  child: Text(
+                    s[0].toUpperCase() + s.substring(1),
+                  ),
+                ))
+            .toList(),
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+    if (picked != null) {
+      setState(() => _status = picked);
+    }
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -342,6 +372,7 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
       name: nameVal != orig.name ? nameVal : null,
       eventTypeId: _eventTypeId != orig.eventTypeId ? _eventTypeId : null,
       price: priceDecimal != orig.price ? priceDecimal : null,
+      status: _status != orig.status ? _status : null,
       contractOption:
           _contractOption != (orig.contractOption ?? 'default') ? _contractOption : null,
       notes: notesVal != (orig.notes ?? '') ? notesVal : null,
@@ -480,6 +511,33 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
                     );
                   },
                 ),
+                // Status picker — edit mode only (create lets the backend default)
+                if (_isEdit)
+                  GestureDetector(
+                    onTap: () => _pickStatus(context),
+                    child: CupertinoFormRow(
+                      prefix: const Text('Status'),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            _status != null
+                                ? _status![0].toUpperCase() +
+                                    _status!.substring(1)
+                                : 'pending',
+                            style: TextStyle(
+                              color: CupertinoColors.label.resolveFrom(context),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(CupertinoIcons.chevron_right,
+                              size: 14,
+                              color: CupertinoColors.tertiaryLabel
+                                  .resolveFrom(context)),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
 

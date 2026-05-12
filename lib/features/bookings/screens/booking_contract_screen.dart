@@ -43,6 +43,31 @@ class _BookingContractScreenState
     }
   }
 
+  // follow-up — contract-option editor isn't built yet; stub shows available
+  // options so the user knows what's coming without doing anything destructive.
+  Future<void> _openContractOptionPicker(BuildContext context) async {
+    await showCupertinoModalPopup<String>(
+      context: context,
+      builder: (ctx) => CupertinoActionSheet(
+        title: const Text('Change contract type'),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () {},
+            child: const Text('Default contract (coming soon)'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {},
+            child: const Text('External contract (coming soon)'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
   Future<void> _uploadPdf() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -102,7 +127,10 @@ class _BookingContractScreenState
             final option = booking.contractOption ?? 'default';
 
             return switch (option) {
-              'none' => _NoneView(),
+              'none' => _NoneView(
+                  onChangeType: () =>
+                      _openContractOptionPicker(context),
+                ),
               'external' => _ExternalView(
                   assetUrl: booking.contract?.assetUrl,
                   uploading: _uploading,
@@ -129,6 +157,10 @@ class _BookingContractScreenState
 // ── None mode ─────────────────────────────────────────────────────────────────
 
 class _NoneView extends StatelessWidget {
+  const _NoneView({required this.onChangeType});
+
+  final VoidCallback onChangeType;
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -136,26 +168,18 @@ class _NoneView extends StatelessWidget {
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              CupertinoIcons.checkmark_circle_fill,
-              size: 64,
-              color: CupertinoColors.systemGreen.resolveFrom(context),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'No Contract Required',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-              textAlign: TextAlign.center,
+            Text(
+              'Verbal agreement — no contract on file',
+              style: CupertinoTheme.of(context).textTheme.textStyle.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
             ),
             const SizedBox(height: 8),
-            Text(
-              'This booking is automatically confirmed.',
-              style: TextStyle(
-                fontSize: 15,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
-              ),
-              textAlign: TextAlign.center,
+            CupertinoButton.filled(
+              onPressed: onChangeType,
+              child: const Text('Change to a contract type'),
             ),
           ],
         ),

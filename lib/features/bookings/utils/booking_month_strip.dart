@@ -14,13 +14,13 @@ String monthKeyFor(DateTime d) {
 List<String> buildMonthKeys(List<BookingSummary> bookings) {
   final set = <String>{};
   for (final b in bookings) {
-    set.add(monthKeyFor(b.parsedDate));
+    set.add(monthKeyFor(b.parsedStartDate));
   }
   final list = set.toList()..sort();
   return list;
 }
 
-/// Returns the index of the first booking in [bookings] whose `parsedDate`
+/// Returns the index of the first booking in [bookings] whose `parsedStartDate`
 /// is on or after the start of [now]'s day. Falls back to the last index
 /// when every booking is in the past. Returns `null` for an empty list.
 ///
@@ -33,7 +33,7 @@ int? findNearestUpcomingIndex(List<BookingSummary> bookings, DateTime now) {
   if (bookings.isEmpty) return null;
   final today = DateTime(now.year, now.month, now.day);
   for (var i = 0; i < bookings.length; i++) {
-    if (!bookings[i].parsedDate.isBefore(today)) return i;
+    if (!bookings[i].parsedStartDate.isBefore(today)) return i;
   }
   return bookings.length - 1;
 }

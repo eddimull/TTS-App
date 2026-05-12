@@ -98,9 +98,9 @@ final bookingDateStatusesProvider =
     };
     if (dateStatus == null) continue;
 
-    final existing = map[b.date];
+    final existing = map[b.startDate];
     if (existing == null || dateStatus.priority > existing.priority) {
-      map[b.date] = dateStatus;
+      map[b.startDate] = dateStatus;
     }
   }
   return map;
@@ -123,9 +123,9 @@ final bookingDateInfoProvider =
     };
     if (dateStatus == null) continue;
 
-    final existing = map[b.date];
+    final existing = map[b.startDate];
     if (existing == null || dateStatus.priority > existing.status.priority) {
-      map[b.date] = BookingDateInfo(
+      map[b.startDate] = BookingDateInfo(
         status: dateStatus,
         bookingTitle: b.name,
       );

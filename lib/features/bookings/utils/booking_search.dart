@@ -1,7 +1,8 @@
 import '../data/models/booking_summary.dart';
 
 /// Returns true if [booking] matches [query] (case-insensitive contains)
-/// against any of: name, venue name, or any contact's name/email/phone.
+/// against any of: name, venue summary, any event's title or venue name,
+/// or any contact's name/email/phone.
 ///
 /// Empty or whitespace-only queries match everything.
 bool bookingMatchesQuery(BookingSummary booking, String query) {
@@ -9,8 +10,14 @@ bool bookingMatchesQuery(BookingSummary booking, String query) {
   if (q.isEmpty) return true;
 
   if (booking.name.toLowerCase().contains(q)) return true;
-  final venue = booking.venueName;
+  final venue = booking.venueSummary;
   if (venue != null && venue.toLowerCase().contains(q)) return true;
+
+  for (final e in booking.events) {
+    if (e.title.toLowerCase().contains(q)) return true;
+    final v = e.venueName;
+    if (v != null && v.toLowerCase().contains(q)) return true;
+  }
 
   for (final c in booking.contacts) {
     if (c.name.toLowerCase().contains(q)) return true;

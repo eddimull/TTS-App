@@ -143,10 +143,10 @@ void main() {
       final result = await orch.save(
         bandId: 7,
         bookingId: 42,
-        snapshot: BookingFormSnapshot(
+        snapshot: const BookingFormSnapshot(
           eventUpdates: {
-            'evt_1': const EventDraft(title: 'A', date: '2026-06-13'),
-            'evt_2': const EventDraft(title: 'B', date: '2026-06-14'),
+            'evt_1': EventDraft(title: 'A', date: '2026-06-13'),
+            'evt_2': EventDraft(title: 'B', date: '2026-06-14'),
           },
         ),
       );
@@ -163,9 +163,9 @@ void main() {
       final result = await orch.save(
         bandId: 7,
         bookingId: 42,
-        snapshot: BookingFormSnapshot(
+        snapshot: const BookingFormSnapshot(
           eventCreates: {
-            'new-1': const EventDraft(title: 'New', date: '2026-06-15'),
+            'new-1': EventDraft(title: 'New', date: '2026-06-15'),
           },
         ),
       );
@@ -219,13 +219,13 @@ void main() {
       final result = await orch.save(
         bandId: 7,
         bookingId: 42,
-        snapshot: BookingFormSnapshot(
-          bookingPatch: const BookingFieldDiff(name: 'X'),
+        snapshot: const BookingFormSnapshot(
+          bookingPatch: BookingFieldDiff(name: 'X'),
           eventUpdates: {
-            'evt_1': const EventDraft(title: 'A', date: '2026-06-13'),
+            'evt_1': EventDraft(title: 'A', date: '2026-06-13'),
           },
           eventCreates: {
-            'new-1': const EventDraft(title: 'N', date: '2026-06-15'),
+            'new-1': EventDraft(title: 'N', date: '2026-06-15'),
           },
           eventDeletes: {9},
         ),
@@ -263,10 +263,10 @@ void main() {
       final first = await orch.save(
         bandId: 7,
         bookingId: 42,
-        snapshot: BookingFormSnapshot(
-          bookingPatch: const BookingFieldDiff(name: 'X'),
+        snapshot: const BookingFormSnapshot(
+          bookingPatch: BookingFieldDiff(name: 'X'),
           eventCreates: {
-            'new-1': const EventDraft(title: 'N', date: '2026-06-15'),
+            'new-1': EventDraft(title: 'N', date: '2026-06-15'),
           },
         ),
       );
@@ -277,9 +277,9 @@ void main() {
       final second = await orch.save(
         bandId: 7,
         bookingId: 42,
-        snapshot: BookingFormSnapshot(
+        snapshot: const BookingFormSnapshot(
           eventCreates: {
-            'new-1': const EventDraft(title: 'N', date: '2026-06-15'),
+            'new-1': EventDraft(title: 'N', date: '2026-06-15'),
           },
         ),
       );

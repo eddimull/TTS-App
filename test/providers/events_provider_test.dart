@@ -38,7 +38,17 @@ class FakeEventsRepository implements EventsRepository {
   }
 
   @override
-  Future<void> updateEvent(String key, Map<String, dynamic> data) async {}
+  Future<void> updateEvent(
+    String key, {
+    String? title,
+    String? date,
+    String? startTime,
+    String? endTime,
+    String? venueName,
+    String? venueAddress,
+    String? price,
+    String? notes,
+  }) async {}
 
   @override
   Future<EventAttachment> uploadAttachment(
@@ -174,7 +184,7 @@ void main() {
       addTearDown(container.dispose);
 
       // Read the provider to trigger computation, then inspect the AsyncValue.
-      final asyncValue = await Future.microtask(
+      final _ = await Future.microtask(
         () => container.read(eventDetailProvider('missing')),
       );
 

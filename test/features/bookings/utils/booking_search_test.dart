@@ -11,8 +11,11 @@ BookingSummary _booking({
     BookingSummary(
       id: 1,
       name: name,
-      date: '2026-06-01',
-      venueName: venueName,
+      startDate: '2026-06-01',
+      endDate: '2026-06-01',
+      eventCount: 1,
+      isMultiEvent: false,
+      venueSummary: venueName,
       isPaid: false,
       contacts: contacts,
     );

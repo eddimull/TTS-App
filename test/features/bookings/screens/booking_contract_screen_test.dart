@@ -1,11 +1,15 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tts_bandmate/features/auth/data/models/band_summary.dart';
 import 'package:tts_bandmate/features/bookings/data/models/booking_detail.dart';
 import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
 import 'package:tts_bandmate/features/bookings/screens/booking_contract_screen.dart';
 
 // Minimal BookingDetail with only the fields the contract screen reads.
+// We use status='pending' for the default branch so ContractDefaultView routes
+// to its locked (preview/history) path rather than ContractEditor, which would
+// pull in WebView/network providers and isn't what this test is about.
 BookingDetail _makeDetail({required String contractOption}) {
   return BookingDetail(
     id: 1,
@@ -18,6 +22,8 @@ BookingDetail _makeDetail({required String contractOption}) {
     contacts: const [],
     events: const [],
     contractOption: contractOption,
+    status: 'pending',
+    band: const BandSummary(id: 1, name: 'Band', isOwner: true),
   );
 }
 

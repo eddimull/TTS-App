@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/bookings/providers/bookings_provider.dart';
 import '../../features/bookings/providers/bookings_window_provider.dart';
+import '../../features/bookings/providers/contract_history_provider.dart';
 import '../../features/dashboard/providers/dashboard_provider.dart';
 import '../../features/events/providers/events_provider.dart';
 import '../../features/rehearsals/providers/rehearsals_provider.dart';
@@ -48,11 +49,21 @@ class CacheInvalidator {
   /// contract) but not the booking's identity in the lists. The list
   /// providers are still refreshed because per-booking summary fields
   /// (e.g. amount paid) appear in list rows.
-  void onBookingDetailChanged({required int bandId, required int bookingId}) {
+  ///
+  /// Pass [contractEnvelopeId] when the change affects PandaDoc state
+  /// (send, terms save) so the audit trail cache is dropped too.
+  void onBookingDetailChanged({
+    required int bandId,
+    required int bookingId,
+    String? contractEnvelopeId,
+  }) {
     _ref.invalidate(
       bookingDetailProvider((bandId: bandId, bookingId: bookingId)),
     );
     _invalidateBookingCollections(bandId);
+    if (contractEnvelopeId != null) {
+      _ref.invalidate(contractHistoryProvider(contractEnvelopeId));
+    }
   }
 
   /// Call after editing the contact library (adding/removing a saved contact).

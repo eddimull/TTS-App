@@ -39,12 +39,16 @@ dependencies:
   map_launcher: ^4.5.0
   collection: any
   scrollable_positioned_list: ^0.3.8
+  webview_flutter: ^4.13.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_driver:
+    sdk: flutter
   integration_test:
     sdk: flutter
+  test: any
   flutter_lints: ^6.0.0
   build_runner: ^2.4.9
   riverpod_generator: ^4.0.3
@@ -58,3 +62,4 @@ flutter:
   assets:
     - assets/images/
     - assets/images/gigIcons/
+    - assets/contract/

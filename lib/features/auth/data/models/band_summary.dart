@@ -5,13 +5,27 @@ class BandSummary {
     required this.isOwner,
     this.isPersonal = false,
     this.logoUrl,
+    this.logo,
+    this.address,
+    this.city,
+    this.state,
+    this.zip,
   });
 
   final int id;
   final String name;
   final bool isOwner;
   final bool isPersonal;
+
+  /// Legacy field; new code should read [logo].
   final String? logoUrl;
+
+  /// Band logo URL as returned by web/mobile APIs.
+  final String? logo;
+  final String? address;
+  final String? city;
+  final String? state;
+  final String? zip;
 
   factory BandSummary.fromJson(Map<String, dynamic> json) {
     return BandSummary(
@@ -20,6 +34,11 @@ class BandSummary {
       isOwner: (json['is_owner'] as bool?) ?? false,
       isPersonal: (json['is_personal'] as bool?) ?? false,
       logoUrl: json['logo_url'] as String?,
+      logo: (json['logo'] as String?) ?? (json['logo_url'] as String?),
+      address: json['address'] as String?,
+      city: json['city'] as String?,
+      state: json['state'] as String?,
+      zip: json['zip'] as String?,
     );
   }
 
@@ -29,6 +48,11 @@ class BandSummary {
         'is_owner': isOwner,
         'is_personal': isPersonal,
         'logo_url': logoUrl,
+        'logo': logo,
+        'address': address,
+        'city': city,
+        'state': state,
+        'zip': zip,
       };
 
   @override

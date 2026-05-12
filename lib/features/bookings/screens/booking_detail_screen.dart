@@ -11,6 +11,7 @@ import '../data/bookings_repository.dart';
 import '../data/models/booking_contact.dart';
 import '../data/models/booking_detail.dart';
 import '../providers/bookings_provider.dart';
+import '../widgets/booking_engagement_summary.dart';
 import '../widgets/booking_section_tile.dart';
 
 class BookingDetailScreen extends ConsumerWidget {
@@ -224,65 +225,6 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
   String _capitalise(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
-  // ── Engagement summary strip ──────────────────────────────────────────────
-
-  String _formatDateRange(BookingDetail booking) {
-    try {
-      final start = DateTime.parse(booking.startDate);
-      final end = DateTime.parse(booking.endDate);
-      final df = DateFormat('MMM d');
-      if (start == end) return df.format(start);
-      return '${df.format(start)} – ${df.format(end)}';
-    } catch (_) {
-      return booking.startDate;
-    }
-  }
-
-  Widget _engagementSummary(BookingDetail booking) {
-    final count = booking.eventCount;
-    final dateRange = _formatDateRange(booking);
-    final venue = booking.venueSummary;
-    final parts = <String>[
-      '$count ${count == 1 ? 'event' : 'events'}',
-      dateRange,
-    ];
-    if (venue != null && venue.isNotEmpty) parts.add(venue);
-    final subtitle = parts.join(' · ');
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (booking.isMultiEvent)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: CupertinoColors.activeBlue.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                '${booking.eventCount} events',
-                style: const TextStyle(
-                  color: CupertinoColors.activeBlue,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // ── Events section ────────────────────────────────────────────────────────
 
   String _formatEventDate(String iso) {
@@ -477,7 +419,7 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
 
                 // ── Engagement summary strip ───────────────────────────────
                 const SizedBox(height: 8),
-                _engagementSummary(b),
+                BookingEngagementSummary(booking: b),
 
                 // ── Status row ────────────────────────────────────────────
                 if (b.status != null) ...[

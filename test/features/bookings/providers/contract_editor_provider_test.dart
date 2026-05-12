@@ -1,6 +1,53 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tts_bandmate/features/bookings/data/bookings_repository.dart';
+import 'package:tts_bandmate/features/bookings/data/models/booking_contract.dart';
+import 'package:tts_bandmate/features/bookings/data/models/booking_detail.dart';
 import 'package:tts_bandmate/features/bookings/data/models/contract_term.dart';
+import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
 import 'package:tts_bandmate/features/bookings/providers/contract_editor_provider.dart';
+
+/// Stub repository whose [saveContractTerms] throws the configured error.
+/// All other methods are unimplemented — the editor only touches save on
+/// the error path under test.
+class _ThrowingSaveRepo implements BookingsRepository {
+  _ThrowingSaveRepo(this.thrownError);
+
+  final Object thrownError;
+  int saveCalls = 0;
+
+  @override
+  Future<BookingDetail> saveContractTerms(
+    int bandId,
+    int bookingId,
+    List<ContractTerm> terms,
+  ) async {
+    saveCalls++;
+    throw thrownError;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+}
+
+BookingDetail _detailWithTerms(List<ContractTerm> terms) {
+  return BookingDetail(
+    id: 1,
+    name: 'Test Booking',
+    startDate: '2026-06-01',
+    endDate: '2026-06-01',
+    eventCount: 1,
+    isMultiEvent: false,
+    isPaid: false,
+    contacts: const [],
+    events: const [],
+    contract: BookingContract(
+      id: 1,
+      customTerms: terms,
+    ),
+  );
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -39,5 +86,47 @@ void main() {
         expect(reordered.map((t) => t.title).toList(), ['A', 'B']);
       },
     );
+  });
+
+  group('ContractEditorNotifier save() error handling', () {
+    test('save() failure preserves in-flight terms in state.value', () async {
+      const key = (bandId: 1, bookingId: 1);
+      // Seed customTerms so build() doesn't have to load the bundled asset.
+      final seededTerms = [
+        const ContractTerm(id: -1, title: 'Original', content: 'Body'),
+      ];
+      final repo = _ThrowingSaveRepo(Exception('network down'));
+
+      final container = ProviderContainer(overrides: [
+        bookingsRepositoryProvider.overrideWithValue(repo),
+        bookingDetailProvider.overrideWith(
+          (ref, args) async => _detailWithTerms(seededTerms),
+        ),
+      ]);
+      addTearDown(container.dispose);
+
+      // Drive the initial build to completion.
+      await container.read(contractEditorProvider(key).future);
+
+      final notifier = container.read(contractEditorProvider(key).notifier);
+      // Stable id assigned by build() is 0 (first term).
+      notifier.updateTitle(0, 'Edited');
+
+      // Force-save to bypass the 500ms debounce; this should throw inside the
+      // notifier but be caught and folded into the AsyncValue's error side.
+      await notifier.save(force: true);
+
+      expect(repo.saveCalls, 1);
+
+      final s = container.read(contractEditorProvider(key));
+      expect(s.hasError, isTrue, reason: 'failure should be surfaced');
+      expect(
+        s.value,
+        isNotNull,
+        reason: 'prior terms must NOT be clobbered on save failure',
+      );
+      expect(s.value!.terms, hasLength(1));
+      expect(s.value!.terms.first.title, 'Edited');
+    });
   });
 }

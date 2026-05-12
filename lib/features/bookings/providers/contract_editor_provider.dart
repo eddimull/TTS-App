@@ -181,8 +181,15 @@ class ContractEditorNotifier extends AsyncNotifier<ContractEditorState> {
             bookingId: _key.bookingId,
           );
     } catch (e, st) {
-      // Don't clobber terms on failure; surface error but preserve work.
-      state = AsyncError(e, st);
+      // Surface the error without losing the user's in-flight edits.
+      // copyWithPrevious keeps state.value pointing at the prior terms
+      // so the editor UI can keep rendering them while showing a retry banner.
+      // The method is marked @internal by Riverpod but is the documented way
+      // to retain prior data on the error side in 3.x.
+      // ignore: invalid_use_of_internal_member
+      state = AsyncValue<ContractEditorState>.error(e, st)
+          // ignore: invalid_use_of_internal_member
+          .copyWithPrevious(state);
     }
   }
 }

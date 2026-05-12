@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tts_bandmate/core/providers/core_providers.dart';
@@ -7,6 +9,8 @@ import 'models/booking_detail.dart';
 import 'models/booking_history_entry.dart';
 import 'models/booking_summary.dart';
 import 'models/contact_library_item.dart';
+import 'models/contract_history_entry.dart';
+import 'models/contract_term.dart';
 import 'models/event_draft.dart';
 import 'models/event_type.dart';
 
@@ -289,6 +293,58 @@ class BookingsRepository {
     return list
         .map((e) => EventType.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  /// Save the booking's contract custom terms.
+  Future<BookingDetail> saveContractTerms(
+    int bandId,
+    int bookingId,
+    List<ContractTerm> terms,
+  ) async {
+    final response = await _dio.post(
+      ApiEndpoints.mobileBookingContractTerms(bandId, bookingId),
+      data: {'custom_terms': terms.map((t) => t.toJson()).toList()},
+    );
+    return BookingDetail.fromJson(response.data['booking']);
+  }
+
+  /// Fetch the PandaDoc audit trail for the contract.
+  ///
+  /// The backend may shape the response as either
+  /// `{"history": {"results": [...]}}` (PandaDoc's native pagination)
+  /// or `{"history": [...]}` (already-flattened). We accept both.
+  Future<List<ContractHistoryEntry>> fetchContractHistory(
+    String envelopeId,
+  ) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileContractHistory(envelopeId),
+    );
+    final raw = response.data!['history'];
+    final list = raw is Map<String, dynamic>
+        ? (raw['results'] as List<dynamic>? ?? const [])
+        : (raw as List<dynamic>? ?? const []);
+    return list
+        .cast<Map<String, dynamic>>()
+        .map(ContractHistoryEntry.fromJson)
+        .toList();
+  }
+
+  /// Download the booking's contract PDF bytes.
+  Future<Uint8List> downloadContractPdf(int bandId, int bookingId) async {
+    final response = await _dio.get<List<int>>(
+      ApiEndpoints.mobileBookingContractDownload(bandId, bookingId),
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(response.data!);
+  }
+
+  /// Fetch a short-lived signed URL pointing at the contract view endpoint.
+  /// Used on Flutter web where WebView cannot inject bearer headers.
+  Future<String> fetchContractViewUrl(int bandId, int bookingId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileBookingContractViewUrl(bandId, bookingId),
+    );
+    return response.data!['url'] as String;
   }
 }
 

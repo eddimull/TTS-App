@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../../shared/cache/cache_invalidator.dart';
@@ -75,11 +75,25 @@ class _ContractEditorState extends ConsumerState<ContractEditor> {
       final bytes = await ref
           .read(bookingsRepositoryProvider)
           .downloadContractPdf(_key.bandId, _key.bookingId);
-      final dir = await getApplicationDocumentsDirectory();
+      final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/contract-${_key.bookingId}.pdf');
       await file.writeAsBytes(bytes);
-      await Share.shareXFiles([XFile(file.path)],
-          subject: 'Contract for ${widget.booking.name}');
+      final result = await OpenFile.open(file.path, type: 'application/pdf');
+      if (result.type != ResultType.done && mounted) {
+        await showCupertinoDialog<void>(
+          context: context,
+          builder: (_) => CupertinoAlertDialog(
+            title: const Text('Could not open PDF'),
+            content: Text(result.message),
+            actions: [
+              CupertinoDialogAction(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       await showCupertinoDialog<void>(

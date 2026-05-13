@@ -133,11 +133,25 @@ Both web and mobile render contract previews. Today each surface hardcodes `pric
 
 ### Customer / Contact portal
 
-The customer-facing portal (`ContactPortalController` + `resources/js/Pages/Contact/*`) is in scope for the contract, out of scope for the portal payment UI:
+The portal is in scope on three surfaces:
 
-- **Customer contract:** the customer signs the contract rendered by `pdf.bookingContract.blade.php` (see PDF section above). That template is already being updated, so the customer sees the resolved deposit and the correct remaining-balance sentence. No additional work.
-- **Customer payment page (`Pages/Contact/Payment.vue`, controller payload around lines 152 and 211):** displays only `price`, `amount_paid`, `amount_due` — bills against the booking total, not against the deposit specifically. The deposit is a band-side scheduling concept (drives reminder timing); the customer just owes the balance. We deliberately do **not** add deposit fields to this payload. Leaving the portal payment UI unchanged.
-- The boilerplate "the deposit will be returned promptly" line in `Payment.vue` mentions deposits without naming a number — no change.
+**1. Customer contract (PDF)** — already covered. The customer signs the contract rendered by `pdf.bookingContract.blade.php`; that template is updated above, so the customer sees the resolved deposit and the correct remaining-balance sentence. No additional work.
+
+**2. Portal Dashboard (`Pages/Contact/Dashboard.vue` via `ContactPortalController::index`, payload around line 152)** — extend the per-booking payload with:
+
+- `expected_deposit_amount` (string, dollars).
+- `is_deposit_paid` (bool).
+- `deposit_due_date` (string `M j, Y` or null — null until contract is signed).
+
+Surface a single short line in each booking card, only when the booking has a signed contract and the deposit is unpaid:
+
+> "Deposit of $500.00 due **June 3, 2026**"
+
+When `is_deposit_paid` is true: "Deposit paid". When the contract is not signed (`deposit_due_date` null): no line. We do not show the deposit type (`percent`/`amount`) or the unresolved `deposit_value` to the customer — they only see the resolved dollar amount.
+
+**3. Portal Payment page (`Pages/Contact/Payment.vue` via `ContactPortalController::showPayment`, payload around line 211)** — extend the payload with the same three fields. In the existing booking-summary section (where `price`, `amount_paid`, `amount_due` are listed), add a "Deposit due by" row beneath them, formatted the same way as the dashboard line. The "What's Included" / payment-form sections do **not** change: the customer still pays against the total `amount_due`, not against the deposit specifically. The deposit line is informational — it tells the customer when the band expects the first chunk, but doesn't split the payment flow into two steps.
+
+The boilerplate "the deposit will be returned promptly" line in `Payment.vue` is unchanged — it never names a number.
 
 ### Contract text rule
 
@@ -178,6 +192,7 @@ No code changes. `SendDepositReminders` reads `needs_deposit_reminder`, which us
   - Backfilled legacy bookings (`percent`, `50.00`) match the pre-change number.
 - `PaymentReminderNotificationsTest`: `DepositPaymentReminder` renders the resolved amount for both modes.
 - `Feature/BookingContractPdfTest` (new or extended): PDF rendering uses `expected_deposit_amount` and `price − expected_deposit_amount` for the two sentences.
+- `ContactPortalControllerTest`: the dashboard and payment payloads include `expected_deposit_amount`, `is_deposit_paid`, `deposit_due_date`; `deposit_due_date` is null when the contract is not signed and 3 weeks after `contract_signed_date` otherwise.
 
 ### Web (Vitest, `resources/js/tests/`)
 

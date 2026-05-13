@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
 import '../data/bookings_repository.dart';
 import '../data/models/booking_detail.dart';
+import '../data/models/deposit.dart';
 import '../data/models/event_draft.dart';
 import '../data/models/event_type.dart';
 import '../providers/bookings_provider.dart';
@@ -94,6 +95,9 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
   late final TextEditingController _price;
   final FocusNode _priceFocus = FocusNode();
   late final TextEditingController _notes;
+  late final TextEditingController _depositValue;
+  final FocusNode _depositValueFocus = FocusNode();
+  DepositType _depositType = DepositType.percent;
 
   int? _eventTypeId;
   String _contractOption = 'default';
@@ -114,6 +118,38 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
 
   bool get _isEdit => widget.existing != null;
 
+  /// True when the contract is signed — deposit fields become read-only.
+  bool get _isContractSigned =>
+      widget.existing?.contract?.status == 'completed';
+
+  bool get _priceIsZeroOrEmpty {
+    final p = double.tryParse(
+          _price.text.replaceAll(RegExp(r'[^0-9.]'), ''),
+        ) ??
+        0;
+    return p <= 0;
+  }
+
+  String _depositCaption() {
+    if (_isContractSigned) return 'Locked — contract is signed.';
+    if (_depositType == DepositType.percent && _priceIsZeroOrEmpty) {
+      return 'Enter a price above to use percent.';
+    }
+    final value = double.tryParse(_depositValue.text) ?? 0;
+    // Parse price from the currency-formatted string (strip non-numeric except dot).
+    final priceStr = _CurrencyInputFormatter.toDecimal(_price.text.trim()) ?? '0';
+    final price = double.tryParse(priceStr) ?? 0;
+    if (price <= 0) return '';
+    if (_depositType == DepositType.percent) {
+      if (value > 100) return 'Percent must be between 0 and 100.';
+      return '= \$${(price * value / 100).toStringAsFixed(2)}';
+    } else {
+      if (value > price) return 'Deposit cannot exceed the booking price.';
+      if (value <= 0) return '';
+      return '= ${(value / price * 100).toStringAsFixed(1)}%';
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -128,6 +164,8 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
         : '';
     _price = TextEditingController(text: initialPrice);
     _notes = TextEditingController(text: e?.notes ?? '');
+    _depositType = (e?.depositType == 'amount') ? DepositType.amount : DepositType.percent;
+    _depositValue = TextEditingController(text: e?.depositValue ?? '50.00');
     _eventTypeId = e?.eventTypeId;
     _contractOption = e?.contractOption ?? 'default';
     _status = e?.status;
@@ -180,6 +218,8 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
     _price.dispose();
     _priceFocus.dispose();
     _notes.dispose();
+    _depositValue.dispose();
+    _depositValueFocus.dispose();
     super.dispose();
   }
 
@@ -369,6 +409,10 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
     final priceDecimal = _CurrencyInputFormatter.toDecimal(_price.text.trim());
     final notesVal = _notes.text.trim();
 
+    final newDepositType =
+        _depositType == DepositType.amount ? 'amount' : 'percent';
+    final newDepositValue = _depositValue.text.trim();
+
     final patch = BookingFieldDiff(
       name: nameVal != orig.name ? nameVal : null,
       eventTypeId: _eventTypeId != orig.eventTypeId ? _eventTypeId : null,
@@ -377,6 +421,8 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
       contractOption:
           _contractOption != (orig.contractOption ?? 'default') ? _contractOption : null,
       notes: notesVal != (orig.notes ?? '') ? notesVal : null,
+      depositType: newDepositType != orig.depositType ? newDepositType : null,
+      depositValue: newDepositValue != orig.depositValue ? newDepositValue : null,
     );
 
     final eventUpdates = <String, EventDraft>{};
@@ -542,6 +588,68 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
                   textInputAction: TextInputAction.done,
                   onEditingComplete: () => _priceFocus.unfocus(),
                   inputFormatters: [_CurrencyInputFormatter()],
+                  // Recompute the deposit caption whenever price changes.
+                  onChanged: (_) => setState(() {}),
+                ),
+                CupertinoTextFormFieldRow(
+                  controller: _depositValue,
+                  focusNode: _depositValueFocus,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  enabled: !_isContractSigned &&
+                      !(_depositType == DepositType.percent &&
+                          _priceIsZeroOrEmpty),
+                  prefix: const Text('Deposit'),
+                  placeholder:
+                      _depositType == DepositType.percent ? '50' : '500.00',
+                  onChanged: (_) => setState(() {}),
+                ),
+                // $/% toggle
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Semantics(
+                          label: 'Deposit type: dollar amount or percent',
+                          child: CupertinoSlidingSegmentedControl<DepositType>(
+                            groupValue: _depositType,
+                            onValueChanged: (DepositType? val) {
+                              // No-op when contract is signed; otherwise switch mode.
+                              if (_isContractSigned) return;
+                              if (val == null || val == _depositType) return;
+                              setState(() {
+                                _depositType = val;
+                                _depositValue.text = '';
+                              });
+                            },
+                            children: const {
+                              DepositType.amount: Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 12),
+                                child: Text('\$'),
+                              ),
+                              DepositType.percent: Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 12),
+                                child: Text('%'),
+                              ),
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Live computed counterpart (e.g. "= $500.00" or "= 50.0%")
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Text(
+                    _depositCaption(),
+                    style: TextStyle(
+                      color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                      fontSize: 13,
+                    ),
+                  ),
                 ),
               ],
             ),

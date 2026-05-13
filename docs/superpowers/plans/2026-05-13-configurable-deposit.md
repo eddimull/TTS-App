@@ -95,12 +95,9 @@ class BookingsTest extends TestCase
     /** @test */
     public function existing_bookings_default_to_50_percent_deposit_after_migration(): void
     {
-        $owner = User::factory()->create();
-        $band = Bands::factory()->create(['owner_id' => $owner->id]);
-        $booking = Bookings::factory()->create([
-            'band_id' => $band->id,
-            'price'   => '1000.00',
-        ]);
+        // BookingsFactory::definition() creates a Bands::factory()->withOwners()
+        // for us — no manual band/owner setup needed for this assertion.
+        $booking = Bookings::factory()->create(['price' => '1000.00']);
 
         $this->assertSame('percent', $booking->fresh()->deposit_type);
         $this->assertSame('50.00', (string) $booking->fresh()->deposit_value);
@@ -423,7 +420,7 @@ Append to `TTS/tests/Feature/BookingsControllerTest.php` (inside the existing cl
 public function update_accepts_valid_deposit_percent(): void
 {
     $owner = \App\Models\User::factory()->create();
-    $band  = \App\Models\Bands::factory()->create(['owner_id' => $owner->id]);
+    $band  = \App\Models\Bands::factory()->create(); $band->owners()->create(["user_id" => $owner->id]);
     $booking = \App\Models\Bookings::factory()->create(['band_id' => $band->id, 'price' => '1000.00']);
 
     $this->actingAs($owner)
@@ -445,7 +442,7 @@ public function update_accepts_valid_deposit_percent(): void
 public function update_rejects_deposit_percent_above_100(): void
 {
     $owner = \App\Models\User::factory()->create();
-    $band  = \App\Models\Bands::factory()->create(['owner_id' => $owner->id]);
+    $band  = \App\Models\Bands::factory()->create(); $band->owners()->create(["user_id" => $owner->id]);
     $booking = \App\Models\Bookings::factory()->create(['band_id' => $band->id, 'price' => '1000.00']);
 
     $this->actingAs($owner)
@@ -464,7 +461,7 @@ public function update_rejects_deposit_percent_above_100(): void
 public function update_rejects_deposit_amount_exceeding_price(): void
 {
     $owner = \App\Models\User::factory()->create();
-    $band  = \App\Models\Bands::factory()->create(['owner_id' => $owner->id]);
+    $band  = \App\Models\Bands::factory()->create(); $band->owners()->create(["user_id" => $owner->id]);
     $booking = \App\Models\Bookings::factory()->create(['band_id' => $band->id, 'price' => '1000.00']);
 
     $this->actingAs($owner)
@@ -483,7 +480,7 @@ public function update_rejects_deposit_amount_exceeding_price(): void
 public function update_rejects_deposit_change_when_contract_is_signed(): void
 {
     $owner = \App\Models\User::factory()->create();
-    $band  = \App\Models\Bands::factory()->create(['owner_id' => $owner->id]);
+    $band  = \App\Models\Bands::factory()->create(); $band->owners()->create(["user_id" => $owner->id]);
     $booking = \App\Models\Bookings::factory()->create(['band_id' => $band->id, 'price' => '1000.00']);
     \App\Models\Contracts::factory()->create([
         'contractable_id'   => $booking->id,
@@ -636,7 +633,7 @@ class BookingDepositTest extends TestCase
     public function mobile_update_accepts_valid_deposit_amount(): void
     {
         $owner = User::factory()->create();
-        $band  = Bands::factory()->create(['owner_id' => $owner->id]);
+        $band  = Bands::factory()->create(); $band->owners()->create(["user_id" => $owner->id]);
         $booking = Bookings::factory()->create(['band_id' => $band->id, 'price' => '1000.00']);
 
         $this->authedRequest($owner, $band)
@@ -654,7 +651,7 @@ class BookingDepositTest extends TestCase
     public function mobile_update_rejects_percent_above_100(): void
     {
         $owner = User::factory()->create();
-        $band  = Bands::factory()->create(['owner_id' => $owner->id]);
+        $band  = Bands::factory()->create(); $band->owners()->create(["user_id" => $owner->id]);
         $booking = Bookings::factory()->create(['band_id' => $band->id, 'price' => '1000.00']);
 
         $this->authedRequest($owner, $band)
@@ -670,7 +667,7 @@ class BookingDepositTest extends TestCase
     public function mobile_update_rejects_amount_above_price(): void
     {
         $owner = User::factory()->create();
-        $band  = Bands::factory()->create(['owner_id' => $owner->id]);
+        $band  = Bands::factory()->create(); $band->owners()->create(["user_id" => $owner->id]);
         $booking = Bookings::factory()->create(['band_id' => $band->id, 'price' => '1000.00']);
 
         $this->authedRequest($owner, $band)
@@ -686,7 +683,7 @@ class BookingDepositTest extends TestCase
     public function mobile_update_rejects_deposit_when_contract_signed(): void
     {
         $owner = User::factory()->create();
-        $band  = Bands::factory()->create(['owner_id' => $owner->id]);
+        $band  = Bands::factory()->create(); $band->owners()->create(["user_id" => $owner->id]);
         $booking = Bookings::factory()->create(['band_id' => $band->id, 'price' => '1000.00']);
         Contracts::factory()->create([
             'contractable_id'   => $booking->id,
@@ -769,7 +766,7 @@ Append to the test class created in Task 5:
 public function mobile_booking_show_response_includes_deposit_fields(): void
 {
     $owner = User::factory()->create();
-    $band  = Bands::factory()->create(['owner_id' => $owner->id]);
+    $band  = Bands::factory()->create(); $band->owners()->create(["user_id" => $owner->id]);
     $booking = Bookings::factory()->create([
         'band_id'       => $band->id,
         'price'         => '1000.00',
@@ -847,12 +844,12 @@ class BookingContractPdfTest extends TestCase
     {
         $owner = User::factory()->create();
         $band  = Bands::factory()->create([
-            'owner_id' => $owner->id,
             'address'  => '123 Main',
             'city'     => 'New Orleans',
             'state'    => 'LA',
             'zip'      => '70112',
         ]);
+        $band->owners()->create(['user_id' => $owner->id]);
         $booking = Bookings::factory()->create([
             'band_id'       => $band->id,
             'price'         => '1000.00',
@@ -878,9 +875,9 @@ class BookingContractPdfTest extends TestCase
     {
         $owner = User::factory()->create();
         $band  = Bands::factory()->create([
-            'owner_id' => $owner->id,
             'address'  => '123 Main', 'city' => 'NOLA', 'state' => 'LA', 'zip' => '70112',
         ]);
+        $band->owners()->create(['user_id' => $owner->id]);
         $booking = Bookings::factory()->create([
             'band_id'       => $band->id,
             'price'         => '2000.00',
@@ -957,7 +954,7 @@ Append to `TTS/tests/Feature/BookingsControllerTest.php`:
 public function inertia_booking_response_includes_expected_deposit_amount(): void
 {
     $owner = \App\Models\User::factory()->create();
-    $band  = \App\Models\Bands::factory()->create(['owner_id' => $owner->id]);
+    $band  = \App\Models\Bands::factory()->create(); $band->owners()->create(["user_id" => $owner->id]);
     $booking = \App\Models\Bookings::factory()->create([
         'band_id'       => $band->id,
         'price'         => '1000.00',

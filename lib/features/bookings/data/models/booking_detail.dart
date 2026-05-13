@@ -27,6 +27,9 @@ class BookingDetail {
     this.contract,
     this.payments = const [],
     this.band,
+    this.depositType = 'percent',
+    this.depositValue = '50.00',
+    this.expectedDepositAmount,
   });
 
   final int id;
@@ -69,6 +72,17 @@ class BookingDetail {
   /// Optional nested band identity.
   final BandSummary? band;
 
+  /// 'percent' or 'amount'. Defaults to 'percent' for legacy responses.
+  final String depositType;
+
+  /// Raw value: 0-100 for percent mode, 0+ for amount mode.
+  final String depositValue;
+
+  /// Resolved dollar amount as a formatted string ("250.00"). Computed by
+  /// the backend from depositType + depositValue + price. Null on legacy
+  /// responses that pre-date the deposit-config feature.
+  final String? expectedDepositAmount;
+
   factory BookingDetail.fromJson(Map<String, dynamic> json) {
     final rawContacts = json['contacts'];
     final contacts = rawContacts is List
@@ -104,6 +118,10 @@ class BookingDetail {
         ? BandSummary.fromJson(rawBand)
         : null;
 
+    final depositType = (json['deposit_type'] as String?) ?? 'percent';
+    final depositValue = json['deposit_value']?.toString() ?? '50.00';
+    final expectedDepositAmount = json['expected_deposit_amount']?.toString();
+
     return BookingDetail(
       id: (json['id'] as num).toInt(),
       name: json['name'] as String,
@@ -127,6 +145,9 @@ class BookingDetail {
       contract: contract,
       payments: payments,
       band: band,
+      depositType: depositType,
+      depositValue: depositValue,
+      expectedDepositAmount: expectedDepositAmount,
     );
   }
 

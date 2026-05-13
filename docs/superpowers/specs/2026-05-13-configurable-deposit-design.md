@@ -131,6 +131,14 @@ Both web and mobile render contract previews. Today each surface hardcodes `pric
 
 - Replace both `${{ number_format($booking->price/2, 2) }}` occurrences with `${{ $booking->expected_deposit_amount }}` and `${{ number_format($booking->price - $booking->expected_deposit_amount, 2, '.', '') }}` respectively.
 
+### Customer / Contact portal
+
+The customer-facing portal (`ContactPortalController` + `resources/js/Pages/Contact/*`) is in scope for the contract, out of scope for the portal payment UI:
+
+- **Customer contract:** the customer signs the contract rendered by `pdf.bookingContract.blade.php` (see PDF section above). That template is already being updated, so the customer sees the resolved deposit and the correct remaining-balance sentence. No additional work.
+- **Customer payment page (`Pages/Contact/Payment.vue`, controller payload around lines 152 and 211):** displays only `price`, `amount_paid`, `amount_due` — bills against the booking total, not against the deposit specifically. The deposit is a band-side scheduling concept (drives reminder timing); the customer just owes the balance. We deliberately do **not** add deposit fields to this payload. Leaving the portal payment UI unchanged.
+- The boilerplate "the deposit will be returned promptly" line in `Payment.vue` mentions deposits without naming a number — no change.
+
 ### Contract text rule
 
 The customer-facing contract always shows resolved dollar amounts, never percents. Whether the band entered `50%` or `$500`, the PDF reads "Buyer will pay a deposit of $500.00…" — the final binding number.

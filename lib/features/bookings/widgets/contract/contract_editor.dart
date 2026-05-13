@@ -153,24 +153,6 @@ class _ContractEditorState extends ConsumerState<ContractEditor> {
     return CupertinoPageScaffold(
       resizeToAvoidBottomInset: true,
       navigationBar: CupertinoNavigationBar(
-        leading: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: CupertinoSlidingSegmentedControl<bool>(
-            groupValue: _editMode,
-            onValueChanged: (v) => setState(() => _editMode = v ?? true),
-            children: const {
-              true: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                child: Text('Edit', style: TextStyle(fontSize: 13)),
-              ),
-              false: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                child: Text('Preview', style: TextStyle(fontSize: 13)),
-              ),
-            },
-          ),
-        ),
         middle: const Text('Contract'),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -196,7 +178,33 @@ class _ContractEditorState extends ConsumerState<ContractEditor> {
           loading: () => const Center(child: CupertinoActivityIndicator()),
           error: (e, _) => Center(child: Text('Error: $e')),
           data: (state) {
-            return CustomScrollView(
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: CupertinoSlidingSegmentedControl<bool>(
+                      groupValue: _editMode,
+                      onValueChanged: (v) =>
+                          setState(() => _editMode = v ?? true),
+                      children: const {
+                        true: Padding(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          child: Text('Edit'),
+                        ),
+                        false: Padding(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          child: Text('Preview'),
+                        ),
+                      },
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: CustomScrollView(
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
@@ -281,6 +289,9 @@ class _ContractEditorState extends ConsumerState<ContractEditor> {
                       child: Center(child: CupertinoActivityIndicator()),
                     ),
                   ),
+              ],
+                  ),
+                ),
               ],
             );
           },

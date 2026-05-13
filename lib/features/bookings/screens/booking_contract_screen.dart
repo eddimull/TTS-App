@@ -113,34 +113,45 @@ class _BookingContractScreenState
     final detailAsync = ref.watch(bookingDetailProvider(
         (bandId: widget.bandId, bookingId: widget.bookingId)));
 
-    return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(
-        middle: Text('Contract'),
+    return detailAsync.when(
+      loading: () => const CupertinoPageScaffold(
+        navigationBar: CupertinoNavigationBar(middle: Text('Contract')),
+        child: Center(child: CupertinoActivityIndicator()),
       ),
-      child: SafeArea(
-        child: detailAsync.when(
-          loading: () =>
-              const Center(child: CupertinoActivityIndicator()),
-          error: (e, _) => ErrorView(message: ErrorView.friendlyMessage(e)),
-          data: (booking) {
-            final option = booking.contractOption ?? 'default';
+      error: (e, _) => CupertinoPageScaffold(
+        navigationBar: const CupertinoNavigationBar(middle: Text('Contract')),
+        child: SafeArea(
+          child: ErrorView(message: ErrorView.friendlyMessage(e)),
+        ),
+      ),
+      data: (booking) {
+        final option = booking.contractOption ?? 'default';
 
-            return switch (option) {
-              'none' => _NoneView(
-                  onChangeType: () =>
-                      _openContractOptionPicker(context),
+        return switch (option) {
+          'none' => CupertinoPageScaffold(
+              navigationBar:
+                  const CupertinoNavigationBar(middle: Text('Contract')),
+              child: SafeArea(
+                child: _NoneView(
+                  onChangeType: () => _openContractOptionPicker(context),
                 ),
-              'external' => _ExternalView(
+              ),
+            ),
+          'external' => CupertinoPageScaffold(
+              navigationBar:
+                  const CupertinoNavigationBar(middle: Text('Contract')),
+              child: SafeArea(
+                child: _ExternalView(
                   assetUrl: booking.contract?.assetUrl,
                   uploading: _uploading,
                   onUpload: _uploadPdf,
                   onView: () => _openUrl(booking.contract!.assetUrl!),
                 ),
-              _ => ContractDefaultView(booking: booking),
-            };
-          },
-        ),
-      ),
+              ),
+            ),
+          _ => ContractDefaultView(booking: booking),
+        };
+      },
     );
   }
 }

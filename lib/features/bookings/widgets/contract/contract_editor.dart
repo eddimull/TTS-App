@@ -1,15 +1,12 @@
-import 'dart:io';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../../shared/cache/cache_invalidator.dart';
 import '../../data/bookings_repository.dart';
 import '../../data/models/booking_detail.dart';
 import '../../providers/contract_editor_provider.dart';
+import '../../services/contract_download.dart';
 import 'contract_fixed_header.dart';
 import 'contract_send_sheet.dart';
 import 'contract_signature_block.dart';
@@ -72,28 +69,11 @@ class _ContractEditorState extends ConsumerState<ContractEditor> {
   Future<void> _download() async {
     setState(() => _downloading = true);
     try {
-      final bytes = await ref
-          .read(bookingsRepositoryProvider)
-          .downloadContractPdf(_key.bandId, _key.bookingId);
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/contract-${_key.bookingId}.pdf');
-      await file.writeAsBytes(bytes);
-      await Share.shareXFiles([XFile(file.path)],
-          subject: 'Contract for ${widget.booking.name}');
-    } catch (e) {
-      if (!mounted) return;
-      await showCupertinoDialog<void>(
+      await downloadAndOpenContractPdf(
         context: context,
-        builder: (_) => CupertinoAlertDialog(
-          title: const Text('Download failed'),
-          content: Text(e.toString()),
-          actions: [
-            CupertinoDialogAction(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
+        ref: ref,
+        bandId: _key.bandId,
+        bookingId: _key.bookingId,
       );
     } finally {
       if (mounted) setState(() => _downloading = false);

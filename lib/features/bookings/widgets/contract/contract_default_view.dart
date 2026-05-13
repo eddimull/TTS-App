@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/booking_detail.dart';
+import '../../services/contract_download.dart';
 import 'contract_editor.dart';
 import 'contract_history_list.dart';
 import 'contract_lock_banner.dart';
@@ -21,10 +22,42 @@ enum _LockedTab { preview, history }
 
 class _ContractDefaultViewState extends ConsumerState<ContractDefaultView> {
   _LockedTab _tab = _LockedTab.preview;
+  bool _downloading = false;
 
   bool get _isLocked {
     final s = widget.booking.status;
     return s == 'pending' || s == 'confirmed';
+  }
+
+  Future<void> _showActions() async {
+    final action = await showCupertinoModalPopup<String>(
+      context: context,
+      builder: (ctx) => CupertinoActionSheet(
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () => Navigator.pop(ctx, 'download'),
+            child: const Text('Download PDF'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+    if (action != 'download' || !mounted) return;
+
+    setState(() => _downloading = true);
+    try {
+      await downloadAndOpenContractPdf(
+        context: context,
+        ref: ref,
+        bandId: widget.booking.band!.id,
+        bookingId: widget.booking.id,
+      );
+    } finally {
+      if (mounted) setState(() => _downloading = false);
+    }
   }
 
   @override
@@ -36,7 +69,16 @@ class _ContractDefaultViewState extends ConsumerState<ContractDefaultView> {
     final envelopeId = widget.booking.contract?.envelopeId;
 
     return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(middle: Text('Contract')),
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text('Contract'),
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: _downloading ? null : _showActions,
+          child: _downloading
+              ? const CupertinoActivityIndicator()
+              : const Icon(CupertinoIcons.ellipsis_circle),
+        ),
+      ),
       child: SafeArea(
         child: Column(
           children: [

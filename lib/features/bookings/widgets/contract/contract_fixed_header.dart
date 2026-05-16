@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../auth/data/models/band_summary.dart';
 import '../../../events/data/models/event_summary.dart';
 import '../../data/models/booking_detail.dart';
+import '../../data/models/deposit.dart';
 
 class ContractFixedHeader extends StatelessWidget {
   const ContractFixedHeader({
@@ -53,7 +54,7 @@ class ContractFixedHeader extends StatelessWidget {
     return ((price / duration) * 1.5 / _eventCount).toStringAsFixed(2);
   }
 
-  String get _halfPrice => (_parsePrice() / 2).toStringAsFixed(2);
+  ResolvedDeposit get _resolvedDeposit => Deposit.resolve(booking);
 
   TextStyle _bold(BuildContext c) => CupertinoTheme.of(c)
       .textTheme
@@ -227,7 +228,7 @@ class ContractFixedHeader extends StatelessWidget {
               style: style,
               children: [
                 const TextSpan(text: 'Buyer will pay a deposit of '),
-                TextSpan(text: '\$$_halfPrice', style: _bold(context)),
+                TextSpan(text: '\$${_resolvedDeposit.depositAmount}', style: _bold(context)),
                 const TextSpan(
                     text:
                         ', within three weeks of the execution of this Agreement. The deposit is non-refundable after execution of this contract. Payment to '),
@@ -256,7 +257,7 @@ class ContractFixedHeader extends StatelessWidget {
               style: style,
               children: [
                 const TextSpan(text: 'Buyer shall pay the remaining gross compensation of '),
-                TextSpan(text: '\$$_halfPrice', style: _bold(context)),
+                TextSpan(text: '\$${_resolvedDeposit.remainingAmount}', style: _bold(context)),
                 const TextSpan(
                     text: ' at least ten (10) days before Performance. Overtime rate: '),
                 TextSpan(text: '\$$_overtimeRate/hour', style: _bold(context)),

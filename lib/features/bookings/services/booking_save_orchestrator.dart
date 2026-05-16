@@ -66,6 +66,8 @@ class BookingFieldDiff {
     this.status,
     this.contractOption,
     this.notes,
+    this.depositType,
+    this.depositValue,
   });
 
   final String? name;
@@ -74,6 +76,8 @@ class BookingFieldDiff {
   final String? status;
   final String? contractOption;
   final String? notes;
+  final String? depositType;
+  final String? depositValue;
 
   bool get isEmpty =>
       name == null &&
@@ -81,7 +85,9 @@ class BookingFieldDiff {
       price == null &&
       status == null &&
       contractOption == null &&
-      notes == null;
+      notes == null &&
+      depositType == null &&
+      depositValue == null;
 }
 
 /// Result of running a snapshot through the orchestrator. Each sub-op's
@@ -190,6 +196,8 @@ class BookingSaveOrchestrator {
           status: patch.status,
           contractOption: patch.contractOption,
           notes: patch.notes,
+          depositType: patch.depositType,
+          depositValue: patch.depositValue,
         );
         bookingPatch = const OperationSuccess();
       } catch (e) {

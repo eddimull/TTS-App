@@ -72,4 +72,42 @@ void main() {
     await tester.pump();
     expect(retryCalled, isTrue);
   });
+
+  testWidgets('title field keeps the cursor at the end after a parent rebuild',
+      (tester) async {
+    // Reproduces the iOS bug: each keystroke triggered a parent setState
+    // that rebuilt the card. The card built a fresh TextEditingController
+    // inline, whose cursor defaults to offset 0 — so the next keystroke
+    // inserted at the front, turning "abcdef" into "fedcba".
+    EventDraft draft = const EventDraft(title: '', date: '2026-06-13');
+
+    await tester.pumpWidget(
+      StatefulBuilder(
+        builder: (context, setState) => CupertinoApp(
+          home: Center(
+            child: EventSubFormCard(
+              draft: draft,
+              canDelete: true,
+              onChange: (newDraft) => setState(() => draft = newDraft),
+              onDelete: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final titleField = find.byType(CupertinoTextField).first;
+
+    // Type a character; the parent rebuilds the card via setState.
+    await tester.enterText(titleField, 'abc');
+    await tester.pump();
+
+    // After the rebuild the field's controller must still hold the text
+    // with the cursor at the end. A freshly-constructed controller would
+    // reset selection to offset 0, which is the bug.
+    final controller = tester.widget<CupertinoTextField>(titleField).controller!;
+    expect(controller.text, 'abc');
+    expect(controller.selection.baseOffset, 3,
+        reason: 'cursor must stay at the end of the text after a rebuild');
+  });
 }

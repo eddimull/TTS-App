@@ -6,7 +6,13 @@ import '../data/models/event_draft.dart';
 /// Owned by `booking_form_screen.dart`. The host screen wraps each draft
 /// in a local `_EventFormRow` (id+key+draft+localKey) and passes the
 /// draft and a stable key (the row's id or localKey) to this widget.
-class EventSubFormCard extends StatelessWidget {
+///
+/// This is a [StatefulWidget] so it can own its [TextEditingController]s
+/// across rebuilds. Each keystroke calls [onChange], which makes the host
+/// `setState` and rebuild this card; if the controllers were created in
+/// `build()` they would be reconstructed with the cursor at offset 0,
+/// causing typed text to come out reversed (an iOS-visible bug).
+class EventSubFormCard extends StatefulWidget {
   const EventSubFormCard({
     super.key,
     required this.draft,
@@ -25,7 +31,61 @@ class EventSubFormCard extends StatelessWidget {
   final VoidCallback? onRetryRow;
 
   @override
+  State<EventSubFormCard> createState() => _EventSubFormCardState();
+}
+
+class _EventSubFormCardState extends State<EventSubFormCard> {
+  late final TextEditingController _title;
+  late final TextEditingController _date;
+  late final TextEditingController _startTime;
+  late final TextEditingController _endTime;
+  late final TextEditingController _venueName;
+
+  @override
+  void initState() {
+    super.initState();
+    _title = TextEditingController(text: widget.draft.title);
+    _date = TextEditingController(text: widget.draft.date);
+    _startTime = TextEditingController(text: widget.draft.startTime ?? '');
+    _endTime = TextEditingController(text: widget.draft.endTime ?? '');
+    _venueName = TextEditingController(text: widget.draft.venueName ?? '');
+  }
+
+  @override
+  void didUpdateWidget(EventSubFormCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sync controllers only when the parent pushes a genuinely different
+    // value (e.g. a retry or programmatic change), not on the echo of the
+    // user's own keystroke — overwriting on the echo would reset the cursor.
+    _syncIfChanged(_title, widget.draft.title);
+    _syncIfChanged(_date, widget.draft.date);
+    _syncIfChanged(_startTime, widget.draft.startTime ?? '');
+    _syncIfChanged(_endTime, widget.draft.endTime ?? '');
+    _syncIfChanged(_venueName, widget.draft.venueName ?? '');
+  }
+
+  void _syncIfChanged(TextEditingController controller, String value) {
+    if (controller.text != value) {
+      controller.value = TextEditingValue(
+        text: value,
+        selection: TextSelection.collapsed(offset: value.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _date.dispose();
+    _startTime.dispose();
+    _endTime.dispose();
+    _venueName.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final draft = widget.draft;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.all(12),
@@ -52,21 +112,21 @@ class EventSubFormCard extends StatelessWidget {
               ),
               CupertinoButton(
                 padding: EdgeInsets.zero,
-                onPressed: canDelete ? onDelete : null,
+                onPressed: widget.canDelete ? widget.onDelete : null,
                 child: Icon(
                   CupertinoIcons.trash,
-                  color: canDelete
+                  color: widget.canDelete
                       ? CupertinoColors.destructiveRed
                       : CupertinoColors.inactiveGray,
                 ),
               ),
             ],
           ),
-          if (saveError != null)
+          if (widget.saveError != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: GestureDetector(
-                onTap: onRetryRow,
+                onTap: widget.onRetryRow,
                 child: const Row(
                   children: [
                     Icon(
@@ -89,14 +149,14 @@ class EventSubFormCard extends StatelessWidget {
           const SizedBox(height: 8),
           CupertinoTextField(
             placeholder: 'Title',
-            controller: TextEditingController(text: draft.title),
-            onChanged: (v) => onChange(_copyWith(title: v)),
+            controller: _title,
+            onChanged: (v) => widget.onChange(_copyWith(title: v)),
           ),
           const SizedBox(height: 8),
           CupertinoTextField(
             placeholder: 'Date (YYYY-MM-DD)',
-            controller: TextEditingController(text: draft.date),
-            onChanged: (v) => onChange(_copyWith(date: v)),
+            controller: _date,
+            onChanged: (v) => widget.onChange(_copyWith(date: v)),
           ),
           const SizedBox(height: 8),
           Row(
@@ -104,18 +164,18 @@ class EventSubFormCard extends StatelessWidget {
               Expanded(
                 child: CupertinoTextField(
                   placeholder: 'Start (HH:mm)',
-                  controller: TextEditingController(text: draft.startTime ?? ''),
+                  controller: _startTime,
                   onChanged: (v) =>
-                      onChange(_copyWith(startTime: v.isEmpty ? null : v)),
+                      widget.onChange(_copyWith(startTime: v.isEmpty ? null : v)),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: CupertinoTextField(
                   placeholder: 'End (HH:mm)',
-                  controller: TextEditingController(text: draft.endTime ?? ''),
+                  controller: _endTime,
                   onChanged: (v) =>
-                      onChange(_copyWith(endTime: v.isEmpty ? null : v)),
+                      widget.onChange(_copyWith(endTime: v.isEmpty ? null : v)),
                 ),
               ),
             ],
@@ -123,9 +183,9 @@ class EventSubFormCard extends StatelessWidget {
           const SizedBox(height: 8),
           CupertinoTextField(
             placeholder: 'Venue name',
-            controller: TextEditingController(text: draft.venueName ?? ''),
+            controller: _venueName,
             onChanged: (v) =>
-                onChange(_copyWith(venueName: v.isEmpty ? null : v)),
+                widget.onChange(_copyWith(venueName: v.isEmpty ? null : v)),
           ),
         ],
       ),
@@ -141,6 +201,7 @@ class EventSubFormCard extends StatelessWidget {
     String? venueAddress,
     String? price,
   }) {
+    final draft = widget.draft;
     return EventDraft(
       title: title ?? draft.title,
       date: date ?? draft.date,

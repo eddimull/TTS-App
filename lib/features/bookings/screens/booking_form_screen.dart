@@ -103,6 +103,10 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
   String _contractOption = 'default';
   String? _status;
 
+  // ── Create-mode toggles (both default ON so the default experience is unchanged)
+  bool _depositEnabled = true;
+  bool _contractEnabled = true;
+
   // ── Multi-event state ─────────────────────────────────────────────────────
   List<_EventFormRow> _eventRows = [];
   final Set<int> _deletedEventIds = {};
@@ -360,14 +364,34 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
     final drafts = _eventRows.map((r) => r.draft).toList();
     final priceDecimal = _CurrencyInputFormatter.toDecimal(_price.text.trim());
 
+    // Resolve deposit fields: OFF → explicit $0 amount; ON → user's input.
+    final String createDepositType;
+    final String createDepositValue;
+    if (_depositEnabled) {
+      createDepositType =
+          _depositType == DepositType.amount ? 'amount' : 'percent';
+      createDepositValue = _depositValue.text.trim().isEmpty
+          ? '0'
+          : _depositValue.text.trim();
+    } else {
+      createDepositType = 'amount';
+      createDepositValue = '0';
+    }
+
+    // Resolve contract option: OFF → 'none'; ON → segmented control value.
+    final String createContractOption =
+        _contractEnabled ? _contractOption : 'none';
+
     try {
       await ref.read(bookingsRepositoryProvider).createBooking(
         widget.bandId,
         name: nameVal,
         eventTypeId: _eventTypeId!,
         price: priceDecimal,
-        contractOption: _contractOption,
+        contractOption: createContractOption,
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+        depositType: createDepositType,
+        depositValue: createDepositValue,
         events: drafts,
       );
       ref.read(cacheInvalidatorProvider).onBookingChanged(
@@ -591,66 +615,82 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
                   // Recompute the deposit caption whenever price changes.
                   onChanged: (_) => setState(() {}),
                 ),
-                CupertinoTextFormFieldRow(
-                  controller: _depositValue,
-                  focusNode: _depositValueFocus,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  enabled: !_isContractSigned &&
-                      !(_depositType == DepositType.percent &&
-                          _priceIsZeroOrEmpty),
-                  prefix: const Text('Deposit'),
-                  placeholder:
-                      _depositType == DepositType.percent ? '50' : '500.00',
-                  onChanged: (_) => setState(() {}),
-                ),
-                // $/% toggle
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Semantics(
-                          label: 'Deposit type: dollar amount or percent',
-                          child: CupertinoSlidingSegmentedControl<DepositType>(
-                            groupValue: _depositType,
-                            onValueChanged: (DepositType? val) {
-                              // No-op when contract is signed; otherwise switch mode.
-                              if (_isContractSigned) return;
-                              if (val == null || val == _depositType) return;
-                              setState(() {
-                                _depositType = val;
-                                _depositValue.text = '';
-                              });
-                            },
-                            children: const {
-                              DepositType.amount: Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 12),
-                                child: Text('\$'),
-                              ),
-                              DepositType.percent: Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 12),
-                                child: Text('%'),
-                              ),
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Live computed counterpart (e.g. "= $500.00" or "= 50.0%")
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  child: Text(
-                    _depositCaption(),
-                    style: TextStyle(
-                      color: CupertinoColors.secondaryLabel.resolveFrom(context),
-                      fontSize: 13,
+                // Deposit toggle — create mode only.
+                if (!_isEdit)
+                  CupertinoFormRow(
+                    prefix: const Text('Deposit'),
+                    child: CupertinoSwitch(
+                      value: _depositEnabled,
+                      onChanged: (v) => setState(() => _depositEnabled = v),
                     ),
                   ),
-                ),
+                // Deposit input + $/% control + caption — always in edit mode;
+                // in create mode only when the deposit toggle is ON.
+                if (_isEdit || _depositEnabled) ...[
+                  CupertinoTextFormFieldRow(
+                    controller: _depositValue,
+                    focusNode: _depositValueFocus,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    enabled: !_isContractSigned &&
+                        !(_depositType == DepositType.percent &&
+                            _priceIsZeroOrEmpty),
+                    // In create mode the toggle row owns the 'Deposit' label,
+                    // so the input is just 'Amount'. In edit mode there is no
+                    // toggle row, so keep the original 'Deposit' label.
+                    prefix: Text(_isEdit ? 'Deposit' : 'Amount'),
+                    placeholder:
+                        _depositType == DepositType.percent ? '50' : '500.00',
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  // $/% toggle
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Semantics(
+                            label: 'Deposit type: dollar amount or percent',
+                            child: CupertinoSlidingSegmentedControl<DepositType>(
+                              groupValue: _depositType,
+                              onValueChanged: (DepositType? val) {
+                                // No-op when contract is signed; otherwise switch mode.
+                                if (_isContractSigned) return;
+                                if (val == null || val == _depositType) return;
+                                setState(() {
+                                  _depositType = val;
+                                  _depositValue.text = '';
+                                });
+                              },
+                              children: const {
+                                DepositType.amount: Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text('\$'),
+                                ),
+                                DepositType.percent: Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text('%'),
+                                ),
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Live computed counterpart (e.g. "= $500.00" or "= 50.0%")
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Text(
+                      _depositCaption(),
+                      style: TextStyle(
+                        color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
 
@@ -731,30 +771,40 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
               CupertinoFormSection.insetGrouped(
                 header: const Text('CONTRACT'),
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    child: CupertinoSlidingSegmentedControl<String>(
-                      groupValue: _contractOption,
-                      onValueChanged: (v) {
-                        if (v != null) setState(() => _contractOption = v);
-                      },
-                      children: const {
-                        'default': Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8),
-                          child: Text('Default'),
-                        ),
-                        'none': Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8),
-                          child: Text('None'),
-                        ),
-                        'external': Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8),
-                          child: Text('External'),
-                        ),
-                      },
+                  // Toggle row: controls whether a contract is attached at all.
+                  CupertinoFormRow(
+                    prefix: const Text('Contract'),
+                    child: CupertinoSwitch(
+                      value: _contractEnabled,
+                      onChanged: (v) => setState(() => _contractEnabled = v),
                     ),
                   ),
+                  // Segmented control only shown when contract is enabled.
+                  if (_contractEnabled)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      child: CupertinoSlidingSegmentedControl<String>(
+                        groupValue: _contractOption,
+                        onValueChanged: (v) {
+                          if (v != null) setState(() => _contractOption = v);
+                        },
+                        children: const {
+                          'default': Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: Text('Default'),
+                          ),
+                          'none': Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: Text('None'),
+                          ),
+                          'external': Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            child: Text('External'),
+                          ),
+                        },
+                      ),
+                    ),
                 ],
               ),
 

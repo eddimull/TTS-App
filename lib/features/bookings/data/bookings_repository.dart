@@ -104,6 +104,9 @@ class BookingsRepository {
   /// Booking-level fields go to the top-level payload keys; the initial
   /// event(s) ride in an `events:` array. Each event is serialized by
   /// [EventDraft.toJson].
+  ///
+  /// [depositType] and [depositValue] map to `deposit_type` / `deposit_value`
+  /// in the POST body. When omitted the server applies its own default (50%).
   Future<BookingDetail> createBooking(
     int bandId, {
     required String name,
@@ -112,6 +115,8 @@ class BookingsRepository {
     String? status,
     String? contractOption,
     String? notes,
+    String? depositType,
+    String? depositValue,
     required List<EventDraft> events,
   }) async {
     final body = <String, dynamic>{
@@ -121,6 +126,8 @@ class BookingsRepository {
       if (status != null) 'status': status,
       if (contractOption != null) 'contract_option': contractOption,
       if (notes != null) 'notes': notes,
+      if (depositType != null) 'deposit_type': depositType,
+      if (depositValue != null) 'deposit_value': depositValue,
       'events': events.map((e) => e.toJson()).toList(),
     };
 

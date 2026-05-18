@@ -1,6 +1,14 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../data/models/event_draft.dart';
+import '../data/venue_search_service.dart';
+import 'venue_picker.dart';
 
 // ── Date/time formatting helpers ──────────────────────────────────────────────
 
@@ -47,6 +55,11 @@ String _friendlyTime(int hour, int minute) {
 
 /// Formats a DateTime to friendly "Sat, May 17, 2026" style.
 String _friendlyDate(DateTime dt) => DateFormat('EEE, MMM d, y').format(dt);
+
+// ── Platform capability guard ─────────────────────────────────────────────────
+
+/// True on platforms where google_maps_flutter renders correctly.
+bool get _mapsSupported => kIsWeb || Platform.isAndroid || Platform.isIOS;
 
 // ── Picker bottom-sheet ───────────────────────────────────────────────────────
 
@@ -167,7 +180,8 @@ class _PickerRow extends StatelessWidget {
                     child: Icon(
                       CupertinoIcons.clear_circled_solid,
                       size: 16,
-                      color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                      color:
+                          CupertinoColors.tertiaryLabel.resolveFrom(context),
                     ),
                   ),
                 ),
@@ -190,16 +204,18 @@ class _PickerRow extends StatelessWidget {
 
 /// Single event row inside the booking form. Cupertino-styled.
 ///
-/// Owned by `booking_form_screen.dart`. The host screen wraps each draft
-/// in a local `_EventFormRow` (id+key+draft+localKey) and passes the
-/// draft and a stable key (the row's id or localKey) to this widget.
+/// Converted to [ConsumerStatefulWidget] so it can read [venueSearchServiceProvider]
+/// directly to drive the venue autosuggest flow without requiring the parent
+/// screen to pass the service through.
 ///
-/// This is a [StatefulWidget] so it can own its [TextEditingController]s
-/// across rebuilds. Each keystroke / picker selection calls [onChange],
-/// which makes the host `setState` and rebuild this card; if the controllers
-/// were created in `build()` they would be reconstructed on every rebuild,
-/// causing typed text to come out reversed (an iOS-visible bug).
-class EventSubFormCard extends StatefulWidget {
+/// The host screen wraps each draft in a local `_EventFormRow` (id+key+draft+
+/// localKey) and passes the draft and a stable key (the row's id or localKey)
+/// to this widget.
+///
+/// Each keystroke / picker selection calls [onChange], which makes the host
+/// `setState` and rebuild this card; controllers are created in `initState`
+/// so they persist across rebuilds, avoiding the iOS-visible text-reversal bug.
+class EventSubFormCard extends ConsumerStatefulWidget {
   const EventSubFormCard({
     super.key,
     required this.draft,
@@ -218,18 +234,30 @@ class EventSubFormCard extends StatefulWidget {
   final VoidCallback? onRetryRow;
 
   @override
-  State<EventSubFormCard> createState() => _EventSubFormCardState();
+  ConsumerState<EventSubFormCard> createState() => _EventSubFormCardState();
 }
 
-class _EventSubFormCardState extends State<EventSubFormCard> {
+class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
   late final TextEditingController _title;
-  late final TextEditingController _venueName;
+
+  // Transient lat/lng for the map thumbnail.  NOT persisted to EventDraft —
+  // EventDraft only carries venueName and venueAddress.  See follow-up note
+  // in the implementation report about lat/lng persistence.
+  double? _venueLat;
+  double? _venueLng;
+
+  // True while the venue search/map flow is open. Guards against a fast
+  // double-tap pushing two VenueSearchSheet routes before the first settles.
+  bool _venueFlowOpen = false;
 
   @override
   void initState() {
     super.initState();
     _title = TextEditingController(text: widget.draft.title);
-    _venueName = TextEditingController(text: widget.draft.venueName ?? '');
+    // An existing booking opens with venueAddress but no session coordinates
+    // (EventDraft carries no lat/lng). Geocode it once so the map thumbnail
+    // shows for already-saved venues, not just ones picked this session.
+    _geocodeExistingVenueIfNeeded();
   }
 
   @override
@@ -239,7 +267,31 @@ class _EventSubFormCardState extends State<EventSubFormCard> {
     // value (e.g. a retry or programmatic change), not on the echo of the
     // user's own keystroke — overwriting on the echo would reset the cursor.
     _syncIfChanged(_title, widget.draft.title);
-    _syncIfChanged(_venueName, widget.draft.venueName ?? '');
+    // If the venue address changed out from under us and we have no coords,
+    // geocode the new address (covers programmatic draft replacement).
+    if (oldWidget.draft.venueAddress != widget.draft.venueAddress) {
+      _geocodeExistingVenueIfNeeded();
+    }
+  }
+
+  /// One-shot geocode of an already-stored venue address so the preview
+  /// thumbnail renders for existing bookings. No-op when coords are already
+  /// known, there is no address, or maps are unsupported (Linux).
+  Future<void> _geocodeExistingVenueIfNeeded() async {
+    if (_venueLat != null) return;
+    final address = widget.draft.venueAddress ?? '';
+    if (address.isEmpty || !_mapsSupported) return;
+    // geocodeAddress() returns null when the API key is unset — no guard here.
+    final position = await geocodeAddress(address);
+    if (!mounted || position == null) return;
+    // Bail if the address changed while geocoding, or coords arrived elsewhere.
+    if (_venueLat != null || (widget.draft.venueAddress ?? '') != address) {
+      return;
+    }
+    setState(() {
+      _venueLat = position.latitude;
+      _venueLng = position.longitude;
+    });
   }
 
   void _syncIfChanged(TextEditingController controller, String value) {
@@ -254,7 +306,6 @@ class _EventSubFormCardState extends State<EventSubFormCard> {
   @override
   void dispose() {
     _title.dispose();
-    _venueName.dispose();
     super.dispose();
   }
 
@@ -319,6 +370,137 @@ class _EventSubFormCardState extends State<EventSubFormCard> {
     );
   }
 
+  // ── Venue search flow ────────────────────────────────────────────────────────
+  //
+  // Three-step flow on iOS/Android/web:
+  //   Step 1 — VenueSearchSheet → VenuePrediction (or free-typed name)
+  //   Step 2 — geocodeAddress(prediction.address) → LatLng?
+  //   Step 3 — VenueMapPickerScreen → VenueDetails (name/address/lat/lng)
+  //
+  // On Linux, step 3 is skipped; NoOpVenueSearchService returns [] so the
+  // free-text row in VenueSearchSheet is the primary input path.
+  //
+  // Cancelling the map picker loops back to the search sheet (same query
+  // pre-populated) rather than dropping all the way back to the card.
+
+  Future<void> _openVenueSearch() async {
+    // Ignore a re-entrant tap while the flow is already on screen.
+    if (_venueFlowOpen) return;
+    _venueFlowOpen = true;
+    try {
+      await _runVenueSearchFlow();
+    } finally {
+      _venueFlowOpen = false;
+    }
+  }
+
+  Future<void> _runVenueSearchFlow() async {
+    final service = ref.read(venueSearchServiceProvider);
+
+    // Seed the search box with the stored venue name, or the address when
+    // there is no name (e.g. an address-only venue from the API).
+    final storedName = widget.draft.venueName ?? '';
+    String lastQuery =
+        storedName.isNotEmpty ? storedName : (widget.draft.venueAddress ?? '');
+
+    while (true) {
+      // Step 1 — search sheet returns a raw prediction or free-typed name.
+      final prediction = await Navigator.of(context).push<VenuePrediction>(
+        CupertinoPageRoute(
+          builder: (_) => VenueSearchSheet(
+            initialText: lastQuery,
+            service: service,
+          ),
+        ),
+      );
+      if (prediction == null || !mounted) return; // user cancelled entirely
+
+      // Free-typed prediction has an empty placeId.
+      final isFreeText = prediction.placeId.isEmpty;
+
+      if (!_mapsSupported || isFreeText) {
+        // Linux or free-typed name: accept directly, no map step.
+        widget.onChange(_copyWith(
+          venueName: prediction.name,
+          venueAddress: prediction.address.isEmpty ? null : prediction.address,
+        ));
+        setState(() {
+          _venueLat = null;
+          _venueLng = null;
+        });
+        return;
+      }
+
+      // Persist the query so that if we loop back the field is pre-populated.
+      lastQuery = prediction.name;
+
+      // Step 2 — geocode the address so the map picker has a starting position.
+      // geocodeAddress() returns null when the API key is unset; the map
+      // picker handles a null position by opening at world zoom.
+      final initialPosition = await geocodeAddress(prediction.address);
+
+      if (!mounted) return;
+
+      // Step 3 — full-screen map picker with draggable marker.
+      // Returns null when the user presses Cancel → loop back to search.
+      final details = await Navigator.of(context).push<VenueDetails>(
+        CupertinoPageRoute(
+          builder: (_) => VenueMapPickerScreen(
+            venueName: prediction.name,
+            venueAddress: prediction.address,
+            initialPosition: initialPosition,
+          ),
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (details == null) {
+        // Cancel on the map picker — go back to search with the same query.
+        continue;
+      }
+
+      widget.onChange(_copyWith(
+        venueName: details.name,
+        venueAddress: details.address.isEmpty ? null : details.address,
+      ));
+      setState(() {
+        _venueLat = details.lat;
+        _venueLng = details.lng;
+      });
+      return;
+    }
+  }
+
+  void _clearVenue() {
+    widget.onChange(_copyWith(venueName: null, venueAddress: null));
+    setState(() {
+      _venueLat = null;
+      _venueLng = null;
+    });
+  }
+
+  Future<void> _openInMaps() async {
+    final address = widget.draft.venueAddress ?? '';
+    final name = widget.draft.venueName ?? '';
+    final Uri uri;
+    if (_venueLat != null && _venueLng != null) {
+      uri = Uri.parse('https://maps.google.com/?q=$_venueLat,$_venueLng');
+    } else if (address.isNotEmpty) {
+      uri = Uri.parse(
+          'https://maps.google.com/?q=${Uri.encodeComponent(address)}');
+    } else if (name.isNotEmpty) {
+      // Free-typed venue with no address — search Maps by name.
+      uri =
+          Uri.parse('https://maps.google.com/?q=${Uri.encodeComponent(name)}');
+    } else {
+      return;
+    }
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   // ── End-before-start validation ─────────────────────────────────────────────
 
   /// Returns true when both times are set AND endTime is strictly before
@@ -340,8 +522,8 @@ class _EventSubFormCardState extends State<EventSubFormCard> {
     // Use a sentinel to distinguish "pass null intentionally" from "not provided".
     Object? startTime = _sentinel,
     Object? endTime = _sentinel,
-    String? venueName,
-    String? venueAddress,
+    Object? venueName = _sentinel,
+    Object? venueAddress = _sentinel,
     String? price,
   }) {
     final draft = widget.draft;
@@ -351,8 +533,9 @@ class _EventSubFormCardState extends State<EventSubFormCard> {
       startTime:
           startTime == _sentinel ? draft.startTime : startTime as String?,
       endTime: endTime == _sentinel ? draft.endTime : endTime as String?,
-      venueName: venueName ?? draft.venueName,
-      venueAddress: venueAddress ?? draft.venueAddress,
+      venueName: venueName == _sentinel ? draft.venueName : venueName as String?,
+      venueAddress:
+          venueAddress == _sentinel ? draft.venueAddress : venueAddress as String?,
       price: price ?? draft.price,
     );
   }
@@ -379,6 +562,12 @@ class _EventSubFormCardState extends State<EventSubFormCard> {
         : null;
 
     final endBeforeStart = _endBeforeStart;
+    // A venue is "set" if it has a name OR an address. Events created via the
+    // API can carry an address with no name; treating address-only as "no
+    // venue" would hide that address and let it be silently overwritten.
+    final venueName = draft.venueName ?? '';
+    final venueAddress = draft.venueAddress ?? '';
+    final hasVenue = venueName.isNotEmpty || venueAddress.isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -523,29 +712,81 @@ class _EventSubFormCardState extends State<EventSubFormCard> {
                     'End time is before start time',
                     style: TextStyle(
                       fontSize: 12,
-                      color: CupertinoColors.systemOrange.resolveFrom(context),
+                      color:
+                          CupertinoColors.systemOrange.resolveFrom(context),
                     ),
                   ),
                 ],
               ),
             ),
 
-          // ── Thin divider ──────────────────────────────────────────────────
+          // ── Venue ─────────────────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.only(top: 8),
             child: Container(
               height: 0.5,
               color: CupertinoColors.separator.resolveFrom(context),
             ),
           ),
 
-          // ── Venue name text field ─────────────────────────────────────────
-          CupertinoTextField(
-            placeholder: 'Venue name',
-            controller: _venueName,
-            onChanged: (v) =>
-                widget.onChange(_copyWith(venueName: v.isEmpty ? null : v)),
-          ),
+          if (!hasVenue)
+            // Empty state: tappable row opens the search flow.
+            Semantics(
+              button: true,
+              label: 'Search for a venue',
+              child: GestureDetector(
+                onTap: _openVenueSearch,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Venue',
+                        style: CupertinoTheme.of(context)
+                            .textTheme
+                            .textStyle
+                            .copyWith(fontSize: 14),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'Search venue',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: CupertinoColors.placeholderText
+                              .resolveFrom(context),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        CupertinoIcons.search,
+                        size: 15,
+                        color: CupertinoColors.tertiaryLabel
+                            .resolveFrom(context),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            // Selected state: embedded map preview with venue info + actions.
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: VenuePreviewCard(
+                // Display only: when there is no name, show the address in the
+                // name slot so the venue is never invisible. The stored
+                // EventDraft.venueName is left empty — this does not write the
+                // address into the name field.
+                venueName: venueName.isNotEmpty ? venueName : venueAddress,
+                venueAddress: venueName.isNotEmpty ? venueAddress : '',
+                lat: _venueLat,
+                lng: _venueLng,
+                onOpenMaps: _openInMaps,
+                onChange: _openVenueSearch,
+                onClear: _clearVenue,
+              ),
+            ),
         ],
       ),
     );

@@ -355,6 +355,20 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
       setState(() => _createError = 'At least one event is required.');
       return;
     }
+    // The backend requires a start time on every event when creating a
+    // booking. Catch it here so the user gets a clear message instead of a
+    // raw 422.
+    final missingStartIndex = _eventRows.indexWhere((r) {
+      final t = r.draft.startTime;
+      return t == null || t.isEmpty;
+    });
+    if (missingStartIndex != -1) {
+      final label = _eventRows.length == 1
+          ? 'The event needs a start time.'
+          : 'Event ${missingStartIndex + 1} needs a start time.';
+      setState(() => _createError = label);
+      return;
+    }
 
     setState(() {
       _saving = true;

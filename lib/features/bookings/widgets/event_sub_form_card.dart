@@ -667,14 +667,13 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
           ),
 
           // ── Start time picker row ─────────────────────────────────────────
+          // Start time is required to create a booking — no clear button, and
+          // the placeholder signals the requirement before the user hits save.
           _PickerRow(
             label: 'Start time',
             value: friendlyStart,
-            placeholder: 'Set time',
+            placeholder: 'Required',
             onTap: () => _pickTime(context, isStartTime: true),
-            onClear: draft.startTime != null
-                ? () => widget.onChange(_copyWith(startTime: null))
-                : null,
           ),
 
           // ── Thin divider ──────────────────────────────────────────────────

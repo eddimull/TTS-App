@@ -60,7 +60,14 @@ class EventsRepository {
     String? venueAddress,
     String? price,
     String? notes,
+    String? attire,
     List<EventTimelineEntry>? timeline,
+    bool? isPublic,
+    bool? outside,
+    bool? backlineProvided,
+    bool? productionNeeded,
+    List<Map<String, dynamic>>? lodging,
+    Map<String, dynamic>? wedding,
   }) async {
     final body = <String, dynamic>{
       if (title != null) 'title': title,
@@ -71,12 +78,27 @@ class EventsRepository {
       if (venueAddress != null) 'venue_address': venueAddress,
       if (price != null) 'price': price,
       if (notes != null) 'notes': notes,
+      // additional_data fields. The backend keys each off `$request->has(...)`,
+      // so include them only when the screen has a real value to send (the
+      // four toggles are nullable on the model — null means "this event
+      // doesn't track this field").
+      if (attire != null) 'attire': attire,
+      if (isPublic != null) 'is_public': isPublic,
+      if (outside != null) 'outside': outside,
+      if (backlineProvided != null) 'backline_provided': backlineProvided,
+      if (productionNeeded != null) 'production_needed': productionNeeded,
       // Timeline replaces the stored list wholesale (matches backend semantics
       // in EventDataService::applyAdditionalData). Pass an empty list to clear.
       if (timeline != null)
         'timeline': timeline
             .map((e) => {'title': e.title, 'time': e.time})
             .toList(),
+      // Lodging replaces the stored list wholesale; pass the canonical
+      // 4-row shape (Provided / location / check_in / check_out).
+      if (lodging != null) 'lodging': lodging,
+      // Wedding sub-object: send only for events that have a wedding block.
+      // Shape mirrors UpdateEventRequest: {onsite: bool?, dances: [{title, data}]}.
+      if (wedding != null) 'wedding': wedding,
     };
     await _dio.patch<void>(ApiEndpoints.mobileUpdateEvent(key), data: body);
   }

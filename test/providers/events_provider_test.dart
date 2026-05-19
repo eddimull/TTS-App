@@ -48,7 +48,14 @@ class FakeEventsRepository implements EventsRepository {
     String? venueAddress,
     String? price,
     String? notes,
+    String? attire,
     List<EventTimelineEntry>? timeline,
+    bool? isPublic,
+    bool? outside,
+    bool? backlineProvided,
+    bool? productionNeeded,
+    List<Map<String, dynamic>>? lodging,
+    Map<String, dynamic>? wedding,
   }) async {}
 
   @override

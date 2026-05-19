@@ -296,9 +296,38 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
         venueName: _venueName.text.trim().isEmpty ? null : _venueName.text.trim(),
         venueAddress: _venueAddress.text.trim().isEmpty ? null : _venueAddress.text.trim(),
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+        // Attire is a free-text field; the backend accepts empty string to
+        // clear it (rule is nullable|string).
+        attire: _attire.text,
         timeline: _timeline
             .map((t) => EventTimelineEntry(title: t.title, time: t.time))
             .toList(),
+        // Nullable toggles — send only when the event tracks the field
+        // (null on the model means "this event doesn't have it").
+        isPublic: _isPublic,
+        outside: _outside,
+        backlineProvided: _backlineProvided,
+        productionNeeded: _productionNeeded,
+        // Lodging: canonical 4-row shape that mirrors the seed in
+        // BookingsController. The screen always knows all four values, so
+        // send them all on every save.
+        lodging: [
+          {'title': 'Provided', 'type': 'checkbox', 'data': _lodgingProvided},
+          {'title': 'location', 'type': 'text', 'data': _lodgingLocation.text},
+          {'title': 'check_in', 'type': 'text', 'data': _lodgingCheckIn.text},
+          {'title': 'check_out', 'type': 'text', 'data': _lodgingCheckOut.text},
+        ],
+        // Wedding: send only when the event has a wedding block at all
+        // (_weddingDances is null for non-wedding events). Shape matches
+        // the backend's UpdateEventRequest: onsite + dances list.
+        wedding: _weddingDances == null
+            ? null
+            : {
+                'onsite': _weddingOnsite,
+                'dances': _weddingDances!
+                    .map((d) => {'title': d.title, 'data': d.data})
+                    .toList(),
+              },
       );
       ref
           .read(cacheInvalidatorProvider)

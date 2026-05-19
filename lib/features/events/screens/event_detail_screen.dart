@@ -10,6 +10,7 @@ import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/status_chip.dart';
+import '../../bookings/widgets/venue_picker.dart' show geocodeAddress;
 import '../data/events_repository.dart';
 import '../data/models/event_detail.dart';
 import '../data/models/event_member.dart';
@@ -119,40 +120,11 @@ class _EventDetailView extends StatelessWidget {
                 if (event.venueAddress != null && event.venueAddress!.isNotEmpty)
                   event.venueAddress!,
               ].join('\n'),
-              onTap: () async {
-                final availableMaps = await MapLauncher.installedMaps;
-                if (availableMaps.isEmpty || !context.mounted) return;
-                final title = event.venueName!;
-                final coords = Coords(0, 0);
-                final address = [
-                  event.venueName!,
-                  if (event.venueAddress != null && event.venueAddress!.isNotEmpty)
-                    event.venueAddress!,
-                ].join(', ');
-                if (availableMaps.length == 1) {
-                  availableMaps.first.showMarker(coords: coords, title: title, extraParams: {'q': address});
-                  return;
-                }
-                showCupertinoModalPopup<void>(
-                  context: context,
-                  builder: (ctx) => CupertinoActionSheet(
-                    actions: [
-                      for (final map in availableMaps)
-                        CupertinoActionSheetAction(
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            map.showMarker(coords: coords, title: title, extraParams: {'q': address});
-                          },
-                          child: Text(map.mapName),
-                        ),
-                    ],
-                    cancelButton: CupertinoActionSheetAction(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                );
-              },
+              onTap: () => _openVenueInMaps(
+                context: context,
+                venueName: event.venueName!,
+                venueAddress: event.venueAddress,
+              ),
             ),
           ],
 
@@ -273,6 +245,86 @@ class _EventDetailView extends StatelessWidget {
 
   String _formatDateAndTime(String date, String? time) =>
       formatDateWithTimeRange(date, time, null);
+}
+
+// ── Open-in-Maps helper ───────────────────────────────────────────────────────
+//
+// Geocodes the venue's full address (name + address) into coordinates, then
+// hands them to [MapLauncher.showMarker]. The native iOS Apple Maps path of
+// map_launcher ignores `extraParams` and pins the marker at whatever Coords
+// it's given — so passing Coords(0, 0) lands the user at null island. We
+// MUST resolve to real coords before launching.
+//
+// If geocoding fails (no network, missing API key, ambiguous address) we
+// fall back to Google's documented universal Maps URL, which performs an
+// address-text search and works reliably on both iOS and Android.
+
+Future<void> _openVenueInMaps({
+  required BuildContext context,
+  required String venueName,
+  required String? venueAddress,
+}) async {
+  final fullAddress = [
+    venueName,
+    if (venueAddress != null && venueAddress.isNotEmpty) venueAddress,
+  ].join(', ');
+
+  final position = await geocodeAddress(fullAddress);
+  if (!context.mounted) return;
+
+  // No coords — fall back to a search-by-address universal URL.
+  if (position == null) {
+    final searchUri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1'
+      '&query=${Uri.encodeComponent(fullAddress)}',
+    );
+    if (await canLaunchUrl(searchUri)) {
+      await launchUrl(searchUri, mode: LaunchMode.externalApplication);
+    }
+    return;
+  }
+
+  final coords = Coords(position.latitude, position.longitude);
+  final availableMaps = await MapLauncher.installedMaps;
+  if (!context.mounted) return;
+
+  // No native maps installed (rare on iOS/Android) — fall back to web search.
+  if (availableMaps.isEmpty) {
+    final searchUri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1'
+      '&query=${Uri.encodeComponent(fullAddress)}',
+    );
+    if (await canLaunchUrl(searchUri)) {
+      await launchUrl(searchUri, mode: LaunchMode.externalApplication);
+    }
+    return;
+  }
+
+  if (availableMaps.length == 1) {
+    await availableMaps.first.showMarker(coords: coords, title: venueName);
+    return;
+  }
+
+  // Multiple map apps — let the user pick.
+  await showCupertinoModalPopup<void>(
+    context: context,
+    builder: (ctx) => CupertinoActionSheet(
+      actions: [
+        for (final map in availableMaps)
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(ctx);
+              map.showMarker(coords: coords, title: venueName);
+            },
+            child: Text(map.mapName),
+          ),
+      ],
+      cancelButton: CupertinoActionSheetAction(
+        onPressed: () => Navigator.pop(ctx),
+        child: const Text('Cancel'),
+      ),
+    ),
+  );
 }
 
 // ── Reusable layout helpers ───────────────────────────────────────────────────

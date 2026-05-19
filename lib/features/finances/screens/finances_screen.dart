@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
-import 'package:tts_bandmate/shared/utils/time_format.dart';
 import 'package:tts_bandmate/shared/widgets/empty_state_view.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../../../shared/widgets/status_chip.dart';
@@ -494,14 +493,14 @@ class _FinanceCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        _formatDate(booking),
+                        booking.displayDateRange,
                         style: TextStyle(
                           fontSize: 13,
                           color: CupertinoColors.secondaryLabel.resolveFrom(context),
                         ),
                       ),
-                      if (booking.venueName != null &&
-                          booking.venueName!.isNotEmpty) ...[
+                      if (booking.venueSummary != null &&
+                          booking.venueSummary!.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Row(
                           children: [
@@ -512,7 +511,7 @@ class _FinanceCard extends StatelessWidget {
                             const SizedBox(width: 3),
                             Expanded(
                               child: Text(
-                                booking.venueName!,
+                                booking.venueSummary!,
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: CupertinoColors.secondaryLabel
@@ -588,13 +587,6 @@ class _FinanceCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(FinanceBooking booking) {
-    final dateStr = DateFormat('EEE, MMM d, yyyy').format(booking.parsedDate);
-    if (booking.startTime != null && booking.startTime!.isNotEmpty) {
-      return '$dateStr at ${toAmPm(booking.startTime!)}';
-    }
-    return dateStr;
-  }
 }
 
 // ── Payment progress bar ──────────────────────────────────────────────────────

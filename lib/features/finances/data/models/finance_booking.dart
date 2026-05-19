@@ -1,15 +1,19 @@
 import 'package:intl/intl.dart';
 
 /// Represents a single booking entry returned by the finances endpoints.
+///
+/// The payload mirrors [BookingSummary]'s multi-event shape: a booking spans
+/// a date range (`start_date`..`end_date`) with a `venue_summary` aggregated
+/// across its events.
 class FinanceBooking {
   const FinanceBooking({
     required this.id,
     required this.name,
-    required this.date,
-    this.startTime,
-    this.endTime,
-    this.venueName,
-    this.venueAddress,
+    required this.startDate,
+    required this.endDate,
+    required this.eventCount,
+    required this.isMultiEvent,
+    this.venueSummary,
     this.status,
     this.price,
     this.amountPaid,
@@ -20,13 +24,23 @@ class FinanceBooking {
   final int id;
   final String name;
 
-  /// ISO date string, e.g. "2026-05-15".
-  final String date;
+  /// ISO date string of the chronologically-first event, e.g. "2026-05-15".
+  final String startDate;
 
-  final String? startTime;
-  final String? endTime;
-  final String? venueName;
-  final String? venueAddress;
+  /// ISO date string of the chronologically-last event. Equals [startDate]
+  /// for single-event bookings.
+  final String endDate;
+
+  final int eventCount;
+
+  /// True iff `eventCount > 1`.
+  final bool isMultiEvent;
+
+  /// Display-ready summary of the booking's venue(s): primary event's venue
+  /// name when consistent, "Multiple venues" otherwise. Null if no event has
+  /// a venue.
+  final String? venueSummary;
+
   final String? status;
 
   /// Raw price string from the API, e.g. "1500.00".
@@ -44,11 +58,11 @@ class FinanceBooking {
     return FinanceBooking(
       id: (json['id'] as num).toInt(),
       name: json['name'] as String,
-      date: json['date'] as String,
-      startTime: json['start_time'] as String?,
-      endTime: json['end_time'] as String?,
-      venueName: json['venue_name'] as String?,
-      venueAddress: json['venue_address'] as String?,
+      startDate: (json['start_date'] as String?) ?? '',
+      endDate: (json['end_date'] as String?) ?? '',
+      eventCount: (json['event_count'] as num?)?.toInt() ?? 0,
+      isMultiEvent: (json['is_multi_event'] as bool?) ?? false,
+      venueSummary: json['venue_summary'] as String?,
       status: json['status'] as String?,
       price: json['price'] as String?,
       amountPaid: json['amount_paid'] as String?,
@@ -57,13 +71,36 @@ class FinanceBooking {
     );
   }
 
-  /// Parses [date] into a [DateTime]. Returns [DateTime.now()] as a fallback.
-  DateTime get parsedDate {
+  /// Parses [startDate] into a [DateTime]. Returns [DateTime.now()] as a
+  /// fallback (rare — payload should always include start_date).
+  DateTime get parsedStartDate {
     try {
-      return DateTime.parse(date);
+      return DateTime.parse(startDate);
     } catch (_) {
       return DateTime.now();
     }
+  }
+
+  /// Card subtitle: "Fri, May 13, 2026" for single-event, "May 13–17, 2026"
+  /// for multi-event same-month, "May 13 – Jun 2, 2026" for cross-month.
+  String get displayDateRange {
+    final start = parsedStartDate;
+    if (!isMultiEvent || startDate == endDate) {
+      return DateFormat('EEE, MMM d, yyyy').format(start);
+    }
+    DateTime end;
+    try {
+      end = DateTime.parse(endDate);
+    } catch (_) {
+      return DateFormat('EEE, MMM d, yyyy').format(start);
+    }
+    if (start.month == end.month && start.year == end.year) {
+      return '${DateFormat('MMM d').format(start)}–${DateFormat('d, yyyy').format(end)}';
+    }
+    if (start.year == end.year) {
+      return '${DateFormat('MMM d').format(start)} – ${DateFormat('MMM d, yyyy').format(end)}';
+    }
+    return '${DateFormat('MMM d, yyyy').format(start)} – ${DateFormat('MMM d, yyyy').format(end)}';
   }
 
   static final _currencyFormat = NumberFormat.currency(symbol: '\$');
@@ -85,7 +122,8 @@ class FinanceBooking {
   String get displayAmountPaid => _formatCurrency(amountPaid);
 
   @override
-  String toString() => 'FinanceBooking(id: $id, name: $name, date: $date)';
+  String toString() =>
+      'FinanceBooking(id: $id, name: $name, startDate: $startDate)';
 
   @override
   bool operator ==(Object other) =>

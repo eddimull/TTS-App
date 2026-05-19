@@ -88,6 +88,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
   bool? _initProductionNeeded;
   List<_WeddingDance>? _initWeddingDances;
   bool? _initWeddingOnsite;
+  late List<_TimelineEntry> _initTimeline;
   late bool _initLodgingProvided;
   late String _initLodgingLocation;
   late String _initLodgingCheckIn;
@@ -161,6 +162,9 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     _initWeddingDances = _weddingDances
         ?.map((d) => _WeddingDance(title: d.title, data: d.data))
         .toList();
+    _initTimeline = _timeline
+        .map((t) => _TimelineEntry(title: t.title, time: t.time))
+        .toList();
     _initLodgingProvided = _lodgingProvided;
     _initLodgingLocation = _lodgingLocation.text;
     _initLodgingCheckIn = _lodgingCheckIn.text;
@@ -232,6 +236,13 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     if (_lodgingLocation.text != _initLodgingLocation) return true;
     if (_lodgingCheckIn.text != _initLodgingCheckIn) return true;
     if (_lodgingCheckOut.text != _initLodgingCheckOut) return true;
+    if (_timeline.length != _initTimeline.length) return true;
+    for (int i = 0; i < _timeline.length; i++) {
+      if (_timeline[i].title != _initTimeline[i].title ||
+          _timeline[i].time != _initTimeline[i].time) {
+        return true;
+      }
+    }
     return false;
   }
 
@@ -285,6 +296,9 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
         venueName: _venueName.text.trim().isEmpty ? null : _venueName.text.trim(),
         venueAddress: _venueAddress.text.trim().isEmpty ? null : _venueAddress.text.trim(),
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+        timeline: _timeline
+            .map((t) => EventTimelineEntry(title: t.title, time: t.time))
+            .toList(),
       );
       ref
           .read(cacheInvalidatorProvider)

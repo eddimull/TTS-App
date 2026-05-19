@@ -48,6 +48,7 @@ class FakeEventsRepository implements EventsRepository {
     String? venueAddress,
     String? price,
     String? notes,
+    List<EventTimelineEntry>? timeline,
   }) async {}
 
   @override

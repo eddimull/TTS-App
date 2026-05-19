@@ -60,6 +60,7 @@ class EventsRepository {
     String? venueAddress,
     String? price,
     String? notes,
+    List<EventTimelineEntry>? timeline,
   }) async {
     final body = <String, dynamic>{
       if (title != null) 'title': title,
@@ -70,6 +71,12 @@ class EventsRepository {
       if (venueAddress != null) 'venue_address': venueAddress,
       if (price != null) 'price': price,
       if (notes != null) 'notes': notes,
+      // Timeline replaces the stored list wholesale (matches backend semantics
+      // in EventDataService::applyAdditionalData). Pass an empty list to clear.
+      if (timeline != null)
+        'timeline': timeline
+            .map((e) => {'title': e.title, 'time': e.time})
+            .toList(),
     };
     await _dio.patch<void>(ApiEndpoints.mobileUpdateEvent(key), data: body);
   }

@@ -50,8 +50,22 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   String _query = '';
 
   String? _selectedMonthKey;
-  String? _lastJumpedFingerprint;
-  bool _initialJumpDone = false;
+
+  // Auto-jump to nearest-upcoming is a one-shot intent for this screen
+  // instance: fires once when data first appears, and again only when the
+  // filter changes (which can shift which booking is "nearest"). Lazy-load
+  // expansions (loadEarlier/loadLater) must NOT re-trigger it — they're a
+  // continuation of the user's scroll and are handled by _scrollAnchor.
+  //
+  // The flag flips only AFTER jumpTo actually executes. If the
+  // ScrollablePositionedList controller isn't attached on the first
+  // post-frame, we retry on subsequent frames so we don't burn the intent
+  // and leave the user stranded on the first booking.
+  bool _hasJumpedToNearest = false;
+  bool _jumpInFlight = false;
+  int _jumpGeneration = 0;
+  int _pendingJumpRetries = 0;
+  static const int _maxJumpRetries = 5;
 
   // ScrollablePositionedList controllers for the booking list.
   final ItemScrollController _itemScrollController = ItemScrollController();
@@ -267,40 +281,92 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     _ensureChipVisible(monthKey);
   }
 
-  /// Called from the ref.listen on bookingsWindowProvider (or
-  /// bookingsFilterProvider) when fresh data arrives. Sets
-  /// `_selectedMonthKey` to the month containing the nearest-upcoming
-  /// booking and scrolls the list to it. Deduped by
-  /// `_lastJumpedFingerprint` so we don't re-jump after the user scrolls.
-  void _maybeJumpToNearest(List<BookingSummary> sortedFiltered) {
-    final fingerprint = _fingerprint(sortedFiltered);
-    if (fingerprint == _lastJumpedFingerprint) return;
-    _lastJumpedFingerprint = fingerprint;
+  /// Schedules a one-shot jump to the month header of the nearest-upcoming
+  /// booking in [sortedFiltered]. Sets `_selectedMonthKey` for the chip
+  /// strip and (when possible) jumps the list to that header.
+  ///
+  /// Only marks `_hasJumpedToNearest = true` AFTER `jumpTo` actually runs.
+  /// If the ScrollablePositionedList controller isn't attached when the
+  /// post-frame fires (timing can be tight on re-entry, before the list
+  /// has laid out), retries on the next frame up to `_maxJumpRetries`
+  /// times. This is what fixes the "lands on the first booking on
+  /// re-entry" bug — the previous code burned the intent on the first
+  /// silent miss.
+  void _scheduleJumpToNearest(List<BookingSummary> sortedFiltered) {
+    // Guard against multiple in-flight retry chains: the data builder
+    // can call this on every rebuild while _hasJumpedToNearest is still
+    // false, and the post-frame's setState itself triggers a rebuild.
+    if (_jumpInFlight) return;
+    _jumpInFlight = true;
+    final generation = ++_jumpGeneration;
 
     final idx = findNearestUpcomingIndex(sortedFiltered, DateTime.now());
     final target = idx == null
         ? null
         : monthKeyFor(sortedFiltered[idx].parsedStartDate);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      setState(() => _selectedMonthKey = target);
-      if (target == null) return;
-      final headerIndex = _monthHeaderIndex[target];
-      if (headerIndex == null) return;
-      if (_itemScrollController.isAttached) {
-        _itemScrollController.jumpTo(index: headerIndex + _topSentinels);
-      }
-      _ensureChipVisible(target);
-    });
+    _pendingJumpRetries = 0;
+    _attemptJump(target, generation);
   }
 
-  /// Stable fingerprint for the booking list — used to dedupe initial
-  /// scroll jumps across rebuilds.
-  String _fingerprint(List<BookingSummary> bookings) {
-    if (bookings.isEmpty) return 'empty';
-    final ids = bookings.map((b) => b.id).join(',');
-    return ids;
+  /// Cancels any in-flight jump attempt so a fresh one (typically from
+  /// a filter change) can supersede it. Old retry callbacks check
+  /// `generation` against `_jumpGeneration` and bail when stale.
+  void _cancelInFlightJump() {
+    _jumpInFlight = false;
+    _jumpGeneration++;
+  }
+
+  void _attemptJump(String? target, int generation) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Stale callback (e.g. filter changed mid-retry, or screen was
+      // re-armed). Drop without touching state.
+      if (generation != _jumpGeneration) return;
+
+      setState(() => _selectedMonthKey = target);
+
+      // No upcoming booking → nothing to scroll to, but the intent is
+      // satisfied (chip highlight is set). Lock it in.
+      if (target == null) {
+        _hasJumpedToNearest = true;
+        _jumpInFlight = false;
+        return;
+      }
+
+      final headerIndex = _monthHeaderIndex[target];
+      if (headerIndex == null) {
+        // Target month isn't in the rendered items yet (e.g. filtered
+        // out by search). Treat as satisfied — re-jumping later would
+        // fight the user's search input.
+        _hasJumpedToNearest = true;
+        _jumpInFlight = false;
+        return;
+      }
+
+      if (_itemScrollController.isAttached) {
+        _itemScrollController.jumpTo(index: headerIndex + _topSentinels);
+        _ensureChipVisible(target);
+        _hasJumpedToNearest = true;
+        _jumpInFlight = false;
+        return;
+      }
+
+      // Controller not attached yet — retry on the next frame. Keep
+      // _jumpInFlight set so a rebuild triggered by our setState above
+      // doesn't spawn a parallel retry chain.
+      if (_pendingJumpRetries < _maxJumpRetries) {
+        _pendingJumpRetries++;
+        _attemptJump(target, generation);
+      } else {
+        // Give up after _maxJumpRetries frames; lock the intent so we
+        // don't loop forever if the list never builds (e.g. data went
+        // empty mid-flight). Better to leave the user at index 0 than
+        // spin a postFrameCallback indefinitely.
+        _hasJumpedToNearest = true;
+        _jumpInFlight = false;
+      }
+    });
   }
 
   // ── List building ───────────────────────────────────────────────────────────
@@ -388,21 +454,19 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   Widget build(BuildContext context) {
     final filter = ref.watch(bookingsFilterProvider);
 
-    // Jump to nearest-upcoming booking whenever the data payload changes.
-    ref.listen<AsyncValue<BookingsWindow>>(bookingsWindowProvider,
-        (_, next) {
-      final window = next.value;
-      if (window == null) return;
-      _maybeJumpToNearest(
-          _filteredSorted(window.bookings, ref.read(bookingsFilterProvider)));
-    });
-
-    // Also re-jump when the filter changes (since the filtered list may
-    // shift the nearest upcoming).
+    // Re-jump when the filter changes (the filtered list may shift the
+    // nearest upcoming). We deliberately do NOT listen to
+    // bookingsWindowProvider here: every loadEarlier/loadLater would
+    // trigger an unwanted re-jump that yanks the user out of their
+    // scroll position. The initial "first data arrival" jump is handled
+    // in the data: builder below via the !_hasJumpedToNearest gate, and
+    // lazy-load expansions are kept in place by `_scrollAnchor`.
     ref.listen<BookingsFilterState>(bookingsFilterProvider, (_, __) {
       final window = ref.read(bookingsWindowProvider).value;
       if (window == null) return;
-      _maybeJumpToNearest(
+      _hasJumpedToNearest = false;
+      _cancelInFlightJump();
+      _scheduleJumpToNearest(
           _filteredSorted(window.bookings, ref.read(bookingsFilterProvider)));
     });
 
@@ -440,12 +504,8 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                           _currentItems = data.items;
                           _renderedItemCount = data.items.length;
 
-                          if (!_initialJumpDone) {
-                            _initialJumpDone = true;
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (!mounted) return;
-                              _maybeJumpToNearest(data.visibleAfterFilter);
-                            });
+                          if (!_hasJumpedToNearest) {
+                            _scheduleJumpToNearest(data.visibleAfterFilter);
                           }
 
                           // Restore scroll anchor after a prepend (loadEarlier).

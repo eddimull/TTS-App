@@ -11,8 +11,10 @@ import '../../../shared/cache/cache_invalidator.dart';
 import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
 import '../../../shared/widgets/status_chip.dart';
+import '../data/models/attire_chip.dart';
 import '../data/models/event_detail.dart';
 import '../data/events_repository.dart';
+import '../providers/attire_chips_provider.dart';
 import 'attachment_widgets.dart';
 
 // ── Mutable edit-time models ──────────────────────────────────────────────────
@@ -1377,7 +1379,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
 
           const SizedBox(height: 20),
 
-          // ── Notes & Attire ──────────────────────────────────────────────────
+          // ── Details: Notes, Attachments, Attire ────────────────────────────
           const _SectionHeader(title: 'Details'),
           _FormCard(children: [
             // Notes — tappable preview card that opens a fullscreen editor
@@ -1405,35 +1407,10 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                 }
               },
             ),
+
+            // ── Attachments (inline, immediately below notes) ───────────────
             _Divider(),
-            _LabeledField(
-              label: 'Attire',
-              child: CupertinoTextField.borderless(
-                controller: _attire,
-                placeholder: 'Dress code',
-                textCapitalization: TextCapitalization.sentences,
-              ),
-            ),
-          ]),
-
-          const SizedBox(height: 20),
-
-          // ── Attachments ─────────────────────────────────────────────────────
-          const _SectionHeader(title: 'Attachments'),
-          _FormCard(children: [
-            if (_attachments.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Text(
-                  'No attachments',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: CupertinoColors.secondaryLabel.resolveFrom(context),
-                  ),
-                ),
-              ),
             for (int i = 0; i < _attachments.length; i++) ...[
-              if (i > 0) _Divider(),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Row(
@@ -1495,8 +1472,8 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                   ],
                 ),
               ),
+              _Divider(),
             ],
-            if (_attachments.isNotEmpty) _Divider(),
             CupertinoButton(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               onPressed: _uploading ? null : _pickAndUploadAttachment,
@@ -1522,6 +1499,13 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                   ),
                 ],
               ),
+            ),
+
+            // ── Attire (quick-pick chips + free-text) ───────────────────────
+            _Divider(),
+            _AttireField(
+              controller: _attire,
+              onChanged: () => setState(() {}),
             ),
           ]),
 
@@ -2036,6 +2020,321 @@ class _ToggleRow extends StatelessWidget {
           Expanded(child: Text(label, style: const TextStyle(fontSize: 15))),
           CupertinoSwitch(value: value, onChanged: onChanged),
         ],
+      ),
+    );
+  }
+}
+
+// ── Attire field ─────────────────────────────────────────────────────────────
+
+/// Quick-pick chips for common dress codes, plus a free-text field.
+///
+/// Chips are loaded from the backend via [attireChipsProvider]. While loading
+/// (or when the band has no chips yet) the six hardcoded defaults are shown as
+/// placeholder chips — tapping them fills the field but does not persist
+/// anything. Long-pressing a persisted chip (id != null) offers a delete
+/// action. A "+" chip at the end saves the current field text as a new chip.
+class _AttireField extends ConsumerWidget {
+  const _AttireField({required this.controller, required this.onChanged});
+
+  final TextEditingController controller;
+
+  /// Called after a chip tap or clear so the parent can call setState().
+  final VoidCallback onChanged;
+
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    AttireChip chip,
+  ) async {
+    final confirmed = await showCupertinoModalPopup<bool>(
+      context: context,
+      builder: (_) => CupertinoActionSheet(
+        title: Text('Remove "${chip.label}"?'),
+        message: const Text('This chip will be removed for all band members.'),
+        actions: [
+          CupertinoActionSheetAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await ref.read(attireChipsProvider.notifier).removeChip(chip.id!);
+    } catch (_) {
+      if (context.mounted) {
+        showCupertinoDialog<void>(
+          context: context,
+          builder: (_) => CupertinoAlertDialog(
+            title: const Text('Could not remove chip'),
+            content: const Text('Please try again.'),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('OK'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _addChip(BuildContext context, WidgetRef ref) async {
+    final label = controller.text.trim();
+    if (label.isEmpty) return;
+
+    try {
+      await ref.read(attireChipsProvider.notifier).addChip(label);
+    } catch (_) {
+      if (context.mounted) {
+        showCupertinoDialog<void>(
+          context: context,
+          builder: (_) => CupertinoAlertDialog(
+            title: const Text('Could not save chip'),
+            content: const Text('Please check your connection and try again.'),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('OK'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final secondaryColor = CupertinoColors.secondaryLabel.resolveFrom(context);
+    final activeBlue = CupertinoColors.activeBlue.resolveFrom(context);
+    final chipBg =
+        CupertinoColors.secondarySystemBackground.resolveFrom(context);
+    final selectedBg = activeBlue.withValues(alpha: 0.12);
+
+    // Watch provider — fall back to hardcoded defaults while loading or on
+    // error so the form remains fully functional without a network round-trip.
+    final chipsAsync = ref.watch(attireChipsProvider);
+    final displayChips = chipsAsync.maybeWhen(
+      data: (s) => s.displayChips,
+      orElse: () => [
+        for (var i = 0; i < kAttireDefaultLabels.length; i++)
+          AttireChip(id: null, label: kAttireDefaultLabels[i], position: i),
+      ],
+    );
+
+    final currentText = controller.text.trim().toLowerCase();
+
+    // The "+" chip is enabled when the text field has content that isn't
+    // already in the chip list (prevents saving duplicates).
+    final alreadyExists = displayChips
+        .any((c) => c.label.toLowerCase() == currentText);
+    final canAddChip =
+        controller.text.trim().isNotEmpty && !alreadyExists;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('Attire', style: TextStyle(fontSize: 15)),
+              const Spacer(),
+              // Clear button — only visible when the field has content
+              if (controller.text.isNotEmpty)
+                GestureDetector(
+                  onTap: () {
+                    controller.clear();
+                    onChanged();
+                  },
+                  child: Text(
+                    'Clear',
+                    style: TextStyle(fontSize: 13, color: secondaryColor),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Quick-pick chip row + "+" add chip
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final chip in displayChips)
+                _AttireChip(
+                  label: chip.label,
+                  selected: controller.text.trim().toLowerCase() ==
+                      chip.label.toLowerCase(),
+                  selectedBg: selectedBg,
+                  unselectedBg: chipBg,
+                  selectedColor: activeBlue,
+                  unselectedColor: secondaryColor,
+                  deletable: !chip.isPlaceholder,
+                  onTap: () {
+                    controller.text = chip.label;
+                    onChanged();
+                  },
+                  onLongPress: chip.isPlaceholder
+                      ? null
+                      : () => _confirmDelete(context, ref, chip),
+                ),
+              // "+" chip — outline style, enabled only when there's new text
+              _AddAttireChip(
+                enabled: canAddChip,
+                onTap: canAddChip ? () => _addChip(context, ref) : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Free-text field — borderless, auto-expands up to 3 lines
+          CupertinoTextField.borderless(
+            controller: controller,
+            placeholder: 'Or describe a custom dress code…',
+            placeholderStyle: TextStyle(fontSize: 14, color: secondaryColor),
+            textCapitalization: TextCapitalization.sentences,
+            minLines: 1,
+            maxLines: 3,
+            style: const TextStyle(fontSize: 15),
+            onChanged: (_) => onChanged(),
+            padding: EdgeInsets.zero,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A single quick-pick chip for dress-code selection.
+///
+/// When [deletable] is true the chip shows a subtle indicator (a slightly
+/// different border style) and long-press is wired. Placeholder chips (id ==
+/// null) pass deletable: false, making long-press a no-op.
+class _AttireChip extends StatelessWidget {
+  const _AttireChip({
+    required this.label,
+    required this.selected,
+    required this.selectedBg,
+    required this.unselectedBg,
+    required this.selectedColor,
+    required this.unselectedColor,
+    required this.onTap,
+    this.deletable = false,
+    this.onLongPress,
+  });
+
+  final String label;
+  final bool selected;
+  final Color selectedBg;
+  final Color unselectedBg;
+  final Color selectedColor;
+  final Color unselectedColor;
+  final VoidCallback onTap;
+
+  /// When true the chip is a real backend chip and can be deleted.
+  final bool deletable;
+
+  /// Invoked on long-press when [deletable] is true.
+  final VoidCallback? onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: deletable ? '$label, long-press to remove' : label,
+      selected: selected,
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? selectedBg : unselectedBg,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected
+                  ? selectedColor
+                  : CupertinoColors.separator.resolveFrom(context),
+              width: selected ? 1.5 : 0.5,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              color: selected ? selectedColor : unselectedColor,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A "+" chip that lets the user save the current text field value as a new
+/// band-scoped attire chip.
+///
+/// Visually distinct from value chips: outline border only, no fill,
+/// uses a plus icon. Dims when [enabled] is false.
+class _AddAttireChip extends StatelessWidget {
+  const _AddAttireChip({required this.enabled, this.onTap});
+
+  final bool enabled;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeBlue = CupertinoColors.activeBlue.resolveFrom(context);
+    final color = enabled
+        ? activeBlue
+        : CupertinoColors.tertiaryLabel.resolveFrom(context);
+    final borderColor = enabled
+        ? activeBlue
+        : CupertinoColors.separator.resolveFrom(context);
+
+    return Semantics(
+      label: enabled ? 'Save as chip' : 'Type a dress code to save as chip',
+      button: true,
+      enabled: enabled,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            // No fill — outline only to visually differentiate from value chips.
+            color: CupertinoColors.systemBackground.resolveFrom(context),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: borderColor, width: 1.0),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(CupertinoIcons.plus, size: 14, color: color),
+              const SizedBox(width: 4),
+              Text(
+                'Save',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: color,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

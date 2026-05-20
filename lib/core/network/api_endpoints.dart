@@ -94,6 +94,12 @@ class ApiEndpoints {
   static String mobileEventMemberSub(String key, int memberId) =>
       '/api/mobile/events/$key/members/$memberId/sub';
 
+  // Attire chips
+  static String mobileBandAttireChips(int bandId) =>
+      '/api/mobile/bands/$bandId/attire-chips';
+  static String mobileBandAttireChip(int bandId, int chipId) =>
+      '/api/mobile/bands/$bandId/attire-chips/$chipId';
+
   // Onboarding
   static const String mobileRegister = '/api/mobile/auth/register';
   static const String mobileCreateBand = '/api/mobile/bands';

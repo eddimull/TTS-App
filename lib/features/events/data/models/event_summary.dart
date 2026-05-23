@@ -95,18 +95,22 @@ class EventSummary {
   }
 
   /// Returns the asset path for the gig type icon, or null for rehearsals.
+  ///
+  /// Keys mirror the web app's [CardIcon.vue] mapping, normalized to
+  /// lowercase with whitespace stripped so that "Bar Gig", "BAR GIG", and
+  /// "bar gig" all resolve to the same icon.
   String? get gigIconPath {
     if (isRehearsal) return null;
     final type = eventType?.toLowerCase().replaceAll(' ', '') ?? '';
     const base = 'assets/images/gigIcons';
     return switch (type) {
-      'bar' => '$base/bar.png',
+      'bargig' => '$base/bar.png',
       'casino' => '$base/casino.png',
       'charity' => '$base/charity.png',
       'festival' => '$base/festival.png',
-      'mardigras' => '$base/mardiGras.png',
-      'private' => '$base/private.png',
-      'special' => '$base/special.png',
+      'mardigrasball' => '$base/mardiGras.png',
+      'privateparty' => '$base/private.png',
+      'specialevent' => '$base/special.png',
       'wedding' => '$base/wedding.png',
       _ => '$base/other.png',
     };

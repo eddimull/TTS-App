@@ -181,4 +181,50 @@ void main() {
       expect(event.band, isNull);
     });
   });
+
+  group('EventSummary.gigIconPath', () {
+    EventSummary make(String? type, {String source = 'booking'}) =>
+        EventSummary.fromJson({
+          'key': 'k',
+          'title': 'T',
+          'date': '2026-01-01',
+          'event_source': source,
+          if (type != null) 'event_type': type,
+        });
+
+    test('rehearsal returns null', () {
+      expect(make('Wedding', source: 'rehearsal').gigIconPath, isNull);
+    });
+
+    test('maps every web-app event type name to its icon', () {
+      // Source of truth: resources/js/Components/Event/Card/CardIcon.vue
+      // in the eddimull/TTS repo.
+      const mapping = {
+        'Wedding': 'assets/images/gigIcons/wedding.png',
+        'Bar Gig': 'assets/images/gigIcons/bar.png',
+        'Casino': 'assets/images/gigIcons/casino.png',
+        'Special Event': 'assets/images/gigIcons/special.png',
+        'Charity': 'assets/images/gigIcons/charity.png',
+        'Festival': 'assets/images/gigIcons/festival.png',
+        'Private Party': 'assets/images/gigIcons/private.png',
+        'Mardi Gras Ball': 'assets/images/gigIcons/mardiGras.png',
+      };
+      for (final entry in mapping.entries) {
+        expect(make(entry.key).gigIconPath, entry.value,
+            reason: 'event_type "${entry.key}" should map to ${entry.value}');
+      }
+    });
+
+    test('unknown type falls back to other.png', () {
+      expect(make('Corporate').gigIconPath, 'assets/images/gigIcons/other.png');
+      expect(make(null).gigIconPath, 'assets/images/gigIcons/other.png');
+    });
+
+    test('normalization ignores case and spacing', () {
+      expect(make('bar gig').gigIconPath, 'assets/images/gigIcons/bar.png');
+      expect(make('BAR  GIG').gigIconPath, 'assets/images/gigIcons/bar.png');
+      expect(make('MardiGrasBall').gigIconPath,
+          'assets/images/gigIcons/mardiGras.png');
+    });
+  });
 }

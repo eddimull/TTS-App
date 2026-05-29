@@ -1,4 +1,4 @@
-package band.tts.tts_bandmate
+package tts.band
 
 import io.flutter.embedding.android.FlutterActivity
 

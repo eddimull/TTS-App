@@ -16,6 +16,9 @@ import '../data/models/event_detail.dart';
 import '../data/events_repository.dart';
 import '../providers/attire_chips_provider.dart';
 import 'attachment_widgets.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../bookings/widgets/venue_picker.dart';
+import '../../bookings/data/venue_search_service.dart';
 
 // ── Mutable edit-time models ──────────────────────────────────────────────────
 
@@ -31,6 +34,7 @@ class _WeddingDance {
   String? data; // song name / description
 }
 
+bool get _mapsSupported => kIsWeb || Platform.isAndroid || Platform.isIOS;
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -44,8 +48,11 @@ class EventEditScreen extends ConsumerStatefulWidget {
 
 class _EventEditScreenState extends ConsumerState<EventEditScreen> {
   late final TextEditingController _title;
-  late final TextEditingController _venueName;
-  late final TextEditingController _venueAddress;
+  late String _venueName;
+  late String _venueAddress;
+  double? _venueLat;
+  double? _venueLng;
+  bool _venueFlowOpen = false;
   late final TextEditingController _notes;
   late final TextEditingController _attire;
 
@@ -104,8 +111,8 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     super.initState();
     final e = widget.event;
     _title = TextEditingController(text: e.title);
-    _venueName = TextEditingController(text: e.venueName ?? '');
-    _venueAddress = TextEditingController(text: e.venueAddress ?? '');
+    _venueName = e.venueName ?? '';
+    _venueAddress = e.venueAddress ?? '';
     _notes = TextEditingController(text: _stripHtml(e.notes ?? ''));
     _attire = TextEditingController(text: e.attire ?? '');
     _date = e.parsedDate;
@@ -149,8 +156,8 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
 
     // Snapshot for dirty check
     _initTitle = _title.text;
-    _initVenueName = _venueName.text;
-    _initVenueAddress = _venueAddress.text;
+    _initVenueName = _venueName;
+    _initVenueAddress = _venueAddress;
     _initNotes = _notes.text;
     _initAttire = _attire.text;
     _initDate = _date;
@@ -176,8 +183,6 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
   @override
   void dispose() {
     _title.dispose();
-    _venueName.dispose();
-    _venueAddress.dispose();
     _notes.dispose();
     _attire.dispose();
     _lodgingLocation.dispose();
@@ -214,8 +219,8 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
 
   bool _hasChanges() {
     if (_title.text != _initTitle) return true;
-    if (_venueName.text != _initVenueName) return true;
-    if (_venueAddress.text != _initVenueAddress) return true;
+    if (_venueName != _initVenueName) return true;
+    if (_venueAddress != _initVenueAddress) return true;
     if (_notes.text != _initNotes) return true;
     if (_attire.text != _initAttire) return true;
     if (_date != _initDate) return true;
@@ -295,8 +300,8 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
         date: dateStr,
         startTime: _startTime,
         endTime: _endTime,
-        venueName: _venueName.text.trim().isEmpty ? null : _venueName.text.trim(),
-        venueAddress: _venueAddress.text.trim().isEmpty ? null : _venueAddress.text.trim(),
+        venueName: _venueName.trim().isEmpty ? null : _venueName.trim(),
+        venueAddress: _venueAddress.trim().isEmpty ? null : _venueAddress.trim(),
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         // Attire is a free-text field; the backend accepts empty string to
         // clear it (rule is nullable|string).
@@ -1264,6 +1269,104 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     return _attachments;
   }
 
+  // ── Venue search flow ───────────────────────────────────────────────────────
+
+  Future<void> _openVenueSearch() async {
+    if (_venueFlowOpen) return;
+    _venueFlowOpen = true;
+    try {
+      await _runVenueSearchFlow();
+    } finally {
+      _venueFlowOpen = false;
+    }
+  }
+
+  Future<void> _runVenueSearchFlow() async {
+    final service = ref.read(venueSearchServiceProvider);
+    String lastQuery = _venueName.isNotEmpty ? _venueName : _venueAddress;
+
+    while (true) {
+      final prediction = await Navigator.of(context).push<VenuePrediction>(
+        CupertinoPageRoute(
+          builder: (_) => VenueSearchSheet(
+            initialText: lastQuery,
+            service: service,
+          ),
+        ),
+      );
+      if (prediction == null || !mounted) return;
+
+      final isFreeText = prediction.placeId.isEmpty;
+
+      if (!_mapsSupported || isFreeText) {
+        setState(() {
+          _venueName = prediction.name;
+          _venueAddress = prediction.address.isEmpty ? '' : prediction.address;
+          _venueLat = null;
+          _venueLng = null;
+        });
+        return;
+      }
+
+      lastQuery = prediction.name;
+      final initialPosition = await geocodeAddress(prediction.address);
+      if (!mounted) return;
+
+      final details = await Navigator.of(context).push<VenueDetails>(
+        CupertinoPageRoute(
+          builder: (_) => VenueMapPickerScreen(
+            venueName: prediction.name,
+            venueAddress: prediction.address,
+            initialPosition: initialPosition,
+          ),
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (details == null) {
+        continue;
+      }
+
+      setState(() {
+        _venueName = details.name;
+        _venueAddress = details.address.isEmpty ? '' : details.address;
+        _venueLat = details.lat;
+        _venueLng = details.lng;
+      });
+      return;
+    }
+  }
+
+  void _clearVenue() {
+    setState(() {
+      _venueName = '';
+      _venueAddress = '';
+      _venueLat = null;
+      _venueLng = null;
+    });
+  }
+
+  Future<void> _openVenueInMapsFromEdit() async {
+    final name = _venueName;
+    final address = _venueAddress;
+    final Uri uri;
+    if (_venueLat != null && _venueLng != null) {
+      uri = Uri.parse('https://maps.google.com/?q=$_venueLat,$_venueLng');
+    } else if (address.isNotEmpty) {
+      uri = Uri.parse(
+          'https://maps.google.com/?q=${Uri.encodeComponent(address)}');
+    } else if (name.isNotEmpty) {
+      uri = Uri.parse(
+          'https://maps.google.com/?q=${Uri.encodeComponent(name)}');
+    } else {
+      return;
+    }
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
   String _formatDate(DateTime dt) {
@@ -1358,24 +1461,48 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
 
           // ── Venue ───────────────────────────────────────────────────────────
           const _SectionHeader(title: 'Venue'),
-          _FormCard(children: [
-            _LabeledField(
-              label: 'Name',
-              child: CupertinoTextField.borderless(
-                controller: _venueName,
-                placeholder: 'Venue name',
-                textCapitalization: TextCapitalization.words,
-              ),
-            ),
-            _Divider(),
-            _LabeledField(
-              label: 'Address',
-              child: CupertinoTextField.borderless(
-                controller: _venueAddress,
-                placeholder: 'Address',
-              ),
-            ),
-          ]),
+          Builder(builder: (context) {
+            final hasVenue = _venueName.isNotEmpty || _venueAddress.isNotEmpty;
+            if (!hasVenue) {
+              return _FormCard(children: [
+                GestureDetector(
+                  onTap: _openVenueSearch,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      children: [
+                        const Text('Venue', style: TextStyle(fontSize: 15)),
+                        const Spacer(),
+                        Text(
+                          'Search venue',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: CupertinoColors.placeholderText.resolveFrom(context),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          CupertinoIcons.search,
+                          size: 15,
+                          color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ]);
+            }
+            return VenuePreviewCard(
+              venueName: _venueName.isNotEmpty ? _venueName : _venueAddress,
+              venueAddress: _venueName.isNotEmpty ? _venueAddress : '',
+              lat: _venueLat,
+              lng: _venueLng,
+              onOpenMaps: _openVenueInMapsFromEdit,
+              onChange: _openVenueSearch,
+              onClear: _clearVenue,
+            );
+          }),
 
           const SizedBox(height: 20),
 

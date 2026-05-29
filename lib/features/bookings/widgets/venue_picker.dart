@@ -605,8 +605,9 @@ class VenuePreviewCard extends StatelessWidget {
     required this.lat,
     required this.lng,
     required this.onOpenMaps,
-    required this.onChange,
-    required this.onClear,
+    this.onChange,
+    this.onClear,
+    this.readOnly = false,
   });
 
   final String venueName;
@@ -614,8 +615,9 @@ class VenuePreviewCard extends StatelessWidget {
   final double? lat;
   final double? lng;
   final VoidCallback onOpenMaps;
-  final VoidCallback onChange;
-  final VoidCallback onClear;
+  final VoidCallback? onChange;
+  final VoidCallback? onClear;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -684,32 +686,34 @@ class VenuePreviewCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Semantics(
-                      label: 'Change venue',
-                      child: CupertinoButton(
-                        padding: const EdgeInsets.all(8),
-                        onPressed: onChange,
-                        child: Icon(
-                          CupertinoIcons.pencil,
-                          size: 20,
-                          color:
-                              CupertinoColors.activeBlue.resolveFrom(context),
+                    if (!readOnly) ...[
+                      Semantics(
+                        label: 'Change venue',
+                        child: CupertinoButton(
+                          padding: const EdgeInsets.all(8),
+                          onPressed: onChange,
+                          child: Icon(
+                            CupertinoIcons.pencil,
+                            size: 20,
+                            color:
+                                CupertinoColors.activeBlue.resolveFrom(context),
+                          ),
                         ),
                       ),
-                    ),
-                    Semantics(
-                      label: 'Clear venue',
-                      child: CupertinoButton(
-                        padding: const EdgeInsets.all(8),
-                        onPressed: onClear,
-                        child: Icon(
-                          CupertinoIcons.xmark_circle,
-                          size: 20,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context),
+                      Semantics(
+                        label: 'Clear venue',
+                        child: CupertinoButton(
+                          padding: const EdgeInsets.all(8),
+                          onPressed: onClear,
+                          child: Icon(
+                            CupertinoIcons.xmark_circle,
+                            size: 20,
+                            color: CupertinoColors.secondaryLabel
+                                .resolveFrom(context),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ],

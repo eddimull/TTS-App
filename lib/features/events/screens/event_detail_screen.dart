@@ -10,7 +10,7 @@ import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/status_chip.dart';
-import '../../bookings/widgets/venue_picker.dart' show geocodeAddress;
+import '../../bookings/widgets/venue_picker.dart' show geocodeAddress, VenuePreviewCard;
 import '../data/events_repository.dart';
 import '../data/models/event_detail.dart';
 import '../data/models/event_member.dart';
@@ -112,19 +112,9 @@ class _EventDetailView extends StatelessWidget {
           // Venue
           if (event.venueName != null && event.venueName!.isNotEmpty) ...[
             const SizedBox(height: 12),
-            _InfoRow(
-              icon: CupertinoIcons.location,
-              label: 'Venue',
-              value: [
-                event.venueName!,
-                if (event.venueAddress != null && event.venueAddress!.isNotEmpty)
-                  event.venueAddress!,
-              ].join('\n'),
-              onTap: () => _openVenueInMaps(
-                context: context,
-                venueName: event.venueName!,
-                venueAddress: event.venueAddress,
-              ),
+            _VenueCard(
+              venueName: event.venueName!,
+              venueAddress: event.venueAddress,
             ),
           ],
 
@@ -245,6 +235,58 @@ class _EventDetailView extends StatelessWidget {
 
   String _formatDateAndTime(String date, String? time) =>
       formatDateWithTimeRange(date, time, null);
+}
+
+// ── Venue card with map preview ───────────────────────────────────────────────
+
+class _VenueCard extends StatefulWidget {
+  const _VenueCard({required this.venueName, this.venueAddress});
+  final String venueName;
+  final String? venueAddress;
+
+  @override
+  State<_VenueCard> createState() => _VenueCardState();
+}
+
+class _VenueCardState extends State<_VenueCard> {
+  double? _lat;
+  double? _lng;
+
+  @override
+  void initState() {
+    super.initState();
+    _geocodeVenue();
+  }
+
+  Future<void> _geocodeVenue() async {
+    final fullAddress = [
+      widget.venueName,
+      if (widget.venueAddress != null && widget.venueAddress!.isNotEmpty)
+        widget.venueAddress!,
+    ].join(', ');
+    final position = await geocodeAddress(fullAddress);
+    if (!mounted) return;
+    setState(() {
+      _lat = position?.latitude;
+      _lng = position?.longitude;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return VenuePreviewCard(
+      venueName: widget.venueName,
+      venueAddress: widget.venueAddress ?? '',
+      lat: _lat,
+      lng: _lng,
+      readOnly: true,
+      onOpenMaps: () => _openVenueInMaps(
+        context: context,
+        venueName: widget.venueName,
+        venueAddress: widget.venueAddress,
+      ),
+    );
+  }
 }
 
 // ── Open-in-Maps helper ───────────────────────────────────────────────────────
@@ -368,17 +410,15 @@ class _InfoRow extends StatelessWidget {
     required this.label,
     required this.value,
     this.trailing,
-    this.onTap,
   });
   final IconData icon;
   final String label;
   final String value;
   final Widget? trailing;
-  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final row = Row(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, size: 20, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
@@ -400,9 +440,7 @@ class _InfoRow extends StatelessWidget {
                   value,
                   style: TextStyle(
                     fontSize: 15,
-                    color: onTap != null
-                        ? CupertinoColors.activeBlue.resolveFrom(context)
-                        : CupertinoColors.label.resolveFrom(context),
+                    color: CupertinoColors.label.resolveFrom(context),
                   ),
                 ),
               ],
@@ -412,8 +450,6 @@ class _InfoRow extends StatelessWidget {
         ),
       ],
     );
-    if (onTap == null) return row;
-    return GestureDetector(onTap: onTap, child: row);
   }
 }
 

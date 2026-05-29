@@ -1,7 +1,7 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_google_places_sdk/flutter_google_places_sdk.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_places_native_sdk/google_places_native_sdk.dart';
 import 'package:tts_bandmate/core/config/app_config.dart';
 
 class VenuePrediction {
@@ -42,24 +42,25 @@ abstract class VenueSearchService {
 // ── Google Places implementation ──────────────────────────────────────────────
 
 class PlacesVenueSearchService implements VenueSearchService {
-  PlacesVenueSearchService()
-      : _sdk = FlutterGooglePlacesSdk(AppConfig.googlePlacesApiKey);
+  static bool _initialized = false;
 
-  final FlutterGooglePlacesSdk _sdk;
+  Future<void> _ensureInitialized() async {
+    if (_initialized) return;
+    await PlacesChannel.initialize(AppConfig.googlePlacesApiKey);
+    _initialized = true;
+  }
 
   @override
   Future<List<VenuePrediction>> search(String query) async {
     if (query.trim().isEmpty) return [];
     try {
-      final result = await _sdk.findAutocompletePredictions(
-        query,
-        placeTypesFilter: [PlaceTypeFilter.ESTABLISHMENT],
-      );
-      return result.predictions.map((p) {
+      await _ensureInitialized();
+      final predictions = await PlacesChannel.getAutocompletePredictions(query);
+      return predictions.map((p) {
         return VenuePrediction(
           placeId: p.placeId,
           name: p.primaryText,
-          address: p.secondaryText,
+          address: p.secondaryText ?? '',
         );
       }).toList();
     } catch (_) {

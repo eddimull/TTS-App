@@ -27,16 +27,6 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 
 flutter_ios_podfile_setup
 
-# google_places_native_sdk ships its podspec as flutter_location_sdk.podspec —
-# create the correctly named file so CocoaPods can find it.
-pre_install do |installer|
-  plugin_dir = File.join(__dir__, '.symlinks', 'plugins', 'google_places_native_sdk', 'ios')
-  if Dir.exist?(plugin_dir)
-    correct = File.join(plugin_dir, 'google_places_native_sdk.podspec')
-    wrong   = File.join(plugin_dir, 'flutter_location_sdk.podspec')
-    File.write(correct, File.read(wrong)) if File.exist?(wrong) && !File.exist?(correct)
-  end
-end
 
 target 'Runner' do
   use_frameworks! :linkage => :static

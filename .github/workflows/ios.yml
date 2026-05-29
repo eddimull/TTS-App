@@ -47,6 +47,13 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
 
+      - name: Fix google_places_native_sdk iOS podspec naming
+        run: |
+          PLUGIN_IOS="$HOME/.pub-cache/hosted/pub.dev/google_places_native_sdk-3.0.0/ios"
+          if [ -f "$PLUGIN_IOS/flutter_location_sdk.podspec" ] && [ ! -f "$PLUGIN_IOS/google_places_native_sdk.podspec" ]; then
+            cp "$PLUGIN_IOS/flutter_location_sdk.podspec" "$PLUGIN_IOS/google_places_native_sdk.podspec"
+          fi
+
       - name: Switch to manual code signing
         run: |
           echo "CODE_SIGN_STYLE=Manual" >> ios/Flutter/Release.xcconfig

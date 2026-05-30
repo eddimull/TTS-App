@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,7 +9,6 @@ import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 import '../data/models/band_detail.dart';
 import '../providers/band_settings_provider.dart';
 import '../../bookings/data/venue_search_service.dart';
-import '../../bookings/widgets/venue_picker.dart' show VenueSearchSheet;
 
 // ── Address component parsing ─────────────────────────────────────────────────
 
@@ -134,6 +135,33 @@ class _BandInfoEditScreenState extends ConsumerState<BandInfoEditScreen> {
   String? _logoUrl;
   Map<String, String> _fieldErrors = {};
 
+  // ── Autocomplete dropdown state ─────────────────────────────────────────────
+
+  /// Overlay entry for the suggestions dropdown. Null when the dropdown is
+  /// not visible. Always removed in dispose() and whenever it is dismissed.
+  OverlayEntry? _dropdownEntry;
+
+  /// LayerLink that ties the CompositedTransformFollower (the overlay dropdown)
+  /// to the CompositedTransformTarget (the address text field).
+  final LayerLink _addressFieldLink = LayerLink();
+
+  /// Current predictions shown in the dropdown. Replaced on each search
+  /// response; cleared when the dropdown is dismissed.
+  List<VenuePrediction> _predictions = [];
+
+  /// Whether a search request is currently in-flight.
+  bool _searching = false;
+
+  /// Debounce timer — cancelled and rescheduled on each keystroke.
+  Timer? _debounce;
+
+  /// The last text that was actually searched so we can skip redundant calls
+  /// (the controller fires its listener for cursor moves too).
+  String? _lastSearchedText;
+
+  /// FocusNode for the address field — used to detect focus-loss dismissal.
+  final FocusNode _addressFocus = FocusNode();
+
   @override
   void initState() {
     super.initState();
@@ -145,18 +173,163 @@ class _BandInfoEditScreenState extends ConsumerState<BandInfoEditScreen> {
     _state = TextEditingController(text: d.state);
     _zip = TextEditingController(text: d.zip);
     _logoUrl = d.logoUrl;
+
+    _address.addListener(_onAddressChanged);
+    _addressFocus.addListener(_onAddressFocusChanged);
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
+    _removeDropdown();
+    _addressFocus
+      ..removeListener(_onAddressFocusChanged)
+      ..dispose();
     _name.dispose();
     _siteName.dispose();
-    _address.dispose();
+    _address
+      ..removeListener(_onAddressChanged)
+      ..dispose();
     _city.dispose();
     _state.dispose();
     _zip.dispose();
     super.dispose();
   }
+
+  // ── Autocomplete logic ──────────────────────────────────────────────────────
+
+  void _onAddressChanged() {
+    final text = _address.text;
+
+    // Skip scheduling a search when only cursor/selection changed.
+    if (text == _lastSearchedText) return;
+
+    // Clear the dropdown immediately if the field is emptied.
+    if (text.trim().isEmpty) {
+      _debounce?.cancel();
+      _lastSearchedText = text;
+      _removeDropdown();
+      return;
+    }
+
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () => _runSearch(text));
+  }
+
+  void _onAddressFocusChanged() {
+    // When the address field loses focus the dropdown should disappear.
+    // We delay by one frame so that a tap on a dropdown row registers first —
+    // otherwise the overlay is removed before the GestureDetector fires.
+    if (!_addressFocus.hasFocus) {
+      Future.microtask(_removeDropdown);
+    }
+  }
+
+  Future<void> _runSearch(String text) async {
+    if (!mounted) return;
+
+    _lastSearchedText = text;
+
+    final service = ref.read(venueSearchServiceProvider);
+
+    // Mark searching — rebuild dropdown to show spinner.
+    setState(() => _searching = true);
+    _rebuildDropdown();
+
+    final results = await service.search(text);
+
+    // Discard stale response if the query has changed since this call started.
+    if (!mounted || _address.text != text) return;
+
+    setState(() {
+      _predictions = results;
+      _searching = false;
+    });
+
+    // Show dropdown only when there are results to display.
+    if (results.isNotEmpty) {
+      _rebuildDropdown();
+    } else {
+      _removeDropdown();
+    }
+  }
+
+  /// Inserts (or replaces) the overlay dropdown entry anchored below the
+  /// address field using [CompositedTransformFollower].
+  void _rebuildDropdown() {
+    _removeDropdown();
+
+    // Nothing to show yet — exit early unless we're in the searching state.
+    if (!_searching && _predictions.isEmpty) return;
+
+    final overlay = Overlay.of(context, rootOverlay: false);
+
+    _dropdownEntry = OverlayEntry(
+      builder: (overlayContext) => _AddressDropdown(
+        link: _addressFieldLink,
+        predictions: _predictions,
+        searching: _searching,
+        onSelect: _onPredictionSelected,
+      ),
+    );
+
+    overlay.insert(_dropdownEntry!);
+  }
+
+  void _removeDropdown() {
+    _dropdownEntry?.remove();
+    _dropdownEntry = null;
+  }
+
+  Future<void> _onPredictionSelected(VenuePrediction prediction) async {
+    // Dismiss dropdown immediately and stop any pending debounce.
+    _debounce?.cancel();
+    _removeDropdown();
+
+    // Silence the listener while we programmatically set the field value so
+    // we don't trigger another search cycle.
+    _address.removeListener(_onAddressChanged);
+
+    if (prediction.placeId.isEmpty) {
+      // Free-text path — no geocoding to do.
+      _address.text = prediction.name;
+      _lastSearchedText = prediction.name;
+      _address.addListener(_onAddressChanged);
+      return;
+    }
+
+    final fullAddress = [prediction.name, prediction.address]
+        .where((s) => s.isNotEmpty)
+        .join(', ');
+
+    // Show the geocoding spinner next to the label.
+    setState(() => _geocoding = true);
+
+    try {
+      final components = await _geocodeToComponents(fullAddress);
+      if (!mounted) return;
+
+      setState(() {
+        final street = (components != null && components.streetAddress.isNotEmpty)
+            ? components.streetAddress
+            : prediction.name;
+        _address.text = street;
+        _lastSearchedText = street;
+
+        if (components != null) {
+          if (components.city.isNotEmpty) _city.text = components.city;
+          if (components.state.isNotEmpty) _state.text = components.state;
+          if (components.zip.isNotEmpty) _zip.text = components.zip;
+        }
+      });
+    } finally {
+      if (mounted) setState(() => _geocoding = false);
+      // Re-attach listener after programmatic writes are complete.
+      _address.addListener(_onAddressChanged);
+    }
+  }
+
+  // ── Logo / save ─────────────────────────────────────────────────────────────
 
   Future<void> _pickLogo() async {
     final picker = ImagePicker();
@@ -259,77 +432,6 @@ class _BandInfoEditScreenState extends ConsumerState<BandInfoEditScreen> {
     };
   }
 
-  // ── Address autocomplete ────────────────────────────────────────────────────
-
-  /// Opens [VenueSearchSheet] to search for an address. On selection, calls
-  /// the Geocoding REST API to break the returned address into components and
-  /// populates street, city, state, and zip fields.
-  ///
-  /// Free-typed entries (placeId == '') skip geocoding and write the raw text
-  /// into the street address field only — the user must fill city/state/zip.
-  Future<void> _openAddressSearch() async {
-    final service = ref.read(venueSearchServiceProvider);
-
-    final prediction = await Navigator.of(context).push<VenuePrediction>(
-      CupertinoPageRoute(
-        builder: (_) => VenueSearchSheet(
-          // Seed the search box with the current street address so the user
-          // can refine rather than start from scratch.
-          initialText: _address.text.trim(),
-          service: service,
-        ),
-      ),
-    );
-
-    if (prediction == null || !mounted) return;
-
-    // Free-text path (placeId == ''): use the typed name as the street address
-    // only — geocoding would be unreliable on an incomplete string.
-    if (prediction.placeId.isEmpty) {
-      setState(() => _address.text = prediction.name);
-      return;
-    }
-
-    // For a real Places prediction, geocode the full address string to extract
-    // structured components (street, city, state, zip).
-    final fullAddress = [prediction.name, prediction.address]
-        .where((s) => s.isNotEmpty)
-        .join(', ');
-
-    setState(() => _geocoding = true);
-    try {
-      final components = await _geocodeToComponents(fullAddress);
-      if (!mounted) return;
-
-      if (components != null) {
-        setState(() {
-          // Prefer the structured street address from geocoding; fall back to
-          // the prediction name when the geocoder returns no route component.
-          final street = components.streetAddress.isNotEmpty
-              ? components.streetAddress
-              : prediction.name;
-          _address.text = street;
-          if (components.city.isNotEmpty) _city.text = components.city;
-          if (components.state.isNotEmpty) _state.text = components.state;
-          if (components.zip.isNotEmpty) _zip.text = components.zip;
-        });
-      } else {
-        // Geocode call failed or returned nothing — fall back to prediction text
-        // so the user has something to work from.
-        setState(() {
-          _address.text = prediction.name;
-          if (prediction.address.isNotEmpty) {
-            // The prediction.address is typically "City, State, Country".
-            // Don't try to parse it — just put the name in and leave city/state
-            // for the user to fill.
-          }
-        });
-      }
-    } finally {
-      if (mounted) setState(() => _geocoding = false);
-    }
-  }
-
   // ── Field builder ─────────────────────────────────────────────────────────
 
   Widget _field(
@@ -373,15 +475,15 @@ class _BandInfoEditScreenState extends ConsumerState<BandInfoEditScreen> {
     );
   }
 
-  // ── Address section — street field + autocomplete button ──────────────────
+  // ── Address section — street field with inline autocomplete ──────────────────
 
-  /// Builds the "Street Address" field plus the autocomplete search button that
-  /// appears to the right of the label.  Geocoding spinner replaces the button
-  /// while a Places lookup is in flight.
+  /// Builds the "Street Address" label (with geocoding spinner) and the
+  /// text field wrapped in a [CompositedTransformTarget] so the suggestions
+  /// overlay can anchor itself directly below it.
   Widget _addressSection() {
-    final labelColor =
-        CupertinoColors.secondaryLabel.resolveFrom(context);
+    final labelColor = CupertinoColors.secondaryLabel.resolveFrom(context);
     final error = _fieldErrors['address'];
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
@@ -393,46 +495,22 @@ class _BandInfoEditScreenState extends ConsumerState<BandInfoEditScreen> {
                 'Street Address',
                 style: TextStyle(fontSize: 13, color: labelColor),
               ),
-              const Spacer(),
-              if (_geocoding)
-                const Padding(
-                  padding: EdgeInsets.only(right: 4),
-                  child: CupertinoActivityIndicator(),
-                )
-              else
-                Semantics(
-                  label: 'Search for address',
-                  button: true,
-                  child: CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: _saving ? null : _openAddressSearch,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          CupertinoIcons.search,
-                          size: 14,
-                          // activeBlue resolves correctly in both light and dark.
-                          color: CupertinoColors.activeBlue.resolveFrom(context),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Autocomplete',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color:
-                                CupertinoColors.activeBlue.resolveFrom(context),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              if (_geocoding) ...[
+                const SizedBox(width: 8),
+                const CupertinoActivityIndicator(),
+              ],
             ],
           ),
           const SizedBox(height: 4),
-          CupertinoTextField(
-            controller: _address,
+          // CompositedTransformTarget marks the exact position of the field
+          // so the overlay can follow it as the page scrolls or resizes.
+          CompositedTransformTarget(
+            link: _addressFieldLink,
+            child: CupertinoTextField(
+              controller: _address,
+              focusNode: _addressFocus,
+              placeholder: 'Street address',
+            ),
           ),
           if (error != null) ...[
             const SizedBox(height: 4),
@@ -514,6 +592,149 @@ class _BandInfoEditScreenState extends ConsumerState<BandInfoEditScreen> {
             _field('State', _state, 'state'),
             _field('Zip', _zip, 'zip', keyboardType: TextInputType.number),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Autocomplete dropdown overlay ─────────────────────────────────────────────
+//
+// Rendered inside the [Overlay] stack so it floats above the form without
+// pushing other fields down.  [CompositedTransformFollower] pins it to the
+// bottom-left of the address field regardless of scroll position.
+
+class _AddressDropdown extends StatelessWidget {
+  const _AddressDropdown({
+    required this.link,
+    required this.predictions,
+    required this.searching,
+    required this.onSelect,
+  });
+
+  final LayerLink link;
+  final List<VenuePrediction> predictions;
+  final bool searching;
+  final ValueChanged<VenuePrediction> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    // Max ~4 rows before the list scrolls so it doesn't consume the whole screen.
+    const rowHeight = 60.0;
+    const maxVisibleRows = 4;
+    final listHeight = searching
+        ? 48.0
+        : (predictions.length.clamp(1, maxVisibleRows) * rowHeight).toDouble();
+
+    return Positioned(
+      // CompositedTransformFollower handles its own positioning; Positioned
+      // here just removes it from the normal flow so it doesn't shift content.
+      left: 0,
+      top: 0,
+      child: CompositedTransformFollower(
+        link: link,
+        showWhenUnlinked: false,
+        // Offset by the height of the CupertinoTextField (≈ 36 px) + 2 px gap.
+        offset: const Offset(0, 38),
+        child: SizedBox(
+          // Constrain width to match the field width. MediaQuery width minus
+          // 32 px matches the 16 px horizontal padding on each side in the form.
+          width: MediaQuery.of(context).size.width - 32,
+          height: listHeight,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              // tertiarySystemBackground gives the dropdown a slightly recessed
+              // tint vs. systemBackground — adapts to dark mode automatically.
+              color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
+              child: searching
+                  ? const Center(child: CupertinoActivityIndicator())
+                  : ListView.separated(
+                      padding: EdgeInsets.zero,
+                      itemCount: predictions.length,
+                      separatorBuilder: (_, __) => Container(
+                        height: 0.5,
+                        margin: const EdgeInsets.only(left: 44),
+                        color: CupertinoColors.separator.resolveFrom(context),
+                      ),
+                      itemBuilder: (_, i) {
+                        final p = predictions[i];
+                        return _DropdownRow(
+                          prediction: p,
+                          onTap: () => onSelect(p),
+                        );
+                      },
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Single suggestion row ─────────────────────────────────────────────────────
+
+class _DropdownRow extends StatelessWidget {
+  const _DropdownRow({
+    required this.prediction,
+    required this.onTap,
+  });
+
+  final VenuePrediction prediction;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '${prediction.name}, ${prediction.address}',
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Icon(
+                CupertinoIcons.map_pin,
+                size: 18,
+                color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      prediction.name,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: CupertinoColors.label.resolveFrom(context),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (prediction.address.isNotEmpty) ...[
+                      const SizedBox(height: 1),
+                      Text(
+                        prediction.address,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: CupertinoColors.secondaryLabel
+                              .resolveFrom(context),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

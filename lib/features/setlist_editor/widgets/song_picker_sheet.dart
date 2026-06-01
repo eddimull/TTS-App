@@ -9,7 +9,11 @@ import '../data/models/event_setlist.dart';
 /// be non-null — inspect [isLibrary] to distinguish the two cases.
 class SongPickerResult {
   /// A song chosen from the band's library.
-  const SongPickerResult.library(BandSongSummary this.song)
+  ///
+  /// [notes] is optional; when null the caller (Task 16) will default to no
+  /// notes on the setlist entry.  The library quick-pick path leaves notes null
+  /// because the editor screen exposes a per-row edit action for that.
+  const SongPickerResult.library(BandSongSummary this.song, {this.notes})
       : customTitle = null,
         customArtist = null;
 
@@ -17,6 +21,7 @@ class SongPickerResult {
   const SongPickerResult.custom({
     required String this.customTitle,
     this.customArtist,
+    this.notes,
   }) : song = null;
 
   final BandSongSummary? song;
@@ -26,6 +31,12 @@ class SongPickerResult {
 
   /// Optional artist field for custom entries; always null for library picks.
   final String? customArtist;
+
+  /// Optional free-text notes passed through to the setlist entry.
+  ///
+  /// Populated from the Notes field in custom mode; null for library quick-picks
+  /// (the editor screen lets users set notes on a row after it is added).
+  final String? notes;
 
   bool get isLibrary => song != null;
   bool get isCustom => customTitle != null;
@@ -73,6 +84,7 @@ class _SongPickerSheetState extends State<_SongPickerSheet> {
 
   final _customTitleController = TextEditingController();
   final _customArtistController = TextEditingController();
+  final _customNotesController = TextEditingController();
 
   // Tracks whether the "Add" button should be enabled.  Rebuilt on every
   // keystroke via [_onCustomTitleChanged].
@@ -82,6 +94,7 @@ class _SongPickerSheetState extends State<_SongPickerSheet> {
   void dispose() {
     _customTitleController.dispose();
     _customArtistController.dispose();
+    _customNotesController.dispose();
     super.dispose();
   }
 
@@ -109,10 +122,12 @@ class _SongPickerSheetState extends State<_SongPickerSheet> {
     final title = _customTitleController.text.trim();
     if (title.isEmpty) return;
     final artist = _customArtistController.text.trim();
+    final notes = _customNotesController.text.trim();
     Navigator.of(context).pop(
       SongPickerResult.custom(
         customTitle: title,
         customArtist: artist.isEmpty ? null : artist,
+        notes: notes.isEmpty ? null : notes,
       ),
     );
   }
@@ -145,6 +160,7 @@ class _SongPickerSheetState extends State<_SongPickerSheet> {
             child: _customMode ? _CustomForm(
               titleController: _customTitleController,
               artistController: _customArtistController,
+              notesController: _customNotesController,
               titleFilled: _customTitleFilled,
               onTitleChanged: _onCustomTitleChanged,
               onSubmit: _customTitleFilled ? _submitCustom : null,
@@ -376,11 +392,12 @@ class _EmptySearch extends StatelessWidget {
   }
 }
 
-/// Form for entering a custom song title and optional artist.
+/// Form for entering a custom song title, optional artist, and optional notes.
 class _CustomForm extends StatelessWidget {
   const _CustomForm({
     required this.titleController,
     required this.artistController,
+    required this.notesController,
     required this.titleFilled,
     required this.onTitleChanged,
     required this.onSubmit,
@@ -388,6 +405,10 @@ class _CustomForm extends StatelessWidget {
 
   final TextEditingController titleController;
   final TextEditingController artistController;
+
+  /// Receives the free-text notes the user may type before submitting.
+  final TextEditingController notesController;
+
   final bool titleFilled;
   final ValueChanged<String> onTitleChanged;
 
@@ -420,6 +441,16 @@ class _CustomForm extends StatelessWidget {
             controller: artistController,
             placeholder: 'Artist (optional)',
             textCapitalization: TextCapitalization.words,
+            padding: const EdgeInsets.all(12),
+          ),
+          const SizedBox(height: 12),
+          // Two-line notes field: enough for a cue without dominating the form.
+          CupertinoTextField(
+            controller: notesController,
+            placeholder: 'Notes (optional)',
+            maxLines: 2,
+            minLines: 1,
+            textCapitalization: TextCapitalization.sentences,
             padding: const EdgeInsets.all(12),
           ),
           const SizedBox(height: 20),

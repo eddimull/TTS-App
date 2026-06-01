@@ -307,5 +307,75 @@ void main() {
       const result = SongPickerResult.custom(customTitle: 'Solo Track');
       expect(result.customArtist, isNull);
     });
+
+    test('custom result carries notes when provided', () {
+      const result = SongPickerResult.custom(
+        customTitle: 'Improv Jam',
+        notes: 'Start quiet, build to full band',
+      );
+      expect(result.isCustom, isTrue);
+      expect(result.notes, 'Start quiet, build to full band');
+    });
+
+    test('library result notes is null by default', () {
+      const result = SongPickerResult.library(_aSong);
+      expect(result.notes, isNull);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+
+  group('SongPickerSheet — notes field in custom mode', () {
+    testWidgets(
+        'entering notes in custom mode returns them on the result',
+        (tester) async {
+      SongPickerResult? result;
+
+      await _pumpSheet(tester, [], onResult: (r) => result = r);
+
+      await tester.tap(find.text('Custom'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+          find.widgetWithText(CupertinoTextField, 'Song title'),
+          'Freebird');
+      await tester.pump();
+
+      await tester.enterText(
+          find.widgetWithText(CupertinoTextField, 'Notes (optional)'),
+          'Long outro — cue drummer');
+      await tester.pump();
+
+      await tester.tap(find.text('Add Song'));
+      await tester.pumpAndSettle();
+
+      expect(result, isNotNull);
+      expect(result!.isCustom, isTrue);
+      expect(result!.customTitle, 'Freebird');
+      expect(result!.notes, 'Long outro — cue drummer');
+    });
+
+    testWidgets(
+        'leaving notes blank returns null notes on the result',
+        (tester) async {
+      SongPickerResult? result;
+
+      await _pumpSheet(tester, [], onResult: (r) => result = r);
+
+      await tester.tap(find.text('Custom'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+          find.widgetWithText(CupertinoTextField, 'Song title'),
+          'Unnamed Track');
+      await tester.pump();
+
+      // Notes field left empty — no interaction.
+
+      await tester.tap(find.text('Add Song'));
+      await tester.pumpAndSettle();
+
+      expect(result!.notes, isNull);
+    });
   });
 }

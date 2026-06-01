@@ -11,7 +11,7 @@ class SetlistPromptTemplate {
 
   factory SetlistPromptTemplate.fromJson(Map<String, dynamic> json) =>
       SetlistPromptTemplate(
-        id: json['id'] as int,
+        id: (json['id'] as num).toInt(),
         name: json['name'] as String? ?? '',
         prompt: json['prompt'] as String? ?? '',
       );

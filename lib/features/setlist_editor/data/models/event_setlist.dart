@@ -32,16 +32,16 @@ class SetlistEntry {
   final String? notes;
 
   bool get isBreak => type == 'break';
-  bool get isCustom => songId == null && (customTitle ?? '').isNotEmpty;
+  bool get isCustom => !isBreak && songId == null && (customTitle ?? '').isNotEmpty;
 
   String get displayTitle => title ?? customTitle ?? '';
   String? get displayArtist => artist ?? customArtist;
 
   factory SetlistEntry.fromJson(Map<String, dynamic> json) => SetlistEntry(
-        id: json['id'] as int?,
+        id: (json['id'] as num?)?.toInt(),
         type: json['type'] as String? ?? 'song',
-        position: json['position'] as int? ?? 0,
-        songId: json['song_id'] as int?,
+        position: (json['position'] as num?)?.toInt() ?? 0,
+        songId: (json['song_id'] as num?)?.toInt(),
         title: json['title'] as String?,
         artist: json['artist'] as String?,
         customTitle: json['custom_title'] as String?,
@@ -63,33 +63,44 @@ class SetlistEntry {
         'notes': notes,
       };
 
+  /// copyWith with sentinel defaults so nullable fields can be explicitly
+  /// cleared — e.g. converting a library song to a custom entry
+  /// (`copyWith(songId: null, customTitle: 'X')`) or clearing notes. A bare
+  /// `field ?? this.field` copyWith can't distinguish "not passed" from
+  /// "passed null", which would silently keep stale values in toUpdateJson().
   SetlistEntry copyWith({
     String? type,
     int? position,
-    int? songId,
+    Object? songId = _sentinel,
     String? title,
     String? artist,
-    String? customTitle,
-    String? customArtist,
-    String? notes,
+    Object? customTitle = _sentinel,
+    Object? customArtist = _sentinel,
+    Object? notes = _sentinel,
   }) =>
       SetlistEntry(
         id: id,
         type: type ?? this.type,
         position: position ?? this.position,
-        songId: songId ?? this.songId,
+        songId: identical(songId, _sentinel) ? this.songId : songId as int?,
         title: title ?? this.title,
         artist: artist ?? this.artist,
-        customTitle: customTitle ?? this.customTitle,
-        customArtist: customArtist ?? this.customArtist,
+        customTitle:
+            identical(customTitle, _sentinel) ? this.customTitle : customTitle as String?,
+        customArtist:
+            identical(customArtist, _sentinel) ? this.customArtist : customArtist as String?,
         songKey: songKey,
         genre: genre,
         bpm: bpm,
         energy: energy,
         leadSinger: leadSinger,
-        notes: notes ?? this.notes,
+        notes: identical(notes, _sentinel) ? this.notes : notes as String?,
       );
 }
+
+/// Marker for "argument not supplied" in [SetlistEntry.copyWith], letting
+/// callers pass an explicit `null` to clear a nullable field.
+const Object _sentinel = Object();
 
 class EventSetlist {
   const EventSetlist({
@@ -113,7 +124,7 @@ class EventSetlist {
   int get songCount => songs.where((e) => !e.isBreak).length;
 
   factory EventSetlist.fromJson(Map<String, dynamic> json) => EventSetlist(
-        id: json['id'] as int,
+        id: (json['id'] as num).toInt(),
         status: json['status'] as String? ?? 'draft',
         generatedAt: json['generated_at'] as String?,
         eventContext: json['event_context'] as String?,
@@ -161,7 +172,7 @@ class BandSongSummary {
   final String? leadSinger;
 
   factory BandSongSummary.fromJson(Map<String, dynamic> json) => BandSongSummary(
-        id: json['id'] as int,
+        id: (json['id'] as num).toInt(),
         title: json['title'] as String? ?? '',
         artist: json['artist'] as String?,
         songKey: json['song_key'] as String?,

@@ -65,5 +65,97 @@ void main() {
       expect(setlist.songs, isEmpty);
       expect(setlist.imageContext, isEmpty);
     });
+
+    test('parses integer ids delivered as JSON doubles (web target)', () {
+      final setlist = EventSetlist.fromJson({
+        'id': 7.0,
+        'status': 'draft',
+        'songs': [
+          {'id': 1.0, 'type': 'song', 'position': 1.0, 'song_id': 10.0},
+        ],
+      });
+
+      expect(setlist.id, 7);
+      expect(setlist.songs.first.id, 1);
+      expect(setlist.songs.first.songId, 10);
+      expect(setlist.songs.first.position, 1);
+    });
+
+    test('songCount excludes break rows', () {
+      final setlist = EventSetlist.fromJson({
+        'id': 1,
+        'status': 'draft',
+        'songs': [
+          {'id': 1, 'type': 'song', 'position': 1, 'song_id': 10},
+          {'id': 2, 'type': 'break', 'position': 2},
+          {'id': 3, 'type': 'song', 'position': 3, 'song_id': 11},
+        ],
+      });
+
+      expect(setlist.songCount, 2);
+    });
+  });
+
+  group('SetlistEntry edit helpers', () {
+    const librarySong = SetlistEntry(
+      type: 'song',
+      position: 1,
+      songId: 42,
+      title: 'Brown Eyed Girl',
+      notes: 'Opener',
+    );
+
+    test('isCustom is false for a break even with a custom title', () {
+      const breakEntry =
+          SetlistEntry(type: 'break', position: 1, customTitle: 'oops');
+      expect(breakEntry.isCustom, false);
+    });
+
+    test('isCustom is true for a custom song row', () {
+      const custom = SetlistEntry(
+        type: 'song',
+        position: 1,
+        customTitle: 'Garage Anthem',
+      );
+      expect(custom.isCustom, true);
+    });
+
+    test('copyWith can convert a library song to a custom entry', () {
+      final custom = librarySong.copyWith(
+        songId: null,
+        title: null,
+        customTitle: 'New Custom Title',
+      );
+
+      expect(custom.songId, isNull);
+      expect(custom.customTitle, 'New Custom Title');
+      expect(custom.isCustom, true);
+      // toUpdateJson must reflect the cleared song_id, not the stale 42.
+      expect(custom.toUpdateJson()['song_id'], isNull);
+      expect(custom.toUpdateJson()['custom_title'], 'New Custom Title');
+    });
+
+    test('copyWith can clear notes explicitly', () {
+      final cleared = librarySong.copyWith(notes: null);
+      expect(cleared.notes, isNull);
+    });
+
+    test('copyWith preserves fields when arguments are omitted', () {
+      final same = librarySong.copyWith(position: 5);
+      expect(same.position, 5);
+      expect(same.songId, 42);
+      expect(same.title, 'Brown Eyed Girl');
+      expect(same.notes, 'Opener');
+    });
+
+    test('toUpdateJson emits exactly the server-accepted keys', () {
+      expect(librarySong.toUpdateJson().keys.toSet(), {
+        'type',
+        'song_id',
+        'custom_title',
+        'custom_artist',
+        'notes',
+      });
+    });
   });
 }

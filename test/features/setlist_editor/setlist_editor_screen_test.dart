@@ -269,7 +269,7 @@ void main() {
     await tester.tap(saveFinder);
     await tester.pumpAndSettle();
 
-    expect(repo.saveCalls, greaterThanOrEqualTo(1));
+    expect(repo.saveCalls, equals(1));
   });
 
   // ── (6) Generate button is gated on bandId ───────────────────────────────────

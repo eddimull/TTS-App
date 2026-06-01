@@ -99,6 +99,9 @@ class _SetlistEditorScreenState extends ConsumerState<SetlistEditorScreen> {
       child: SafeArea(
         child: Column(
           children: [
+            // Error banner for save/generate failures on an already-loaded
+            // setlist. Distinct from the full-screen error (setlist == null).
+            if (state.error != null) _ErrorBanner(message: state.error!),
             _StatusBar(
               eventKey: widget.eventKey,
               state: state,
@@ -115,6 +118,35 @@ class _SetlistEditorScreenState extends ConsumerState<SetlistEditorScreen> {
                 notifier: notifier,
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Error banner ───────────────────────────────────────────────────────────────
+
+/// Shown inside the loaded scaffold when [state.error] is non-null after a
+/// failed save or generate call. Distinct from the full-screen error view
+/// which is shown when no setlist has been loaded at all.
+class _ErrorBanner extends StatelessWidget {
+  const _ErrorBanner({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: CupertinoColors.systemRed
+          .resolveFrom(context)
+          .withValues(alpha: 0.12),
+      child: Text(
+        message,
+        style: TextStyle(
+          fontSize: 13,
+          color: CupertinoColors.systemRed.resolveFrom(context),
         ),
       ),
     );
@@ -148,12 +180,14 @@ class _StatusBar extends ConsumerWidget {
       child: Row(
         children: [
           // Status badge — Draft (grey) or Ready (green).
+          // Resolved so they adapt correctly in dark mode.
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: setlist.isReady
-                  ? CupertinoColors.systemGreen
-                  : CupertinoColors.systemGrey,
+              color: (setlist.isReady
+                      ? CupertinoColors.systemGreen
+                      : CupertinoColors.systemGrey)
+                  .resolveFrom(context),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -211,14 +245,24 @@ class _Body extends StatelessWidget {
       return _EmptyState(canWrite: state.canWrite);
     }
 
+    // Precompute song numbers in a single O(n) pass so itemBuilder doesn't
+    // redo this work on every frame for each item (was O(n²)).
+    final songNumbers = <int>[];
+    var counter = 0;
+    for (final e in setlist.songs) {
+      songNumbers.add(e.isBreak ? 0 : ++counter);
+    }
+
     // ReorderableListView is Material-only; wrap with transparent Material
     // so no ink splashes bleed onto the Cupertino background.
     return Material(
       type: MaterialType.transparency,
       child: ReorderableListView.builder(
-        // When canWrite, the default drag handle (trailing dots) allows reorder.
-        // Action buttons (edit/remove) live to the left of the drag handle.
-        buildDefaultDragHandles: state.canWrite,
+        // Disable the default trailing drag handle — it collides with the
+        // edit/remove action buttons. Instead, the rows' leading number column
+        // is wrapped in a ReorderableDragStartListener (see SetlistSongRow and
+        // SetlistBreakRow's dragIndex parameter) when canWrite is true.
+        buildDefaultDragHandles: false,
         itemCount: setlist.songs.length,
         onReorder: notifier.reorder,
         itemBuilder: (_, i) {
@@ -229,13 +273,8 @@ class _Body extends StatelessWidget {
               key: ValueKey('break-$i'),
               canWrite: state.canWrite,
               onRemove: () => notifier.removeAt(i),
+              dragIndex: i,
             );
-          }
-
-          // Compute song number by counting non-break entries up to index i.
-          var num = 0;
-          for (var j = 0; j <= i; j++) {
-            if (!setlist.songs[j].isBreak) num++;
           }
 
           return SetlistSongRow(
@@ -243,10 +282,11 @@ class _Body extends StatelessWidget {
             // for locally-added songs not yet saved.
             key: ValueKey('song-${entry.id ?? entry.displayTitle}-$i'),
             entry: entry,
-            songNumber: num,
+            songNumber: songNumbers[i],
             canWrite: state.canWrite,
             onEdit: () => _editEntry(context, i, entry, notifier),
             onRemove: () => notifier.removeAt(i),
+            dragIndex: i,
           );
         },
       ),
@@ -428,6 +468,8 @@ class _BottomToolbar extends ConsumerWidget {
           Expanded(
             child: Semantics(
               label: state.isGenerating ? 'Generating setlist' : 'Generate setlist with AI',
+              // Hint surfaces when the button is disabled due to no band.
+              hint: bandId == null ? 'Select a band first' : null,
               child: CupertinoButton(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 // Disabled when no band is selected or generation is in flight.

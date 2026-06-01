@@ -10,11 +10,11 @@ import '../data/models/event_setlist.dart';
 /// This widget is designed to be used inside a [ReorderableListView]; callers
 /// should wrap it with a [Key] so the list can track drag identity.
 ///
-/// When placed in a [ReorderableListView], set
-/// [ReorderableListView.buildDefaultDragHandles] to false and wrap the
-/// leading number column with a [ReorderableDragStartListener] — the
-/// trailing action buttons would otherwise collide with the default drag
-/// handle. (Wired up in the editor screen, Task 16.)
+/// Pass [dragIndex] (the item's index in the list) when placing this inside a
+/// [ReorderableListView] with [buildDefaultDragHandles] set to false. When
+/// [canWrite] is true and [dragIndex] is non-null, the leading number column
+/// becomes the drag handle via [ReorderableDragStartListener], so the trailing
+/// action buttons remain independently tappable.
 class SetlistSongRow extends StatelessWidget {
   const SetlistSongRow({
     super.key,
@@ -23,6 +23,7 @@ class SetlistSongRow extends StatelessWidget {
     required this.canWrite,
     required this.onEdit,
     required this.onRemove,
+    this.dragIndex,
   });
 
   final SetlistEntry entry;
@@ -30,9 +31,31 @@ class SetlistSongRow extends StatelessWidget {
   final bool canWrite;
   final VoidCallback onEdit;
   final VoidCallback onRemove;
+  /// When non-null and [canWrite] is true, wraps the leading number area in a
+  /// [ReorderableDragStartListener] so the row can be dragged by its number.
+  final int? dragIndex;
 
   @override
   Widget build(BuildContext context) {
+    // Build the leading number widget, optionally wrapped as a drag handle.
+    final leadingNumber = SizedBox(
+      width: 28,
+      child: Text(
+        '$songNumber',
+        style: TextStyle(
+          color: CupertinoColors.secondaryLabel.resolveFrom(context),
+          fontSize: 14,
+        ),
+      ),
+    );
+
+    final leading = (canWrite && dragIndex != null)
+        ? ReorderableDragStartListener(
+            index: dragIndex!,
+            child: leadingNumber,
+          )
+        : leadingNumber;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -45,17 +68,8 @@ class SetlistSongRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Fixed-width number column so song titles all align.
-          SizedBox(
-            width: 28,
-            child: Text(
-              '$songNumber',
-              style: TextStyle(
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
-                fontSize: 14,
-              ),
-            ),
-          ),
+          // Fixed-width number column doubles as drag handle when canWrite.
+          leading,
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,18 +157,36 @@ class SetlistSongRow extends StatelessWidget {
 ///
 /// Rendered with a faint yellow background to stand out from song rows.
 /// When [canWrite] is true a remove button is shown on the trailing edge.
+///
+/// Pass [dragIndex] (the item's index in the list) when placing this inside a
+/// [ReorderableListView] with [buildDefaultDragHandles] set to false. When
+/// [canWrite] is true and [dragIndex] is non-null, the leading 28-px spacer
+/// area becomes a drag handle via [ReorderableDragStartListener].
 class SetlistBreakRow extends StatelessWidget {
   const SetlistBreakRow({
     super.key,
     required this.canWrite,
     required this.onRemove,
+    this.dragIndex,
   });
 
   final bool canWrite;
   final VoidCallback onRemove;
+  /// When non-null and [canWrite] is true, wraps the leading spacer in a
+  /// [ReorderableDragStartListener] so the row can be dragged.
+  final int? dragIndex;
 
   @override
   Widget build(BuildContext context) {
+    // Build the leading spacer, optionally wrapped as a drag handle.
+    const leadingSpacer = SizedBox(width: 28);
+    final leading = (canWrite && dragIndex != null)
+        ? ReorderableDragStartListener(
+            index: dragIndex!,
+            child: leadingSpacer,
+          )
+        : leadingSpacer;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       // withValues(alpha:) is the Flutter 3.x replacement for withOpacity().
@@ -163,7 +195,7 @@ class SetlistBreakRow extends StatelessWidget {
         children: [
           // Spacer matches the 28-wide number column in SetlistSongRow so the
           // break icon aligns with song titles rather than with row numbers.
-          const SizedBox(width: 28),
+          leading,
           Icon(
             CupertinoIcons.pause_circle,
             size: 16,

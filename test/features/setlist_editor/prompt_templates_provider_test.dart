@@ -75,7 +75,7 @@ void main() {
     expect(list.map((t) => t.name).toList(), ['Anthemic', 'Mellow']);
   });
 
-  test('update replaces the matching template', () async {
+  test('edit replaces the matching template and keeps it sorted', () async {
     final repo = _FakeRepo(const [
       SetlistPromptTemplate(id: 1, name: 'Old', prompt: 'x'),
       SetlistPromptTemplate(id: 2, name: 'Keep', prompt: 'y'),
@@ -91,6 +91,7 @@ void main() {
     final list = container.read(promptTemplatesProvider(7)).requireValue;
     expect(list.firstWhere((t) => t.id == 1).name, 'New');
     expect(list.length, 2);
+    expect(list.map((t) => t.name).toList(), ['Keep', 'New']); // re-sorted
   });
 
   test('delete removes the template and calls the repo', () async {

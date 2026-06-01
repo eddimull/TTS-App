@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import 'models/event_setlist.dart';
 import 'models/setlist_prompt_template.dart';
@@ -131,3 +133,7 @@ class SetlistEditorRepository {
   Future<void> deletePromptTemplate(int bandId, int templateId) => _dio
       .delete(ApiEndpoints.mobileBandSetlistPromptTemplate(bandId, templateId));
 }
+
+final setlistEditorRepositoryProvider = Provider<SetlistEditorRepository>((ref) {
+  return SetlistEditorRepository(ref.watch(apiClientProvider).dio);
+});

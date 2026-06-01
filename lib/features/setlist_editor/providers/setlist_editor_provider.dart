@@ -131,6 +131,9 @@ class SetlistEditorNotifier extends Notifier<SetlistEditorState> {
 
   void addCustomSong({required String title, String? artist, String? notes}) {
     final entries = _currentEntries();
+    // Set both custom_* (sent to the server via toUpdateJson) and title/artist
+    // (for immediate local display before the server round-trip echoes them
+    // back as title/artist). isCustom keys off songId==null + customTitle.
     entries.add(SetlistEntry(
       type: 'song',
       position: entries.length + 1,
@@ -186,6 +189,10 @@ class SetlistEditorNotifier extends Notifier<SetlistEditorState> {
       for (var i = 0; i < entries.length; i++)
         entries[i].copyWith(position: i + 1),
     ];
+    // id: 0 is a deliberate "not yet persisted" placeholder for building a
+    // setlist on an event that has none. updateSetlist ignores the id and
+    // firstOrCreates server-side, so the real id arrives on save. Don't read
+    // setlist.id for anything meaningful until after a save/load.
     final base = state.setlist ??
         const EventSetlist(id: 0, status: 'draft', songs: []);
     state = state.copyWith(
@@ -232,13 +239,20 @@ class SetlistEditorNotifier extends Notifier<SetlistEditorState> {
         isDirty: false,
       );
     } catch (e) {
+      // Clear progress steps too, or a retry shows ghost steps from this
+      // failed attempt until fresh Pusher events overwrite them.
       state = state.copyWith(
         isGenerating: false,
+        generationSteps: const [],
         error: () => 'Generation failed: $e',
       );
     }
   }
 
+  /// Refine reports failure through the returned record (`ok: false` + a
+  /// chat-friendly `summary`), NOT through `state.error` — the refine UI is a
+  /// chat thread, so the failure belongs in a message bubble, not a global
+  /// error banner. Callers should surface the returned `summary`.
   Future<({String summary, bool ok})> refine(
     String message, {
     List<Map<String, String>> history = const [],
@@ -257,10 +271,7 @@ class SetlistEditorNotifier extends Notifier<SetlistEditorState> {
       );
       return (summary: result.summary, ok: true);
     } catch (e) {
-      state = state.copyWith(
-        isRefining: false,
-        error: () => 'Refine failed: $e',
-      );
+      state = state.copyWith(isRefining: false);
       return (
         summary: "Sorry, I couldn't refine the setlist. Please try again.",
         ok: false,

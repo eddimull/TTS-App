@@ -6,9 +6,10 @@ import 'package:tts_bandmate/features/setlist_editor/data/setlist_editor_reposit
 import 'package:tts_bandmate/features/setlist_editor/providers/setlist_editor_provider.dart';
 
 class _FakeRepo extends SetlistEditorRepository {
-  _FakeRepo(this._payload) : super(Dio());
+  _FakeRepo(this._payload, {this.aiThrows = false}) : super(Dio());
 
   final SetlistEditorPayload _payload;
+  final bool aiThrows;
   List<SetlistEntry>? lastSavedEntries;
   String? lastSavedStatus;
 
@@ -29,6 +30,34 @@ class _FakeRepo extends SetlistEditorRepository {
       songs: entries,
     );
   }
+
+  @override
+  Future<EventSetlist> generate(String eventKey, {String? context}) async {
+    if (aiThrows) throw Exception('boom');
+    return const EventSetlist(
+      id: 1,
+      status: 'draft',
+      eventContext: 'generated',
+      songs: [SetlistEntry(type: 'song', position: 1, songId: 99, title: 'Gen')],
+    );
+  }
+
+  @override
+  Future<RefineResult> refine(
+    String eventKey, {
+    required String message,
+    List<Map<String, String>> history = const [],
+  }) async {
+    if (aiThrows) throw Exception('boom');
+    return const RefineResult(
+      setlist: EventSetlist(
+        id: 1,
+        status: 'draft',
+        songs: [SetlistEntry(type: 'song', position: 1, songId: 5, title: 'Refined')],
+      ),
+      summary: 'Did the thing.',
+    );
+  }
 }
 
 ProviderContainer _container(_FakeRepo repo) {
@@ -39,13 +68,13 @@ ProviderContainer _container(_FakeRepo repo) {
 
 void main() {
   test('load fetches setlist and exposes can_write', () async {
-    final repo = _FakeRepo(SetlistEditorPayload(
+    final repo = _FakeRepo(const SetlistEditorPayload(
       setlist: EventSetlist(
         id: 1,
         status: 'draft',
-        songs: [const SetlistEntry(type: 'song', position: 1, songId: 10, title: 'A')],
+        songs: [SetlistEntry(type: 'song', position: 1, songId: 10, title: 'A')],
       ),
-      bandSongs: [const BandSongSummary(id: 10, title: 'A')],
+      bandSongs: [BandSongSummary(id: 10, title: 'A')],
       canWrite: true,
     ));
     final container = _container(repo);
@@ -60,9 +89,9 @@ void main() {
   });
 
   test('addSong appends entry locally without saving and sets dirty', () async {
-    final repo = _FakeRepo(SetlistEditorPayload(
-      setlist: EventSetlist(id: 1, status: 'draft', songs: const []),
-      bandSongs: const [BandSongSummary(id: 10, title: 'A')],
+    final repo = _FakeRepo(const SetlistEditorPayload(
+      setlist: EventSetlist(id: 1, status: 'draft', songs: []),
+      bandSongs: [BandSongSummary(id: 10, title: 'A')],
       canWrite: true,
     ));
     final container = _container(repo);
@@ -78,17 +107,17 @@ void main() {
   });
 
   test('reorder updates order and renumbers positions', () async {
-    final repo = _FakeRepo(SetlistEditorPayload(
+    final repo = _FakeRepo(const SetlistEditorPayload(
       setlist: EventSetlist(
         id: 1,
         status: 'draft',
-        songs: const [
+        songs: [
           SetlistEntry(type: 'song', position: 1, songId: 1, title: 'A'),
           SetlistEntry(type: 'song', position: 2, songId: 2, title: 'B'),
           SetlistEntry(type: 'song', position: 3, songId: 3, title: 'C'),
         ],
       ),
-      bandSongs: const [],
+      bandSongs: [],
       canWrite: true,
     ));
     final container = _container(repo);
@@ -105,16 +134,16 @@ void main() {
   });
 
   test('removeAt deletes the entry and renumbers', () async {
-    final repo = _FakeRepo(SetlistEditorPayload(
+    final repo = _FakeRepo(const SetlistEditorPayload(
       setlist: EventSetlist(
         id: 1,
         status: 'draft',
-        songs: const [
+        songs: [
           SetlistEntry(type: 'song', position: 1, songId: 1, title: 'A'),
           SetlistEntry(type: 'song', position: 2, songId: 2, title: 'B'),
         ],
       ),
-      bandSongs: const [],
+      bandSongs: [],
       canWrite: true,
     ));
     final container = _container(repo);
@@ -130,9 +159,9 @@ void main() {
   });
 
   test('save calls repo and clears dirty', () async {
-    final repo = _FakeRepo(SetlistEditorPayload(
-      setlist: EventSetlist(id: 1, status: 'draft', songs: const []),
-      bandSongs: const [],
+    final repo = _FakeRepo(const SetlistEditorPayload(
+      setlist: EventSetlist(id: 1, status: 'draft', songs: []),
+      bandSongs: [],
       canWrite: true,
     ));
     final container = _container(repo);
@@ -148,9 +177,9 @@ void main() {
   });
 
   test('onGenerationProgress accumulates and updates steps by name', () async {
-    final repo = _FakeRepo(SetlistEditorPayload(
-      setlist: EventSetlist(id: 1, status: 'draft', songs: const []),
-      bandSongs: const [],
+    final repo = _FakeRepo(const SetlistEditorPayload(
+      setlist: EventSetlist(id: 1, status: 'draft', songs: []),
+      bandSongs: [],
       canWrite: true,
     ));
     final container = _container(repo);
@@ -165,4 +194,154 @@ void main() {
     expect(steps.length, 1); // same step name updated in place
     expect(steps.first.status, 'done');
   });
+
+  test('load failure clears loading and sets error', () async {
+    final repo = _ThrowingLoadRepo();
+    final container = ProviderContainer(overrides: [
+      setlistEditorRepositoryProvider.overrideWithValue(repo),
+    ]);
+    addTearDown(container.dispose);
+
+    await container.read(setlistEditorProvider('event-key').notifier).load();
+
+    final state = container.read(setlistEditorProvider('event-key'));
+    expect(state.isLoading, false);
+    expect(state.error, isNotNull);
+  });
+
+  test('addCustomSong adds a custom entry', () async {
+    final repo = _FakeRepo(const SetlistEditorPayload(
+      setlist: EventSetlist(id: 1, status: 'draft', songs: []),
+      bandSongs: [],
+      canWrite: true,
+    ));
+    final container = _container(repo);
+    addTearDown(container.dispose);
+
+    final notifier = container.read(setlistEditorProvider('event-key').notifier);
+    await notifier.load();
+    notifier.addCustomSong(title: 'Garage Anthem', artist: 'Us');
+
+    final entry = container.read(setlistEditorProvider('event-key')).setlist!.songs.single;
+    expect(entry.isCustom, true);
+    expect(entry.songId, isNull);
+    expect(entry.customTitle, 'Garage Anthem');
+  });
+
+  test('reorder does not mutate the previous state list', () async {
+    final repo = _FakeRepo(const SetlistEditorPayload(
+      setlist: EventSetlist(
+        id: 1,
+        status: 'draft',
+        songs: [
+          SetlistEntry(type: 'song', position: 1, songId: 1, title: 'A'),
+          SetlistEntry(type: 'song', position: 2, songId: 2, title: 'B'),
+        ],
+      ),
+      bandSongs: [],
+      canWrite: true,
+    ));
+    final container = _container(repo);
+    addTearDown(container.dispose);
+
+    final notifier = container.read(setlistEditorProvider('event-key').notifier);
+    await notifier.load();
+    final before = container.read(setlistEditorProvider('event-key')).setlist!.songs;
+    notifier.reorder(0, 2);
+
+    // The captured reference must be unchanged (immutability guard).
+    expect(before.map((s) => s.title).toList(), ['A', 'B']);
+  });
+
+  test('generate success updates setlist and clears generating', () async {
+    final repo = _FakeRepo(const SetlistEditorPayload(
+      setlist: EventSetlist(id: 1, status: 'draft', songs: []),
+      bandSongs: [],
+      canWrite: true,
+    ));
+    final container = _container(repo);
+    addTearDown(container.dispose);
+
+    final notifier = container.read(setlistEditorProvider('event-key').notifier);
+    await notifier.load();
+    await notifier.generate(context: 'go');
+
+    final state = container.read(setlistEditorProvider('event-key'));
+    expect(state.isGenerating, false);
+    expect(state.isDirty, false);
+    expect(state.setlist!.songs.single.title, 'Gen');
+  });
+
+  test('generate failure clears generating and steps', () async {
+    final repo = _FakeRepo(
+      const SetlistEditorPayload(
+        setlist: EventSetlist(id: 1, status: 'draft', songs: []),
+        bandSongs: [],
+        canWrite: true,
+      ),
+      aiThrows: true,
+    );
+    final container = _container(repo);
+    addTearDown(container.dispose);
+
+    final notifier = container.read(setlistEditorProvider('event-key').notifier);
+    await notifier.load();
+    notifier.onGenerationProgress('analyze', 'in-progress', null);
+    await notifier.generate();
+
+    final state = container.read(setlistEditorProvider('event-key'));
+    expect(state.isGenerating, false);
+    expect(state.generationSteps, isEmpty); // ghost steps cleared
+    expect(state.error, isNotNull);
+  });
+
+  test('refine success returns ok and updates setlist', () async {
+    final repo = _FakeRepo(const SetlistEditorPayload(
+      setlist: EventSetlist(id: 1, status: 'draft', songs: []),
+      bandSongs: [],
+      canWrite: true,
+    ));
+    final container = _container(repo);
+    addTearDown(container.dispose);
+
+    final notifier = container.read(setlistEditorProvider('event-key').notifier);
+    await notifier.load();
+    final result = await notifier.refine('shorter');
+
+    expect(result.ok, true);
+    expect(result.summary, 'Did the thing.');
+    final state = container.read(setlistEditorProvider('event-key'));
+    expect(state.isRefining, false);
+    expect(state.setlist!.songs.single.title, 'Refined');
+  });
+
+  test('refine failure returns ok:false without setting state.error', () async {
+    final repo = _FakeRepo(
+      const SetlistEditorPayload(
+        setlist: EventSetlist(id: 1, status: 'draft', songs: []),
+        bandSongs: [],
+        canWrite: true,
+      ),
+      aiThrows: true,
+    );
+    final container = _container(repo);
+    addTearDown(container.dispose);
+
+    final notifier = container.read(setlistEditorProvider('event-key').notifier);
+    await notifier.load();
+    final result = await notifier.refine('shorter');
+
+    expect(result.ok, false);
+    final state = container.read(setlistEditorProvider('event-key'));
+    expect(state.isRefining, false);
+    expect(state.error, isNull); // refine errors go to the returned record, not state
+  });
+}
+
+class _ThrowingLoadRepo extends SetlistEditorRepository {
+  _ThrowingLoadRepo() : super(Dio());
+
+  @override
+  Future<SetlistEditorPayload> getSetlist(String eventKey) async =>
+      throw Exception('network down');
 }

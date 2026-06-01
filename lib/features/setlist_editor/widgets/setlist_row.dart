@@ -9,6 +9,12 @@ import '../data/models/event_setlist.dart';
 ///
 /// This widget is designed to be used inside a [ReorderableListView]; callers
 /// should wrap it with a [Key] so the list can track drag identity.
+///
+/// When placed in a [ReorderableListView], set
+/// [ReorderableListView.buildDefaultDragHandles] to false and wrap the
+/// leading number column with a [ReorderableDragStartListener] — the
+/// trailing action buttons would otherwise collide with the default drag
+/// handle. (Wired up in the editor screen, Task 16.)
 class SetlistSongRow extends StatelessWidget {
   const SetlistSongRow({
     super.key,
@@ -85,11 +91,7 @@ class SetlistSongRow extends StatelessWidget {
                       runSpacing: 4,
                       children: [
                         if (entry.songKey != null)
-                          _Tag(
-                            text: entry.songKey!,
-                            background: CupertinoColors.systemGrey5
-                                .resolveFrom(context),
-                          ),
+                          _Tag(text: entry.songKey!),
                         if (entry.bpm != null)
                           _Tag(text: '${entry.bpm} BPM'),
                         if (entry.leadSinger != null)
@@ -102,9 +104,9 @@ class SetlistSongRow extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       entry.notes!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: CupertinoColors.activeBlue,
+                        color: CupertinoColors.activeBlue.resolveFrom(context),
                       ),
                     ),
                   ),
@@ -115,19 +117,19 @@ class SetlistSongRow extends StatelessWidget {
           // Expanded so they don't compress the title column.
           if (canWrite) ...[
             CupertinoButton(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(10),
               minimumSize: Size.zero,
               onPressed: onEdit,
               child: const Icon(CupertinoIcons.pencil, size: 18),
             ),
             CupertinoButton(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(10),
               minimumSize: Size.zero,
               onPressed: onRemove,
-              child: const Icon(
+              child: Icon(
                 CupertinoIcons.delete,
                 size: 18,
-                color: CupertinoColors.systemRed,
+                color: CupertinoColors.systemRed.resolveFrom(context),
               ),
             ),
           ],
@@ -162,31 +164,31 @@ class SetlistBreakRow extends StatelessWidget {
           // Spacer matches the 28-wide number column in SetlistSongRow so the
           // break icon aligns with song titles rather than with row numbers.
           const SizedBox(width: 28),
-          const Icon(
+          Icon(
             CupertinoIcons.pause_circle,
             size: 16,
-            color: CupertinoColors.systemOrange,
+            color: CupertinoColors.systemOrange.resolveFrom(context),
           ),
           const SizedBox(width: 8),
-          const Expanded(
+          Expanded(
             child: Text(
               '— SET BREAK —',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: CupertinoColors.systemOrange,
+                color: CupertinoColors.systemOrange.resolveFrom(context),
               ),
             ),
           ),
           if (canWrite)
             CupertinoButton(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(10),
               minimumSize: Size.zero,
               onPressed: onRemove,
-              child: const Icon(
+              child: Icon(
                 CupertinoIcons.delete,
                 size: 18,
-                color: CupertinoColors.systemRed,
+                color: CupertinoColors.systemRed.resolveFrom(context),
               ),
             ),
         ],
@@ -197,18 +199,16 @@ class SetlistBreakRow extends StatelessWidget {
 
 /// Small rounded pill label used to surface metadata on a [SetlistSongRow].
 class _Tag extends StatelessWidget {
-  const _Tag({required this.text, this.background});
+  const _Tag({required this.text});
 
   final String text;
-  final Color? background;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: background ??
-            CupertinoColors.systemGrey6.resolveFrom(context),
+        color: CupertinoColors.systemGrey6.resolveFrom(context),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(

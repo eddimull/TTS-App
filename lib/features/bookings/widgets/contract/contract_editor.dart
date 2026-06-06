@@ -239,6 +239,50 @@ class _ContractEditorState extends ConsumerState<ContractEditor> {
                       band: widget.booking.band!,
                     ),
                   ),
+                if (_editMode)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Buyer name override (optional)',
+                            style: CupertinoTheme.of(context)
+                                .textTheme
+                                .textStyle
+                                .copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                          ),
+                          const SizedBox(height: 6),
+                          CupertinoTextField(
+                            controller: TextEditingController(
+                              text: state.buyerNameOverride ?? '',
+                            )..selection = TextSelection.collapsed(
+                                offset: (state.buyerNameOverride ?? '').length,
+                              ),
+                            placeholder: "Leave blank to use the signer's name",
+                            onChanged: (v) => ref
+                                .read(contractEditorProvider(_key).notifier)
+                                .updateBuyerNameOverride(v),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Use when the Buyer is an organization and the signer signs on its behalf.',
+                            style: CupertinoTheme.of(context)
+                                .textTheme
+                                .textStyle
+                                .copyWith(
+                                  color: CupertinoColors.secondaryLabel,
+                                  fontSize: 11,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   sliver: SliverToBoxAdapter(
@@ -268,6 +312,7 @@ class _ContractEditorState extends ConsumerState<ContractEditor> {
                     firstContact: widget.booking.contacts.isEmpty
                         ? null
                         : widget.booking.contacts.first,
+                    buyerNameOverride: state.buyerNameOverride,
                   ),
                 ),
                 if (!hasContacts)

@@ -310,11 +310,15 @@ class BookingsRepository {
   Future<BookingDetail> saveContractTerms(
     int bandId,
     int bookingId,
-    List<ContractTerm> terms,
-  ) async {
+    List<ContractTerm> terms, {
+    String? buyerNameOverride,
+  }) async {
     final response = await _dio.post(
       ApiEndpoints.mobileBookingContractTerms(bandId, bookingId),
-      data: {'custom_terms': terms.map((t) => t.toJson()).toList()},
+      data: {
+        'custom_terms': terms.map((t) => t.toJson()).toList(),
+        'buyer_name_override': buyerNameOverride,
+      },
     );
     return BookingDetail.fromJson(response.data['booking']);
   }

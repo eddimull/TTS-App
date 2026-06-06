@@ -33,6 +33,7 @@ import '../../features/finances/screens/finances_screen.dart';
 import '../../features/more/screens/more_screen.dart';
 import '../../features/band_settings/screens/band_settings_screen.dart';
 import '../../features/setlist/screens/live_session_screen.dart';
+import '../../features/setlist_editor/screens/setlist_editor_screen.dart';
 import '../../shared/providers/selected_band_provider.dart';
 import '../../shared/widgets/app_scaffold.dart';
 import '../storage/route_storage.dart';
@@ -277,6 +278,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/events/:key/setlist/live',
         builder: (_, state) => LiveSessionScreen(
+          eventKey: state.pathParameters['key']!,
+        ),
+      ),
+      GoRoute(
+        path: '/events/:key/setlist',
+        builder: (_, state) => SetlistEditorScreen(
           eventKey: state.pathParameters['key']!,
         ),
       ),

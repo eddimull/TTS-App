@@ -120,4 +120,18 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/invitations';
   static String mobileBandInvitation(int bandId, int invitationId) =>
       '/api/mobile/bands/$bandId/invitations/$invitationId';
+
+  // Setlist editor (pre-gig)
+  static String mobileEventSetlist(String key) =>
+      '/api/mobile/events/$key/setlist';
+  static String mobileEventSetlistGenerate(String key) =>
+      '/api/mobile/events/$key/setlist/generate';
+  static String mobileEventSetlistRefine(String key) =>
+      '/api/mobile/events/$key/setlist/refine';
+
+  // Setlist prompt templates
+  static String mobileBandSetlistPromptTemplates(int bandId) =>
+      '/api/mobile/bands/$bandId/setlist-prompt-templates';
+  static String mobileBandSetlistPromptTemplate(int bandId, int templateId) =>
+      '/api/mobile/bands/$bandId/setlist-prompt-templates/$templateId';
 }

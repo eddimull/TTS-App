@@ -172,11 +172,12 @@ class _EventDetailView extends StatelessWidget {
             _Card(child: Text(event.attire!, style: const TextStyle(fontSize: 15))),
           ],
 
-          // Live setlist button
-          if (event.liveSessionId != null) ...[
-            const SizedBox(height: 20),
-            _LiveSetlistButton(eventKey: event.key),
-          ],
+          // Setlist (always available — editor; plus live mode when active)
+          const SizedBox(height: 20),
+          _SetlistRow(
+            eventKey: event.key,
+            hasLiveSession: event.liveSessionId != null,
+          ),
 
           // Performance (songs / charts)
           if (event.performance != null &&
@@ -743,6 +744,46 @@ class _NotesBox extends StatelessWidget {
         .replaceAll('&gt;', '>')
         .trim();
     return _Card(child: Text(plain, style: const TextStyle(fontSize: 15)));
+  }
+}
+
+// ── Setlist ───────────────────────────────────────────────────────────────────
+
+class _SetlistRow extends StatelessWidget {
+  const _SetlistRow({required this.eventKey, required this.hasLiveSession});
+  final String eventKey;
+  final bool hasLiveSession;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: CupertinoButton(
+            color: CupertinoColors.systemGrey5.resolveFrom(context),
+            onPressed: () => context.push('/events/$eventKey/setlist'),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(CupertinoIcons.music_note_list, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Setlist',
+                  style: TextStyle(
+                    color: CupertinoColors.label.resolveFrom(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (hasLiveSession) ...[
+          const SizedBox(height: 8),
+          _LiveSetlistButton(eventKey: eventKey),
+        ],
+      ],
+    );
   }
 }
 

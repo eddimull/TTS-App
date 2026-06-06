@@ -213,5 +213,29 @@ void main() {
       final s = container.read(contractEditorProvider(key));
       expect(s.value!.buyerNameOverride, 'The City of Scott');
     });
+
+    test('updateBuyerNameOverride("") sends empty string (cleared)', () async {
+      const key = (bandId: 1, bookingId: 1);
+      final repo = _CapturingSaveRepo();
+      final container = ProviderContainer(overrides: [
+        bookingsRepositoryProvider.overrideWithValue(repo),
+        bookingDetailProvider.overrideWith(
+          (ref, args) async => _detailWithOverride('The City of Scott'),
+        ),
+      ]);
+      addTearDown(container.dispose);
+
+      await container.read(contractEditorProvider(key).future);
+      final notifier = container.read(contractEditorProvider(key).notifier);
+
+      // Clear the previously-seeded override.
+      notifier.updateBuyerNameOverride('');
+      await notifier.save(force: true);
+
+      expect(repo.saveCalls, 1);
+      expect(repo.lastBuyerNameOverride, '');
+      final s = container.read(contractEditorProvider(key));
+      expect(s.value!.buyerNameOverride, '');
+    });
   });
 }

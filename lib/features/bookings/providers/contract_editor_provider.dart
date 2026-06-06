@@ -17,24 +17,28 @@ class ContractEditorState {
     required this.unsavedChanges,
     this.lastSavedAt,
     this.envelopeId,
+    this.buyerNameOverride,
   });
 
   final List<ContractTerm> terms;
   final bool unsavedChanges;
   final DateTime? lastSavedAt;
   final String? envelopeId;
+  final String? buyerNameOverride;
 
   ContractEditorState copyWith({
     List<ContractTerm>? terms,
     bool? unsavedChanges,
     DateTime? lastSavedAt,
     String? envelopeId,
+    String? buyerNameOverride,
   }) =>
       ContractEditorState(
         terms: terms ?? this.terms,
         unsavedChanges: unsavedChanges ?? this.unsavedChanges,
         lastSavedAt: lastSavedAt ?? this.lastSavedAt,
         envelopeId: envelopeId ?? this.envelopeId,
+        buyerNameOverride: buyerNameOverride ?? this.buyerNameOverride,
       );
 }
 
@@ -65,6 +69,7 @@ class ContractEditorNotifier extends AsyncNotifier<ContractEditorState> {
       unsavedChanges: stored == null,
       lastSavedAt: detail.contract?.updatedAt,
       envelopeId: detail.contract?.envelopeId,
+      buyerNameOverride: detail.contract?.buyerNameOverride,
     );
   }
 
@@ -107,6 +112,15 @@ class ContractEditorNotifier extends AsyncNotifier<ContractEditorState> {
         if (t.id == id) t.copyWith(content: content) else t,
     ];
     state = AsyncData(current.copyWith(terms: newTerms, unsavedChanges: true));
+    _scheduleSave();
+  }
+
+  void updateBuyerNameOverride(String value) {
+    final current = state.value;
+    if (current == null) return;
+    state = AsyncData(
+      current.copyWith(buyerNameOverride: value, unsavedChanges: true),
+    );
     _scheduleSave();
   }
 
@@ -169,7 +183,12 @@ class ContractEditorNotifier extends AsyncNotifier<ContractEditorState> {
 
     final repo = ref.read(bookingsRepositoryProvider);
     try {
-      await repo.saveContractTerms(_key.bandId, _key.bookingId, current.terms);
+      await repo.saveContractTerms(
+        _key.bandId,
+        _key.bookingId,
+        current.terms,
+        buyerNameOverride: current.buyerNameOverride,
+      );
       state = AsyncData(
         current.copyWith(
           unsavedChanges: false,

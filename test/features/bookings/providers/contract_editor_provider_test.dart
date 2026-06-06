@@ -20,10 +20,33 @@ class _ThrowingSaveRepo implements BookingsRepository {
   Future<BookingDetail> saveContractTerms(
     int bandId,
     int bookingId,
-    List<ContractTerm> terms,
-  ) async {
+    List<ContractTerm> terms, {
+    String? buyerNameOverride,
+  }) async {
     saveCalls++;
     throw thrownError;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
+}
+
+/// Captures the args passed to [saveContractTerms] and returns a detail.
+class _CapturingSaveRepo implements BookingsRepository {
+  String? lastBuyerNameOverride;
+  int saveCalls = 0;
+
+  @override
+  Future<BookingDetail> saveContractTerms(
+    int bandId,
+    int bookingId,
+    List<ContractTerm> terms, {
+    String? buyerNameOverride,
+  }) async {
+    saveCalls++;
+    lastBuyerNameOverride = buyerNameOverride;
+    return _detailWithTerms(terms);
   }
 
   @override
@@ -45,6 +68,25 @@ BookingDetail _detailWithTerms(List<ContractTerm> terms) {
     contract: BookingContract(
       id: 1,
       customTerms: terms,
+    ),
+  );
+}
+
+BookingDetail _detailWithOverride(String? override) {
+  return BookingDetail(
+    id: 1,
+    name: 'Test Booking',
+    startDate: '2026-06-01',
+    endDate: '2026-06-01',
+    eventCount: 1,
+    isMultiEvent: false,
+    isPaid: false,
+    contacts: const [],
+    events: const [],
+    contract: BookingContract(
+      id: 1,
+      customTerms: const [],
+      buyerNameOverride: override,
     ),
   );
 }
@@ -127,6 +169,73 @@ void main() {
       );
       expect(s.value!.terms, hasLength(1));
       expect(s.value!.terms.first.title, 'Edited');
+    });
+  });
+
+  group('ContractEditorNotifier buyerNameOverride', () {
+    test('seeds buyerNameOverride from the loaded contract', () async {
+      const key = (bandId: 1, bookingId: 1);
+      final repo = _CapturingSaveRepo();
+      final container = ProviderContainer(overrides: [
+        bookingsRepositoryProvider.overrideWithValue(repo),
+        bookingDetailProvider.overrideWith(
+          (ref, args) async => _detailWithOverride('The City of Scott'),
+        ),
+      ]);
+      addTearDown(container.dispose);
+
+      await container.read(contractEditorProvider(key).future);
+      final s = container.read(contractEditorProvider(key));
+      expect(s.value!.buyerNameOverride, 'The City of Scott');
+    });
+
+    test('updateBuyerNameOverride sets the value and save() sends it', () async {
+      const key = (bandId: 1, bookingId: 1);
+      final repo = _CapturingSaveRepo();
+      final container = ProviderContainer(overrides: [
+        bookingsRepositoryProvider.overrideWithValue(repo),
+        bookingDetailProvider.overrideWith(
+          (ref, args) async => _detailWithTerms(
+            [const ContractTerm(id: -1, title: 'A', content: 'B')],
+          ),
+        ),
+      ]);
+      addTearDown(container.dispose);
+
+      await container.read(contractEditorProvider(key).future);
+      final notifier = container.read(contractEditorProvider(key).notifier);
+
+      notifier.updateBuyerNameOverride('The City of Scott');
+      await notifier.save(force: true);
+
+      expect(repo.saveCalls, 1);
+      expect(repo.lastBuyerNameOverride, 'The City of Scott');
+      final s = container.read(contractEditorProvider(key));
+      expect(s.value!.buyerNameOverride, 'The City of Scott');
+    });
+
+    test('updateBuyerNameOverride("") sends empty string (cleared)', () async {
+      const key = (bandId: 1, bookingId: 1);
+      final repo = _CapturingSaveRepo();
+      final container = ProviderContainer(overrides: [
+        bookingsRepositoryProvider.overrideWithValue(repo),
+        bookingDetailProvider.overrideWith(
+          (ref, args) async => _detailWithOverride('The City of Scott'),
+        ),
+      ]);
+      addTearDown(container.dispose);
+
+      await container.read(contractEditorProvider(key).future);
+      final notifier = container.read(contractEditorProvider(key).notifier);
+
+      // Clear the previously-seeded override.
+      notifier.updateBuyerNameOverride('');
+      await notifier.save(force: true);
+
+      expect(repo.saveCalls, 1);
+      expect(repo.lastBuyerNameOverride, '');
+      final s = container.read(contractEditorProvider(key));
+      expect(s.value!.buyerNameOverride, '');
     });
   });
 }

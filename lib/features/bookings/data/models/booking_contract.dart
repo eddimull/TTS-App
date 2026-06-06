@@ -7,6 +7,7 @@ class BookingContract {
   final String? envelopeId;
   final List<ContractTerm>? customTerms;
   final DateTime? updatedAt;
+  final String? buyerNameOverride;
 
   const BookingContract({
     required this.id,
@@ -15,6 +16,7 @@ class BookingContract {
     this.envelopeId,
     this.customTerms,
     this.updatedAt,
+    this.buyerNameOverride,
   });
 
   factory BookingContract.fromJson(Map<String, dynamic> json) {
@@ -36,6 +38,7 @@ class BookingContract {
       envelopeId: json['envelope_id'] as String?,
       customTerms: terms,
       updatedAt: updated,
+      buyerNameOverride: json['buyer_name_override'] as String?,
     );
   }
 }

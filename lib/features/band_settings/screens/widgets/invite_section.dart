@@ -50,13 +50,13 @@ class _InviteSectionState extends ConsumerState<InviteSection> {
     if (!email.contains('@')) {
       showCupertinoDialog<void>(
         context: context,
-        builder: (_) => CupertinoAlertDialog(
+        builder: (dialogContext) => CupertinoAlertDialog(
           title: const Text('Invalid Email'),
           content: const Text('Please enter a valid email address.'),
           actions: [
             CupertinoDialogAction(
               child: const Text('OK'),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(dialogContext).pop(),
             ),
           ],
         ),
@@ -81,13 +81,13 @@ class _InviteSectionState extends ConsumerState<InviteSection> {
       if (mounted) {
         showCupertinoDialog<void>(
           context: context,
-          builder: (_) => CupertinoAlertDialog(
+          builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Error'),
             content: const Text('Failed to send invite. Please try again.'),
             actions: [
               CupertinoDialogAction(
                 child: const Text('OK'),
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => Navigator.of(dialogContext).pop(),
               ),
             ],
           ),

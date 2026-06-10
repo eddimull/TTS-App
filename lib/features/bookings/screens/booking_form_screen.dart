@@ -422,12 +422,12 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
         });
         showCupertinoDialog<void>(
           context: context,
-          builder: (_) => CupertinoAlertDialog(
+          builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Error'),
             content: Text(message),
             actions: [
               CupertinoDialogAction(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
                 child: const Text('OK'),
               ),
             ],

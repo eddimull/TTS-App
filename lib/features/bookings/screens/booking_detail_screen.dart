@@ -113,18 +113,18 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
   Future<void> _confirmCancel() async {
     final confirmed = await showCupertinoDialog<bool>(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
+      builder: (dialogContext) => CupertinoAlertDialog(
         title: const Text('Cancel Booking'),
         content: const Text(
             'Are you sure you want to cancel this booking? This cannot be undone.'),
         actions: [
           CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Keep'),
           ),
           CupertinoDialogAction(
             isDestructiveAction: true,
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Cancel Booking'),
           ),
         ],
@@ -152,18 +152,18 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
   Future<void> _confirmDelete() async {
     final confirmed = await showCupertinoDialog<bool>(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
+      builder: (dialogContext) => CupertinoAlertDialog(
         title: const Text('Delete Booking'),
         content: const Text(
             'This will permanently delete the booking. Are you sure?'),
         actions: [
           CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Keep'),
           ),
           CupertinoDialogAction(
             isDestructiveAction: true,
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Delete'),
           ),
         ],
@@ -191,12 +191,12 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
   void _showErrorDialog(String message) {
     showCupertinoDialog<void>(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
+      builder: (dialogContext) => CupertinoAlertDialog(
         title: const Text('Error'),
         content: Text(message),
         actions: [
           CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('OK'),
           ),
         ],

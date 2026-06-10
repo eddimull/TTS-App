@@ -151,14 +151,14 @@ class _PermissionRow extends StatelessWidget {
                   if (context.mounted) {
                     showCupertinoDialog<void>(
                       context: context,
-                      builder: (_) => CupertinoAlertDialog(
+                      builder: (dialogContext) => CupertinoAlertDialog(
                         title: const Text('Error'),
                         content: const Text(
                             'Failed to update permission. Please try again.'),
                         actions: [
                           CupertinoDialogAction(
                             child: const Text('OK'),
-                            onPressed: () => Navigator.of(context).pop(),
+                            onPressed: () => Navigator.of(dialogContext).pop(),
                           ),
                         ],
                       ),

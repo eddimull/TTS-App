@@ -260,17 +260,17 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     }
     final discard = await showCupertinoDialog<bool>(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
+      builder: (dialogContext) => CupertinoAlertDialog(
         title: const Text('Discard Changes?'),
         content: const Text('You have unsaved changes. Are you sure you want to discard them?'),
         actions: [
           CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Keep Editing'),
           ),
           CupertinoDialogAction(
             isDestructiveAction: true,
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Discard'),
           ),
         ],
@@ -1204,13 +1204,13 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
       if (mounted) {
         showCupertinoDialog<void>(
           context: context,
-          builder: (_) => CupertinoAlertDialog(
+          builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Upload Failed'),
             content: Text(e.toString()),
             actions: [
               CupertinoDialogAction(
                 isDefaultAction: true,
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
                 child: const Text('OK'),
               ),
             ],
@@ -1226,17 +1226,17 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
   Future<List<EventAttachment>> _deleteAttachment(EventAttachment attachment) async {
     final confirmed = await showCupertinoDialog<bool>(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
+      builder: (dialogContext) => CupertinoAlertDialog(
         title: const Text('Delete Attachment'),
         content: Text('Remove "${attachment.filename}"?'),
         actions: [
           CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Cancel'),
           ),
           CupertinoDialogAction(
             isDestructiveAction: true,
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Delete'),
           ),
         ],
@@ -1252,13 +1252,13 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
       if (mounted) {
         showCupertinoDialog<void>(
           context: context,
-          builder: (_) => CupertinoAlertDialog(
+          builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Delete Failed'),
             content: Text(e.toString()),
             actions: [
               CupertinoDialogAction(
                 isDefaultAction: true,
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
                 child: const Text('OK'),
               ),
             ],
@@ -2201,13 +2201,13 @@ class _AttireField extends ConsumerWidget {
       if (context.mounted) {
         showCupertinoDialog<void>(
           context: context,
-          builder: (_) => CupertinoAlertDialog(
+          builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Could not remove chip'),
             content: const Text('Please try again.'),
             actions: [
               CupertinoDialogAction(
                 child: const Text('OK'),
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => Navigator.of(dialogContext).pop(),
               ),
             ],
           ),
@@ -2226,13 +2226,13 @@ class _AttireField extends ConsumerWidget {
       if (context.mounted) {
         showCupertinoDialog<void>(
           context: context,
-          builder: (_) => CupertinoAlertDialog(
+          builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Could not save chip'),
             content: const Text('Please check your connection and try again.'),
             actions: [
               CupertinoDialogAction(
                 child: const Text('OK'),
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => Navigator.of(dialogContext).pop(),
               ),
             ],
           ),

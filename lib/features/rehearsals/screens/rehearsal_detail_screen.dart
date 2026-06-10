@@ -89,13 +89,13 @@ class _RehearsalDetailViewState
       if (mounted) {
         showCupertinoDialog(
           context: context,
-          builder: (_) => CupertinoAlertDialog(
+          builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Saved'),
             content: const Text('Notes saved successfully.'),
             actions: [
               CupertinoDialogAction(
                 child: const Text('OK'),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
               ),
             ],
           ),
@@ -105,13 +105,13 @@ class _RehearsalDetailViewState
       if (mounted) {
         showCupertinoDialog(
           context: context,
-          builder: (_) => CupertinoAlertDialog(
+          builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Error'),
             content: Text('Failed to save notes: $e'),
             actions: [
               CupertinoDialogAction(
                 child: const Text('OK'),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
               ),
             ],
           ),

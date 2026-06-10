@@ -29,12 +29,12 @@ Future<void> downloadAndOpenContractPdf({
     if (result.type != ResultType.done && context.mounted) {
       await showCupertinoDialog<void>(
         context: context,
-        builder: (_) => CupertinoAlertDialog(
+        builder: (dialogContext) => CupertinoAlertDialog(
           title: const Text('Could not open PDF'),
           content: Text(result.message),
           actions: [
             CupertinoDialogAction(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('OK'),
             ),
           ],
@@ -45,12 +45,12 @@ Future<void> downloadAndOpenContractPdf({
     if (!context.mounted) return;
     await showCupertinoDialog<void>(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
+      builder: (dialogContext) => CupertinoAlertDialog(
         title: const Text('Download failed'),
         content: Text(e.toString()),
         actions: [
           CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('OK'),
           ),
         ],

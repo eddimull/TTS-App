@@ -449,13 +449,13 @@ class _ContactRow extends StatelessWidget {
   void _showComingSoon(BuildContext context) {
     showCupertinoDialog<void>(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
+      builder: (dialogContext) => CupertinoAlertDialog(
         title: const Text('Coming Soon'),
         content: const Text('Contact detail coming soon.'),
         actions: [
           CupertinoDialogAction(
             isDefaultAction: true,
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('OK'),
           ),
         ],

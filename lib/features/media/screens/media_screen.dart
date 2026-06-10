@@ -606,18 +606,18 @@ class _MediaTile extends ConsumerWidget {
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final confirmed = await showCupertinoDialog<bool>(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
+      builder: (dialogContext) => CupertinoAlertDialog(
         title: const Text('Delete file?'),
         content: Text('Delete "${file.title}"?'),
         actions: [
           CupertinoDialogAction(
             child: const Text('Cancel'),
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
           ),
           CupertinoDialogAction(
             isDestructiveAction: true,
             child: const Text('Delete'),
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
           ),
         ],
       ),
@@ -631,13 +631,13 @@ class _MediaTile extends ConsumerWidget {
         if (context.mounted) {
           showCupertinoDialog(
             context: context,
-            builder: (_) => CupertinoAlertDialog(
+            builder: (dialogContext) => CupertinoAlertDialog(
               title: const Text('Error'),
               content: Text('Delete failed: $e'),
               actions: [
                 CupertinoDialogAction(
                   child: const Text('OK'),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(dialogContext),
                 ),
               ],
             ),

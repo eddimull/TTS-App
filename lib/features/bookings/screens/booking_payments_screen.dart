@@ -128,18 +128,18 @@ class BookingPaymentsScreen extends ConsumerWidget {
   ) async {
     final confirmed = await showCupertinoDialog<bool>(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
+      builder: (dialogContext) => CupertinoAlertDialog(
         title: const Text('Delete Payment'),
         content: Text(
             'Delete "${payment.name}" (${payment.displayAmount})?'),
         actions: [
           CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Cancel'),
           ),
           CupertinoDialogAction(
             isDestructiveAction: true,
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Delete'),
           ),
         ],
@@ -155,12 +155,12 @@ class BookingPaymentsScreen extends ConsumerWidget {
       if (context.mounted) {
         showCupertinoDialog<void>(
           context: context,
-          builder: (_) => CupertinoAlertDialog(
+          builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Error'),
             content: Text(e.toString()),
             actions: [
               CupertinoDialogAction(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
                 child: const Text('OK'),
               ),
             ],
@@ -425,12 +425,12 @@ class _RecordPaymentSheetState extends ConsumerState<_RecordPaymentSheet> {
         setState(() => _saving = false);
         showCupertinoDialog<void>(
           context: context,
-          builder: (_) => CupertinoAlertDialog(
+          builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Error'),
             content: Text(e.toString()),
             actions: [
               CupertinoDialogAction(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
                 child: const Text('OK'),
               ),
             ],

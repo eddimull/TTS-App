@@ -41,17 +41,17 @@ class _BookingContactsScreenState
       BuildContext context, BookingContact contact) async {
     final confirmed = await showCupertinoDialog<bool>(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
+      builder: (dialogContext) => CupertinoAlertDialog(
         title: const Text('Remove Contact'),
         content: Text('Remove ${contact.name} from this booking?'),
         actions: [
           CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Cancel'),
           ),
           CupertinoDialogAction(
             isDestructiveAction: true,
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Remove'),
           ),
         ],
@@ -124,12 +124,12 @@ class _BookingContactsScreenState
   void _showError(BuildContext context, String message) {
     showCupertinoDialog<void>(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
+      builder: (dialogContext) => CupertinoAlertDialog(
         title: const Text('Error'),
         content: Text(message),
         actions: [
           CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('OK'),
           ),
         ],
@@ -428,7 +428,7 @@ class _AddContactScreenState extends ConsumerState<_AddContactScreen> {
     final ctrl = TextEditingController();
     showCupertinoDialog<void>(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
+      builder: (dialogContext) => CupertinoAlertDialog(
         title: Text('Add ${item.name}'),
         content: Column(
           children: [
@@ -443,12 +443,12 @@ class _AddContactScreenState extends ConsumerState<_AddContactScreen> {
         ),
         actions: [
           CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           CupertinoDialogAction(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               _addExistingContact(item, ctrl.text.trim());
             },
             child: const Text('Add'),
@@ -461,12 +461,12 @@ class _AddContactScreenState extends ConsumerState<_AddContactScreen> {
   void _showError(String message) {
     showCupertinoDialog<void>(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
+      builder: (dialogContext) => CupertinoAlertDialog(
         title: const Text('Error'),
         content: Text(message),
         actions: [
           CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('OK'),
           ),
         ],

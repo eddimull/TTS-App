@@ -353,13 +353,13 @@ class _BandInfoEditScreenState extends ConsumerState<BandInfoEditScreen> {
       if (mounted) {
         showCupertinoDialog<void>(
           context: context,
-          builder: (_) => CupertinoAlertDialog(
+          builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Upload Failed'),
             content: const Text('Could not upload logo. Please try again.'),
             actions: [
               CupertinoDialogAction(
                 child: const Text('OK'),
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => Navigator.of(dialogContext).pop(),
               ),
             ],
           ),
@@ -398,13 +398,13 @@ class _BandInfoEditScreenState extends ConsumerState<BandInfoEditScreen> {
       } else {
         showCupertinoDialog<void>(
           context: context,
-          builder: (_) => CupertinoAlertDialog(
+          builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Save Failed'),
             content: Text(e.toString()),
             actions: [
               CupertinoDialogAction(
                 child: const Text('OK'),
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => Navigator.of(dialogContext).pop(),
               ),
             ],
           ),

@@ -101,35 +101,40 @@ class _ContractEditorState extends ConsumerState<ContractEditor> {
             result.signerId,
             ccId: result.ccId,
           );
-      ref.read(cacheInvalidatorProvider).onBookingDetailChanged(
-            bandId: _key.bandId,
-            bookingId: _key.bookingId,
-            contractEnvelopeId: widget.booking.contract?.envelopeId,
-          );
       if (!mounted) return;
+      // Show the confirmation BEFORE invalidating caches. Invalidating
+      // bookingDetailProvider rebuilds the screen hosting this dialog into its
+      // loading state, tearing down the subtree the dialog was anchored to and
+      // leaving the user on a black screen they can't dismiss. Confirm first,
+      // then refresh once the user has acknowledged.
       await showCupertinoDialog<void>(
         context: context,
-        builder: (_) => CupertinoAlertDialog(
+        builder: (dialogContext) => CupertinoAlertDialog(
           title: const Text('Contract Sent'),
           content: const Text('Your contract has been sent.'),
           actions: [
             CupertinoDialogAction(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('OK'),
             ),
           ],
         ),
       );
+      ref.read(cacheInvalidatorProvider).onBookingDetailChanged(
+            bandId: _key.bandId,
+            bookingId: _key.bookingId,
+            contractEnvelopeId: widget.booking.contract?.envelopeId,
+          );
     } catch (e) {
       if (!mounted) return;
       await showCupertinoDialog<void>(
         context: context,
-        builder: (_) => CupertinoAlertDialog(
+        builder: (dialogContext) => CupertinoAlertDialog(
           title: const Text('Send failed'),
           content: Text(e.toString()),
           actions: [
             CupertinoDialogAction(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('OK'),
             ),
           ],

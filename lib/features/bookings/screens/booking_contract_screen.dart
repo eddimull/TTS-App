@@ -91,12 +91,12 @@ class _BookingContractScreenState
       if (mounted) {
         showCupertinoDialog<void>(
           context: context,
-          builder: (_) => CupertinoAlertDialog(
+          builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Upload Failed'),
             content: Text(e.toString()),
             actions: [
               CupertinoDialogAction(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
                 child: const Text('OK'),
               ),
             ],

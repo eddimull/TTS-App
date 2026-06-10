@@ -248,19 +248,19 @@ class _ActiveSessionView extends ConsumerWidget {
   ) async {
     final confirmed = await showCupertinoDialog<bool>(
       context: context,
-      builder: (_) => CupertinoAlertDialog(
+      builder: (dialogContext) => CupertinoAlertDialog(
         title: const Text('End Session?'),
         content: const Text(
             'This will end the live setlist session for everyone.'),
         actions: [
           CupertinoDialogAction(
             child: const Text('Cancel'),
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
           ),
           CupertinoDialogAction(
             isDestructiveAction: true,
             child: const Text('End Session'),
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
           ),
         ],
       ),

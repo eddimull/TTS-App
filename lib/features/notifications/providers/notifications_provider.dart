@@ -2,9 +2,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:tts_bandmate/core/network/geocoding.dart';
+
 import '../../../core/network/api_client.dart';
 import '../data/device_repository.dart';
+import '../data/event_first_item.dart' show resolveFirstItem;
+import '../data/routes_client.dart';
+import '../services/enrichment_service.dart';
+import '../services/location_service.dart';
 import '../services/push_service.dart';
+import '../../events/providers/events_provider.dart';
+import '../../events/data/events_repository.dart';
+import '../../../shared/providers/selected_band_provider.dart';
 
 final deviceRepositoryProvider = Provider<DeviceRepository>((ref) {
   return DeviceRepository(ref.watch(apiClientProvider).dio);
@@ -80,3 +89,79 @@ class PushRegistrar {
 final pushRegistrarProvider = Provider<PushRegistrar>((ref) {
   return PushRegistrar(ref);
 });
+
+final locationServiceProvider = Provider<LocationService>((ref) {
+  return LocationService();
+});
+
+final routesClientProvider = Provider<RoutesClient>((ref) {
+  return RoutesClient();
+});
+
+/// Enrich today's rostered events: for each event today the user plays that has
+/// a venue and a first timeline item, compute live travel time and schedule (or
+/// suppress) the precise "leave in 15 min" local notification. Best-effort;
+/// any failure leaves the server's time-based push as the floor.
+Future<void> enrichTodaysEvents(Ref ref, {DateTime? clock}) async {
+  final now = clock ?? DateTime.now();
+  final location = ref.read(locationServiceProvider);
+  final grant = await location.ensurePermission();
+  if (grant == LocationGrant.denied) return;
+
+  final origin = await location.current();
+  if (origin == null) return;
+
+  final bandId = ref.read(selectedBandProvider).value;
+  if (bandId == null) return;
+
+  final today = _ymd(now);
+  final events = await ref.read(
+    bandEventsProvider(BandEventsParams(bandId: bandId, from: today, to: today)).future,
+  );
+
+  final repo = ref.read(eventsRepositoryProvider);
+  final routes = ref.read(routesClientProvider);
+  final push = ref.read(pushServiceProvider);
+
+  for (final summary in events) {
+    if (summary.date != today) continue;
+    if (!_isRostered(summary.rosterStatus)) continue;
+    final address = summary.venueAddress;
+    if (address == null || address.isEmpty) continue;
+
+    final detail = await repo.getEventDetail(summary.key);
+    final first = resolveFirstItem(detail.timeline);
+    if (first == null) continue;
+
+    final travel =
+        await routes.driveDuration(origin: origin, destinationAddress: address);
+    if (travel == null) continue;
+
+    final venuePoint = await geocodeAddress(address);
+    final meters = venuePoint == null
+        ? double.infinity
+        : location.distanceMeters(origin, venuePoint);
+
+    await enrich(
+      EnrichmentInput(
+        notificationId: Object.hash(summary.key, 'event_departure').toUnsigned(31),
+        eventTitle: summary.title,
+        venue: summary.venueName ?? address,
+        firstItemTitle: first.title,
+        firstItem: first.time,
+        now: now,
+        origin: origin,
+        travel: travel,
+        metersToVenue: meters,
+      ),
+      push,
+    );
+  }
+}
+
+bool _isRostered(String? status) => status == 'green' || status == 'yellow';
+
+String _ymd(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-'
+    '${d.month.toString().padLeft(2, '0')}-'
+    '${d.day.toString().padLeft(2, '0')}';

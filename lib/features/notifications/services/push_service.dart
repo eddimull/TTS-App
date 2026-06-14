@@ -5,6 +5,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../data/notification_text.dart';
 import '../data/push_payload.dart';
+import 'enrichment_service.dart' show LocalScheduler;
 
 /// True only on platforms where FCM is supported.
 bool get _pushSupported =>
@@ -20,7 +21,7 @@ String renderBody(PushPayload p) => buildReminderBody(
     );
 
 /// Thin wrapper over FCM + local notifications. Logic-free where possible.
-class PushService {
+class PushService implements LocalScheduler {
   PushService(this._local);
 
   final FlutterLocalNotificationsPlugin _local;
@@ -99,6 +100,7 @@ class PushService {
 
   /// Schedule a local notification to fire at [when] (a local wall-clock time).
   /// No-op on unsupported platforms.
+  @override
   Future<void> scheduleLocal({
     required int id,
     required String title,
@@ -129,6 +131,7 @@ class PushService {
 
   /// Cancel a previously scheduled local notification by id. No-op on
   /// unsupported platforms.
+  @override
   Future<void> cancelLocal(int id) async {
     if (!_pushSupported) return;
     await _local.cancel(id);

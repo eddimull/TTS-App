@@ -28,6 +28,8 @@ class PushRegistrar {
   PushRegistrar(this._ref);
   final Ref _ref;
 
+  bool _watchingRefresh = false;
+
   Future<void> registerCurrentToken() async {
     final platform = _platformName();
     if (platform == null) return; // unsupported platform: no-op
@@ -35,12 +37,31 @@ class PushRegistrar {
     await push.init();
     await push.requestPermission();
     push.listenForeground();
+    _watchTokenRefresh(push, platform);
     final token = await push.token();
     if (token == null) return;
     await _ref.read(deviceRepositoryProvider).register(
           token: token,
           platform: platform,
         );
+  }
+
+  /// Re-register with the backend when FCM rotates the token (reinstall,
+  /// restore, periodic refresh), so the "safety net" push never silently
+  /// breaks. Idempotent: only one subscription per process.
+  void _watchTokenRefresh(PushService push, String platform) {
+    if (_watchingRefresh) return;
+    _watchingRefresh = true;
+    push.onTokenRefresh.listen((token) async {
+      try {
+        await _ref.read(deviceRepositoryProvider).register(
+              token: token,
+              platform: platform,
+            );
+      } catch (_) {
+        // Best-effort; the next login re-registers anyway.
+      }
+    });
   }
 
   Future<void> deregisterCurrentToken() async {

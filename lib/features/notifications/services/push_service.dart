@@ -62,15 +62,24 @@ class PushService {
   Stream<String> get onTokenRefresh =>
       _pushSupported ? FirebaseMessaging.instance.onTokenRefresh : const Stream.empty();
 
-  /// Wire foreground message handling.
+  bool _listening = false;
+
+  /// Wire foreground message handling. Idempotent — repeated calls (e.g. a
+  /// second login in the same process) do not attach duplicate listeners.
   void listenForeground() {
-    if (!_pushSupported) return;
+    if (!_pushSupported || _listening) return;
+    _listening = true;
     FirebaseMessaging.onMessage.listen(_show);
   }
 
   Future<void> _show(RemoteMessage message) async {
+    // Messages that carry a `notification` block are rendered by the OS itself
+    // while foregrounded (notably on Android). Only manually render data-only
+    // messages, otherwise the user sees the same reminder twice. The backend
+    // contract for this feature is therefore: send DATA-ONLY messages.
+    if (message.notification != null) return;
     final payload = PushPayload.fromData(message.data);
-    final title = message.notification?.title ?? 'Event today';
+    final title = message.data['title']?.toString() ?? 'Event today';
     await _local.show(
       payload.notificationId,
       title,

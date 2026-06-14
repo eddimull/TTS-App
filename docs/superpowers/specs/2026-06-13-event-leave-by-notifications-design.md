@@ -144,20 +144,39 @@ POST /api/mobile/location
 
 ### Push payloads (server → device)
 
-8h reminder (notification + data):
+**Hard contract (Phase 1, as implemented):** messages are **data-only** — no `notification` block. FCM data maps are flat string→string, so timeline fields are flattened (no nested objects) and use these exact **camelCase** keys. The device parses them in `PushPayload.fromData` and renders the body itself; a `notification` block would cause the OS to render a duplicate while the app is foregrounded, so the backend must not send one.
+
+8h reminder (data-only):
 
 ```
-data: { type: "event_reminder_8h", eventKey, venueAddress?,
-        firstItem: {title, time}?, showTime?, leaveByFirst?, leaveByShow? }
+data: {
+  type: "event_reminder_8h",   // required
+  eventKey: "<string>",         // required
+  title: "<event title>",       // shown as the notification title
+  venueAddress?: "<string>",
+  firstItemTitle?: "<string>",  // e.g. "Load In"
+  firstItemTime?: "<ISO-8601 or HH:mm>",
+  showTime?: "<ISO-8601 or HH:mm>"
+  // Phase 2 will add: leaveByFirst?, leaveByShow?
+}
 ```
 
-Departure trigger (data-only, wakes the device to compute):
+Departure trigger (data-only, Phase 2 — modeled now, inert in Phase 1):
 
 ```
-data: { type: "event_departure", eventKey, venueAddress, firstItem: {title, time} }
+data: {
+  type: "event_departure",
+  eventKey: "<string>",
+  title: "<event title>",
+  venueAddress: "<string>",
+  firstItemTitle: "<string>",
+  firstItemTime: "<ISO-8601 or HH:mm>"
+}
 ```
 
-The backend also schedules a time-based fallback notification for the same event at the default offset. If the device-computed local notification is scheduled, the app cancels/replaces the fallback via the dedup key. If the device never checks in, the server fallback fires.
+Unknown `type` values parse to `PushType.unknown` and are ignored safely.
+
+The backend also schedules a time-based fallback notification for the same event at the default offset. If the device-computed local notification is scheduled, the app cancels/replaces the fallback via the dedup key (`eventKey + type`). If the device never checks in, the server fallback fires.
 
 ### Backend responsibilities (documented, not built here)
 

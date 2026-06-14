@@ -19,6 +19,10 @@ DateTime? parseEntryTime(String? value) {
 
 /// The timeline entry with the earliest parseable [EventTimelineEntry.time].
 /// Entries without a parseable time are ignored. Null if none qualify.
+///
+/// Phase 1 receives the first item pre-computed in the push payload, so this
+/// is not yet called from the notification path; it implements the spec's
+/// "first item = earliest time" rule for the client-side timeline logic.
 EventTimelineEntry? firstTimelineItem(List<EventTimelineEntry> timeline) {
   EventTimelineEntry? best;
   DateTime? bestTime;

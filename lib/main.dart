@@ -3,9 +3,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'app.dart';
 import 'core/config/router.dart';
 import 'core/storage/route_storage.dart';
+import 'firebase_options.dart';
 
 // Don't retry on definitive server errors (4xx). Only retry on network
 // failures or 5xx where a retry might succeed.
@@ -39,6 +43,14 @@ String _resolveInitialLocation(RouteStorage rs) {
   return last;
 }
 
+/// Background/terminated push handler. Must be a top-level function.
+/// The OS renders the notification half automatically; this exists so data
+/// messages are processed and to satisfy the FCM registration requirement.
+@pragma('vm:entry-point')
+Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
+  // No work needed in Phase 1: the notification payload is OS-rendered.
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -48,6 +60,18 @@ Future<void> main() async {
   final prefs = await SharedPreferences.getInstance();
   final routeStorage = RouteStorage(prefs);
   final initialLocation = _resolveInitialLocation(routeStorage);
+
+  // Push notifications are only supported on iOS/Android. Guard so the Linux
+  // desktop and web builds launch without a Firebase configuration.
+  final pushSupported = !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android);
+  if (pushSupported) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
+  }
 
   await SentryFlutter.init(
     (options) {

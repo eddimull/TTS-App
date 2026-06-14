@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_config.dart';
 import '../storage/secure_storage.dart';
+import 'api_endpoints.dart';
 import '../../shared/providers/selected_band_provider.dart';
 
 /// A callback invoked when the server returns 401. Typically used to navigate
@@ -54,11 +55,51 @@ class ApiClient {
           handler.next(options);
         },
         onError: (error, handler) async {
-          if (error.response?.statusCode == 401) {
+          final status = error.response?.statusCode;
+
+          if (status == 401) {
             await _storage.deleteToken();
             await _storage.deleteBandId();
             _onUnauthorized?.call();
+            handler.next(error);
+            return;
           }
+
+          // Reactively refresh a stale token: EnsureUserInBand returns this
+          // exact message when the token lacks an ability the user actually has
+          // (e.g. right after going solo). Refresh once, retry once.
+          final data = error.response?.data;
+          final isStaleTokenError = status == 403 &&
+              data is Map &&
+              data['message'] == 'Insufficient token permissions.';
+
+          final req = error.requestOptions;
+          final alreadyRetried = req.extra['__retried_after_refresh'] == true;
+          final isRefreshCall = req.path == ApiEndpoints.mobileTokenRefresh;
+
+          if (isStaleTokenError && !alreadyRetried && !isRefreshCall) {
+            try {
+              final refreshed = await _dio.post<Map<String, dynamic>>(
+                ApiEndpoints.mobileTokenRefresh,
+              );
+              final newToken = refreshed.data?['token'] as String?;
+              if (newToken != null) {
+                await _storage.writeToken(newToken);
+
+                // Re-fire the original request. onRequest attaches the new token
+                // from storage. Mark it so a second 403 can't loop.
+                final retryOptions = req.copyWith(
+                  extra: {...req.extra, '__retried_after_refresh': true},
+                );
+                final retryResponse = await _dio.fetch<dynamic>(retryOptions);
+                handler.resolve(retryResponse);
+                return;
+              }
+            } catch (_) {
+              // Fall through to surfacing the original error.
+            }
+          }
+
           handler.next(error);
         },
       ),

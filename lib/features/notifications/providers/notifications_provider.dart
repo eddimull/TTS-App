@@ -46,6 +46,20 @@ class PushRegistrar {
     await push.init();
     await push.requestPermission();
     push.listenForeground();
+    push.onDeparturePush = (payload) async {
+      final firstTime = payload.firstItemTime;
+      if (firstTime == null) return;
+      final first = DateTime.tryParse(firstTime);
+      if (first == null) return;
+      await enrichEventFromPush(
+        _ref,
+        eventKey: payload.eventKey,
+        eventTitle: payload.venueAddress ?? 'Event today',
+        venueAddress: payload.venueAddress ?? '',
+        firstItemTitle: payload.firstItemTitle ?? 'your event',
+        firstItem: first,
+      );
+    };
     _watchTokenRefresh(push, platform);
     final token = await push.token();
     if (token == null) return;
@@ -157,6 +171,47 @@ Future<void> enrichTodaysEvents(Ref ref, {DateTime? clock}) async {
       push,
     );
   }
+}
+
+/// Enrich a single event from an `event_departure` data push. Best-effort.
+Future<void> enrichEventFromPush(
+  Ref ref, {
+  required String eventKey,
+  required String eventTitle,
+  required String venueAddress,
+  required String firstItemTitle,
+  required DateTime firstItem,
+  DateTime? clock,
+}) async {
+  final now = clock ?? DateTime.now();
+  final location = ref.read(locationServiceProvider);
+  if (await location.ensurePermission() == LocationGrant.denied) return;
+  final origin = await location.current();
+  if (origin == null) return;
+
+  final routes = ref.read(routesClientProvider);
+  final travel =
+      await routes.driveDuration(origin: origin, destinationAddress: venueAddress);
+  if (travel == null) return;
+
+  final venuePoint = await geocodeAddress(venueAddress);
+  final meters =
+      venuePoint == null ? double.infinity : location.distanceMeters(origin, venuePoint);
+
+  await enrich(
+    EnrichmentInput(
+      notificationId: Object.hash(eventKey, 'event_departure').toUnsigned(31),
+      eventTitle: eventTitle,
+      venue: venueAddress,
+      firstItemTitle: firstItemTitle,
+      firstItem: firstItem,
+      now: now,
+      origin: origin,
+      travel: travel,
+      metersToVenue: meters,
+    ),
+    ref.read(pushServiceProvider),
+  );
 }
 
 bool _isRostered(String? status) => status == 'green' || status == 'yellow';

@@ -26,6 +26,10 @@ class PushService implements LocalScheduler {
 
   final FlutterLocalNotificationsPlugin _local;
 
+  /// Optional callback invoked for `event_departure` data pushes so the
+  /// provider layer can run location enrichment. Set during app init.
+  Future<void> Function(PushPayload payload)? onDeparturePush;
+
   static const _channel = AndroidNotificationChannel(
     'event_reminders',
     'Event Reminders',
@@ -81,6 +85,13 @@ class PushService implements LocalScheduler {
     // contract for this feature is therefore: send DATA-ONLY messages.
     if (message.notification != null) return;
     final payload = PushPayload.fromData(message.data);
+    if (payload.type == PushType.departure) {
+      final cb = onDeparturePush;
+      if (cb != null) {
+        await cb(payload);
+        return;
+      }
+    }
     final title = message.data['title']?.toString() ?? 'Event today';
     await _local.show(
       payload.notificationId,

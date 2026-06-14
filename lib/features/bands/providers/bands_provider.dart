@@ -6,7 +6,8 @@ import '../data/bands_repository.dart';
 
 final bandsRepositoryProvider = Provider<BandsRepository>((ref) {
   final dio = ref.watch(apiClientProvider).dio;
-  return BandsRepository(dio);
+  final storage = ref.watch(secureStorageProvider);
+  return BandsRepository(dio, storage);
 });
 
 /// Notifier for band onboarding actions. Each method updates [authProvider]

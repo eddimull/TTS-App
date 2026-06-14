@@ -1,11 +1,13 @@
 import 'package:dio/dio.dart';
 import '../../../core/network/api_endpoints.dart';
+import '../../../core/storage/secure_storage.dart';
 import '../../auth/data/models/band_summary.dart';
 
 class BandsRepository {
-  BandsRepository(this._dio);
+  BandsRepository(this._dio, this._storage);
 
   final Dio _dio;
+  final SecureStorage _storage;
 
   /// Create a new band. Returns the new band's id and name.
   Future<BandSummary> createBand(String name) async {
@@ -37,12 +39,21 @@ class BandsRepository {
     return bandList;
   }
 
-  /// Create a personal auto-band. Returns updated bands list.
+  /// Create a personal auto-band. Persists the freshly-issued token (which now
+  /// carries write:bookings for the new personal band) and returns the updated
+  /// bands list.
   Future<List<BandSummary>> goSolo() async {
     final response = await _dio.post<Map<String, dynamic>>(
       ApiEndpoints.mobileBandsSolo,
     );
-    final bandList = (response.data!['bands'] as List<dynamic>)
+
+    final data = response.data!;
+    final token = data['token'] as String?;
+    if (token != null) {
+      await _storage.writeToken(token);
+    }
+
+    final bandList = (data['bands'] as List<dynamic>)
         .map((b) => BandSummary.fromJson(b as Map<String, dynamic>))
         .toList();
     return bandList;

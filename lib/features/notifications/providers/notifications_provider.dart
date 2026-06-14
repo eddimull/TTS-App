@@ -143,33 +143,40 @@ Future<void> enrichTodaysEvents(WidgetRef ref, {DateTime? clock}) async {
     final address = summary.venueAddress;
     if (address == null || address.isEmpty) continue;
 
-    final detail = await repo.getEventDetail(summary.key);
-    final first = resolveFirstItem(detail.timeline);
-    if (first == null) continue;
+    // Best-effort per event: a failure (e.g. getEventDetail throwing) must not
+    // abandon enrichment for the remaining events of the day.
+    try {
+      final detail = await repo.getEventDetail(summary.key);
+      final first = resolveFirstItem(detail.timeline);
+      if (first == null) continue;
 
-    final travel =
-        await routes.driveDuration(origin: origin, destinationAddress: address);
-    if (travel == null) continue;
+      final travel =
+          await routes.driveDuration(origin: origin, destinationAddress: address);
+      if (travel == null) continue;
 
-    final venuePoint = await geocodeAddress(address);
-    final meters = venuePoint == null
-        ? double.infinity
-        : location.distanceMeters(origin, venuePoint);
+      final venuePoint = await geocodeAddress(address);
+      final meters = venuePoint == null
+          ? double.infinity
+          : location.distanceMeters(origin, venuePoint);
 
-    await enrich(
-      EnrichmentInput(
-        notificationId: Object.hash(summary.key, 'event_departure').toUnsigned(31),
-        eventTitle: summary.title,
-        venue: summary.venueName ?? address,
-        firstItemTitle: first.title,
-        firstItem: first.time,
-        now: now,
-        origin: origin,
-        travel: travel,
-        metersToVenue: meters,
-      ),
-      push,
-    );
+      await enrich(
+        EnrichmentInput(
+          notificationId: Object.hash(summary.key, 'event_departure').toUnsigned(31),
+          eventTitle: summary.title,
+          venue: summary.venueName ?? address,
+          firstItemTitle: first.title,
+          firstItem: first.time,
+          now: now,
+          origin: origin,
+          travel: travel,
+          metersToVenue: meters,
+        ),
+        push,
+      );
+    } catch (_) {
+      // Skip this event; the server's time-based push remains the floor.
+      continue;
+    }
   }
 }
 

@@ -30,6 +30,17 @@ void main() {
   const bandA = BandSummary(id: 1, name: 'Alpha', isOwner: true);
   const bandB = BandSummary(id: 2, name: 'Bravo', isOwner: false);
 
+  // The dashboard filters events to the focused month, which defaults to the
+  // month of DateTime.now(). Build dates in the current month so the test does
+  // not rot as the calendar advances (see avoid-time-bomb-date-tests).
+  String dayThisMonth(int day) {
+    final now = DateTime.now();
+    final d = DateTime(now.year, now.month, day);
+    return '${d.year.toString().padLeft(4, '0')}-'
+        '${d.month.toString().padLeft(2, '0')}-'
+        '${d.day.toString().padLeft(2, '0')}';
+  }
+
   EventSummary evt({
     required String key,
     required String date,
@@ -69,8 +80,8 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final events = [
-      evt(key: 'a', date: '2026-05-10', band: bandA),
-      evt(key: 'b', date: '2026-05-11', band: bandB),
+      evt(key: 'a', date: dayThisMonth(10), band: bandA),
+      evt(key: 'b', date: dayThisMonth(11), band: bandB),
     ];
 
     await tester.pumpWidget(host(events: events));
@@ -96,7 +107,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(400, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final events = [evt(key: 'a', date: '2026-05-10', band: bandA)];
+    final events = [evt(key: 'a', date: dayThisMonth(10), band: bandA)];
 
     await tester.pumpWidget(host(events: events));
     await tester.pumpAndSettle();

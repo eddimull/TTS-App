@@ -207,7 +207,7 @@ void main() {
         final event = _fullyPopulatedEvent();
 
         await _pumpEditScreen(tester, event: event, repo: repo);
-        await tester.tap(find.text('Save'));
+        await tester.tap(find.widgetWithText(CupertinoButton, 'Save'));
         await tester.pumpAndSettle();
 
         expect(repo.updateCallCount, 1);
@@ -276,7 +276,7 @@ void main() {
         });
 
         await _pumpEditScreen(tester, event: event, repo: repo);
-        await tester.tap(find.text('Save'));
+        await tester.tap(find.widgetWithText(CupertinoButton, 'Save'));
         await tester.pumpAndSettle();
 
         expect(repo.updateCallCount, 1);
@@ -301,7 +301,7 @@ void main() {
         });
 
         await _pumpEditScreen(tester, event: event, repo: repo);
-        await tester.tap(find.text('Save'));
+        await tester.tap(find.widgetWithText(CupertinoButton, 'Save'));
         await tester.pumpAndSettle();
 
         expect(repo.lastIsPublic, isNull);
@@ -344,7 +344,7 @@ void main() {
         expect(find.text('Load-in'), findsNothing);
         expect(find.text('Soundcheck'), findsOneWidget);
 
-        await tester.tap(find.text('Save'));
+        await tester.tap(find.widgetWithText(CupertinoButton, 'Save'));
         await tester.pumpAndSettle();
 
         expect(repo.lastTimeline, isNotNull);
@@ -361,7 +361,7 @@ void main() {
         final event = _makeDetailWithTimeline(const []);
 
         await _pumpEditScreen(tester, event: event, repo: repo);
-        await tester.tap(find.text('Save'));
+        await tester.tap(find.widgetWithText(CupertinoButton, 'Save'));
         await tester.pumpAndSettle();
 
         expect(repo.lastTimeline, isNotNull);
@@ -384,7 +384,7 @@ void main() {
         await tester.tap(_switchForLabel('Outdoor'));
         await tester.pumpAndSettle();
 
-        await tester.tap(find.text('Save'));
+        await tester.tap(find.widgetWithText(CupertinoButton, 'Save'));
         await tester.pumpAndSettle();
 
         expect(repo.lastOutside, isTrue);
@@ -420,7 +420,7 @@ void main() {
         await tester.tap(_switchForLabel('Lodging Provided'));
         await tester.pumpAndSettle();
 
-        await tester.tap(find.text('Save'));
+        await tester.tap(find.widgetWithText(CupertinoButton, 'Save'));
         await tester.pumpAndSettle();
 
         expect(repo.lastLodging, isNotNull);
@@ -451,7 +451,7 @@ void main() {
         await tester.enterText(attireField, 'Cocktail');
         await tester.pumpAndSettle();
 
-        await tester.tap(find.text('Save'));
+        await tester.tap(find.widgetWithText(CupertinoButton, 'Save'));
         await tester.pumpAndSettle();
 
         expect(repo.lastAttire, 'Cocktail');
@@ -470,7 +470,7 @@ void main() {
         await tester.tap(_switchForLabel('Ceremony On-site'));
         await tester.pumpAndSettle();
 
-        await tester.tap(find.text('Save'));
+        await tester.tap(find.widgetWithText(CupertinoButton, 'Save'));
         await tester.pumpAndSettle();
 
         expect(repo.lastWedding, isNotNull);

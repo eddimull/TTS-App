@@ -76,6 +76,8 @@
 	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app uses your location to show nearby venues and events.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Bandmate uses your location in the background to remind you when to leave for today's event, even when the app is closed.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>This app uses the camera to let you capture photos and videos for your band.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

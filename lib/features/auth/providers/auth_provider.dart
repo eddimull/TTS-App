@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/core_providers.dart';
 import '../../../core/storage/route_storage.dart';
 import '../data/auth_repository.dart';
 import '../data/models/auth_user.dart';
 import '../data/models/band_summary.dart';
+import '../../notifications/providers/notifications_provider.dart';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -85,6 +88,10 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         AuthUnauthenticated(errorMessage: _friendlyError(state.error)),
       );
     }
+
+    if (state.value is AuthAuthenticated) {
+      unawaited(_registerPushToken());
+    }
   }
 
   /// Register a new account and store credentials.
@@ -110,6 +117,20 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         AuthUnauthenticated(errorMessage: _friendlyRegisterError(state.error)),
       );
     }
+
+    if (state.value is AuthAuthenticated) {
+      unawaited(_registerPushToken());
+    }
+  }
+
+  /// Register this device's push token, swallowing any failure. Best-effort:
+  /// fired without awaiting so it never delays the auth flow or the login UI.
+  Future<void> _registerPushToken() async {
+    try {
+      await ref.read(pushRegistrarProvider).registerCurrentToken();
+    } catch (_) {
+      // Push registration is best-effort; never block auth.
+    }
   }
 
   /// Revoke token on the server and clear all local credentials.
@@ -120,6 +141,12 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     try {
       await _repository.logout();
     } catch (_) {}
+
+    try {
+      await ref.read(pushRegistrarProvider).deregisterCurrentToken();
+    } catch (_) {
+      // Best-effort.
+    }
 
     await storage.clear();
 

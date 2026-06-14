@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/connectivity_provider.dart';
+import '../../features/notifications/services/lifecycle_observer.dart';
 
 class _NavDestination {
   const _NavDestination({
@@ -59,6 +60,24 @@ class AppScaffold extends ConsumerStatefulWidget {
 
 class _AppScaffoldState extends ConsumerState<AppScaffold> {
   bool _showBackOnline = false;
+  late final EnrichmentLifecycleObserver _enrichObserver;
+
+  @override
+  void initState() {
+    super.initState();
+    _enrichObserver = EnrichmentLifecycleObserver(ref);
+    WidgetsBinding.instance.addObserver(_enrichObserver);
+    // Cold start into the shell counts as a resume — run once after first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _enrichObserver.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(_enrichObserver);
+    super.dispose();
+  }
 
   int _selectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;

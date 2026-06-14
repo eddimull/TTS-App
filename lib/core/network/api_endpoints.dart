@@ -134,4 +134,8 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/setlist-prompt-templates';
   static String mobileBandSetlistPromptTemplate(int bandId, int templateId) =>
       '/api/mobile/bands/$bandId/setlist-prompt-templates/$templateId';
+
+  // Push device registration (Phase 1 notifications)
+  static const String mobileDevices = '/api/mobile/devices';
+  static String mobileDevice(String token) => '/api/mobile/devices/$token';
 }

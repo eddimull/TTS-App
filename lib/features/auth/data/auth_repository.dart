@@ -81,6 +81,27 @@ class AuthRepository {
     return (user: user, bands: bandList);
   }
 
+  /// Re-mint the current device's token from the user's current permissions.
+  ///
+  /// Used after the user's bands/roles change (e.g. going solo) and by the
+  /// auto-retry interceptor when a request fails with "Insufficient token
+  /// permissions". Returns the new token, user, and bands.
+  Future<({String token, AuthUser user, List<BandSummary> bands})>
+      refreshToken() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileTokenRefresh,
+    );
+
+    final data = response.data!;
+    final token = data['token'] as String;
+    final user = AuthUser.fromJson(data['user'] as Map<String, dynamic>);
+    final bandList = (data['bands'] as List<dynamic>)
+        .map((b) => BandSummary.fromJson(b as Map<String, dynamic>))
+        .toList();
+
+    return (token: token, user: user, bands: bandList);
+  }
+
   /// Revoke the current device token on the server.
   Future<void> logout() async {
     await _dio.delete<void>(ApiEndpoints.mobileLogout);

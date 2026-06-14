@@ -15,6 +15,11 @@ class DeviceRepository {
   }
 
   Future<void> deregister(String token) {
-    return _dio.delete<void>(ApiEndpoints.mobileDevice(token));
+    // Token goes in the body, not the path: FCM tokens can contain '/' and ':'
+    // which would break a URL path segment.
+    return _dio.delete<void>(
+      ApiEndpoints.mobileDevices,
+      data: {'token': token},
+    );
   }
 }

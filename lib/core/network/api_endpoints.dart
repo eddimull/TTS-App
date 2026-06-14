@@ -135,7 +135,7 @@ class ApiEndpoints {
   static String mobileBandSetlistPromptTemplate(int bandId, int templateId) =>
       '/api/mobile/bands/$bandId/setlist-prompt-templates/$templateId';
 
-  // Push device registration (Phase 1 notifications)
+  // Push device registration (Phase 1 notifications). Both register (POST) and
+  // deregister (DELETE) use this path; the token travels in the request body.
   static const String mobileDevices = '/api/mobile/devices';
-  static String mobileDevice(String token) => '/api/mobile/devices/$token';
 }

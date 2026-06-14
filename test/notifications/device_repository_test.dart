@@ -43,9 +43,10 @@ void main() {
     expect(adapter.lastBody, {'token': 'tok-abc', 'platform': 'ios'});
   });
 
-  test('deregister DELETEs the token-specific path', () async {
+  test('deregister DELETEs /devices with the token in the body', () async {
     await repo.deregister('tok-abc');
     expect(adapter.lastOptions!.method, 'DELETE');
-    expect(adapter.lastOptions!.path, '/api/mobile/devices/tok-abc');
+    expect(adapter.lastOptions!.path, '/api/mobile/devices');
+    expect(adapter.lastBody, {'token': 'tok-abc'});
   });
 }

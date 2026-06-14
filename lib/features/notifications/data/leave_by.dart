@@ -1,3 +1,5 @@
+import 'notification_text.dart' show formatClock;
+
 /// Minutes of warning before the user must depart.
 const Duration kDepartureWarning = Duration(minutes: 15);
 
@@ -29,4 +31,20 @@ bool hasAlreadyLeft({
   if (metersToVenue <= kArrivalRadiusMeters) return true;
   if (pastDeparture && travelToVenue <= timeUntilFirstItem) return true;
   return false;
+}
+
+/// The enriched departure-reminder body, e.g.
+/// `Leave by 6:15pm for Load In — The Blue Room`.
+String buildLeaveByBody({
+  required String? venue,
+  required String firstItemTitle,
+  required DateTime departure,
+}) {
+  // departure is a local DateTime; format its wall-clock time.
+  final clock = formatClock(departure.toIso8601String()) ?? '';
+  final core = 'Leave by $clock for $firstItemTitle';
+  if (venue != null && venue.isNotEmpty) {
+    return '$core — $venue';
+  }
+  return core;
 }

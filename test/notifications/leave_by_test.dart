@@ -66,4 +66,24 @@ void main() {
       );
     });
   });
+
+  group('buildLeaveByBody', () {
+    test('with venue and first item', () {
+      final body = buildLeaveByBody(
+        venue: 'The Blue Room',
+        firstItemTitle: 'Load In',
+        departure: DateTime(2026, 6, 14, 18, 15),
+      );
+      expect(body, 'Leave by 6:15pm for Load In — The Blue Room');
+    });
+
+    test('without venue', () {
+      final body = buildLeaveByBody(
+        venue: null,
+        firstItemTitle: 'Load In',
+        departure: DateTime(2026, 6, 14, 9, 5),
+      );
+      expect(body, 'Leave by 9:05am for Load In');
+    });
+  });
 }

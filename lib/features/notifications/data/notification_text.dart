@@ -45,3 +45,35 @@ String? formatClock(String? value) {
   final suffix = isPm ? 'pm' : 'am';
   return '$hour12:$minute$suffix';
 }
+
+/// Builds the 8h-reminder body (Phase 1: no travel "leave by" lines).
+///
+/// - [venue]: venue name/address, or null if none/ungeocodable.
+/// - [firstItemTitle]/[firstItemTime]: the earliest timeline item, if any.
+/// - [showTime]: the event's startTime, if any.
+String buildReminderBody({
+  required String? venue,
+  required String? firstItemTitle,
+  required String? firstItemTime,
+  required String? showTime,
+}) {
+  final lines = <String>[];
+
+  final firstClock = formatClock(firstItemTime);
+  if (firstItemTitle != null && firstClock != null) {
+    lines.add('$firstItemTitle $firstClock');
+  }
+
+  final showClock = formatClock(showTime);
+  // Only add a distinct "Show" line when it differs from the first item time.
+  if (showClock != null && showClock != firstClock) {
+    lines.add('Show $showClock');
+  }
+
+  final core = lines.isEmpty ? 'You have an event today' : lines.join(', ');
+
+  if (venue != null && venue.isNotEmpty) {
+    return '$venue · $core';
+  }
+  return core;
+}

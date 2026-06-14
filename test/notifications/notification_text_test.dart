@@ -56,4 +56,66 @@ void main() {
       expect(formatClock(null), isNull);
     });
   });
+
+  group('buildReminderBody', () {
+    test('venue + load-in + show', () {
+      final body = buildReminderBody(
+        venue: 'The Blue Room',
+        firstItemTitle: 'Load In',
+        firstItemTime: '2026-06-13T14:00:00',
+        showTime: '2026-06-13T19:00:00',
+      );
+      expect(body, 'The Blue Room · Load In 2:00pm, Show 7:00pm');
+    });
+
+    test('venue + single item (show equals first, collapses to one line)', () {
+      final body = buildReminderBody(
+        venue: 'The Blue Room',
+        firstItemTitle: 'Show',
+        firstItemTime: '2026-06-13T19:00:00',
+        showTime: '2026-06-13T19:00:00',
+      );
+      expect(body, 'The Blue Room · Show 7:00pm');
+    });
+
+    test('venue + first item only, no show time', () {
+      final body = buildReminderBody(
+        venue: 'The Blue Room',
+        firstItemTitle: 'Load In',
+        firstItemTime: '2026-06-13T14:00:00',
+        showTime: null,
+      );
+      expect(body, 'The Blue Room · Load In 2:00pm');
+    });
+
+    test('no venue, has times', () {
+      final body = buildReminderBody(
+        venue: null,
+        firstItemTitle: 'Load In',
+        firstItemTime: '2026-06-13T14:00:00',
+        showTime: '2026-06-13T19:00:00',
+      );
+      expect(body, 'Load In 2:00pm, Show 7:00pm');
+    });
+
+    test('no venue, no usable times', () {
+      final body = buildReminderBody(
+        venue: null,
+        firstItemTitle: null,
+        firstItemTime: null,
+        showTime: null,
+      );
+      expect(body, 'You have an event today');
+    });
+
+    test('venue present but no usable times falls back to event-today with venue', () {
+      final body = buildReminderBody(
+        venue: 'The Blue Room',
+        firstItemTitle: null,
+        firstItemTime: null,
+        showTime: null,
+      );
+      expect(body, 'The Blue Room · You have an event today');
+    });
+  });
 }

@@ -9,6 +9,10 @@ import '../../shared/providers/selected_band_provider.dart';
 /// to the login screen without requiring a BuildContext here.
 typedef OnUnauthorized = void Function();
 
+/// Key used in [RequestOptions.extra] to mark a request that has already been
+/// retried after a token refresh, preventing infinite retry loops.
+const _retriedAfterRefreshKey = '__retried_after_refresh';
+
 class ApiClient {
   ApiClient({
     required SecureStorage storage,
@@ -74,9 +78,14 @@ class ApiClient {
               data['message'] == 'Insufficient token permissions.';
 
           final req = error.requestOptions;
-          final alreadyRetried = req.extra['__retried_after_refresh'] == true;
+          final alreadyRetried = req.extra[_retriedAfterRefreshKey] == true;
           final isRefreshCall = req.path == ApiEndpoints.mobileTokenRefresh;
 
+          // Single-flight is intentionally NOT enforced: if several requests
+          // hit this 403 at once they each refresh. That's safe for this app's
+          // low-concurrency mobile usage (the trigger is the brief post-goSolo
+          // window). Revisit with a refresh lock only if 401-after-refresh
+          // reports appear.
           if (isStaleTokenError && !alreadyRetried && !isRefreshCall) {
             try {
               final refreshed = await _dio.post<Map<String, dynamic>>(
@@ -89,7 +98,7 @@ class ApiClient {
                 // Re-fire the original request. onRequest attaches the new token
                 // from storage. Mark it so a second 403 can't loop.
                 final retryOptions = req.copyWith(
-                  extra: {...req.extra, '__retried_after_refresh': true},
+                  extra: {...req.extra, _retriedAfterRefreshKey: true},
                 );
                 final retryResponse = await _dio.fetch<dynamic>(retryOptions);
                 handler.resolve(retryResponse);

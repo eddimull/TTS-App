@@ -36,4 +36,24 @@ void main() {
       expect(firstTimelineItem(const []), isNull);
     });
   });
+
+  group('formatClock', () {
+    test('formats an afternoon ISO time as h:mma lowercase', () {
+      expect(formatClock('2026-06-13T14:00:00'), '2:00pm');
+    });
+    test('formats a morning time', () {
+      expect(formatClock('2026-06-13T09:05:00'), '9:05am');
+    });
+    test('formats midnight and noon', () {
+      expect(formatClock('2026-06-13T00:00:00'), '12:00am');
+      expect(formatClock('2026-06-13T12:00:00'), '12:00pm');
+    });
+    test('formats a bare HH:mm', () {
+      expect(formatClock('19:30'), '7:30pm');
+    });
+    test('returns null for unparseable input', () {
+      expect(formatClock('nope'), isNull);
+      expect(formatClock(null), isNull);
+    });
+  });
 }

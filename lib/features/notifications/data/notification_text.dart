@@ -32,3 +32,16 @@ EventTimelineEntry? firstTimelineItem(List<EventTimelineEntry> timeline) {
   }
   return best;
 }
+
+/// Formats a time string as `h:mma` in lowercase (e.g. `2:00pm`).
+/// Returns null when the value cannot be parsed.
+String? formatClock(String? value) {
+  final t = parseEntryTime(value);
+  if (t == null) return null;
+  final isPm = t.hour >= 12;
+  var hour12 = t.hour % 12;
+  if (hour12 == 0) hour12 = 12;
+  final minute = t.minute.toString().padLeft(2, '0');
+  final suffix = isPm ? 'pm' : 'am';
+  return '$hour12:$minute$suffix';
+}

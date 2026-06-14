@@ -117,5 +117,15 @@ void main() {
       );
       expect(body, 'The Blue Room · You have an event today');
     });
+
+    test('drops a titled first item whose time is unparseable', () {
+      final body = buildReminderBody(
+        venue: 'The Blue Room',
+        firstItemTitle: 'Load In',
+        firstItemTime: 'not-a-time',
+        showTime: '2026-06-13T19:00:00',
+      );
+      expect(body, 'The Blue Room · Show 7:00pm');
+    });
   });
 }

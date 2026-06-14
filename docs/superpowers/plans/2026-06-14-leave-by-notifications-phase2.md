@@ -78,14 +78,16 @@ git commit -m "build: add geolocator + timezone for phase 2 location enrichment"
 
 ---
 
-## Task 2: Shared geocoding helper + GeoPoint (TDD-light)
+## Task 2: Maps-free geocoding helper + GeoPoint (TDD-light)
 
-Extract `geocodeAddress` out of `venue_picker.dart` into a shared, maps-free helper returning a plain `GeoPoint`. The notifications layer must not depend on `google_maps_flutter`.
+Add a NEW maps-free geocoding helper in `lib/core/network/geocoding.dart` returning a plain `GeoPoint`, for the notifications layer (which must not depend on `google_maps_flutter`).
+
+**Decision (revised from the original plan):** Do NOT change `venue_picker.dart`'s existing `geocodeAddress` (it returns `LatLng?` and is consumed by 4 other files — `event_detail_screen.dart`, `event_edit_screen.dart`, `event_sub_form_card.dart` — that feed it straight into `google_maps_flutter`). Changing its return type would break all of them for no Phase 2 benefit. Instead, the new helper lives independently and is used only by the notifications layer. The small duplication of the REST call is the right trade vs. a risky 4-file refactor. `venue_picker.dart` is left untouched.
 
 **Files:**
 - Create: `lib/core/network/geocoding.dart`
 - Test: `test/notifications/geocoding_test.dart`
-- Modify: `lib/features/bookings/widgets/venue_picker.dart`
+- (No modification to `venue_picker.dart`.)
 
 - [ ] **Step 1: Write the failing test (parsing via stubbed Dio)**
 
@@ -212,37 +214,16 @@ Future<GeoPoint?> geocodeAddress(String address) async {
 Run: `flutter test test/notifications/geocoding_test.dart`
 Expected: PASS (3 tests).
 
-- [ ] **Step 5: Point venue_picker at the shared helper**
+- [ ] **Step 5: Verify analyze clean**
 
-In `lib/features/bookings/widgets/venue_picker.dart`: delete the local `geocodeAddress` top-level function and the local `_geocodeDio` instance (lines ~40-73). Add an import:
+Run: `flutter analyze lib/core/network/geocoding.dart`
+Expected: No issues. (`venue_picker.dart` is intentionally untouched — its `geocodeAddress`→`LatLng?` stays for the maps consumers. This new helper is a separate top-level `geocodeAddress`→`GeoPoint?` in a different library, imported explicitly by the notifications layer.)
 
-```dart
-import 'package:tts_bandmate/core/network/geocoding.dart' as geo;
-```
-
-Replace the single call site that used the old `geocodeAddress(...)` (returning `LatLng?`) with a `GeoPoint`→`LatLng` conversion. Find the call (it assigns to a `LatLng?`), and change it to:
-
-```dart
-final point = await geo.geocodeAddress(address);
-final LatLng? latLng =
-    point == null ? null : LatLng(point.latitude, point.longitude);
-```
-
-Then use `latLng` where the old result was used. (If the old result variable was already named, keep that name for the `LatLng?`.)
-
-- [ ] **Step 6: Verify nothing broke**
-
-Run: `flutter analyze lib/features/bookings/widgets/venue_picker.dart lib/core/network/geocoding.dart`
-Expected: No issues.
-
-Run: `flutter test test/` (or any existing venue/bookings tests if present) to confirm no regression.
-Expected: PASS.
-
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add lib/core/network/geocoding.dart test/notifications/geocoding_test.dart lib/features/bookings/widgets/venue_picker.dart
-git commit -m "refactor(geocoding): extract shared maps-free geocodeAddress + GeoPoint"
+git add lib/core/network/geocoding.dart test/notifications/geocoding_test.dart
+git commit -m "feat(geocoding): maps-free geocodeAddress + GeoPoint for notifications layer"
 ```
 
 ---

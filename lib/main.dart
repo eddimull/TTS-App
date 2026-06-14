@@ -10,6 +10,7 @@ import 'app.dart';
 import 'core/config/router.dart';
 import 'core/storage/route_storage.dart';
 import 'firebase_options.dart';
+import 'package:timezone/data/latest.dart' as tzdata;
 
 // Don't retry on definitive server errors (4xx). Only retry on network
 // failures or 5xx where a retry might succeed.
@@ -53,6 +54,7 @@ Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  tzdata.initializeTimeZones();
 
   // Pre-resolve SharedPreferences so the router can read the last route
   // synchronously at construction time — no race between restore and the

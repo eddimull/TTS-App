@@ -1,6 +1,7 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 import '../data/notification_text.dart';
 import '../data/push_payload.dart';
@@ -94,5 +95,42 @@ class PushService {
         iOS: DarwinNotificationDetails(),
       ),
     );
+  }
+
+  /// Schedule a local notification to fire at [when] (a local wall-clock time).
+  /// No-op on unsupported platforms.
+  Future<void> scheduleLocal({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+  }) async {
+    if (!_pushSupported) return;
+    final scheduled = tz.TZDateTime.from(when, tz.local);
+    await _local.zonedSchedule(
+      id,
+      title,
+      body,
+      scheduled,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'event_reminders',
+          'Event Reminders',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+    );
+  }
+
+  /// Cancel a previously scheduled local notification by id. No-op on
+  /// unsupported platforms.
+  Future<void> cancelLocal(int id) async {
+    if (!_pushSupported) return;
+    await _local.cancel(id);
   }
 }

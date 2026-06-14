@@ -116,7 +116,7 @@ final routesClientProvider = Provider<RoutesClient>((ref) {
 /// a venue and a first timeline item, compute live travel time and schedule (or
 /// suppress) the precise "leave in 15 min" local notification. Best-effort;
 /// any failure leaves the server's time-based push as the floor.
-Future<void> enrichTodaysEvents(Ref ref, {DateTime? clock}) async {
+Future<void> enrichTodaysEvents(WidgetRef ref, {DateTime? clock}) async {
   final now = clock ?? DateTime.now();
   final location = ref.read(locationServiceProvider);
   final grant = await location.ensurePermission();

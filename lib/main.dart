@@ -62,7 +62,7 @@ Future<void> main() async {
   // fall back to UTC if the platform can't report a zone (e.g. desktop/web).
   try {
     final zone = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(zone.identifier));
+    tz.setLocalLocation(tz.getLocation(zone));
   } catch (_) {
     // Leave tz.local as the default (UTC); scheduling still resolves absolute
     // instants correctly for local-kind DateTimes.

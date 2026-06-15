@@ -22,6 +22,16 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Write Firebase config
+        env:
+          FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.FIREBASE_OPTIONS_DART_BASE64 }}
+        run: |
+          if [ -z "$FIREBASE_OPTIONS_DART_BASE64" ]; then
+            echo "::error::FIREBASE_OPTIONS_DART_BASE64 secret is not set; main.dart imports lib/firebase_options.dart."
+            exit 1
+          fi
+          echo -n "$FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options.dart
+
       - name: Import certificate and provisioning profile
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}

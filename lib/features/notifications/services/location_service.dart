@@ -13,8 +13,10 @@ bool get _supported =>
 
 /// Wraps geolocator: tiered permission + a single current-position read.
 class LocationService {
-  /// Request location permission, escalating toward "always". Returns the tier
-  /// actually granted. No-op (denied) on unsupported platforms.
+  /// Request location permission when none has been granted yet, and report the
+  /// tier actually granted (`always`, `whileInUse`, or `denied`). Does NOT
+  /// re-prompt to escalate an existing `whileInUse` grant to `always`. No-op
+  /// (denied) on unsupported platforms or when location services are off.
   Future<LocationGrant> ensurePermission() async {
     if (!_supported) return LocationGrant.denied;
     if (!await Geolocator.isLocationServiceEnabled()) {

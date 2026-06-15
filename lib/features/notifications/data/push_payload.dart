@@ -1,6 +1,12 @@
 /// The kind of push the backend sent.
 enum PushType { reminder8h, departure, unknown }
 
+/// Stable notification id for an event's "departure" slot. The push-rendered
+/// notification and the locally-scheduled enriched one MUST use this same id so
+/// one replaces/cancels the other instead of stacking duplicates.
+int departureNotificationId(String eventKey) =>
+    Object.hash(eventKey, PushType.departure).toUnsigned(31);
+
 PushType _typeFromString(String? raw) {
   switch (raw) {
     case 'event_reminder_8h':
@@ -17,6 +23,7 @@ class PushPayload {
   const PushPayload({
     required this.type,
     required this.eventKey,
+    this.title,
     this.venueAddress,
     this.firstItemTitle,
     this.firstItemTime,
@@ -25,6 +32,10 @@ class PushPayload {
 
   final PushType type;
   final String eventKey;
+
+  /// Human-facing event title the backend sends (used as the notification
+  /// title). Distinct from [venueAddress].
+  final String? title;
   final String? venueAddress;
   final String? firstItemTitle;
   final String? firstItemTime;
@@ -41,6 +52,7 @@ class PushPayload {
     return PushPayload(
       type: _typeFromString(data['type']?.toString()),
       eventKey: str('eventKey') ?? '',
+      title: str('title'),
       venueAddress: str('venueAddress'),
       firstItemTitle: str('firstItemTitle'),
       firstItemTime: str('firstItemTime'),
@@ -48,6 +60,10 @@ class PushPayload {
     );
   }
 
-  /// Stable id for deduping notifications: one slot per event+type.
-  int get notificationId => Object.hash(eventKey, type).toUnsigned(31);
+  /// Stable id for deduping notifications: one slot per event+type. For
+  /// departure pushes this is [departureNotificationId]; other types hash on
+  /// their own [type] value.
+  int get notificationId => type == PushType.departure
+      ? departureNotificationId(eventKey)
+      : Object.hash(eventKey, type).toUnsigned(31);
 }

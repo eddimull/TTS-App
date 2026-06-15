@@ -7,6 +7,7 @@ import 'package:tts_bandmate/core/network/geocoding.dart';
 import '../../../core/network/api_client.dart';
 import '../data/device_repository.dart';
 import '../data/event_first_item.dart' show resolveFirstItem;
+import '../data/push_payload.dart' show departureNotificationId;
 import '../data/routes_client.dart';
 import '../services/enrichment_service.dart';
 import '../services/location_service.dart';
@@ -54,7 +55,7 @@ class PushRegistrar {
       await enrichEventFromPush(
         _ref,
         eventKey: payload.eventKey,
-        eventTitle: payload.venueAddress ?? 'Event today',
+        eventTitle: payload.title ?? 'Event today',
         venueAddress: payload.venueAddress ?? '',
         firstItemTitle: payload.firstItemTitle ?? 'your event',
         firstItem: first,
@@ -118,15 +119,18 @@ final routesClientProvider = Provider<RoutesClient>((ref) {
 /// any failure leaves the server's time-based push as the floor.
 Future<void> enrichTodaysEvents(WidgetRef ref, {DateTime? clock}) async {
   final now = clock ?? DateTime.now();
+
+  // Cheap no-op checks first: don't prompt for location / hit GPS when there's
+  // nothing to enrich (e.g. no band selected yet on cold start / resume).
+  final bandId = ref.read(selectedBandProvider).value;
+  if (bandId == null) return;
+
   final location = ref.read(locationServiceProvider);
   final grant = await location.ensurePermission();
   if (grant == LocationGrant.denied) return;
 
   final origin = await location.current();
   if (origin == null) return;
-
-  final bandId = ref.read(selectedBandProvider).value;
-  if (bandId == null) return;
 
   final today = _ymd(now);
   final events = await ref.read(
@@ -161,7 +165,7 @@ Future<void> enrichTodaysEvents(WidgetRef ref, {DateTime? clock}) async {
 
       await enrich(
         EnrichmentInput(
-          notificationId: Object.hash(summary.key, 'event_departure').toUnsigned(31),
+          notificationId: departureNotificationId(summary.key),
           eventTitle: summary.title,
           venue: summary.venueName ?? address,
           firstItemTitle: first.title,
@@ -207,7 +211,7 @@ Future<void> enrichEventFromPush(
 
   await enrich(
     EnrichmentInput(
-      notificationId: Object.hash(eventKey, 'event_departure').toUnsigned(31),
+      notificationId: departureNotificationId(eventKey),
       eventTitle: eventTitle,
       venue: venueAddress,
       firstItemTitle: firstItemTitle,

@@ -62,6 +62,27 @@ class BookingsRepository {
     DateTime? from,
     DateTime? to,
   }) async {
+    final result = await getAllUserBookingsRaw(
+      status: status,
+      upcomingOnly: upcomingOnly,
+      year: year,
+      from: from,
+      to: to,
+    );
+    return result.parsed;
+  }
+
+  /// Like [getAllUserBookings] but also returns the raw JSON maps from the
+  /// response, so callers can persist them verbatim (the summary models have
+  /// no `toJson`). `raw[i]` corresponds to `parsed[i]`.
+  Future<({List<BookingSummary> parsed, List<Map<String, dynamic>> raw})>
+      getAllUserBookingsRaw({
+    String? status,
+    bool upcomingOnly = false,
+    int? year,
+    DateTime? from,
+    DateTime? to,
+  }) async {
     final queryParams = <String, String>{};
     if (status != null) queryParams['status'] = status;
     if (upcomingOnly) queryParams['upcoming'] = '1';
@@ -75,11 +96,9 @@ class BookingsRepository {
     );
 
     final data = response.data!;
-    final rawList = data['bookings'] as List<dynamic>;
-    return rawList
-        .cast<Map<String, dynamic>>()
-        .map(BookingSummary.fromJson)
-        .toList();
+    final raw = (data['bookings'] as List<dynamic>).cast<Map<String, dynamic>>();
+    final parsed = raw.map(BookingSummary.fromJson).toList();
+    return (parsed: parsed, raw: raw);
   }
 
   /// Formats [d] as `YYYY-MM-DD`. Time-of-day is dropped.

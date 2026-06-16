@@ -159,5 +159,31 @@ void main() {
 
       expect(adapter.lastRequest!.queryParameters, equals({'to': '2026-12-31'}));
     });
+
+    test('getAllUserBookingsRaw returns parsed models and raw maps', () async {
+      final adapter = _StubAdapter((req) async {
+        return _json(200, {
+          'bookings': [
+            {
+              'id': 7,
+              'name': 'Gala',
+              'date': '2026-07-01',
+              'is_paid': false,
+              'contacts': [],
+            },
+          ],
+        });
+      });
+      final dio = Dio(BaseOptions(baseUrl: 'http://x'))
+        ..httpClientAdapter = adapter;
+      final repo = BookingsRepository(dio);
+
+      final result = await repo.getAllUserBookingsRaw();
+
+      expect(result.parsed.map((b) => b.id).toList(), [7]);
+      expect(result.raw, hasLength(1));
+      expect(result.raw.first['id'], 7);
+      expect(result.raw.first['name'], 'Gala');
+    });
   });
 }

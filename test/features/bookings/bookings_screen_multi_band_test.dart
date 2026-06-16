@@ -12,6 +12,7 @@ import 'package:tts_bandmate/core/storage/route_storage.dart';
 import 'package:tts_bandmate/features/auth/data/models/auth_user.dart';
 import 'package:tts_bandmate/features/auth/data/models/band_summary.dart';
 import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
+import 'package:tts_bandmate/features/bookings/data/bookings_cache_storage.dart';
 import 'package:tts_bandmate/features/bookings/screens/bookings_screen.dart';
 
 class _FakeSecureStorage extends SecureStorage {
@@ -65,7 +66,9 @@ void main() {
     addTearDown(tester.view.reset);
 
     SharedPreferences.setMockInitialValues({});
-    final routeStorage = RouteStorage(await SharedPreferences.getInstance());
+    final prefs = await SharedPreferences.getInstance();
+    final routeStorage = RouteStorage(prefs);
+    final bookingsCache = BookingsCacheStorage(prefs);
     final storage = _FakeSecureStorage();
     await storage.writeToken('t');
 
@@ -130,6 +133,7 @@ void main() {
         apiClientProvider
             .overrideWithValue(_StubApiClient(storage: storage, dio: dio)),
         routeStorageProvider.overrideWith((_) async => routeStorage),
+        bookingsCacheStorageProvider.overrideWithValue(bookingsCache),
         authProvider.overrideWith(() => _FixedAuthNotifier(const AuthAuthenticated(
               user: AuthUser(id: 1, name: 'Eddie', email: 'e@e.com'),
               bands: [

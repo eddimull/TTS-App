@@ -32,6 +32,7 @@ import '../../features/media/screens/media_screen.dart';
 import '../../features/finances/screens/finances_screen.dart';
 import '../../features/more/screens/more_screen.dart';
 import '../../features/band_settings/screens/band_settings_screen.dart';
+import '../../features/account/screens/account_screen.dart';
 import '../../features/setlist/screens/live_session_screen.dart';
 import '../../features/setlist_editor/screens/setlist_editor_screen.dart';
 import '../../shared/providers/selected_band_provider.dart';
@@ -351,6 +352,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => RehearsalDetailScreen(
           rehearsalId: int.tryParse(state.pathParameters['id']!),
         ),
+      ),
+      // Account — no bottom nav, pushed from the dashboard avatar
+      GoRoute(
+        path: '/account',
+        builder: (_, __) => const AccountScreen(),
       ),
       // Media — no bottom nav, pushed from More screen
       GoRoute(

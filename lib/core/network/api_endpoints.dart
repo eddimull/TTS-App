@@ -7,6 +7,10 @@ class ApiEndpoints {
   static const String mobileMeBookings = '/api/mobile/me/bookings';
   static const String mobileLogout = '/api/mobile/auth/token';
 
+  // Account management. GET returns profile + state/country lists; PATCH
+  // updates the profile; DELETE requests email-confirmed account deletion.
+  static const String mobileAccount = '/api/mobile/account';
+
   static const String mobileDashboard = '/api/mobile/dashboard';
   static String mobileBandEvents(int bandId) => '/api/mobile/bands/$bandId/events';
   static String mobileEventDetail(String key) => '/api/mobile/events/$key';

@@ -80,23 +80,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       child: const Icon(CupertinoIcons.add),
                     ),
                     const SizedBox(width: 4),
-                    GestureDetector(
-                      onTap: () => _showLogoutDialog(context),
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: const BoxDecoration(
-                          color: CupertinoColors.systemBlue,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            userName.isNotEmpty
-                                ? userName[0].toUpperCase()
-                                : '?',
-                            style: const TextStyle(
-                              color: CupertinoColors.white,
-                              fontWeight: FontWeight.bold,
+                    Semantics(
+                      label: 'Account',
+                      button: true,
+                      child: GestureDetector(
+                        onTap: () => context.push('/account'),
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: const BoxDecoration(
+                            color: CupertinoColors.systemBlue,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              userName.isNotEmpty
+                                  ? userName[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                color: CupertinoColors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
@@ -162,30 +166,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Future<void> _showLogoutDialog(BuildContext context) async {
-    final confirmed = await showCupertinoDialog<bool>(
-      context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: const Text('Log out'),
-        content: const Text('Are you sure you want to log out?'),
-        actions: [
-          CupertinoDialogAction(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          CupertinoDialogAction(
-            isDestructiveAction: true,
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Log out'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      await ref.read(authProvider.notifier).logout();
-    }
-  }
 }
 
 class _DashboardContent extends ConsumerStatefulWidget {

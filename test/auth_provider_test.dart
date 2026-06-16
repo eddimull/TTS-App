@@ -8,6 +8,7 @@ import 'package:tts_bandmate/features/auth/data/models/auth_user.dart';
 import 'package:tts_bandmate/features/auth/data/models/band_summary.dart';
 import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
 import 'package:tts_bandmate/core/network/api_client.dart';
+import 'package:tts_bandmate/features/bookings/data/bookings_cache_storage.dart';
 
 // ── In-memory fake storage ────────────────────────────────────────────────────
 
@@ -60,11 +61,13 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late RouteStorage fakeRouteStorage;
+  late BookingsCacheStorage fakeBookingsCache;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     fakeRouteStorage = RouteStorage(prefs);
+    fakeBookingsCache = BookingsCacheStorage(prefs);
   });
 
   group('AuthNotifier', () {
@@ -81,6 +84,7 @@ void main() {
           routeStorageProvider.overrideWith(
             (ref) async => fakeRouteStorage,
           ),
+          bookingsCacheStorageProvider.overrideWithValue(fakeBookingsCache),
         ],
       );
     }
@@ -142,6 +146,16 @@ void main() {
         // Write a last-route to verify it is cleared on logout.
         fakeRouteStorage.writeLastRoute('/bookings/42');
 
+        // Seed the bookings disk cache to verify it is dropped on logout.
+        fakeBookingsCache.write(BookingsWindowCache(
+          from: DateTime(2026, 2, 1),
+          to: DateTime(2027, 2, 28),
+          cachedAt: DateTime(2026, 5, 15),
+          rawBookings: const [
+            {'id': 1, 'name': 'Gala', 'date': '2026-06-01'},
+          ],
+        ));
+
         await container.read(authProvider.notifier).logout();
 
         final finalState = container.read(authProvider).value;
@@ -154,6 +168,8 @@ void main() {
             reason: 'Cached user must be wiped on logout');
         expect(fakeRouteStorage.readLastRoute(), isNull,
             reason: 'Last route must be cleared on logout');
+        expect(fakeBookingsCache.read(), isNull,
+            reason: 'Bookings disk cache must be cleared on logout');
       },
     );
   });

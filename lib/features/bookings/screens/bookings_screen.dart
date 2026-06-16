@@ -12,9 +12,11 @@ import '../data/models/booking_status.dart';
 import '../data/models/booking_summary.dart';
 import '../providers/bookings_filter_provider.dart';
 import '../providers/bookings_window_provider.dart';
+import '../providers/clock_provider.dart';
 import '../utils/booking_month_strip.dart';
 import '../utils/booking_search.dart';
 import '../widgets/booking_list_card.dart';
+import 'bookings_initial_position.dart';
 import '../widgets/bookings_bottom_bar.dart';
 import '../widgets/bookings_filter_button.dart';
 import '../widgets/bookings_filter_sheet.dart';
@@ -50,22 +52,6 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   String _query = '';
 
   String? _selectedMonthKey;
-
-  // Auto-jump to nearest-upcoming is a one-shot intent for this screen
-  // instance: fires once when data first appears, and again only when the
-  // filter changes (which can shift which booking is "nearest"). Lazy-load
-  // expansions (loadEarlier/loadLater) must NOT re-trigger it — they're a
-  // continuation of the user's scroll and are handled by _scrollAnchor.
-  //
-  // The flag flips only AFTER jumpTo actually executes. If the
-  // ScrollablePositionedList controller isn't attached on the first
-  // post-frame, we retry on subsequent frames so we don't burn the intent
-  // and leave the user stranded on the first booking.
-  bool _hasJumpedToNearest = false;
-  bool _jumpInFlight = false;
-  int _jumpGeneration = 0;
-  int _pendingJumpRetries = 0;
-  static const int _maxJumpRetries = 5;
 
   // ScrollablePositionedList controllers for the booking list.
   final ItemScrollController _itemScrollController = ItemScrollController();
@@ -281,92 +267,11 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     _ensureChipVisible(monthKey);
   }
 
-  /// Schedules a one-shot jump to the month header of the nearest-upcoming
-  /// booking in [sortedFiltered]. Sets `_selectedMonthKey` for the chip
-  /// strip and (when possible) jumps the list to that header.
-  ///
-  /// Only marks `_hasJumpedToNearest = true` AFTER `jumpTo` actually runs.
-  /// If the ScrollablePositionedList controller isn't attached when the
-  /// post-frame fires (timing can be tight on re-entry, before the list
-  /// has laid out), retries on the next frame up to `_maxJumpRetries`
-  /// times. This is what fixes the "lands on the first booking on
-  /// re-entry" bug — the previous code burned the intent on the first
-  /// silent miss.
-  void _scheduleJumpToNearest(List<BookingSummary> sortedFiltered) {
-    // Guard against multiple in-flight retry chains: the data builder
-    // can call this on every rebuild while _hasJumpedToNearest is still
-    // false, and the post-frame's setState itself triggers a rebuild.
-    if (_jumpInFlight) return;
-    _jumpInFlight = true;
-    final generation = ++_jumpGeneration;
-
-    final idx = findNearestUpcomingIndex(sortedFiltered, DateTime.now());
-    final target = idx == null
-        ? null
-        : monthKeyFor(sortedFiltered[idx].parsedStartDate);
-
-    _pendingJumpRetries = 0;
-    _attemptJump(target, generation);
-  }
-
-  /// Cancels any in-flight jump attempt so a fresh one (typically from
-  /// a filter change) can supersede it. Old retry callbacks check
-  /// `generation` against `_jumpGeneration` and bail when stale.
-  void _cancelInFlightJump() {
-    _jumpInFlight = false;
-    _jumpGeneration++;
-  }
-
-  void _attemptJump(String? target, int generation) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      // Stale callback (e.g. filter changed mid-retry, or screen was
-      // re-armed). Drop without touching state.
-      if (generation != _jumpGeneration) return;
-
-      setState(() => _selectedMonthKey = target);
-
-      // No upcoming booking → nothing to scroll to, but the intent is
-      // satisfied (chip highlight is set). Lock it in.
-      if (target == null) {
-        _hasJumpedToNearest = true;
-        _jumpInFlight = false;
-        return;
-      }
-
-      final headerIndex = _monthHeaderIndex[target];
-      if (headerIndex == null) {
-        // Target month isn't in the rendered items yet (e.g. filtered
-        // out by search). Treat as satisfied — re-jumping later would
-        // fight the user's search input.
-        _hasJumpedToNearest = true;
-        _jumpInFlight = false;
-        return;
-      }
-
-      if (_itemScrollController.isAttached) {
-        _itemScrollController.jumpTo(index: headerIndex + _topSentinels);
-        _ensureChipVisible(target);
-        _hasJumpedToNearest = true;
-        _jumpInFlight = false;
-        return;
-      }
-
-      // Controller not attached yet — retry on the next frame. Keep
-      // _jumpInFlight set so a rebuild triggered by our setState above
-      // doesn't spawn a parallel retry chain.
-      if (_pendingJumpRetries < _maxJumpRetries) {
-        _pendingJumpRetries++;
-        _attemptJump(target, generation);
-      } else {
-        // Give up after _maxJumpRetries frames; lock the intent so we
-        // don't loop forever if the list never builds (e.g. data went
-        // empty mid-flight). Better to leave the user at index 0 than
-        // spin a postFrameCallback indefinitely.
-        _hasJumpedToNearest = true;
-        _jumpInFlight = false;
-      }
-    });
+  String? _monthKeyForIndex(int headerIndex) {
+    for (final e in _monthHeaderIndex.entries) {
+      if (e.value == headerIndex) return e.key;
+    }
+    return null;
   }
 
   // ── List building ───────────────────────────────────────────────────────────
@@ -454,20 +359,10 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   Widget build(BuildContext context) {
     final filter = ref.watch(bookingsFilterProvider);
 
-    // Re-jump when the filter changes (the filtered list may shift the
-    // nearest upcoming). We deliberately do NOT listen to
-    // bookingsWindowProvider here: every loadEarlier/loadLater would
-    // trigger an unwanted re-jump that yanks the user out of their
-    // scroll position. The initial "first data arrival" jump is handled
-    // in the data: builder below via the !_hasJumpedToNearest gate, and
-    // lazy-load expansions are kept in place by `_scrollAnchor`.
+    // A filter change rebuilds the list; clear the seeded chip key so it is
+    // recomputed from the new data's initial scroll position.
     ref.listen<BookingsFilterState>(bookingsFilterProvider, (_, __) {
-      final window = ref.read(bookingsWindowProvider).value;
-      if (window == null) return;
-      _hasJumpedToNearest = false;
-      _cancelInFlightJump();
-      _scheduleJumpToNearest(
-          _filteredSorted(window.bookings, ref.read(bookingsFilterProvider)));
+      setState(() => _selectedMonthKey = null);
     });
 
     final bookingsAsync = ref.watch(bookingsWindowProvider);
@@ -504,9 +399,13 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                           _currentItems = data.items;
                           _renderedItemCount = data.items.length;
 
-                          if (!_hasJumpedToNearest) {
-                            _scheduleJumpToNearest(data.visibleAfterFilter);
-                          }
+                          _selectedMonthKey ??= _monthKeyForIndex(
+                            initialBookingScrollIndex(
+                              sortedFiltered: data.visibleAfterFilter,
+                              monthHeaderIndex: data.monthHeaderIndex,
+                              now: ref.read(clockProvider)(),
+                            ),
+                          );
 
                           // Restore scroll anchor after a prepend (loadEarlier).
                           final anchor = _scrollAnchor;
@@ -617,6 +516,13 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       );
     }
 
+    final initialIndex = initialBookingScrollIndex(
+          sortedFiltered: data.visibleAfterFilter,
+          monthHeaderIndex: data.monthHeaderIndex,
+          now: ref.read(clockProvider)(),
+        ) +
+        (window.isLoadingEarlier ? 1 : 0);
+
     return Stack(
       children: [
         data.items.isEmpty
@@ -627,9 +533,15 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                 ),
               )
             : ScrollablePositionedList.builder(
+                // A new key on filter change forces a fresh element so
+                // initialScrollIndex re-applies. Sort the band ids so the key is
+                // canonical (independent of hide/show toggle order).
+                key: ValueKey(
+                    'bookings-list-${filter.status}-${(filter.hiddenBandIds.toList()..sort()).join(",")}'),
                 itemCount: data.items.length +
                     (window.isLoadingEarlier ? 1 : 0) +
                     (window.isLoadingLater ? 1 : 0),
+                initialScrollIndex: initialIndex,
                 itemScrollController: _itemScrollController,
                 itemPositionsListener: _itemPositionsListener,
                 itemBuilder: (context, index) {

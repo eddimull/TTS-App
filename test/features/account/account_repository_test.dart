@@ -10,6 +10,7 @@ class _FakeDio extends Fake implements Dio {
   String? lastPatchPath;
   Map<String, dynamic>? lastPatchData;
   bool deleteCalled = false;
+  String? lastDeletePath;
 
   @override
   Future<Response<T>> get<T>(
@@ -59,6 +60,7 @@ class _FakeDio extends Fake implements Dio {
     CancelToken? cancelToken,
   }) async {
     deleteCalled = true;
+    lastDeletePath = path;
     return Response<T>(
       data: null,
       statusCode: 202,
@@ -129,6 +131,7 @@ void main() {
 
       expect(dio.lastPatchPath, accountPath);
       expect(dio.lastPatchData!.containsKey('password'), isFalse);
+      expect(dio.lastPatchData!.containsKey('password_confirmation'), isFalse);
       expect(dio.lastPatchData!['email_notifications'], isFalse);
     });
 
@@ -154,6 +157,7 @@ void main() {
       await repo.requestDeletion();
 
       expect(dio.deleteCalled, isTrue);
+      expect(dio.lastDeletePath, accountPath);
     });
   });
 }

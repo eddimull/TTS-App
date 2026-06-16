@@ -114,6 +114,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isBandsRoute = state.matchedLocation == '/bands';
       final isBandsCreateRoute = state.matchedLocation == '/bands/create';
       final isBandsJoinRoute = state.matchedLocation == '/bands/join';
+      // Account management must stay reachable for ANY authenticated user,
+      // including one with zero bands — Apple App Review requires the account
+      // deletion path to be accessible to a brand-new (band-less) account.
+      final isAccountRoute = state.matchedLocation == '/account';
 
       // Not authenticated → force to login (signup is also allowed).
       if (authState == null || authState is AuthUnauthenticated) {
@@ -130,6 +134,14 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Authenticated — check band selection.
       if (authState is AuthAuthenticated) {
+        // Account management is always allowed once authenticated, regardless
+        // of band-selection state, so a band-less user can still reach the
+        // account-deletion flow (Apple App Review requirement).
+        if (isAccountRoute) {
+          debugPrint('[Router] account route — allowing through');
+          return null;
+        }
+
         final bands = authState.bands;
         final bandId = bandAsync.value;
 

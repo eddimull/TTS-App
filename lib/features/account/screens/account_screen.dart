@@ -166,9 +166,13 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
     try {
       await ref.read(accountProvider.notifier).requestDeletion();
       if (!mounted) return;
+      // The backend sends the link to the account's saved email, which may
+      // differ from an unsaved edit in the email field — show the saved one.
+      final savedEmail =
+          ref.read(accountProvider).value?.profile.email ?? _email.text.trim();
       _showMessage(
         'Check your email',
-        'We sent a confirmation link to ${_email.text.trim()}. Tap it to '
+        'We sent a confirmation link to $savedEmail. Tap it to '
             'finish deleting your account. The link expires in 60 minutes.',
       );
     } catch (e) {

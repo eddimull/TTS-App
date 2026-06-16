@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/bookings/data/bookings_cache_storage.dart';
 import '../../features/bookings/providers/bookings_provider.dart';
 import '../../features/bookings/providers/bookings_window_provider.dart';
 import '../../features/bookings/providers/contract_history_provider.dart';
@@ -86,6 +87,10 @@ class CacheInvalidator {
     // Cheaper than enumerating every (status, year, upcomingOnly) tuple any
     // screen may have queried.
     _ref.invalidate(bandBookingsProvider);
+    // Drop the disk cache before invalidating so the window provider's rebuild
+    // takes the cold path (fresh fetch) instead of painting now-stale
+    // pre-mutation data from disk and only correcting it on background revalidate.
+    _ref.read(bookingsCacheStorageProvider).clear();
     _ref.invalidate(bookingsWindowProvider);
     _ref.invalidate(bookingDateInfoProvider(bandId));
     _ref.invalidate(bookingDateStatusesProvider(bandId));

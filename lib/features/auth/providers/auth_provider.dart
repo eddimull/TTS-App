@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/core_providers.dart';
 import '../../../core/storage/route_storage.dart';
+import '../../bookings/data/bookings_cache_storage.dart';
 import '../data/auth_repository.dart';
 import '../data/models/auth_user.dart';
 import '../data/models/band_summary.dart';
@@ -154,6 +155,12 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     try {
       final routeStorage = await ref.read(routeStorageProvider.future);
       routeStorage.clearLastRoute();
+    } catch (_) {}
+
+    // Drop the bookings disk cache so a different user signing in on this
+    // device never sees the previous user's bookings.
+    try {
+      ref.read(bookingsCacheStorageProvider).clear();
     } catch (_) {}
 
     state = const AsyncValue.data(AuthUnauthenticated());

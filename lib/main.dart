@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'app.dart';
 import 'core/config/router.dart';
 import 'core/storage/route_storage.dart';
+import 'features/bookings/data/bookings_cache_storage.dart';
 import 'firebase_options.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -73,6 +74,7 @@ Future<void> main() async {
   // user's first interaction.
   final prefs = await SharedPreferences.getInstance();
   final routeStorage = RouteStorage(prefs);
+  final bookingsCacheStorage = BookingsCacheStorage(prefs);
   final initialLocation = _resolveInitialLocation(routeStorage);
 
   // Push notifications are only supported on iOS/Android. Guard so the Linux
@@ -104,6 +106,7 @@ Future<void> main() async {
         retry: _retryPolicy,
         overrides: [
           routeStorageProvider.overrideWith((_) async => routeStorage),
+          bookingsCacheStorageProvider.overrideWithValue(bookingsCacheStorage),
           initialLocationProvider.overrideWithValue(initialLocation),
         ],
         child: const BandmateApp(),

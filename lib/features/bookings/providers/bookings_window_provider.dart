@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/bookings_cache_storage.dart';
 import '../data/bookings_repository.dart';
 import '../data/models/booking_summary.dart';
 import 'clock_provider.dart';
@@ -85,9 +86,44 @@ class BookingsWindowNotifier extends AsyncNotifier<BookingsWindow> {
     // which Dart normalizes to the last day of the previous month.
     final to = DateTime(now.year, now.month + _initialLookaheadMonths + 1, 0);
 
-    final repo = ref.read(bookingsRepositoryProvider);
-    final bookings = await repo.getAllUserBookings(from: from, to: to);
+    final cache = ref.read(bookingsCacheStorageProvider);
+    final cached = cache.read();
 
+    if (cached != null) {
+      // Instant paint from disk, then refresh in the background. Paint with the
+      // freshly-computed [from]/[to] (not the cache's stored bounds): the cached
+      // raw bookings are what matter, and using current bounds keeps the
+      // loadEarlier/loadLater edge math correct during the brief window before
+      // revalidation lands.
+      final bookings = cached.rawBookings.map(BookingSummary.fromJson).toList();
+      // Defer the background refresh until after the framework commits this
+      // build's returned value — otherwise revalidate's `state = …` lands
+      // first and is immediately overwritten by build's own result.
+      // ignore: unawaited_futures
+      Future<void>(() => _revalidate(from: from, to: to));
+      return _initialWindow(from: from, to: to, bookings: bookings);
+    }
+
+    // Cold start — await the network (a blocking spinner is correct here).
+    final repo = ref.read(bookingsRepositoryProvider);
+    final result = await repo.getAllUserBookingsRaw(from: from, to: to);
+    cache.write(BookingsWindowCache(
+      from: from,
+      to: to,
+      cachedAt: now,
+      rawBookings: result.raw,
+    ));
+    return _initialWindow(from: from, to: to, bookings: result.parsed);
+  }
+
+  /// Builds a fresh, un-expanded [BookingsWindow] (no edges reached, no loading
+  /// in flight). Shared by the cold-start, warm-paint, and revalidate paths so
+  /// the initial-window shape stays in one place.
+  BookingsWindow _initialWindow({
+    required DateTime from,
+    required DateTime to,
+    required List<BookingSummary> bookings,
+  }) {
     return BookingsWindow(
       from: from,
       to: to,
@@ -97,6 +133,44 @@ class BookingsWindowNotifier extends AsyncNotifier<BookingsWindow> {
       isLoadingEarlier: false,
       isLoadingLater: false,
     );
+  }
+
+  /// Background refresh of the initial [from]..[to] window. Rewrites the cache
+  /// and swaps fresh data into state on success; preserves cached data on error
+  /// (matching loadEarlier/loadLater's "don't lose the slice" policy).
+  ///
+  /// Crucially, it only replaces `state` while the window is still the
+  /// un-expanded initial slice. If the user has scrolled and triggered a
+  /// loadEarlier/loadLater (or one is in flight) since the warm paint, the
+  /// window now spans different bounds; blindly replacing it would discard the
+  /// loaded slices and snap the list back — the very content shift this feature
+  /// removes. In that case we still refresh the on-disk cache (so the next cold
+  /// start is current) but leave the live, expanded window untouched.
+  Future<void> _revalidate({required DateTime from, required DateTime to}) async {
+    try {
+      final repo = ref.read(bookingsRepositoryProvider);
+      final result = await repo.getAllUserBookingsRaw(from: from, to: to);
+      if (!ref.mounted) return;
+
+      ref.read(bookingsCacheStorageProvider).write(BookingsWindowCache(
+            from: from,
+            to: to,
+            cachedAt: ref.read(clockProvider)(),
+            rawBookings: result.raw,
+          ));
+
+      final current = state.value;
+      final windowUnchanged = current != null &&
+          current.from == from &&
+          current.to == to &&
+          !current.isLoadingEarlier &&
+          !current.isLoadingLater;
+      if (!windowUnchanged) return;
+
+      state = AsyncData(_initialWindow(from: from, to: to, bookings: result.parsed));
+    } catch (_) {
+      // Keep cached data on screen; silent.
+    }
   }
 
   Future<void> loadEarlier() async {
@@ -116,7 +190,8 @@ class BookingsWindowNotifier extends AsyncNotifier<BookingsWindow> {
 
     try {
       final repo = ref.read(bookingsRepositoryProvider);
-      final fetched = await repo.getAllUserBookings(from: newFrom, to: newTo);
+      final fetched =
+          (await repo.getAllUserBookingsRaw(from: newFrom, to: newTo)).parsed;
 
       if (!ref.mounted) return;
       final current = state.value!;
@@ -163,7 +238,8 @@ class BookingsWindowNotifier extends AsyncNotifier<BookingsWindow> {
 
     try {
       final repo = ref.read(bookingsRepositoryProvider);
-      final fetched = await repo.getAllUserBookings(from: newFrom, to: newTo);
+      final fetched =
+          (await repo.getAllUserBookingsRaw(from: newFrom, to: newTo)).parsed;
 
       if (!ref.mounted) return;
       final current = state.value!;
@@ -193,7 +269,15 @@ class BookingsWindowNotifier extends AsyncNotifier<BookingsWindow> {
   }
 
   /// Re-runs `build` and waits for the new initial window to load.
+  ///
+  /// Clears the disk cache first so the re-run takes the cold path
+  /// (synchronous network fetch + cache write) rather than painting the now
+  /// stale cache and revalidating in the background. Use this where serving
+  /// pre-mutation data — even briefly — would be wrong, e.g. an explicit user
+  /// retry. (Booking mutations clear the cache via `CacheInvalidator` before
+  /// invalidating this provider, achieving the same cold-path re-run.)
   Future<void> refresh() async {
+    ref.read(bookingsCacheStorageProvider).clear();
     ref.invalidateSelf();
     await future;
   }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tts_bandmate/features/bookings/data/bookings_cache_storage.dart';
 import 'package:tts_bandmate/features/bookings/data/bookings_repository.dart';
 import 'package:tts_bandmate/features/bookings/data/models/booking_summary.dart';
 import 'package:tts_bandmate/features/bookings/providers/bookings_window_provider.dart';
@@ -15,7 +16,8 @@ class _StubRepo implements BookingsRepository {
   int _responseIdx = 0;
 
   @override
-  Future<List<BookingSummary>> getAllUserBookings({
+  Future<({List<BookingSummary> parsed, List<Map<String, dynamic>> raw})>
+      getAllUserBookingsRaw({
     String? status,
     bool upcomingOnly = false,
     int? year,
@@ -23,8 +25,19 @@ class _StubRepo implements BookingsRepository {
     DateTime? to,
   }) async {
     calls.add((from: from, to: to));
-    if (_responseIdx >= responsesQueue.length) return const [];
-    return responsesQueue[_responseIdx++];
+    final parsed = _responseIdx >= responsesQueue.length
+        ? const <BookingSummary>[]
+        : responsesQueue[_responseIdx++];
+    final raw = parsed
+        .map((b) => {
+              'id': b.id,
+              'name': b.name,
+              'date': b.startDate,
+              'is_paid': false,
+              'contacts': const [],
+            })
+        .toList();
+    return (parsed: parsed, raw: raw);
   }
 
   // The other repo methods aren't used by the window provider.
@@ -43,7 +56,8 @@ class _PendingRepo implements BookingsRepository {
   int _calls = 0;
 
   @override
-  Future<List<BookingSummary>> getAllUserBookings({
+  Future<({List<BookingSummary> parsed, List<Map<String, dynamic>> raw})>
+      getAllUserBookingsRaw({
     String? status,
     bool upcomingOnly = false,
     int? year,
@@ -51,8 +65,11 @@ class _PendingRepo implements BookingsRepository {
     DateTime? to,
   }) async {
     _calls++;
-    if (_calls == 1) return firstResponse;
-    return nextResponseFuture;
+    if (_calls == 1) {
+      return (parsed: firstResponse, raw: const <Map<String, dynamic>>[]);
+    }
+    final next = await nextResponseFuture;
+    return (parsed: next, raw: const <Map<String, dynamic>>[]);
   }
 
   @override
@@ -68,7 +85,8 @@ class _ThrowingRepo implements BookingsRepository {
   int _calls = 0;
 
   @override
-  Future<List<BookingSummary>> getAllUserBookings({
+  Future<({List<BookingSummary> parsed, List<Map<String, dynamic>> raw})>
+      getAllUserBookingsRaw({
     String? status,
     bool upcomingOnly = false,
     int? year,
@@ -76,9 +94,81 @@ class _ThrowingRepo implements BookingsRepository {
     DateTime? to,
   }) async {
     _calls++;
-    if (_calls == 1) return firstResponse;
+    if (_calls == 1) {
+      return (parsed: firstResponse, raw: const <Map<String, dynamic>>[]);
+    }
     throw thrownError;
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _AlwaysThrowRepo implements BookingsRepository {
+  _AlwaysThrowRepo(this.error);
+  final Object error;
+
+  @override
+  Future<({List<BookingSummary> parsed, List<Map<String, dynamic>> raw})>
+      getAllUserBookingsRaw({
+    String? status,
+    bool upcomingOnly = false,
+    int? year,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    throw error;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Routes by the requested window: the initial-bounds call (revalidate) waits
+/// on [revalidateGate] so the test can hold it open while a loadLater runs; the
+/// later-bounds call (loadLater) resolves immediately with [laterResponse].
+class _RaceRepo implements BookingsRepository {
+  _RaceRepo({
+    required this.initialFrom,
+    required this.revalidateGate,
+    required this.revalidateResponse,
+    required this.laterResponse,
+  });
+
+  final DateTime initialFrom;
+  final Future<void> revalidateGate;
+  final List<BookingSummary> revalidateResponse;
+  final List<BookingSummary> laterResponse;
+
+  @override
+  Future<({List<BookingSummary> parsed, List<Map<String, dynamic>> raw})>
+      getAllUserBookingsRaw({
+    String? status,
+    bool upcomingOnly = false,
+    int? year,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    if (from == initialFrom) {
+      await revalidateGate; // hold the revalidation open
+      return (parsed: revalidateResponse, raw: const <Map<String, dynamic>>[]);
+    }
+    return (parsed: laterResponse, raw: const <Map<String, dynamic>>[]);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeCacheStorage implements BookingsCacheStorage {
+  BookingsWindowCache? stored;
+
+  @override
+  BookingsWindowCache? read() => stored;
+  @override
+  void write(BookingsWindowCache cache) => stored = cache;
+  @override
+  void clear() => stored = null;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -98,10 +188,12 @@ BookingSummary _b(int id, String date) => BookingSummary(
 ProviderContainer _container({
   required BookingsRepository repo,
   required DateTime now,
+  BookingsCacheStorage? cache,
 }) {
   return ProviderContainer(overrides: [
     bookingsRepositoryProvider.overrideWithValue(repo),
     clockProvider.overrideWithValue(() => now),
+    bookingsCacheStorageProvider.overrideWithValue(cache ?? _FakeCacheStorage()),
   ]);
 }
 
@@ -381,6 +473,141 @@ void main() {
       expect(value, isNotNull, reason: 'prior window should be preserved');
       expect(value!.bookings.map((b) => b.id).toList(), [1]);
       expect(value.isLoadingLater, false);
+    });
+  });
+
+  group('BookingsWindowNotifier cache', () {
+    BookingsWindowCache seedCache(List<BookingSummary> bookings) {
+      return BookingsWindowCache(
+        from: DateTime(2026, 2, 1),
+        to: DateTime(2027, 2, 28),
+        cachedAt: DateTime(2026, 5, 15),
+        rawBookings: bookings
+            .map((b) => {
+                  'id': b.id,
+                  'name': b.name,
+                  'date': b.startDate,
+                  'is_paid': false,
+                  'contacts': const [],
+                })
+            .toList(),
+      );
+    }
+
+    test('build returns cached data without awaiting the network', () async {
+      final cache = _FakeCacheStorage()..stored = seedCache([_b(1, '2026-04-15')]);
+      final repo = _PendingRepo(
+        firstResponse: const [],
+        nextResponseFuture: Completer<List<BookingSummary>>().future,
+      );
+      final c = _container(repo: repo, now: DateTime(2026, 5, 15), cache: cache);
+      addTearDown(c.dispose);
+
+      final window = await c.read(bookingsWindowProvider.future);
+      expect(window.bookings.map((b) => b.id).toList(), [1]);
+    });
+
+    test('revalidate swaps in fresh data and rewrites the cache', () async {
+      final cache = _FakeCacheStorage()..stored = seedCache([_b(1, '2026-04-15')]);
+      final repo = _StubRepo()..responsesQueue = [[_b(2, '2026-04-20')]];
+      final c = _container(repo: repo, now: DateTime(2026, 5, 15), cache: cache);
+      addTearDown(c.dispose);
+
+      await c.read(bookingsWindowProvider.future);
+      await pumpEventQueue();
+
+      expect(c.read(bookingsWindowProvider).value!.bookings.map((b) => b.id).toList(), [2]);
+      expect(cache.stored!.rawBookings.first['id'], 2);
+    });
+
+    test('revalidate error keeps cached data', () async {
+      final cache = _FakeCacheStorage()..stored = seedCache([_b(1, '2026-04-15')]);
+      final repo = _AlwaysThrowRepo(Exception('boom'));
+      final c = _container(repo: repo, now: DateTime(2026, 5, 15), cache: cache);
+      addTearDown(c.dispose);
+
+      await c.read(bookingsWindowProvider.future);
+      await pumpEventQueue();
+
+      expect(c.read(bookingsWindowProvider).value!.bookings.map((b) => b.id).toList(), [1]);
+    });
+
+    test('no cache build awaits network and writes cache', () async {
+      final cache = _FakeCacheStorage();
+      final repo = _StubRepo()..responsesQueue = [[_b(5, '2026-05-20')]];
+      final c = _container(repo: repo, now: DateTime(2026, 5, 15), cache: cache);
+      addTearDown(c.dispose);
+
+      final window = await c.read(bookingsWindowProvider.future);
+      expect(window.bookings.map((b) => b.id).toList(), [5]);
+      expect(cache.stored, isNotNull);
+    });
+
+    test('refresh clears cache and re-fetches synchronously (no stale paint)',
+        () async {
+      // Seed a cache so the FIRST build would normally paint from disk. After
+      // refresh, the cache must be cleared so build takes the cold path and the
+      // re-fetched data is awaited (visible immediately, not via background
+      // revalidation).
+      final cache = _FakeCacheStorage()..stored = seedCache([_b(1, '2026-04-15')]);
+      final repo = _StubRepo()
+        ..responsesQueue = [
+          [_b(9, '2026-05-20')], // the refreshed (cold-path) fetch
+        ];
+      final c = _container(repo: repo, now: DateTime(2026, 5, 15), cache: cache);
+      addTearDown(c.dispose);
+
+      // Initial cached paint.
+      await c.read(bookingsWindowProvider.future);
+
+      await c.read(bookingsWindowProvider.notifier).refresh();
+      final window = await c.read(bookingsWindowProvider.future);
+
+      // Fresh data is present synchronously after refresh completes.
+      expect(window.bookings.map((b) => b.id).toList(), [9]);
+      // Cache was rewritten by the cold-path build.
+      expect(cache.stored!.rawBookings.first['id'], 9);
+    });
+
+    test('revalidate does not clobber a window expanded by loadLater', () async {
+      // Warm paint, then the user scrolls and loadLater expands the window while
+      // the background revalidation is still in flight. When revalidation lands
+      // it must NOT replace the expanded window (which would drop the loaded
+      // slice and snap the list back) — but it must still refresh the cache.
+      final gate = Completer<void>();
+      final cache = _FakeCacheStorage()..stored = seedCache([_b(1, '2026-04-15')]);
+      final repo = _RaceRepo(
+        initialFrom: DateTime(2026, 2, 1), // matches build's computed `from`
+        revalidateGate: gate.future,
+        revalidateResponse: [_b(1, '2026-04-15')], // would reset to initial-only
+        laterResponse: [_b(2, '2027-04-01')], // the appended later slice
+      );
+      final c = _container(repo: repo, now: DateTime(2026, 5, 15), cache: cache);
+      addTearDown(c.dispose);
+
+      // Cached warm paint; revalidation starts but blocks on `gate`.
+      await c.read(bookingsWindowProvider.future);
+      await pumpEventQueue();
+
+      // User scrolls to the bottom edge → loadLater expands the window.
+      await c.read(bookingsWindowProvider.notifier).loadLater();
+      expect(
+        c.read(bookingsWindowProvider).value!.bookings.map((b) => b.id).toList(),
+        [1, 2],
+      );
+      final expandedTo = c.read(bookingsWindowProvider).value!.to;
+
+      // Now let the in-flight revalidation complete.
+      gate.complete();
+      await pumpEventQueue();
+
+      final window = c.read(bookingsWindowProvider).value!;
+      // Expanded slice preserved; bounds not reset to the initial window.
+      expect(window.bookings.map((b) => b.id).toList(), [1, 2]);
+      expect(window.to, expandedTo);
+      // Cache still refreshed for the next cold start.
+      expect(cache.stored, isNotNull);
+      expect(cache.stored!.from, DateTime(2026, 2, 1));
     });
   });
 }

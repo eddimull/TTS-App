@@ -93,9 +93,7 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
 
   List<StateOption> get _filteredStates {
     if (_countryId == null) return widget.state.states;
-    return widget.state.states
-        .where((s) => s.countryId == _countryId)
-        .toList();
+    return widget.state.states.where((s) => s.countryId == _countryId).toList();
   }
 
   // ── Save ────────────────────────────────────────────────────────────────────
@@ -404,37 +402,42 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
         children: [
           Text(label, style: TextStyle(fontSize: 13, color: labelColor)),
           const SizedBox(height: 4),
-          GestureDetector(
-            onTap: onTap,
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: BoxDecoration(
-                color: CupertinoColors.tertiarySystemFill.resolveFrom(context),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      value ?? placeholder,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: value != null
-                            ? CupertinoColors.label.resolveFrom(context)
-                            : CupertinoColors.placeholderText
-                                .resolveFrom(context),
+          Semantics(
+            button: true,
+            label: '$label: ${value ?? placeholder}',
+            child: GestureDetector(
+              onTap: onTap,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(
+                  color:
+                      CupertinoColors.tertiarySystemFill.resolveFrom(context),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        value ?? placeholder,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: value != null
+                              ? CupertinoColors.label.resolveFrom(context)
+                              : CupertinoColors.placeholderText
+                                  .resolveFrom(context),
+                        ),
                       ),
                     ),
-                  ),
-                  Icon(
-                    CupertinoIcons.chevron_down,
-                    size: 16,
-                    color: onTap == null
-                        ? CupertinoColors.quaternaryLabel.resolveFrom(context)
-                        : CupertinoColors.tertiaryLabel.resolveFrom(context),
-                  ),
-                ],
+                    Icon(
+                      CupertinoIcons.chevron_down,
+                      size: 16,
+                      color: onTap == null
+                          ? CupertinoColors.quaternaryLabel.resolveFrom(context)
+                          : CupertinoColors.tertiaryLabel.resolveFrom(context),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -461,7 +464,9 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
         _field('Address 2', _address2, 'address2'),
         _pickerRow('Country', _countryName(_countryId), 'Select country',
             widget.state.countries.isEmpty ? null : _pickCountry),
-        _pickerRow('State', _stateName(_stateId),
+        _pickerRow(
+            'State',
+            _stateName(_stateId),
             hasStates ? 'Select state' : 'No states for country',
             hasStates ? _pickState : null),
         _field('City', _city, 'city'),

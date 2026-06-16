@@ -124,6 +124,42 @@ class _AlwaysThrowRepo implements BookingsRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Routes by the requested window: the initial-bounds call (revalidate) waits
+/// on [revalidateGate] so the test can hold it open while a loadLater runs; the
+/// later-bounds call (loadLater) resolves immediately with [laterResponse].
+class _RaceRepo implements BookingsRepository {
+  _RaceRepo({
+    required this.initialFrom,
+    required this.revalidateGate,
+    required this.revalidateResponse,
+    required this.laterResponse,
+  });
+
+  final DateTime initialFrom;
+  final Future<void> revalidateGate;
+  final List<BookingSummary> revalidateResponse;
+  final List<BookingSummary> laterResponse;
+
+  @override
+  Future<({List<BookingSummary> parsed, List<Map<String, dynamic>> raw})>
+      getAllUserBookingsRaw({
+    String? status,
+    bool upcomingOnly = false,
+    int? year,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    if (from == initialFrom) {
+      await revalidateGate; // hold the revalidation open
+      return (parsed: revalidateResponse, raw: const <Map<String, dynamic>>[]);
+    }
+    return (parsed: laterResponse, raw: const <Map<String, dynamic>>[]);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _FakeCacheStorage implements BookingsCacheStorage {
   BookingsWindowCache? stored;
 
@@ -531,6 +567,47 @@ void main() {
       expect(window.bookings.map((b) => b.id).toList(), [9]);
       // Cache was rewritten by the cold-path build.
       expect(cache.stored!.rawBookings.first['id'], 9);
+    });
+
+    test('revalidate does not clobber a window expanded by loadLater', () async {
+      // Warm paint, then the user scrolls and loadLater expands the window while
+      // the background revalidation is still in flight. When revalidation lands
+      // it must NOT replace the expanded window (which would drop the loaded
+      // slice and snap the list back) — but it must still refresh the cache.
+      final gate = Completer<void>();
+      final cache = _FakeCacheStorage()..stored = seedCache([_b(1, '2026-04-15')]);
+      final repo = _RaceRepo(
+        initialFrom: DateTime(2026, 2, 1), // matches build's computed `from`
+        revalidateGate: gate.future,
+        revalidateResponse: [_b(1, '2026-04-15')], // would reset to initial-only
+        laterResponse: [_b(2, '2027-04-01')], // the appended later slice
+      );
+      final c = _container(repo: repo, now: DateTime(2026, 5, 15), cache: cache);
+      addTearDown(c.dispose);
+
+      // Cached warm paint; revalidation starts but blocks on `gate`.
+      await c.read(bookingsWindowProvider.future);
+      await pumpEventQueue();
+
+      // User scrolls to the bottom edge → loadLater expands the window.
+      await c.read(bookingsWindowProvider.notifier).loadLater();
+      expect(
+        c.read(bookingsWindowProvider).value!.bookings.map((b) => b.id).toList(),
+        [1, 2],
+      );
+      final expandedTo = c.read(bookingsWindowProvider).value!.to;
+
+      // Now let the in-flight revalidation complete.
+      gate.complete();
+      await pumpEventQueue();
+
+      final window = c.read(bookingsWindowProvider).value!;
+      // Expanded slice preserved; bounds not reset to the initial window.
+      expect(window.bookings.map((b) => b.id).toList(), [1, 2]);
+      expect(window.to, expandedTo);
+      // Cache still refreshed for the next cold start.
+      expect(cache.stored, isNotNull);
+      expect(cache.stored!.from, DateTime(2026, 2, 1));
     });
   });
 }

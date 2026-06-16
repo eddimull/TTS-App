@@ -135,20 +135,38 @@ class BookingsWindowNotifier extends AsyncNotifier<BookingsWindow> {
     );
   }
 
-  /// Background refresh of the canonical [from]..[to] window. Swaps fresh data
-  /// into state and rewrites the cache on success; preserves cached data on
-  /// error (matching loadEarlier/loadLater's "don't lose the slice" policy).
+  /// Background refresh of the initial [from]..[to] window. Rewrites the cache
+  /// and swaps fresh data into state on success; preserves cached data on error
+  /// (matching loadEarlier/loadLater's "don't lose the slice" policy).
+  ///
+  /// Crucially, it only replaces `state` while the window is still the
+  /// un-expanded initial slice. If the user has scrolled and triggered a
+  /// loadEarlier/loadLater (or one is in flight) since the warm paint, the
+  /// window now spans different bounds; blindly replacing it would discard the
+  /// loaded slices and snap the list back — the very content shift this feature
+  /// removes. In that case we still refresh the on-disk cache (so the next cold
+  /// start is current) but leave the live, expanded window untouched.
   Future<void> _revalidate({required DateTime from, required DateTime to}) async {
     try {
       final repo = ref.read(bookingsRepositoryProvider);
       final result = await repo.getAllUserBookingsRaw(from: from, to: to);
       if (!ref.mounted) return;
+
       ref.read(bookingsCacheStorageProvider).write(BookingsWindowCache(
             from: from,
             to: to,
             cachedAt: ref.read(clockProvider)(),
             rawBookings: result.raw,
           ));
+
+      final current = state.value;
+      final windowUnchanged = current != null &&
+          current.from == from &&
+          current.to == to &&
+          !current.isLoadingEarlier &&
+          !current.isLoadingLater;
+      if (!windowUnchanged) return;
+
       state = AsyncData(_initialWindow(from: from, to: to, bookings: result.parsed));
     } catch (_) {
       // Keep cached data on screen; silent.

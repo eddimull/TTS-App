@@ -430,9 +430,11 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
     String label,
     String? value,
     String placeholder,
-    VoidCallback? onTap,
-  ) {
+    VoidCallback? onTap, {
+    String? fieldKey,
+  }) {
     final labelColor = CupertinoColors.secondaryLabel.resolveFrom(context);
+    final error = fieldKey == null ? null : _fieldErrors[fieldKey];
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
@@ -479,6 +481,16 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
               ),
             ),
           ),
+          if (error != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              error,
+              style: const TextStyle(
+                fontSize: 12,
+                color: CupertinoColors.destructiveRed,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -501,12 +513,14 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
         _field('Address 1', _address1, 'address1'),
         _field('Address 2', _address2, 'address2'),
         _pickerRow('Country', _countryName(_countryId), 'Select country',
-            widget.state.countries.isEmpty ? null : _pickCountry),
+            widget.state.countries.isEmpty ? null : _pickCountry,
+            fieldKey: 'country_id'),
         _pickerRow(
             'State',
             _stateName(_stateId),
             hasStates ? 'Select state' : 'No states for country',
-            hasStates ? _pickState : null),
+            hasStates ? _pickState : null,
+            fieldKey: 'state_id'),
         _field('City', _city, 'city'),
         _field('Zip', _zip, 'zip', keyboardType: TextInputType.number),
         const SizedBox(height: 12),

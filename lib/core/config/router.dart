@@ -32,6 +32,7 @@ import '../../features/media/screens/media_screen.dart';
 import '../../features/finances/screens/finances_screen.dart';
 import '../../features/more/screens/more_screen.dart';
 import '../../features/band_settings/screens/band_settings_screen.dart';
+import '../../features/account/screens/account_screen.dart';
 import '../../features/setlist/screens/live_session_screen.dart';
 import '../../features/setlist_editor/screens/setlist_editor_screen.dart';
 import '../../shared/providers/selected_band_provider.dart';
@@ -113,6 +114,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isBandsRoute = state.matchedLocation == '/bands';
       final isBandsCreateRoute = state.matchedLocation == '/bands/create';
       final isBandsJoinRoute = state.matchedLocation == '/bands/join';
+      // Account management must stay reachable for ANY authenticated user,
+      // including one with zero bands — Apple App Review requires the account
+      // deletion path to be accessible to a brand-new (band-less) account.
+      final isAccountRoute = state.matchedLocation == '/account';
 
       // Not authenticated → force to login (signup is also allowed).
       if (authState == null || authState is AuthUnauthenticated) {
@@ -129,6 +134,13 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Authenticated — check band selection.
       if (authState is AuthAuthenticated) {
+        // Account management is always allowed once authenticated, regardless
+        // of band-selection state, so a band-less user can still reach the
+        // account-deletion flow (Apple App Review requirement).
+        if (isAccountRoute) {
+          return null;
+        }
+
         final bands = authState.bands;
         final bandId = bandAsync.value;
 
@@ -351,6 +363,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => RehearsalDetailScreen(
           rehearsalId: int.tryParse(state.pathParameters['id']!),
         ),
+      ),
+      // Account — no bottom nav, pushed from the dashboard avatar
+      GoRoute(
+        path: '/account',
+        builder: (_, __) => const AccountScreen(),
       ),
       // Media — no bottom nav, pushed from More screen
       GoRoute(

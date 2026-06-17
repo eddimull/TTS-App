@@ -39,6 +39,20 @@ class _PathSelectionScreenState extends ConsumerState<PathSelectionScreen> {
         navigationBar: CupertinoNavigationBar(
           middle: const Text('Get Started'),
           automaticallyImplyLeading: false,
+          // Account access (incl. deletion) must stay reachable even with no
+          // band yet — required for Apple App Review on brand-new accounts.
+          leading: CupertinoButton(
+            padding: EdgeInsets.zero,
+            onPressed: () => context.push('/account'),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(CupertinoIcons.person_crop_circle, size: 18),
+                SizedBox(width: 4),
+                Text('Account'),
+              ],
+            ),
+          ),
           trailing: CupertinoButton(
             padding: EdgeInsets.zero,
             onPressed: () async =>

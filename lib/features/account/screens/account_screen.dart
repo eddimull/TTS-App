@@ -78,6 +78,44 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
   }
 
   @override
+  void didUpdateWidget(covariant _AccountForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // When the provider reloads (e.g. after a save, or a pull-to-refresh), the
+    // parent rebuilds this widget with a new profile but Flutter reuses this
+    // State — so initState won't re-run. Re-sync the form fields to the new
+    // profile when its identity actually changes, so the UI reflects the
+    // saved/server values rather than stale initial ones.
+    final old = oldWidget.state.profile;
+    final next = widget.state.profile;
+    if (old.id != next.id ||
+        old.name != next.name ||
+        old.email != next.email ||
+        old.address1 != next.address1 ||
+        old.address2 != next.address2 ||
+        old.city != next.city ||
+        old.stateId != next.stateId ||
+        old.countryId != next.countryId ||
+        old.zip != next.zip ||
+        old.emailNotifications != next.emailNotifications) {
+      _syncFromProfile(next);
+    }
+  }
+
+  void _syncFromProfile(AccountProfile p) {
+    _name.text = p.name;
+    _email.text = p.email;
+    _address1.text = p.address1 ?? '';
+    _address2.text = p.address2 ?? '';
+    _city.text = p.city ?? '';
+    _zip.text = p.zip ?? '';
+    setState(() {
+      _countryId = p.countryId;
+      _stateId = p.stateId;
+      _emailNotifications = p.emailNotifications;
+    });
+  }
+
+  @override
   void dispose() {
     _name.dispose();
     _email.dispose();

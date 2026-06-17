@@ -58,8 +58,18 @@ void main() {
     await tester.pumpWidget(harness.widget);
     await tester.pumpAndSettle();
 
-    // Initial profile is reflected in the form.
-    expect(find.widgetWithText(CupertinoTextField, 'Old Name'), findsOneWidget);
+    // Reads the Name field's live controller value. Asserting on controller
+    // text (rather than a text finder) is robust: it reflects exactly what the
+    // field holds, independent of how CupertinoTextField renders its content.
+    String nameFieldText() {
+      final fields = tester.widgetList<CupertinoTextField>(
+        find.byType(CupertinoTextField),
+      );
+      return fields.first.controller!.text;
+    }
+
+    // Initial profile is reflected in the form (Name is the first field).
+    expect(nameFieldText(), 'Old Name');
 
     // Simulate the server returning updated data, then reload the provider.
     // The parent rebuilds _AccountForm with the new profile while Flutter
@@ -78,7 +88,6 @@ void main() {
     }
 
     // The reused form State must now show the reloaded values.
-    expect(find.widgetWithText(CupertinoTextField, 'New Name'), findsOneWidget);
-    expect(find.widgetWithText(CupertinoTextField, 'Old Name'), findsNothing);
+    expect(nameFieldText(), 'New Name');
   });
 }

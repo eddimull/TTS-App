@@ -138,7 +138,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         // of band-selection state, so a band-less user can still reach the
         // account-deletion flow (Apple App Review requirement).
         if (isAccountRoute) {
-          debugPrint('[Router] account route — allowing through');
           return null;
         }
 

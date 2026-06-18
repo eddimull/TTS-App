@@ -40,9 +40,10 @@ void main() {
 
       // Branding plus the first demo panel's copy and mock content are visible
       // immediately — a logged-out user sees real app features, not a login wall.
+      // Panel 1 leads with the unique Live Session feature.
       expect(find.text('Bandmate'), findsOneWidget);
-      expect(find.text('Your whole season at a glance'), findsOneWidget);
-      expect(find.text('Riverfront Wedding'), findsWidgets);
+      expect(find.text('Run the night, live'), findsOneWidget);
+      expect(find.text('NOW PLAYING'), findsOneWidget);
     });
 
     testWidgets('offers Log In and Create Account actions', (tester) async {
@@ -75,7 +76,7 @@ void main() {
         (tester) async {
       await _pumpWelcome(tester);
 
-      expect(find.text('Manage every booking'), findsNothing);
+      expect(find.text('Build setlists in seconds'), findsNothing);
 
       await tester.fling(
         find.byType(PageView),
@@ -84,7 +85,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Manage every booking'), findsOneWidget);
+      expect(find.text('Build setlists in seconds'), findsOneWidget);
     });
   });
 }

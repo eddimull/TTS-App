@@ -1,9 +1,15 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Location for leave-by reminders (Phase 2 notifications). Background
-         location enables the data-push enrichment path. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Location for leave-by reminders. We only ever take a single
+         foreground reading (Geolocator.getCurrentPosition), so we do NOT
+         request background location. The geolocator plugin declares
+         ACCESS_BACKGROUND_LOCATION in its own manifest, so we explicitly
+         strip it during manifest merge to avoid the Play Console
+         background-location policy declaration. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
+        tools:node="remove" />
     <!-- Exact alarms back AndroidScheduleMode.exactAllowWhileIdle for the
          precise "leave in 15 min" local notification. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />

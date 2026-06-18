@@ -359,12 +359,12 @@ class _SetlistPreview extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                   color: CupertinoColors.label.resolveFrom(context))),
           const SizedBox(height: 10),
-          for (final (num, title, artist) in songs) ...[
+          for (final (trackNumber, title, artist) in songs) ...[
             Row(
               children: [
                 SizedBox(
                   width: 20,
-                  child: Text(num,
+                  child: Text(trackNumber,
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,

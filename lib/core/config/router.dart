@@ -5,6 +5,7 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/band_selector_screen.dart';
 import '../../features/auth/screens/sign_up_screen.dart';
+import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/screens/path_selection_screen.dart';
 import '../../features/bands/screens/create_band_screen.dart';
 import '../../features/bands/screens/join_band_screen.dart';
@@ -75,11 +76,11 @@ const _kShellPrefixes = [
   '/finances',
 ];
 
-/// Initial location used when constructing the GoRouter. Defaults to `/login`.
+/// Initial location used when constructing the GoRouter. Defaults to `/welcome`.
 /// `main.dart` overrides this with the user's last shell route (if recent)
 /// after pre-resolving [routeStorageProvider], so cold-start restore happens
 /// once at construction — never via the redirect callback.
-final initialLocationProvider = Provider<String>((_) => '/login');
+final initialLocationProvider = Provider<String>((_) => '/welcome');
 
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
@@ -109,6 +110,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final authState = authAsync.value;
 
+      final isWelcomeRoute = state.matchedLocation == '/welcome';
       final isLoginRoute = state.matchedLocation == '/login';
       final isSignupRoute = state.matchedLocation == '/signup';
       final isBandsRoute = state.matchedLocation == '/bands';
@@ -119,9 +121,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       // deletion path to be accessible to a brand-new (band-less) account.
       final isAccountRoute = state.matchedLocation == '/account';
 
-      // Not authenticated → force to login (signup is also allowed).
+      // Not authenticated → land on the welcome/showcase screen. Login and
+      // signup are reachable from there. Sending logged-out users to /welcome
+      // (rather than straight to a login form) is what keeps the app's
+      // non-account features visible without registration — App Review 5.1.1(v).
       if (authState == null || authState is AuthUnauthenticated) {
-        final dest = (isLoginRoute || isSignupRoute) ? null : '/login';
+        final dest =
+            (isWelcomeRoute || isLoginRoute || isSignupRoute) ? null : '/welcome';
         debugPrint('[Router] unauthenticated → $dest');
         return dest;
       }
@@ -183,9 +189,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
 
         // Band is selected and valid.
-        // Clear login screen if still showing it.
-        if (isLoginRoute) {
-          debugPrint('[Router] authenticated + valid band, on /login → /dashboard');
+        // Clear the welcome/login screens if still showing one.
+        if (isWelcomeRoute || isLoginRoute) {
+          debugPrint('[Router] authenticated + valid band, on welcome/login → /dashboard');
           return '/dashboard';
         }
 
@@ -201,6 +207,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/welcome',
+        builder: (context, state) => const WelcomeScreen(),
+      ),
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),

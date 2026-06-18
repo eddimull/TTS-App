@@ -225,7 +225,9 @@ class Harness {
 /// this function.
 ///
 /// [initialLocation] is the first route the router lands on. Defaults to
-/// `/login` (the same path the production app uses for a logged-out user).
+/// `/login` so auth-flow tests start at the login form directly; production
+/// instead lands a logged-out user on `/welcome` (the pre-auth showcase),
+/// which forwards to `/login` when they choose to sign in.
 ///
 /// Callers must invoke [stubConnectivityChannel] in `setUp` (or once in
 /// `main`) before pumping; this factory does not stub platform channels.

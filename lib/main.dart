@@ -36,14 +36,17 @@ const _kRestorableShellPrefixes = [
 ];
 
 /// Read the saved last-route synchronously and decide the initial location.
-/// Returns `/login` when there's nothing recent to restore — auth/band guards
-/// in the router will route forward from there.
+/// Returns `/welcome` when there's nothing recent to restore — the router's
+/// auth/band guards route forward from there (an authenticated user is bounced
+/// straight to their dashboard, a logged-out user sees the welcome showcase).
 String _resolveInitialLocation(RouteStorage rs) {
   final last = rs.readLastRoute();
   final ts = rs.readLastRouteTimestamp();
-  if (last == null || ts == null) return '/login';
-  if (DateTime.now().difference(ts).inHours >= 24) return '/login';
-  if (!_kRestorableShellPrefixes.any((p) => last.startsWith(p))) return '/login';
+  if (last == null || ts == null) return '/welcome';
+  if (DateTime.now().difference(ts).inHours >= 24) return '/welcome';
+  if (!_kRestorableShellPrefixes.any((p) => last.startsWith(p))) {
+    return '/welcome';
+  }
   return last;
 }
 

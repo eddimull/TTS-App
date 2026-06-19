@@ -65,10 +65,10 @@ class _StatsContent extends StatelessWidget {
         const SizedBox(height: 24),
 
         // 2. Earnings by Year bar chart
-        if (stats.payments.byYear.isNotEmpty) ...[
+        if (stats.payments.yearBreakdown.isNotEmpty) ...[
           const StatsSectionHeader(title: 'Earnings by Year'),
           const SizedBox(height: 8),
-          EarningsBarChart(byYear: stats.payments.byYear),
+          EarningsBarChart(byYear: stats.payments.yearBreakdown),
           const SizedBox(height: 24),
         ],
 

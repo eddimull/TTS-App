@@ -63,6 +63,12 @@ class _YearGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
 
+    final playedLabel =
+        '${year.bookingCount} gig${year.bookingCount == 1 ? '' : 's'} played';
+    final upcomingSuffix = year.upcomingBookingCount > 0
+        ? '  +  ${currency.format(year.upcomingTotal)} upcoming'
+        : '';
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Container(
@@ -77,7 +83,7 @@ class _YearGroup extends StatelessWidget {
             Semantics(
               button: true,
               label:
-                  '${year.year}, ${year.bookingCount} bookings, ${currency.format(year.yearTotal)}',
+                  '${year.year}, $playedLabel, ${currency.format(year.yearTotal)}$upcomingSuffix',
               child: GestureDetector(
                 onTap: onToggle,
                 behavior: HitTestBehavior.opaque,
@@ -99,7 +105,7 @@ class _YearGroup extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '${year.bookingCount} booking${year.bookingCount == 1 ? '' : 's'}  •  ${currency.format(year.yearTotal)}',
+                              '$playedLabel  •  ${currency.format(year.yearTotal)}$upcomingSuffix',
                               style: TextStyle(
                                 fontSize: 13,
                                 color: CupertinoColors.secondaryLabel
@@ -177,13 +183,39 @@ class _BookingDetailRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Date
-          Text(
-            _formatDate(booking.date),
-            style: TextStyle(
-              fontSize: 12,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
-            ),
+          // Date (+ an "Upcoming" badge for gigs that haven't happened yet)
+          Row(
+            children: [
+              Text(
+                _formatDate(booking.date),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                ),
+              ),
+              if (booking.isUpcoming) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.systemOrange
+                        .resolveFrom(context)
+                        .withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'Upcoming',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          CupertinoColors.systemOrange.resolveFrom(context),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 3),
           // Booking name + band

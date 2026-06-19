@@ -12,6 +12,15 @@ class StatsSummaryCards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
+    final payments = stats.payments;
+
+    // Only surface the upcoming line when there's projected revenue to show.
+    final upcomingLine = payments.upcomingBookingCount > 0
+        ? '${currency.format(payments.upcomingEarnings)} upcoming '
+            '(${payments.upcomingBookingCount} gig${payments.upcomingBookingCount == 1 ? '' : 's'})'
+        : null;
+    final earningsSecondary =
+        '${payments.bookingCount} gig${payments.bookingCount == 1 ? '' : 's'} played';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -25,9 +34,9 @@ class StatsSummaryCards extends StatelessWidget {
                   icon: CupertinoIcons.money_dollar_circle_fill,
                   iconColor: CupertinoColors.systemGreen,
                   title: 'Total Earnings',
-                  primary: currency.format(stats.payments.totalEarnings),
-                  secondary:
-                      '${stats.payments.bookingCount} booking${stats.payments.bookingCount == 1 ? '' : 's'}',
+                  primary: currency.format(payments.totalEarnings),
+                  secondary: earningsSecondary,
+                  tertiary: upcomingLine,
                 ),
                 const SizedBox(height: 10),
                 _SummaryCard(
@@ -59,9 +68,9 @@ class StatsSummaryCards extends StatelessWidget {
                   icon: CupertinoIcons.money_dollar_circle_fill,
                   iconColor: CupertinoColors.systemGreen,
                   title: 'Total Earnings',
-                  primary: currency.format(stats.payments.totalEarnings),
-                  secondary:
-                      '${stats.payments.bookingCount} booking${stats.payments.bookingCount == 1 ? '' : 's'}',
+                  primary: currency.format(payments.totalEarnings),
+                  secondary: earningsSecondary,
+                  tertiary: upcomingLine,
                 ),
               ),
               const SizedBox(width: 10),
@@ -111,6 +120,7 @@ class _SummaryCard extends StatelessWidget {
     required this.title,
     required this.primary,
     required this.secondary,
+    this.tertiary,
   });
 
   final IconData icon;
@@ -118,6 +128,9 @@ class _SummaryCard extends StatelessWidget {
   final String title;
   final String primary;
   final String secondary;
+
+  /// Optional third line (e.g. projected upcoming earnings).
+  final String? tertiary;
 
   @override
   Widget build(BuildContext context) {
@@ -161,6 +174,16 @@ class _SummaryCard extends StatelessWidget {
               color: CupertinoColors.secondaryLabel.resolveFrom(context),
             ),
           ),
+          if (tertiary != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              tertiary!,
+              style: TextStyle(
+                fontSize: 12,
+                color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+              ),
+            ),
+          ],
         ],
       ),
     );

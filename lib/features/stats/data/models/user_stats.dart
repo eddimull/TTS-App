@@ -27,7 +27,10 @@ class UserStats {
   }
 
   /// True when the user has no earnings and no events — drives the empty state.
-  bool get isEmpty => payments.bookingCount == 0 && travel.eventCount == 0;
+  bool get isEmpty =>
+      payments.bookingCount == 0 &&
+      payments.upcomingBookingCount == 0 &&
+      travel.eventCount == 0;
 }
 
 // ── Payments ────────────────────────────────────────────────────────────────

@@ -14,7 +14,8 @@ class StatsSummaryCards extends StatelessWidget {
     final currency = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
     final payments = stats.payments;
 
-    // Only surface the upcoming line when there's projected revenue to show.
+    // Surface the upcoming line whenever there are upcoming gigs, keyed on the
+    // count (not earnings) so the line still shows for booked-but-unpriced gigs.
     final upcomingLine = payments.upcomingBookingCount > 0
         ? '${currency.format(payments.upcomingEarnings)} upcoming '
             '(${payments.upcomingBookingCount} gig${payments.upcomingBookingCount == 1 ? '' : 's'})'

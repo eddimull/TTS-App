@@ -31,7 +31,12 @@ class _BookingsByYearSectionState extends State<BookingsByYearSection> {
   @override
   Widget build(BuildContext context) {
     if (!_seededDefault && widget.bookingsByYear.isNotEmpty) {
-      _expanded.add(widget.bookingsByYear.first.year);
+      // Default-expand the most recent real year. Fall back to the first
+      // element only if every group is the year-less "TBD" bucket, so an
+      // undated bucket doesn't get expanded ahead of actual years.
+      final firstReal = widget.bookingsByYear
+          .firstWhere((y) => y.year != null, orElse: () => widget.bookingsByYear.first);
+      _expanded.add(firstReal.year);
       _seededDefault = true;
     }
 

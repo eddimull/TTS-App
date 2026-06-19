@@ -171,6 +171,32 @@ void main() {
       expect(stats.isEmpty, isTrue);
     });
 
+    test('isEmpty is false when the user has only upcoming gigs', () async {
+      // A user with no earned bookings or past events but with upcoming gigs is
+      // NOT empty — they should see their upcoming earnings, not the empty state.
+      final onlyUpcoming = {
+        path: {
+          'stats': {
+            'payments': {
+              'total_earnings': '0.00',
+              'booking_count': 0,
+              'upcoming_earnings': '2000.00',
+              'upcoming_booking_count': 2,
+              'by_year': [],
+              'by_band': [],
+              'bookings_by_year': [],
+            },
+            'travel': {'total_miles': 0, 'total_minutes': 0, 'total_hours': 0, 'event_count': 0, 'by_year': []},
+            'locations': [],
+          },
+        },
+      };
+      final repo = StatsRepository(_FakeDio(onlyUpcoming));
+      final stats = await repo.getStats();
+      expect(stats.isEmpty, isFalse);
+      expect(stats.payments.upcomingEarnings, 2000.00);
+    });
+
     test('parses an upcoming booking with no gig date (null year/date)', () async {
       // Bookings with no events yet are reported as upcoming and grouped under a
       // null year with a null date — must parse without crashing.

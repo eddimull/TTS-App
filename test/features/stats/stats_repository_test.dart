@@ -170,5 +170,59 @@ void main() {
       final stats = await repo.getStats();
       expect(stats.isEmpty, isTrue);
     });
+
+    test('parses an upcoming booking with no gig date (null year/date)', () async {
+      // Bookings with no events yet are reported as upcoming and grouped under a
+      // null year with a null date — must parse without crashing.
+      final withUndated = {
+        path: {
+          'stats': {
+            'payments': {
+              'total_earnings': '0.00',
+              'booking_count': 0,
+              'upcoming_earnings': '1500.00',
+              'upcoming_booking_count': 1,
+              'by_year': [],
+              'by_band': [],
+              'bookings_by_year': [
+                {
+                  'year': null,
+                  'year_total': '0.00',
+                  'booking_count': 0,
+                  'upcoming_total': '1500.00',
+                  'upcoming_booking_count': 1,
+                  'bookings': [
+                    {
+                      'id': 1,
+                      'booking_name': 'Future Gig',
+                      'band_name': 'The Rockers',
+                      'venue_name': 'TBD',
+                      'venue_address': null,
+                      'date': null,
+                      'status': 'confirmed',
+                      'is_upcoming': true,
+                      'total_price': '3000.00',
+                      'user_share': '1500.00',
+                    },
+                  ],
+                },
+              ],
+            },
+            'travel': {'total_miles': 0, 'total_minutes': 0, 'total_hours': 0, 'event_count': 0, 'by_year': []},
+            'locations': [],
+          },
+        },
+      };
+      final repo = StatsRepository(_FakeDio(withUndated));
+      final stats = await repo.getStats();
+
+      final group = stats.payments.bookingsByYear.single;
+      expect(group.year, isNull);
+      expect(group.upcomingTotal, 1500.00);
+      final row = group.bookings.single;
+      expect(row.isUpcoming, isTrue);
+      expect(row.date, ''); // null date decodes to empty string -> rendered as "TBD"
+      expect(stats.payments.upcomingEarnings, 1500.00);
+    });
   });
 }

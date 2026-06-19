@@ -15,11 +15,12 @@ class BookingsByYearSection extends StatefulWidget {
 class _BookingsByYearSectionState extends State<BookingsByYearSection> {
   // Track which years are expanded, keyed by the year value (not list index) so
   // the state stays correct if the list order/length changes after a refresh.
+  // A null key is the year-less "TBD" bucket (bookings with no gig date yet).
   // Lazily seeded with the most recent year the first time we build.
-  final Set<int> _expanded = {};
+  final Set<int?> _expanded = {};
   bool _seededDefault = false;
 
-  void _toggle(int year) {
+  void _toggle(int? year) {
     setState(() {
       if (!_expanded.remove(year)) {
         _expanded.add(year);
@@ -63,6 +64,8 @@ class _YearGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
 
+    // Bookings with no events yet have no year — bucket them under "TBD".
+    final yearLabel = year.year?.toString() ?? 'TBD';
     final playedLabel =
         '${year.bookingCount} gig${year.bookingCount == 1 ? '' : 's'} played';
     final hasUpcoming = year.upcomingBookingCount > 0;
@@ -87,7 +90,7 @@ class _YearGroup extends StatelessWidget {
             Semantics(
               button: true,
               label:
-                  '${year.year}, $playedLabel, ${currency.format(year.yearTotal)}$upcomingSpoken',
+                  '$yearLabel, $playedLabel, ${currency.format(year.yearTotal)}$upcomingSpoken',
               child: GestureDetector(
                 onTap: onToggle,
                 behavior: HitTestBehavior.opaque,
@@ -101,7 +104,7 @@ class _YearGroup extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '${year.year}',
+                              yearLabel,
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -169,11 +172,16 @@ class _BookingDetailRow extends StatelessWidget {
   final BookingRow booking;
 
   String _formatDate(String raw) {
+    // Bookings with no events yet have an empty date (treated as upcoming);
+    // show a placeholder rather than a blank or unparseable string.
+    if (raw.isEmpty) {
+      return 'TBD';
+    }
     try {
       final dt = DateTime.parse(raw);
       return DateFormat('MMM d, yyyy').format(dt);
     } catch (_) {
-      return raw;
+      return 'TBD';
     }
   }
 

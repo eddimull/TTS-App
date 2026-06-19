@@ -80,7 +80,7 @@ class YearEarnings {
   final double total;
 
   factory YearEarnings.fromJson(Map<String, dynamic> json) => YearEarnings(
-        year: (json['year'] as num).toInt(),
+        year: (json['year'] as num?)?.toInt() ?? 0,
         total: _money(json['total']),
       );
 }
@@ -116,7 +116,9 @@ class BookingsYear {
     required this.bookings,
   });
 
-  final int year;
+  /// Null for bookings with no events yet (no gig date), which are grouped
+  /// under a year-less bucket and shown as "TBD".
+  final int? year;
   final double yearTotal;
   final int bookingCount;
 
@@ -127,7 +129,7 @@ class BookingsYear {
   final List<BookingRow> bookings;
 
   factory BookingsYear.fromJson(Map<String, dynamic> json) => BookingsYear(
-        year: (json['year'] as num).toInt(),
+        year: (json['year'] as num?)?.toInt(),
         yearTotal: _money(json['year_total']),
         bookingCount: (json['booking_count'] as num?)?.toInt() ?? 0,
         upcomingTotal: _money(json['upcoming_total']),
@@ -224,7 +226,7 @@ class TravelYear {
   final List<TravelEventRow> events;
 
   factory TravelYear.fromJson(Map<String, dynamic> json) => TravelYear(
-        year: (json['year'] as num).toInt(),
+        year: (json['year'] as num?)?.toInt() ?? 0,
         totalMiles: (json['total_miles'] as num?)?.toDouble() ?? 0,
         totalHours: (json['total_hours'] as num?)?.toDouble() ?? 0,
         eventCount: (json['event_count'] as num?)?.toInt() ?? 0,

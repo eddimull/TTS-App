@@ -64,6 +64,15 @@ class MoreScreen extends ConsumerWidget {
             ),
             onTap: () => context.push('/media'),
           ),
+          NavRow(
+            title: 'Add to Calendar',
+            leading: Icon(
+              CupertinoIcons.calendar_badge_plus,
+              size: 22,
+              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            ),
+            onTap: () => context.push('/calendar-feed'),
+          ),
           if (isOwner)
             NavRow(
               title: 'Band Settings',

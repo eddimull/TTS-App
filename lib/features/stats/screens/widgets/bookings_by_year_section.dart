@@ -13,33 +13,33 @@ class BookingsByYearSection extends StatefulWidget {
 }
 
 class _BookingsByYearSectionState extends State<BookingsByYearSection> {
-  // Track which year indices are expanded. Default: most recent year open.
-  late final Set<int> _expanded;
+  // Track which years are expanded, keyed by the year value (not list index) so
+  // the state stays correct if the list order/length changes after a refresh.
+  // Lazily seeded with the most recent year the first time we build.
+  final Set<int> _expanded = {};
+  bool _seededDefault = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _expanded = widget.bookingsByYear.isNotEmpty ? {0} : {};
-  }
-
-  void _toggle(int index) {
+  void _toggle(int year) {
     setState(() {
-      if (_expanded.contains(index)) {
-        _expanded.remove(index);
-      } else {
-        _expanded.add(index);
+      if (!_expanded.remove(year)) {
+        _expanded.add(year);
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_seededDefault && widget.bookingsByYear.isNotEmpty) {
+      _expanded.add(widget.bookingsByYear.first.year);
+      _seededDefault = true;
+    }
+
     return Column(
-      children: widget.bookingsByYear.asMap().entries.map((entry) {
+      children: widget.bookingsByYear.map((year) {
         return _YearGroup(
-          year: entry.value,
-          isExpanded: _expanded.contains(entry.key),
-          onToggle: () => _toggle(entry.key),
+          year: year,
+          isExpanded: _expanded.contains(year.year),
+          onToggle: () => _toggle(year.year),
         );
       }).toList(),
     );

@@ -13,33 +13,32 @@ class MileageByYearSection extends StatefulWidget {
 }
 
 class _MileageByYearSectionState extends State<MileageByYearSection> {
-  late final Set<int> _expanded;
+  // Keyed by year value (not list index) so expansion state survives a refresh
+  // that reorders or resizes the list. Seeded with the most recent year once.
+  final Set<int> _expanded = {};
+  bool _seededDefault = false;
 
-  @override
-  void initState() {
-    super.initState();
-    // Default: most recent year (index 0) open.
-    _expanded = widget.travelByYear.isNotEmpty ? {0} : {};
-  }
-
-  void _toggle(int index) {
+  void _toggle(int year) {
     setState(() {
-      if (_expanded.contains(index)) {
-        _expanded.remove(index);
-      } else {
-        _expanded.add(index);
+      if (!_expanded.remove(year)) {
+        _expanded.add(year);
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_seededDefault && widget.travelByYear.isNotEmpty) {
+      _expanded.add(widget.travelByYear.first.year);
+      _seededDefault = true;
+    }
+
     return Column(
-      children: widget.travelByYear.asMap().entries.map((entry) {
+      children: widget.travelByYear.map((year) {
         return _TravelYearGroup(
-          year: entry.value,
-          isExpanded: _expanded.contains(entry.key),
-          onToggle: () => _toggle(entry.key),
+          year: year,
+          isExpanded: _expanded.contains(year.year),
+          onToggle: () => _toggle(year.year),
         );
       }).toList(),
     );

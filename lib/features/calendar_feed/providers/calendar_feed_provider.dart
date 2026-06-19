@@ -11,10 +11,26 @@ final calendarFeedRepositoryProvider =
   return CalendarFeedRepository(dio);
 });
 
-// ── Feed provider ─────────────────────────────────────────────────────────────
+// ── Feed notifier ─────────────────────────────────────────────────────────────
 
-/// Fetches the user's calendar subscription URLs. Mints the token on first
-/// access. Invalidate this provider after a reset to pull the rotated URLs.
-final calendarFeedProvider = FutureProvider<CalendarFeed>((ref) async {
-  return ref.watch(calendarFeedRepositoryProvider).getCalendarFeed();
-});
+class CalendarFeedNotifier extends AsyncNotifier<CalendarFeed> {
+  CalendarFeedRepository get _repo => ref.read(calendarFeedRepositoryProvider);
+
+  /// Fetches the user's calendar subscription URLs, minting the token on first
+  /// access.
+  @override
+  Future<CalendarFeed> build() => _repo.getCalendarFeed();
+
+  /// Rotate the token, revoking the previously shared link. The reset endpoint
+  /// already returns the rotated URLs, so we adopt them directly rather than
+  /// triggering a second GET.
+  Future<void> reset() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(_repo.resetCalendarFeed);
+  }
+}
+
+final calendarFeedProvider =
+    AsyncNotifierProvider<CalendarFeedNotifier, CalendarFeed>(
+  CalendarFeedNotifier.new,
+);

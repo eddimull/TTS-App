@@ -138,18 +138,10 @@ class _FeedContent extends ConsumerWidget {
 
     if (confirmed != true) return;
 
-    try {
-      await ref.read(calendarFeedRepositoryProvider).resetCalendarFeed();
-      ref.invalidate(calendarFeedProvider);
-    } catch (_) {
-      if (context.mounted) {
-        _showMessage(
-          context,
-          "Couldn't reset link",
-          'Please check your connection and try again.',
-        );
-      }
-    }
+    // reset() adopts the rotated URLs from the reset response directly, so no
+    // extra GET is needed. It captures any failure into the provider's error
+    // state, which the screen already renders.
+    await ref.read(calendarFeedProvider.notifier).reset();
   }
 }
 

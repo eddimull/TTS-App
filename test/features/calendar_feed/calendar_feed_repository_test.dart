@@ -19,6 +19,9 @@ class _FakeDio extends Fake implements Dio {
     CancelToken? cancelToken,
     void Function(int, int)? onReceiveProgress,
   }) async {
+    if (!_responses.containsKey(path)) {
+      throw DioException(requestOptions: RequestOptions(path: path));
+    }
     return Response<T>(
       data: _responses[path] as T,
       statusCode: 200,
@@ -38,6 +41,9 @@ class _FakeDio extends Fake implements Dio {
   }) async {
     postCalled = true;
     lastPostPath = path;
+    if (!_responses.containsKey(path)) {
+      throw DioException(requestOptions: RequestOptions(path: path));
+    }
     return Response<T>(
       data: _responses[path] as T,
       statusCode: 200,

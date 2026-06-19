@@ -113,6 +113,18 @@ void main() {
       expect(orphan.bandName, 'Orphan');
       expect(orphan.upcoming, 999.0); // upcoming money preserved, not dropped
     });
+
+    test('keeps the first non-empty band name even if a later row has none', () {
+      final p = _payments([
+        _row(bandId: 1, bandName: 'Rockers', date: '2025-01-01', upcoming: false, share: '500.00'),
+        _row(bandId: 1, bandName: '', date: '2026-09-01', upcoming: true, share: '200.00'),
+      ]);
+
+      final band = p.bandBreakdown.single;
+      expect(band.bandName, 'Rockers'); // not overwritten to 'Unknown'
+      expect(band.earned, 500.0);
+      expect(band.upcoming, 200.0);
+    });
   });
 
   group('value type totals', () {

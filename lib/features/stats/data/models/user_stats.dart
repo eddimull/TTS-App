@@ -112,8 +112,11 @@ class PaymentStats {
       for (final b in yearGroup.bookings) {
         // The API always sends a real band_id; a missing one decodes to the
         // sentinel 0. Bucket those by name (not drop them) so no money silently
-        // vanishes from the chart — keep the band's own name when we have it.
-        names[b.bandId] = b.bandName.isNotEmpty ? b.bandName : 'Unknown';
+        // vanishes from the chart. Capture the first non-empty name we see for a
+        // band and keep it — don't let a later empty-name row overwrite it.
+        if (b.bandName.isNotEmpty) {
+          names[b.bandId] ??= b.bandName;
+        }
         if (b.isUpcoming) {
           upcoming[b.bandId] = (upcoming[b.bandId] ?? 0) + b.userShare;
         } else {

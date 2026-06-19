@@ -27,7 +27,10 @@ class UserStats {
   }
 
   /// True when the user has no earnings and no events — drives the empty state.
-  bool get isEmpty => payments.bookingCount == 0 && travel.eventCount == 0;
+  bool get isEmpty =>
+      payments.bookingCount == 0 &&
+      payments.upcomingBookingCount == 0 &&
+      travel.eventCount == 0;
 }
 
 // ── Payments ────────────────────────────────────────────────────────────────
@@ -36,6 +39,8 @@ class PaymentStats {
   const PaymentStats({
     required this.totalEarnings,
     required this.bookingCount,
+    required this.upcomingEarnings,
+    required this.upcomingBookingCount,
     required this.byYear,
     required this.byBand,
     required this.bookingsByYear,
@@ -43,6 +48,11 @@ class PaymentStats {
 
   final double totalEarnings;
   final int bookingCount;
+
+  /// Projected earnings from gigs that haven't happened yet (date today or later).
+  final double upcomingEarnings;
+  final int upcomingBookingCount;
+
   final List<YearEarnings> byYear;
   final List<BandEarnings> byBand;
   final List<BookingsYear> bookingsByYear;
@@ -51,6 +61,8 @@ class PaymentStats {
     return PaymentStats(
       totalEarnings: _money(json['total_earnings']),
       bookingCount: (json['booking_count'] as num?)?.toInt() ?? 0,
+      upcomingEarnings: _money(json['upcoming_earnings']),
+      upcomingBookingCount: (json['upcoming_booking_count'] as num?)?.toInt() ?? 0,
       byYear: (json['by_year'] as List<dynamic>? ?? [])
           .map((e) => YearEarnings.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -71,6 +83,9 @@ class YearEarnings {
   final double total;
 
   factory YearEarnings.fromJson(Map<String, dynamic> json) => YearEarnings(
+        // by_year is built only from earned (past-dated) bookings, so year is
+        // always present here — parse strictly rather than masking a bad
+        // payload as year "0".
         year: (json['year'] as num).toInt(),
         total: _money(json['total']),
       );
@@ -102,18 +117,29 @@ class BookingsYear {
     required this.year,
     required this.yearTotal,
     required this.bookingCount,
+    required this.upcomingTotal,
+    required this.upcomingBookingCount,
     required this.bookings,
   });
 
-  final int year;
+  /// Null for bookings with no events yet (no gig date), which are grouped
+  /// under a year-less bucket and shown as "TBD".
+  final int? year;
   final double yearTotal;
   final int bookingCount;
+
+  /// Projected share from gigs in this year that haven't happened yet.
+  final double upcomingTotal;
+  final int upcomingBookingCount;
+
   final List<BookingRow> bookings;
 
   factory BookingsYear.fromJson(Map<String, dynamic> json) => BookingsYear(
-        year: (json['year'] as num).toInt(),
+        year: (json['year'] as num?)?.toInt(),
         yearTotal: _money(json['year_total']),
         bookingCount: (json['booking_count'] as num?)?.toInt() ?? 0,
+        upcomingTotal: _money(json['upcoming_total']),
+        upcomingBookingCount: (json['upcoming_booking_count'] as num?)?.toInt() ?? 0,
         bookings: (json['bookings'] as List<dynamic>? ?? [])
             .map((e) => BookingRow.fromJson(e as Map<String, dynamic>))
             .toList(),
@@ -129,6 +155,7 @@ class BookingRow {
     required this.venueAddress,
     required this.date,
     required this.status,
+    required this.isUpcoming,
     required this.totalPrice,
     required this.userShare,
   });
@@ -140,6 +167,10 @@ class BookingRow {
   final String? venueAddress;
   final String date;
   final String status;
+
+  /// True when this gig's date is today or later (hasn't happened yet).
+  final bool isUpcoming;
+
   final double totalPrice;
   final double userShare;
 
@@ -151,6 +182,7 @@ class BookingRow {
         venueAddress: json['venue_address'] as String?,
         date: json['date'] as String? ?? '',
         status: json['status'] as String? ?? '',
+        isUpcoming: json['is_upcoming'] as bool? ?? false,
         totalPrice: _money(json['total_price']),
         userShare: _money(json['user_share']),
       );
@@ -200,6 +232,7 @@ class TravelYear {
   final List<TravelEventRow> events;
 
   factory TravelYear.fromJson(Map<String, dynamic> json) => TravelYear(
+        // Travel stats only count past events, so year is always present.
         year: (json['year'] as num).toInt(),
         totalMiles: (json['total_miles'] as num?)?.toDouble() ?? 0,
         totalHours: (json['total_hours'] as num?)?.toDouble() ?? 0,

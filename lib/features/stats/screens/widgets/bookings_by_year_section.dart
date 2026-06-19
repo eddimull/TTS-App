@@ -15,11 +15,12 @@ class BookingsByYearSection extends StatefulWidget {
 class _BookingsByYearSectionState extends State<BookingsByYearSection> {
   // Track which years are expanded, keyed by the year value (not list index) so
   // the state stays correct if the list order/length changes after a refresh.
+  // A null key is the year-less "TBD" bucket (bookings with no gig date yet).
   // Lazily seeded with the most recent year the first time we build.
-  final Set<int> _expanded = {};
+  final Set<int?> _expanded = {};
   bool _seededDefault = false;
 
-  void _toggle(int year) {
+  void _toggle(int? year) {
     setState(() {
       if (!_expanded.remove(year)) {
         _expanded.add(year);
@@ -30,7 +31,12 @@ class _BookingsByYearSectionState extends State<BookingsByYearSection> {
   @override
   Widget build(BuildContext context) {
     if (!_seededDefault && widget.bookingsByYear.isNotEmpty) {
-      _expanded.add(widget.bookingsByYear.first.year);
+      // Default-expand the most recent real year. Fall back to the first
+      // element only if every group is the year-less "TBD" bucket, so an
+      // undated bucket doesn't get expanded ahead of actual years.
+      final firstReal = widget.bookingsByYear
+          .firstWhere((y) => y.year != null, orElse: () => widget.bookingsByYear.first);
+      _expanded.add(firstReal.year);
       _seededDefault = true;
     }
 
@@ -63,6 +69,18 @@ class _YearGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
 
+    // Bookings with no events yet have no year — bucket them under "TBD".
+    final yearLabel = year.year?.toString() ?? 'TBD';
+    final playedLabel =
+        '${year.bookingCount} gig${year.bookingCount == 1 ? '' : 's'} played';
+    final hasUpcoming = year.upcomingBookingCount > 0;
+    // Visual suffix uses a compact "+" separator; the semantics label below
+    // spells it out so screen readers don't announce a bare "plus sign".
+    final upcomingSuffix =
+        hasUpcoming ? ' + ${currency.format(year.upcomingTotal)} upcoming' : '';
+    final upcomingSpoken =
+        hasUpcoming ? ', plus ${currency.format(year.upcomingTotal)} upcoming' : '';
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Container(
@@ -77,7 +95,7 @@ class _YearGroup extends StatelessWidget {
             Semantics(
               button: true,
               label:
-                  '${year.year}, ${year.bookingCount} bookings, ${currency.format(year.yearTotal)}',
+                  '$yearLabel, $playedLabel, ${currency.format(year.yearTotal)}$upcomingSpoken',
               child: GestureDetector(
                 onTap: onToggle,
                 behavior: HitTestBehavior.opaque,
@@ -91,7 +109,7 @@ class _YearGroup extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '${year.year}',
+                              yearLabel,
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -99,7 +117,7 @@ class _YearGroup extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '${year.bookingCount} booking${year.bookingCount == 1 ? '' : 's'}  •  ${currency.format(year.yearTotal)}',
+                              '$playedLabel  •  ${currency.format(year.yearTotal)}$upcomingSuffix',
                               style: TextStyle(
                                 fontSize: 13,
                                 color: CupertinoColors.secondaryLabel
@@ -159,6 +177,13 @@ class _BookingDetailRow extends StatelessWidget {
   final BookingRow booking;
 
   String _formatDate(String raw) {
+    // Bookings with no events yet have an empty date (treated as upcoming);
+    // show a placeholder for those. For a non-empty but unparseable string,
+    // fall back to the raw value (consistent with the other stats date
+    // formatters) rather than masking a real backend value as "TBD".
+    if (raw.isEmpty) {
+      return 'TBD';
+    }
     try {
       final dt = DateTime.parse(raw);
       return DateFormat('MMM d, yyyy').format(dt);
@@ -177,13 +202,39 @@ class _BookingDetailRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Date
-          Text(
-            _formatDate(booking.date),
-            style: TextStyle(
-              fontSize: 12,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
-            ),
+          // Date (+ an "Upcoming" badge for gigs that haven't happened yet)
+          Row(
+            children: [
+              Text(
+                _formatDate(booking.date),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                ),
+              ),
+              if (booking.isUpcoming) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.systemOrange
+                        .resolveFrom(context)
+                        .withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'Upcoming',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          CupertinoColors.systemOrange.resolveFrom(context),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 3),
           // Booking name + band

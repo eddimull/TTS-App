@@ -65,9 +65,13 @@ class _YearGroup extends StatelessWidget {
 
     final playedLabel =
         '${year.bookingCount} gig${year.bookingCount == 1 ? '' : 's'} played';
-    final upcomingSuffix = year.upcomingBookingCount > 0
-        ? '  +  ${currency.format(year.upcomingTotal)} upcoming'
-        : '';
+    final hasUpcoming = year.upcomingBookingCount > 0;
+    // Visual suffix uses a compact "+" separator; the semantics label below
+    // spells it out so screen readers don't announce a bare "plus sign".
+    final upcomingSuffix =
+        hasUpcoming ? ' + ${currency.format(year.upcomingTotal)} upcoming' : '';
+    final upcomingSpoken =
+        hasUpcoming ? ', plus ${currency.format(year.upcomingTotal)} upcoming' : '';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -83,7 +87,7 @@ class _YearGroup extends StatelessWidget {
             Semantics(
               button: true,
               label:
-                  '${year.year}, $playedLabel, ${currency.format(year.yearTotal)}$upcomingSuffix',
+                  '${year.year}, $playedLabel, ${currency.format(year.yearTotal)}$upcomingSpoken',
               child: GestureDetector(
                 onTap: onToggle,
                 behavior: HitTestBehavior.opaque,

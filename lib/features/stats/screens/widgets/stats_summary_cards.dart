@@ -60,8 +60,11 @@ class StatsSummaryCards extends StatelessWidget {
             );
           }
 
-          // Wide layout — row of three equal-width cards.
+          // Wide layout — row of three equal-width cards. Top-align so the
+          // cards' top edges stay flush when one card (e.g. earnings, with its
+          // optional "upcoming" line) is taller than the others.
           return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: _SummaryCard(

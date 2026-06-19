@@ -27,6 +27,10 @@ class EarningsBarChart extends StatelessWidget {
         barRods: [
           BarChartRodData(
             toY: y.total,
+            // The stack items below cover the full 0→total range; set the base
+            // rod transparent so fl_chart's default rod color can never show
+            // through (e.g. on future-only years where earned == 0).
+            color: const Color(0x00000000),
             width: 20,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
             rodStackItems: [

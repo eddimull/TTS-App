@@ -73,10 +73,10 @@ class _StatsContent extends StatelessWidget {
         ],
 
         // 3. Earnings by Band doughnut chart
-        if (stats.payments.byBand.isNotEmpty) ...[
+        if (stats.payments.bandBreakdown.isNotEmpty) ...[
           const StatsSectionHeader(title: 'Earnings by Band'),
           const SizedBox(height: 8),
-          EarningsPieChart(byBand: stats.payments.byBand),
+          EarningsPieChart(byBand: stats.payments.bandBreakdown),
           const SizedBox(height: 24),
         ],
 

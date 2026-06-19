@@ -110,8 +110,10 @@ class PaymentStats {
     final names = <int, String>{};
     for (final yearGroup in bookingsByYear) {
       for (final b in yearGroup.bookings) {
-        if (b.bandId == 0) continue; // missing band_id: skip rather than merge
-        names[b.bandId] = b.bandName;
+        // The API always sends a real band_id; a missing one decodes to the
+        // sentinel 0. Bucket those by name (not drop them) so no money silently
+        // vanishes from the chart — keep the band's own name when we have it.
+        names[b.bandId] = b.bandName.isNotEmpty ? b.bandName : 'Unknown';
         if (b.isUpcoming) {
           upcoming[b.bandId] = (upcoming[b.bandId] ?? 0) + b.userShare;
         } else {

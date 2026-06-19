@@ -98,15 +98,20 @@ void main() {
       expect(p.bandBreakdown.map((b) => b.bandName).toList(), ['Big', 'Small']);
     });
 
-    test('skips rows with a missing band_id (sentinel 0) rather than merging them', () {
+    test('keeps rows with a missing band_id (sentinel 0) so no money is dropped', () {
+      // The real API always sends band_id; if one were ever missing (decoded as
+      // 0), the row's earnings must still appear — bucketed under its own name —
+      // rather than silently vanishing from the chart.
       final p = _payments([
         _row(bandId: 1, bandName: 'Rockers', date: '2025-01-01', upcoming: false, share: '500.00'),
-        _row(bandId: 0, bandName: 'Orphan', date: '2025-01-01', upcoming: false, share: '999.00'),
+        _row(bandId: 0, bandName: 'Orphan', date: '2025-01-01', upcoming: true, share: '999.00'),
       ]);
 
       final bands = p.bandBreakdown;
-      expect(bands.map((b) => b.bandId).toList(), [1]); // no phantom band 0
-      expect(bands.single.earned, 500.0);
+      expect(bands.length, 2);
+      final orphan = bands.firstWhere((b) => b.bandId == 0);
+      expect(orphan.bandName, 'Orphan');
+      expect(orphan.upcoming, 999.0); // upcoming money preserved, not dropped
     });
   });
 

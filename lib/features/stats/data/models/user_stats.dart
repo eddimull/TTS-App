@@ -80,7 +80,10 @@ class YearEarnings {
   final double total;
 
   factory YearEarnings.fromJson(Map<String, dynamic> json) => YearEarnings(
-        year: (json['year'] as num?)?.toInt() ?? 0,
+        // by_year is built only from earned (past-dated) bookings, so year is
+        // always present here — parse strictly rather than masking a bad
+        // payload as year "0".
+        year: (json['year'] as num).toInt(),
         total: _money(json['total']),
       );
 }
@@ -226,7 +229,8 @@ class TravelYear {
   final List<TravelEventRow> events;
 
   factory TravelYear.fromJson(Map<String, dynamic> json) => TravelYear(
-        year: (json['year'] as num?)?.toInt() ?? 0,
+        // Travel stats only count past events, so year is always present.
+        year: (json['year'] as num).toInt(),
         totalMiles: (json['total_miles'] as num?)?.toDouble() ?? 0,
         totalHours: (json['total_hours'] as num?)?.toDouble() ?? 0,
         eventCount: (json['event_count'] as num?)?.toInt() ?? 0,

@@ -173,7 +173,9 @@ class _BookingDetailRow extends StatelessWidget {
 
   String _formatDate(String raw) {
     // Bookings with no events yet have an empty date (treated as upcoming);
-    // show a placeholder rather than a blank or unparseable string.
+    // show a placeholder for those. For a non-empty but unparseable string,
+    // fall back to the raw value (consistent with the other stats date
+    // formatters) rather than masking a real backend value as "TBD".
     if (raw.isEmpty) {
       return 'TBD';
     }
@@ -181,7 +183,7 @@ class _BookingDetailRow extends StatelessWidget {
       final dt = DateTime.parse(raw);
       return DateFormat('MMM d, yyyy').format(dt);
     } catch (_) {
-      return 'TBD';
+      return raw;
     }
   }
 

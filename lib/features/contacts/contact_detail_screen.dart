@@ -138,7 +138,8 @@ class ContactDetailScreen extends StatelessWidget {
   }
 
   void _showCopiedToast(BuildContext context, String message) {
-    final overlay = Overlay.of(context);
+    final overlay = Overlay.maybeOf(context);
+    if (overlay == null) return;
     final entry = OverlayEntry(
       builder: (ctx) => Positioned(
         bottom: MediaQuery.of(ctx).padding.bottom + 32,
@@ -280,14 +281,17 @@ class _ActionRow extends StatelessWidget {
       leading: Icon(icon, color: accent),
       title: Text(label, style: TextStyle(color: accent)),
       trailing: onCopy != null
-          ? CupertinoButton(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-              minimumSize: Size.zero,
-              onPressed: onCopy,
-              child: Icon(
-                CupertinoIcons.doc_on_doc,
-                size: 20,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+          ? GestureDetector(
+              onTap: onCopy,
+              behavior: HitTestBehavior.opaque,
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Icon(
+                  CupertinoIcons.doc_on_doc,
+                  size: 20,
+                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                ),
               ),
             )
           : const CupertinoListTileChevron(),

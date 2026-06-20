@@ -1,0 +1,208 @@
+import 'package:flutter/cupertino.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import 'contact_ref.dart';
+
+/// A reusable, read-only detail view for a single person.
+///
+/// Shown whenever a contact is selected anywhere in the app — a band member, a
+/// substitute, a roster member, or a searched contact. Renders an avatar
+/// header, name/role, and tappable email (mailto:) / phone (tel:) rows.
+///
+/// Optional [trailingActions] let a caller graft context-specific affordances
+/// onto the canonical view — e.g. "Manage permissions" from the members list —
+/// without forking the screen.
+class ContactDetailScreen extends StatelessWidget {
+  const ContactDetailScreen({
+    super.key,
+    required this.contact,
+    this.trailingActions = const [],
+  });
+
+  final ContactRef contact;
+
+  /// Extra rows appended below the contact-info section (e.g. a chevron row to
+  /// open the permission editor). Each is rendered as a `CupertinoListTile`.
+  final List<Widget> trailingActions;
+
+  @override
+  Widget build(BuildContext context) {
+    final roleLine = _roleLine();
+
+    return CupertinoPageScaffold(
+      navigationBar: const CupertinoNavigationBar(middle: Text('Contact')),
+      child: SafeArea(
+        child: ListView(
+          children: [
+            const SizedBox(height: 16),
+            _Header(contact: contact, roleLine: roleLine),
+            const SizedBox(height: 16),
+
+            // ── Contact methods ─────────────────────────────────────────────
+            if (contact.hasEmail || contact.hasPhone)
+              CupertinoListSection.insetGrouped(
+                header: const Text('Contact'),
+                children: [
+                  if (contact.hasEmail)
+                    _ActionRow(
+                      icon: CupertinoIcons.mail,
+                      label: contact.email!.trim(),
+                      onTap: () => _launch(
+                        context,
+                        Uri(scheme: 'mailto', path: contact.email!.trim()),
+                      ),
+                    ),
+                  if (contact.hasPhone)
+                    _ActionRow(
+                      icon: CupertinoIcons.phone,
+                      label: contact.phone!.trim(),
+                      onTap: () => _launch(
+                        context,
+                        Uri(scheme: 'tel', path: _telDigits(contact.phone!)),
+                      ),
+                    ),
+                ],
+              ),
+
+            // ── Context (role / section) ────────────────────────────────────
+            if ((contact.section ?? '').isNotEmpty ||
+                (contact.role ?? '').isNotEmpty)
+              CupertinoListSection.insetGrouped(
+                header: const Text('Role'),
+                children: [
+                  if ((contact.section ?? '').isNotEmpty)
+                    CupertinoListTile(
+                      title: const Text('Section'),
+                      additionalInfo: Text(contact.section!),
+                    ),
+                  if ((contact.role ?? '').isNotEmpty)
+                    CupertinoListTile(
+                      title: const Text('Instrument'),
+                      additionalInfo: Text(contact.role!),
+                    ),
+                ],
+              ),
+
+            if (trailingActions.isNotEmpty)
+              CupertinoListSection.insetGrouped(children: trailingActions),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String? _roleLine() {
+    final parts = <String>[
+      if ((contact.role ?? '').isNotEmpty) contact.role!,
+      if ((contact.section ?? '').isNotEmpty) contact.section!,
+    ];
+    if (parts.isNotEmpty) return parts.join(' · ');
+    if (contact.isOwner) return 'Owner';
+    if (contact.isSub) return 'Substitute';
+    return contact.subtitle;
+  }
+
+  /// Strips formatting so the `tel:` URI dials reliably; keeps a leading `+`.
+  static String _telDigits(String raw) {
+    final trimmed = raw.trim();
+    final plus = trimmed.startsWith('+') ? '+' : '';
+    return plus + trimmed.replaceAll(RegExp(r'[^0-9]'), '');
+  }
+
+  Future<void> _launch(BuildContext context, Uri uri) async {
+    final ok = await canLaunchUrl(uri);
+    if (ok) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return;
+    }
+    if (context.mounted) {
+      await showCupertinoDialog<void>(
+        context: context,
+        builder: (dialogContext) => CupertinoAlertDialog(
+          title: const Text('Unavailable'),
+          content: Text('Could not open ${uri.scheme} link on this device.'),
+          actions: [
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header({required this.contact, required this.roleLine});
+
+  final ContactRef contact;
+  final String? roleLine;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = CupertinoColors.systemBlue.resolveFrom(context);
+    return Column(
+      children: [
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            contact.initial,
+            style: TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w600,
+              color: accent,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          contact.name,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+          textAlign: TextAlign.center,
+        ),
+        if ((roleLine ?? '').isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            roleLine!,
+            style: TextStyle(
+              fontSize: 15,
+              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ActionRow extends StatelessWidget {
+  const _ActionRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = CupertinoColors.activeBlue.resolveFrom(context);
+    return CupertinoListTile(
+      leading: Icon(icon, color: accent),
+      title: Text(label, style: TextStyle(color: accent)),
+      trailing: const CupertinoListTileChevron(),
+      onTap: onTap,
+    );
+  }
+}

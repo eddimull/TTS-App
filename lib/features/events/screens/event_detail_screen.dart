@@ -11,6 +11,8 @@ import '../../../shared/widgets/auth_thumbnail.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/status_chip.dart';
 import '../../bookings/widgets/venue_picker.dart' show geocodeAddress, VenuePreviewCard;
+import '../../contacts/contact_detail_screen.dart';
+import '../../contacts/contact_ref.dart';
 import '../data/events_repository.dart';
 import '../data/models/event_detail.dart';
 import '../data/models/event_member.dart';
@@ -1113,68 +1115,96 @@ class _ContactRow extends StatelessWidget {
   const _ContactRow({required this.contact});
   final EventContact contact;
 
+  void _openDetail(BuildContext context) {
+    Navigator.of(context).push(
+      CupertinoPageRoute<void>(
+        builder: (_) => ContactDetailScreen(
+          contact: ContactRef(
+            name: contact.name,
+            email: contact.email,
+            phone: contact.phone,
+            role: contact.role,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: _Card(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: CupertinoColors.systemBlue
-                    .resolveFrom(context)
-                    .withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  contact.name.isNotEmpty ? contact.name[0].toUpperCase() : '?',
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: CupertinoColors.systemBlue.resolveFrom(context)),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _openDetail(context),
+        child: _Card(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemBlue
+                      .resolveFrom(context)
+                      .withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    contact.name.isNotEmpty ? contact.name[0].toUpperCase() : '?',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: CupertinoColors.systemBlue.resolveFrom(context)),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(contact.name,
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w500)),
-                  if (contact.role != null && contact.role!.isNotEmpty)
-                    Text(contact.role!,
-                        style: TextStyle(
-                            fontSize: 13,
-                            color: CupertinoColors.secondaryLabel.resolveFrom(context))),
-                  if (contact.phone != null && contact.phone!.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    _ContactLink(
-                      icon: CupertinoIcons.phone,
-                      label: contact.phone!,
-                      url: 'tel:${contact.phone!}',
-                      context: context,
-                    ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(contact.name,
+                        style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w500)),
+                    if (contact.role != null && contact.role!.isNotEmpty)
+                      Text(contact.role!,
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: CupertinoColors.secondaryLabel.resolveFrom(context))),
+                    if (contact.phone != null && contact.phone!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      _ContactLink(
+                        icon: CupertinoIcons.phone,
+                        label: contact.phone!,
+                        url: 'tel:${contact.phone!}',
+                        context: context,
+                      ),
+                    ],
+                    if (contact.email != null && contact.email!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      _ContactLink(
+                        icon: CupertinoIcons.mail,
+                        label: contact.email!,
+                        url: 'mailto:${contact.email!}',
+                        context: context,
+                      ),
+                    ],
                   ],
-                  if (contact.email != null && contact.email!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    _ContactLink(
-                      icon: CupertinoIcons.mail,
-                      label: contact.email!,
-                      url: 'mailto:${contact.email!}',
-                      context: context,
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Icon(
+                  CupertinoIcons.chevron_right,
+                  size: 16,
+                  color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

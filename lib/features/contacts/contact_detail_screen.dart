@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'contact_ref.dart';
@@ -51,8 +52,13 @@ class ContactDetailScreen extends StatelessWidget {
                         context,
                         Uri(scheme: 'mailto', path: contact.email!.trim()),
                       ),
+                      onCopy: () => _copy(
+                        context,
+                        contact.email!.trim(),
+                        'Email copied',
+                      ),
                     ),
-                  if (contact.hasPhone)
+                  if (contact.hasPhone) ...[
                     _ActionRow(
                       icon: CupertinoIcons.phone,
                       label: contact.phone!.trim(),
@@ -60,7 +66,21 @@ class ContactDetailScreen extends StatelessWidget {
                         context,
                         Uri(scheme: 'tel', path: _telDigits(contact.phone!)),
                       ),
+                      onCopy: () => _copy(
+                        context,
+                        contact.phone!.trim(),
+                        'Phone copied',
+                      ),
                     ),
+                    _ActionRow(
+                      icon: CupertinoIcons.chat_bubble,
+                      label: 'Send Message',
+                      onTap: () => _launch(
+                        context,
+                        Uri(scheme: 'sms', path: _telDigits(contact.phone!)),
+                      ),
+                    ),
+                  ],
                 ],
               ),
 
@@ -107,6 +127,59 @@ class ContactDetailScreen extends StatelessWidget {
     final trimmed = raw.trim();
     final plus = trimmed.startsWith('+') ? '+' : '';
     return plus + trimmed.replaceAll(RegExp(r'[^0-9]'), '');
+  }
+
+  /// Copies [value] to the clipboard and confirms with a brief toast-style
+  /// overlay — the fallback when a contact prefers to paste the address/number
+  /// elsewhere rather than launch a mail/phone app.
+  Future<void> _copy(BuildContext context, String value, String message) async {
+    await Clipboard.setData(ClipboardData(text: value));
+    if (context.mounted) _showCopiedToast(context, message);
+  }
+
+  void _showCopiedToast(BuildContext context, String message) {
+    final overlay = Overlay.of(context);
+    final entry = OverlayEntry(
+      builder: (ctx) => Positioned(
+        bottom: MediaQuery.of(ctx).padding.bottom + 32,
+        left: 0,
+        right: 0,
+        child: Center(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: CupertinoColors.label
+                  .resolveFrom(ctx)
+                  .withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    CupertinoIcons.checkmark_circle_fill,
+                    size: 18,
+                    color: CupertinoColors.systemBackground.resolveFrom(ctx),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    message,
+                    style: TextStyle(
+                      color: CupertinoColors.systemBackground.resolveFrom(ctx),
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    overlay.insert(entry);
+    Future<void>.delayed(const Duration(milliseconds: 1400), entry.remove);
   }
 
   Future<void> _launch(BuildContext context, Uri uri) async {
@@ -189,11 +262,16 @@ class _ActionRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.onCopy,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+
+  /// When provided, a copy button is shown as the trailing affordance (in place
+  /// of the chevron) so the value can be copied without launching an app.
+  final VoidCallback? onCopy;
 
   @override
   Widget build(BuildContext context) {
@@ -201,7 +279,18 @@ class _ActionRow extends StatelessWidget {
     return CupertinoListTile(
       leading: Icon(icon, color: accent),
       title: Text(label, style: TextStyle(color: accent)),
-      trailing: const CupertinoListTileChevron(),
+      trailing: onCopy != null
+          ? CupertinoButton(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+              minimumSize: Size.zero,
+              onPressed: onCopy,
+              child: Icon(
+                CupertinoIcons.doc_on_doc,
+                size: 20,
+                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              ),
+            )
+          : const CupertinoListTileChevron(),
       onTap: onTap,
     );
   }

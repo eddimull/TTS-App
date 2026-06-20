@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/contacts/contact_detail_screen.dart';
 import 'package:tts_bandmate/features/contacts/contact_ref.dart';
@@ -67,6 +68,86 @@ void main() {
       )));
 
       expect(find.text('?'), findsOneWidget);
+    });
+
+    testWidgets('shows a Send Message row when a phone is present',
+        (tester) async {
+      await tester.pumpWidget(_wrap(const ContactDetailScreen(
+        contact: ContactRef(name: 'Texter', phone: '555-123-4567'),
+      )));
+
+      expect(find.text('Send Message'), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.chat_bubble), findsOneWidget);
+    });
+
+    testWidgets('omits Send Message row when no phone', (tester) async {
+      await tester.pumpWidget(_wrap(const ContactDetailScreen(
+        contact: ContactRef(name: 'Emailer', email: 'a@b.com'),
+      )));
+
+      expect(find.text('Send Message'), findsNothing);
+    });
+
+    group('copy fallback', () {
+      String? copied;
+
+      setUp(() {
+        copied = null;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        });
+      });
+
+      tearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, null);
+      });
+
+      testWidgets('copies the email when its copy button is tapped',
+          (tester) async {
+        await tester.pumpWidget(_wrap(const ContactDetailScreen(
+          contact: ContactRef(
+            name: 'Eddie Mullins',
+            email: 'eddie@example.com',
+            phone: '555-123-4567',
+          ),
+        )));
+
+        // The first copy button (doc_on_doc) belongs to the email row.
+        await tester.tap(find.byIcon(CupertinoIcons.doc_on_doc).first);
+        await tester.pump();
+
+        expect(copied, 'eddie@example.com');
+        expect(find.text('Email copied'), findsOneWidget);
+
+        // Let the toast's auto-dismiss timer fire so no timers leak.
+        await tester.pump(const Duration(milliseconds: 1500));
+      });
+
+      testWidgets('copies the phone when its copy button is tapped',
+          (tester) async {
+        await tester.pumpWidget(_wrap(const ContactDetailScreen(
+          contact: ContactRef(
+            name: 'Eddie Mullins',
+            email: 'eddie@example.com',
+            phone: '555-123-4567',
+          ),
+        )));
+
+        // The second copy button belongs to the phone row.
+        await tester.tap(find.byIcon(CupertinoIcons.doc_on_doc).at(1));
+        await tester.pump();
+
+        expect(copied, '555-123-4567');
+        expect(find.text('Phone copied'), findsOneWidget);
+
+        // Let the toast's auto-dismiss timer fire so no timers leak.
+        await tester.pump(const Duration(milliseconds: 1500));
+      });
     });
   });
 }

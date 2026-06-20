@@ -13,6 +13,7 @@ void main() {
         'user_id': 42,
         'name': 'Jamie',
         'email': 'jamie@example.com',
+        'phone': null,
         'band_role_id': null,
         'role_name': null,
       });
@@ -22,6 +23,8 @@ void main() {
       expect(sub.isPending, false);
       expect(sub.isRegistered, true);
       expect(sub.userId, 42);
+      // Registered users have no phone on file.
+      expect(sub.phone, isNull);
     });
 
     test('parses a pending invitation', () {
@@ -33,6 +36,7 @@ void main() {
         'user_id': null,
         'name': 'newsub@example.com',
         'email': 'newsub@example.com',
+        'phone': '555-987-6543',
         'band_role_id': 5,
         'role_name': 'Trumpet',
       });
@@ -41,6 +45,8 @@ void main() {
       expect(sub.isPending, true);
       expect(sub.roleName, 'Trumpet');
       expect(sub.userId, isNull);
+      // Email-only invitations carry the phone captured at invite time.
+      expect(sub.phone, '555-987-6543');
     });
 
     test('equality keys on id + type so invite and link never collide', () {

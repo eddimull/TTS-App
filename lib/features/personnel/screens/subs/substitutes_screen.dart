@@ -115,6 +115,7 @@ class _SubRow extends ConsumerWidget {
             contact: ContactRef(
               name: sub.name.isNotEmpty ? sub.name : (sub.email ?? 'Sub'),
               email: sub.email,
+              phone: sub.phone,
               role: sub.roleName,
               userId: sub.userId,
               isSub: true,

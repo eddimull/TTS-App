@@ -112,6 +112,7 @@ class _MemberRow extends ConsumerWidget {
           builder: (_) => ContactDetailScreen(
             contact: ContactRef(
               name: member.name,
+              email: member.email,
               isOwner: member.isOwner,
               userId: member.id,
               subtitle: member.isOwner ? 'Owner' : 'Member',

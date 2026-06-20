@@ -45,6 +45,7 @@ void main() {
       final member = BandMember.fromJson({
         'id': 5,
         'name': 'Jane Doe',
+        'email': 'jane@example.com',
         'is_owner': false,
         'permissions': {
           'read:events': true,
@@ -69,6 +70,7 @@ void main() {
       });
       expect(member.id, 5);
       expect(member.name, 'Jane Doe');
+      expect(member.email, 'jane@example.com');
       expect(member.isOwner, false);
       expect(member.permissions['read:events'], true);
       expect(member.permissions['write:events'], false);
@@ -82,6 +84,16 @@ void main() {
         'permissions': {},
       });
       expect(member.isOwner, true);
+    });
+
+    test('test_email_is_null_when_omitted', () {
+      final member = BandMember.fromJson({
+        'id': 2,
+        'name': 'No Email',
+        'is_owner': false,
+        'permissions': {},
+      });
+      expect(member.email, isNull);
     });
 
     test('test_withPermission_returns_updated_copy', () {

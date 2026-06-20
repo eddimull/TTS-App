@@ -12,6 +12,7 @@ class BandSub {
     required this.name,
     this.userId,
     this.email,
+    this.phone,
     this.bandRoleId,
     this.roleName,
   });
@@ -27,6 +28,10 @@ class BandSub {
   final String name;
   final int? userId;
   final String? email;
+
+  /// Only pending email-only invitations carry a phone; registered users
+  /// (active subs) have none on file, so this is null for them.
+  final String? phone;
   final int? bandRoleId;
   final String? roleName;
 
@@ -45,6 +50,7 @@ class BandSub {
       name: json['name'] as String? ?? '',
       userId: (json['user_id'] as num?)?.toInt(),
       email: json['email'] as String?,
+      phone: json['phone'] as String?,
       bandRoleId: (json['band_role_id'] as num?)?.toInt(),
       roleName: json['role_name'] as String?,
     );

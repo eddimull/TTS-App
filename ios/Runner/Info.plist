@@ -104,6 +104,9 @@
 		<string>flitsmeister</string>
 		<string>truckmap</string>
 		<string>maps</string>
+		<string>mailto</string>
+		<string>tel</string>
+		<string>sms</string>
 	</array>
 </dict>
 </plist>

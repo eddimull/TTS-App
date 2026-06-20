@@ -71,15 +71,26 @@ class _YearGroup extends StatelessWidget {
 
     // Bookings with no events yet have no year — bucket them under "TBD".
     final yearLabel = year.year?.toString() ?? 'TBD';
-    final playedLabel =
-        '${year.bookingCount} gig${year.bookingCount == 1 ? '' : 's'} played';
+    final totalBookings = year.bookingCount + year.upcomingBookingCount;
     final hasUpcoming = year.upcomingBookingCount > 0;
-    // Visual suffix uses a compact "+" separator; the semantics label below
-    // spells it out so screen readers don't announce a bare "plus sign".
-    final upcomingSuffix =
-        hasUpcoming ? ' + ${currency.format(year.upcomingTotal)} upcoming' : '';
-    final upcomingSpoken =
-        hasUpcoming ? ', plus ${currency.format(year.upcomingTotal)} upcoming' : '';
+    final bookingWord =
+        '$totalBookings booking${totalBookings == 1 ? '' : 's'}';
+
+    // Compact inline line: "43 bookings · $1,000 earned · $400 upcoming".
+    final inlineLine = StringBuffer(
+      '$bookingWord · ${currency.format(year.yearTotal)} earned',
+    );
+    if (hasUpcoming) {
+      inlineLine.write(' · ${currency.format(year.upcomingTotal)} upcoming');
+    }
+
+    // Spoken form spells out the separators for screen readers.
+    final spoken = StringBuffer(
+      '$yearLabel, $bookingWord, ${currency.format(year.yearTotal)} earned',
+    );
+    if (hasUpcoming) {
+      spoken.write(', ${currency.format(year.upcomingTotal)} upcoming');
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -94,8 +105,7 @@ class _YearGroup extends StatelessWidget {
             // Tappable header.
             Semantics(
               button: true,
-              label:
-                  '$yearLabel, $playedLabel, ${currency.format(year.yearTotal)}$upcomingSpoken',
+              label: spoken.toString(),
               child: GestureDetector(
                 onTap: onToggle,
                 behavior: HitTestBehavior.opaque,
@@ -117,7 +127,7 @@ class _YearGroup extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '$playedLabel  •  ${currency.format(year.yearTotal)}$upcomingSuffix',
+                              inlineLine.toString(),
                               style: TextStyle(
                                 fontSize: 13,
                                 color: CupertinoColors.secondaryLabel

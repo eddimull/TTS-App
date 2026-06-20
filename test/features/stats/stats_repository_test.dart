@@ -222,6 +222,7 @@ void main() {
                       'id': 1,
                       'booking_name': 'Future Gig',
                       'band_name': 'The Rockers',
+                      'band_id': 1,
                       'venue_name': 'TBD',
                       'venue_address': null,
                       'date': null,

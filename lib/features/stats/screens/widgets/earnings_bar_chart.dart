@@ -3,34 +3,40 @@ import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/user_stats.dart';
 
-/// Vertical bar chart — one bar per year, value = total earnings.
+/// Vertical stacked bar chart — one bar per year: earned (green) with the
+/// upcoming (booked-but-unplayed) portion stacked on top in gray.
 class EarningsBarChart extends StatelessWidget {
   const EarningsBarChart({super.key, required this.byYear});
 
-  final List<YearEarnings> byYear;
+  final List<YearBreakdown> byYear;
 
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
     final green = CupertinoColors.systemGreen.resolveFrom(context);
-    final secondaryLabel =
-        CupertinoColors.secondaryLabel.resolveFrom(context);
+    final gray = CupertinoColors.systemGrey.resolveFrom(context);
+    final secondaryLabel = CupertinoColors.secondaryLabel.resolveFrom(context);
 
-    final maxY = byYear
-        .map((e) => e.total)
-        .fold(0.0, (a, b) => a > b ? a : b);
-    // Give the chart 10% headroom above the tallest bar.
+    final maxY = byYear.map((e) => e.total).fold(0.0, (a, b) => a > b ? a : b);
     final chartMax = maxY * 1.1;
 
     final barGroups = byYear.asMap().entries.map((entry) {
+      final y = entry.value;
       return BarChartGroupData(
         x: entry.key,
         barRods: [
           BarChartRodData(
-            toY: entry.value.total,
-            color: green,
+            toY: y.total,
+            // The stack items below cover the full 0→total range; set the base
+            // rod transparent so fl_chart's default rod color can never show
+            // through (e.g. on future-only years where earned == 0).
+            color: const Color(0x00000000),
             width: 20,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+            rodStackItems: [
+              BarChartRodStackItem(0, y.earned, green),
+              BarChartRodStackItem(y.earned, y.total, gray.withValues(alpha: 0.55)),
+            ],
           ),
         ],
       );
@@ -42,8 +48,7 @@ class EarningsBarChart extends StatelessWidget {
         height: 200,
         padding: const EdgeInsets.fromLTRB(8, 12, 16, 8),
         decoration: BoxDecoration(
-          color:
-              CupertinoColors.tertiarySystemBackground.resolveFrom(context),
+          color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
           borderRadius: BorderRadius.circular(12),
         ),
         child: BarChart(
@@ -70,13 +75,8 @@ class EarningsBarChart extends StatelessWidget {
                     }
                     return Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        '${byYear[idx].year}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: secondaryLabel,
-                        ),
-                      ),
+                      child: Text('${byYear[idx].year}',
+                          style: TextStyle(fontSize: 11, color: secondaryLabel)),
                     );
                   },
                 ),
@@ -85,32 +85,25 @@ class EarningsBarChart extends StatelessWidget {
                 sideTitles: SideTitles(
                   showTitles: true,
                   reservedSize: 60,
-                  getTitlesWidget: (value, _) => Text(
-                    currency.format(value),
-                    style: TextStyle(fontSize: 10, color: secondaryLabel),
-                  ),
+                  getTitlesWidget: (value, _) => Text(currency.format(value),
+                      style: TextStyle(fontSize: 10, color: secondaryLabel)),
                 ),
               ),
-              topTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
+              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             ),
-            // Tooltip shows the year and currency amount.
             barTouchData: BarTouchData(
               touchTooltipData: BarTouchTooltipData(
                 getTooltipItem: (group, _, rod, __) {
-                  final idx = group.x.toInt();
-                  final year = byYear[idx].year;
+                  final y = byYear[group.x.toInt()];
+                  final upcomingLine =
+                      y.upcoming > 0 ? '\n${currency.format(y.upcoming)} upcoming' : '';
                   return BarTooltipItem(
-                    '$year\n${currency.format(rod.toY)}',
+                    '${y.year}\n${currency.format(y.earned)} earned$upcomingLine',
                     const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: CupertinoColors.white,
-                    ),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: CupertinoColors.white),
                   );
                 },
               ),

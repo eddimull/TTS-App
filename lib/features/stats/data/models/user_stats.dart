@@ -74,6 +74,95 @@ class PaymentStats {
           .toList(),
     );
   }
+
+  /// Per-year earned vs upcoming, sorted ascending, derived from every booking
+  /// row (so future-only years appear with earned == 0).
+  List<YearBreakdown> get yearBreakdown {
+    final earned = <int, double>{};
+    final upcoming = <int, double>{};
+    for (final yearGroup in bookingsByYear) {
+      for (final b in yearGroup.bookings) {
+        // Parse year from the booking date string; skip undated bookings.
+        final y = _yearFromDate(b.date);
+        if (y == null) continue;
+        if (b.isUpcoming) {
+          upcoming[y] = (upcoming[y] ?? 0) + b.userShare;
+        } else {
+          earned[y] = (earned[y] ?? 0) + b.userShare;
+        }
+      }
+    }
+    final years = {...earned.keys, ...upcoming.keys}.toList()..sort();
+    return years
+        .map((y) => YearBreakdown(
+              year: y,
+              earned: earned[y] ?? 0,
+              upcoming: upcoming[y] ?? 0,
+            ))
+        .toList();
+  }
+
+  /// Per-band earned vs upcoming, sorted by total descending, derived from every
+  /// booking row (so upcoming-only bands appear with earned == 0).
+  List<BandBreakdown> get bandBreakdown {
+    final earned = <int, double>{};
+    final upcoming = <int, double>{};
+    final names = <int, String>{};
+    for (final yearGroup in bookingsByYear) {
+      for (final b in yearGroup.bookings) {
+        // The API always sends a real band_id; a missing one decodes to the
+        // sentinel 0. Bucket those by name (not drop them) so no money silently
+        // vanishes from the chart. Capture the first non-empty name we see for a
+        // band and keep it — don't let a later empty-name row overwrite it.
+        if (b.bandName.isNotEmpty) {
+          names[b.bandId] ??= b.bandName;
+        }
+        if (b.isUpcoming) {
+          upcoming[b.bandId] = (upcoming[b.bandId] ?? 0) + b.userShare;
+        } else {
+          earned[b.bandId] = (earned[b.bandId] ?? 0) + b.userShare;
+        }
+      }
+    }
+    final bands = {...earned.keys, ...upcoming.keys}
+        .map((id) => BandBreakdown(
+              bandId: id,
+              bandName: names[id] ?? 'Unknown',
+              earned: earned[id] ?? 0,
+              upcoming: upcoming[id] ?? 0,
+            ))
+        .toList();
+    bands.sort((a, b) => b.total.compareTo(a.total));
+    return bands;
+  }
+}
+
+/// A year's earnings split into earned (played) and upcoming (booked) shares.
+class YearBreakdown {
+  const YearBreakdown({required this.year, required this.earned, required this.upcoming});
+
+  final int year;
+  final double earned;
+  final double upcoming;
+
+  double get total => earned + upcoming;
+}
+
+/// A band's earnings split into earned (played) and upcoming (booked) shares.
+class BandBreakdown {
+  const BandBreakdown({
+    required this.bandId,
+    required this.bandName,
+    required this.earned,
+    required this.upcoming,
+  });
+
+  final int bandId;
+  final String bandName;
+  final double earned;
+  final double upcoming;
+
+  double get total => earned + upcoming;
 }
 
 class YearEarnings {
@@ -150,6 +239,7 @@ class BookingRow {
   const BookingRow({
     required this.id,
     required this.bookingName,
+    required this.bandId,
     required this.bandName,
     required this.venueName,
     required this.venueAddress,
@@ -162,6 +252,7 @@ class BookingRow {
 
   final int id;
   final String bookingName;
+  final int bandId;
   final String bandName;
   final String venueName;
   final String? venueAddress;
@@ -177,6 +268,7 @@ class BookingRow {
   factory BookingRow.fromJson(Map<String, dynamic> json) => BookingRow(
         id: (json['id'] as num).toInt(),
         bookingName: json['booking_name'] as String? ?? 'Untitled',
+        bandId: (json['band_id'] as num?)?.toInt() ?? 0,
         bandName: json['band_name'] as String? ?? '',
         venueName: json['venue_name'] as String? ?? 'TBD',
         venueAddress: json['venue_address'] as String?,
@@ -312,4 +404,11 @@ double _money(dynamic value) {
   if (value == null) return 0;
   if (value is num) return value.toDouble();
   return double.tryParse(value.toString()) ?? 0;
+}
+
+/// Extract a 4-digit year from a date string like "2025-01-15"; returns null
+/// for empty or malformed strings (undated bookings).
+int? _yearFromDate(String date) {
+  if (date.length < 4) return null;
+  return int.tryParse(date.substring(0, 4));
 }

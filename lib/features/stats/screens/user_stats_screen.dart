@@ -52,6 +52,11 @@ class _StatsContent extends StatelessWidget {
         .where((l) => l.hasCoordinates)
         .toList();
 
+    // Compute the chart breakdowns once — each walks every booking row, so
+    // reuse the locals for both the visibility guard and the chart input.
+    final yearBreakdown = stats.payments.yearBreakdown;
+    final bandBreakdown = stats.payments.bandBreakdown;
+
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 16),
       children: [
@@ -65,18 +70,18 @@ class _StatsContent extends StatelessWidget {
         const SizedBox(height: 24),
 
         // 2. Earnings by Year bar chart
-        if (stats.payments.byYear.isNotEmpty) ...[
+        if (yearBreakdown.isNotEmpty) ...[
           const StatsSectionHeader(title: 'Earnings by Year'),
           const SizedBox(height: 8),
-          EarningsBarChart(byYear: stats.payments.byYear),
+          EarningsBarChart(byYear: yearBreakdown),
           const SizedBox(height: 24),
         ],
 
         // 3. Earnings by Band doughnut chart
-        if (stats.payments.byBand.isNotEmpty) ...[
+        if (bandBreakdown.isNotEmpty) ...[
           const StatsSectionHeader(title: 'Earnings by Band'),
           const SizedBox(height: 8),
-          EarningsPieChart(byBand: stats.payments.byBand),
+          EarningsPieChart(byBand: bandBreakdown),
           const SizedBox(height: 24),
         ],
 

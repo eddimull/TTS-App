@@ -147,4 +147,54 @@ class ApiEndpoints {
   // Push device registration (Phase 1 notifications). Both register (POST) and
   // deregister (DELETE) use this path; the token travels in the request body.
   static const String mobileDevices = '/api/mobile/devices';
+
+  // Personnel — Roles
+  static String mobileBandRoles(int bandId) =>
+      '/api/mobile/bands/$bandId/roles';
+  static String mobileBandRole(int bandId, int roleId) =>
+      '/api/mobile/bands/$bandId/roles/$roleId';
+  static String mobileBandRolesReorder(int bandId) =>
+      '/api/mobile/bands/$bandId/roles/reorder';
+
+  // Personnel — Rosters
+  static String mobileBandRosters(int bandId) =>
+      '/api/mobile/bands/$bandId/rosters';
+  static String mobileBandRoster(int bandId, int rosterId) =>
+      '/api/mobile/bands/$bandId/rosters/$rosterId';
+  static String mobileBandRosterSetDefault(int bandId, int rosterId) =>
+      '/api/mobile/bands/$bandId/rosters/$rosterId/set-default';
+  static String mobileBandRostersInitialize(int bandId) =>
+      '/api/mobile/bands/$bandId/rosters/initialize';
+
+  // Personnel — Roster Slots
+  static String mobileBandRosterSlots(int bandId, int rosterId) =>
+      '/api/mobile/bands/$bandId/rosters/$rosterId/slots';
+  static String mobileBandRosterSlot(int bandId, int slotId) =>
+      '/api/mobile/bands/$bandId/roster-slots/$slotId';
+
+  // Personnel — Roster Members
+  static String mobileBandRosterMembers(int bandId, int rosterId) =>
+      '/api/mobile/bands/$bandId/rosters/$rosterId/members';
+  static String mobileBandRosterMember(int bandId, int memberId) =>
+      '/api/mobile/bands/$bandId/roster-members/$memberId';
+  static String mobileBandRosterMemberToggleActive(int bandId, int memberId) =>
+      '/api/mobile/bands/$bandId/roster-members/$memberId/toggle-active';
+
+  // Personnel — Substitute Call Lists
+  static String mobileBandCallLists(int bandId) =>
+      '/api/mobile/bands/$bandId/call-lists';
+  static String mobileBandCallList(int bandId, int entryId) =>
+      '/api/mobile/bands/$bandId/call-lists/$entryId';
+  static String mobileBandCallListsReorder(int bandId) =>
+      '/api/mobile/bands/$bandId/call-lists/reorder';
+
+  // Personnel — Band Subs
+  static String mobileBandSubs(int bandId) =>
+      '/api/mobile/bands/$bandId/subs';
+  static String mobileBandSubInvite(int bandId) =>
+      '/api/mobile/bands/$bandId/subs/invite';
+  static String mobileBandSubInvitation(int bandId, int invitationId) =>
+      '/api/mobile/bands/$bandId/subs/invitations/$invitationId';
+  static String mobileBandSubUser(int bandId, int userId) =>
+      '/api/mobile/bands/$bandId/subs/$userId';
 }

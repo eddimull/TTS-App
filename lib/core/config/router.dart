@@ -33,6 +33,7 @@ import '../../features/media/screens/media_screen.dart';
 import '../../features/finances/screens/finances_screen.dart';
 import '../../features/more/screens/more_screen.dart';
 import '../../features/band_settings/screens/band_settings_screen.dart';
+import '../../features/personnel/screens/personnel_screen.dart';
 import '../../features/account/screens/account_screen.dart';
 import '../../features/calendar_feed/screens/calendar_feed_screen.dart';
 import '../../features/stats/screens/user_stats_screen.dart';
@@ -76,6 +77,7 @@ const _kShellPrefixes = [
   '/more',
   '/band-settings',
   '/finances',
+  '/personnel',
 ];
 
 /// Initial location used when constructing the GoRouter. Defaults to `/welcome`.
@@ -274,6 +276,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/band-settings',
             builder: (_, __) => const BandSettingsScreen(),
+          ),
+          GoRoute(
+            path: '/personnel',
+            builder: (_, __) => const PersonnelScreen(),
           ),
           GoRoute(
             path: '/finances',

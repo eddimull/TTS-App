@@ -82,7 +82,16 @@ class MoreScreen extends ConsumerWidget {
             ),
             onTap: () => context.push('/calendar-feed'),
           ),
-          if (isOwner)
+          if (isOwner) ...[
+            NavRow(
+              title: 'Personnel',
+              leading: Icon(
+                CupertinoIcons.person_2_fill,
+                size: 22,
+                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              ),
+              onTap: () => context.push('/personnel'),
+            ),
             NavRow(
               title: 'Band Settings',
               leading: Icon(
@@ -92,6 +101,7 @@ class MoreScreen extends ConsumerWidget {
               ),
               onTap: () => context.push('/band-settings'),
             ),
+          ],
         ],
       ),
     );

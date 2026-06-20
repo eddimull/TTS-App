@@ -2,15 +2,15 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tts_bandmate/features/contacts/contact_detail_screen.dart';
 import 'package:tts_bandmate/features/search/data/models/search_models.dart';
 import 'package:tts_bandmate/features/search/providers/search_provider.dart';
 import 'package:tts_bandmate/features/search/screens/search_screen.dart';
 
-// Reproduces the production navigator topology: SearchScreen is hosted inside a
-// GoRouter ShellRoute, so its widgets live under a *nested* navigator while
-// showCupertinoDialog (useRootNavigator: true by default) pushes the dialog
-// onto the *root* navigator. If the dialog's OK button pops the row's outer
-// context, it pops the wrong navigator and the dialog can't be dismissed.
+// SearchScreen is hosted inside a GoRouter ShellRoute in production. Tapping a
+// contact row should push the shared ContactDetailScreen onto the nested
+// navigator (not show a placeholder dialog). This reproduces that topology to
+// guard the navigation wiring.
 GoRouter _routerWithSearchInShell() {
   return GoRouter(
     initialLocation: '/search',
@@ -51,7 +51,7 @@ SearchState _stateWithContact() {
 
 void main() {
   testWidgets(
-    'tapping a contact then OK dismisses the Coming Soon dialog '
+    'tapping a contact opens the shared ContactDetailScreen '
     '(when search is hosted in a ShellRoute)',
     (tester) async {
       await tester.pumpWidget(
@@ -68,20 +68,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Open the dialog by tapping the contact row.
       await tester.tap(find.text('Claire Hoyt'));
       await tester.pumpAndSettle();
-      expect(find.text('Coming Soon'), findsOneWidget);
 
-      // Tap OK — this must dismiss the dialog, not pop the underlying screen.
-      await tester.tap(find.text('OK'));
+      // The contact detail screen is pushed, showing the contact's info.
+      expect(find.byType(ContactDetailScreen), findsOneWidget);
+      expect(find.text('clairevhoyt@yahoo.com'), findsOneWidget);
+
+      // Navigating back returns to the search results.
+      await tester.pageBack();
       await tester.pumpAndSettle();
-
-      expect(find.text('Coming Soon'), findsNothing,
-          reason: 'OK should dismiss the dialog');
-      // The search screen must still be present (we must NOT have popped it).
-      expect(find.text('Claire Hoyt'), findsOneWidget,
-          reason: 'OK should not pop the underlying search screen');
+      expect(find.text('Claire Hoyt'), findsOneWidget);
     },
   );
 }

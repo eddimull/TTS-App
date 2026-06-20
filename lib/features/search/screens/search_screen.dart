@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/widgets/nav_row.dart';
 import '../../../shared/widgets/status_chip.dart';
+import '../../contacts/contact_detail_screen.dart';
+import '../../contacts/contact_ref.dart';
 import '../data/models/search_models.dart';
 import '../providers/search_provider.dart';
 
@@ -442,23 +444,16 @@ class _ContactRow extends StatelessWidget {
           ),
         ),
       ),
-      onTap: () => _showComingSoon(context),
-    );
-  }
-
-  void _showComingSoon(BuildContext context) {
-    showCupertinoDialog<void>(
-      context: context,
-      builder: (dialogContext) => CupertinoAlertDialog(
-        title: const Text('Coming Soon'),
-        content: const Text('Contact detail coming soon.'),
-        actions: [
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('OK'),
+      onTap: () => Navigator.of(context).push(
+        CupertinoPageRoute<void>(
+          builder: (_) => ContactDetailScreen(
+            contact: ContactRef(
+              name: contact.name,
+              email: contact.email,
+              phone: contact.phone,
+            ),
           ),
-        ],
+        ),
       ),
     );
   }

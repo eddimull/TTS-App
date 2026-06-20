@@ -102,7 +102,7 @@ class _AddCallListEntrySheetState
                         _saving ? null : () => Navigator.of(context).pop(),
                     child: const Text('Cancel'),
                   ),
-                  const Text('Add Sub',
+                  const Text('Add to Call List',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   CupertinoButton(
                     padding: EdgeInsets.zero,

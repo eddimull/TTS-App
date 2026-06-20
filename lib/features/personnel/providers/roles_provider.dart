@@ -53,16 +53,23 @@ class RolesNotifier extends AsyncNotifier<List<BandRole>> {
   }
 
   Future<void> reorderRoles(List<BandRole> reordered) async {
-    // Apply locally first (optimistic).
+    // Apply locally first (optimistic), remembering the prior order so we can
+    // revert if the server rejects the change.
+    final previous = state.value;
     state = AsyncValue.data(reordered);
-    await _repo.reorderRoles(
-      _bandId,
-      reordered
-          .asMap()
-          .entries
-          .map((e) => (id: e.value.id, displayOrder: e.key + 1))
-          .toList(),
-    );
+    try {
+      await _repo.reorderRoles(
+        _bandId,
+        reordered
+            .asMap()
+            .entries
+            .map((e) => (id: e.value.id, displayOrder: e.key + 1))
+            .toList(),
+      );
+    } catch (_) {
+      if (previous != null) state = AsyncValue.data(previous);
+      rethrow;
+    }
   }
 }
 

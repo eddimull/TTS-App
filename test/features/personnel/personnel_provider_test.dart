@@ -16,11 +16,13 @@ class FakePersonnelRepository implements PersonnelRepository {
     this.roles = const [],
     this.rosters = const [],
     this.createRoleShouldFail = false,
+    this.reorderShouldFail = false,
   });
 
   List<BandRole> roles;
   List<Roster> rosters;
   final bool createRoleShouldFail;
+  final bool reorderShouldFail;
 
   String? createdRoleName;
   int? deletedRoleId;
@@ -59,7 +61,9 @@ class FakePersonnelRepository implements PersonnelRepository {
 
   @override
   Future<void> reorderRoles(
-      int bandId, List<({int id, int displayOrder})> order) async {}
+      int bandId, List<({int id, int displayOrder})> order) async {
+    if (reorderShouldFail) throw Exception('Server error');
+  }
 
   @override
   Future<List<Roster>> getRosters(int bandId) async => rosters;
@@ -306,6 +310,41 @@ void main() {
       final roles = container.read(rolesProvider(1)).value!;
       expect(roles, isEmpty);
       expect(repo.deletedRoleId, _role.id);
+    });
+
+    test('test_reorderRoles_reverts_on_failure', () async {
+      const a = BandRole(
+        id: 1,
+        name: 'A',
+        displayOrder: 0,
+        isActive: true,
+        rosterMembersCount: 0,
+        eventMembersCount: 0,
+        substituteCallListsCount: 0,
+      );
+      const b = BandRole(
+        id: 2,
+        name: 'B',
+        displayOrder: 1,
+        isActive: true,
+        rosterMembersCount: 0,
+        eventMembersCount: 0,
+        substituteCallListsCount: 0,
+      );
+      final repo =
+          FakePersonnelRepository(roles: [a, b], reorderShouldFail: true);
+      final container = makeContainer(repo);
+      addTearDown(container.dispose);
+      await container.read(rolesProvider(1).future);
+
+      await expectLater(
+        container.read(rolesProvider(1).notifier).reorderRoles([b, a]),
+        throwsException,
+      );
+
+      // State must be restored to the original order after the failure.
+      final roles = container.read(rolesProvider(1)).value!;
+      expect(roles.map((r) => r.id).toList(), [a.id, b.id]);
     });
   });
 

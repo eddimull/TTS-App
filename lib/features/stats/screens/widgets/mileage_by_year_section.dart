@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/user_stats.dart';
 
@@ -72,15 +73,36 @@ class _MileageOriginNote extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Expanded(
-            child: Text(
-              'Mileage is measured from your address to each venue. If you '
-              "haven't set an address, your band's address is used as the "
-              'starting point instead.',
-              style: TextStyle(
-                fontSize: 12,
-                height: 1.3,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Mileage is measured from your address to each venue. If you '
+                  "haven't set an address, your band's address is used as the "
+                  'starting point instead.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.3,
+                    color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  ),
+                ),
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  onPressed: () => context.push('/account'),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Set your address',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: CupertinoColors.activeBlue.resolveFrom(context),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

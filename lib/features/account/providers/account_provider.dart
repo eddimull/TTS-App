@@ -65,6 +65,7 @@ class AccountNotifier extends AsyncNotifier<AccountState> {
     String? countryId,
     String? zip,
     required bool emailNotifications,
+    String? movedAt,
   }) async {
     final updated = await _repo.updateAccount(
       name: name,
@@ -77,6 +78,7 @@ class AccountNotifier extends AsyncNotifier<AccountState> {
       countryId: countryId,
       zip: zip,
       emailNotifications: emailNotifications,
+      movedAt: movedAt,
     );
 
     final current = state.value;

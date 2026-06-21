@@ -34,13 +34,57 @@ class _MileageByYearSectionState extends State<MileageByYearSection> {
     }
 
     return Column(
-      children: widget.travelByYear.map((year) {
-        return _TravelYearGroup(
-          year: year,
-          isExpanded: _expanded.contains(year.year),
-          onToggle: () => _toggle(year.year),
-        );
-      }).toList(),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _MileageOriginNote(),
+        ...widget.travelByYear.map((year) {
+          return _TravelYearGroup(
+            year: year,
+            isExpanded: _expanded.contains(year.year),
+            onToggle: () => _toggle(year.year),
+          );
+        }),
+      ],
+    );
+  }
+}
+
+// ── Explanatory note on how mileage is figured ────────────────────────────────
+
+/// Tells the user where their mileage is measured *from*. The backend
+/// (MileageService::resolveOrigin) uses the user's saved address as the origin,
+/// and falls back to the band's address when the user has none on file — so a
+/// user with an empty address still sees mileage, just measured from the band.
+class _MileageOriginNote extends StatelessWidget {
+  const _MileageOriginNote();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            CupertinoIcons.info_circle,
+            size: 14,
+            color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Mileage is measured from your address to each venue. If you '
+              "haven't set an address, your band's address is used as the "
+              'starting point instead.',
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.3,
+                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

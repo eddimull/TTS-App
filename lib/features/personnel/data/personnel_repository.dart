@@ -198,6 +198,7 @@ class PersonnelRepository {
     int? bandRoleId,
     String? notes,
     bool? isActive,
+    bool applyToFutureEvents = false,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       ApiEndpoints.mobileBandRosterMembers(bandId, rosterId),
@@ -211,6 +212,7 @@ class PersonnelRepository {
         if (bandRoleId != null) 'band_role_id': bandRoleId,
         if (notes != null) 'notes': notes,
         if (isActive != null) 'is_active': isActive,
+        if (applyToFutureEvents) 'apply_to_future_events': true,
       },
     );
     return RosterMember.fromJson(
@@ -246,9 +248,42 @@ class PersonnelRepository {
         response.data!['member'] as Map<String, dynamic>);
   }
 
-  Future<void> removeRosterMember(int bandId, int memberId) async {
+  Future<void> removeRosterMember(
+    int bandId,
+    int memberId, {
+    bool applyToFutureEvents = false,
+  }) async {
     await _dio.delete<void>(
-        ApiEndpoints.mobileBandRosterMember(bandId, memberId));
+      ApiEndpoints.mobileBandRosterMember(bandId, memberId),
+      data: applyToFutureEvents ? {'apply_to_future_events': true} : null,
+    );
+  }
+
+  // ── Roster ↔ future event reconciliation ───────────────────────────────────
+
+  /// Fetches the difference between a roster's current members and the members
+  /// on its future events.
+  Future<RosterEventDiff> getFutureEventsDiff(int bandId, int rosterId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandRosterFutureEventsDiff(bandId, rosterId),
+    );
+    return RosterEventDiff.fromJson(response.data!);
+  }
+
+  /// Applies the selected add/remove actions to a roster's future events.
+  Future<void> reconcileFutureEvents(
+    int bandId,
+    int rosterId, {
+    List<int> removeMemberIds = const [],
+    List<int> addMemberIds = const [],
+  }) async {
+    await _dio.post<void>(
+      ApiEndpoints.mobileBandRosterReconcileFutureEvents(bandId, rosterId),
+      data: {
+        'remove_member_ids': removeMemberIds,
+        'add_member_ids': addMemberIds,
+      },
+    );
   }
 
   Future<RosterMember> toggleRosterMemberActive(

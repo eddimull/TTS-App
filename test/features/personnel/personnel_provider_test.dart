@@ -141,7 +141,8 @@ class FakePersonnelRepository implements PersonnelRepository {
       String? role,
       int? bandRoleId,
       String? notes,
-      bool? isActive}) async =>
+      bool? isActive,
+      bool applyToFutureEvents = false}) async =>
       RosterMember(id: 1, name: name ?? '', isActive: true, isUser: userId != null);
 
   @override
@@ -157,7 +158,17 @@ class FakePersonnelRepository implements PersonnelRepository {
       RosterMember(id: memberId, name: name ?? '', isActive: isActive ?? true, isUser: false);
 
   @override
-  Future<void> removeRosterMember(int bandId, int memberId) async {}
+  Future<void> removeRosterMember(int bandId, int memberId,
+      {bool applyToFutureEvents = false}) async {}
+
+  @override
+  Future<RosterEventDiff> getFutureEventsDiff(int bandId, int rosterId) async =>
+      const RosterEventDiff();
+
+  @override
+  Future<void> reconcileFutureEvents(int bandId, int rosterId,
+      {List<int> removeMemberIds = const [],
+      List<int> addMemberIds = const []}) async {}
 
   @override
   Future<RosterMember> toggleRosterMemberActive(

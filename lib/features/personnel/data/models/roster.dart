@@ -200,3 +200,55 @@ class Roster {
   @override
   String toString() => 'Roster(id: $id, name: $name, isDefault: $isDefault)';
 }
+
+/// A single person surfaced by the future-events reconcile diff.
+class RosterEventDiffEntry {
+  const RosterEventDiffEntry({
+    required this.rosterMemberId,
+    required this.displayName,
+    required this.eventCount,
+  });
+
+  /// Null for legacy event members not linked to a roster member; such rows
+  /// can be surfaced but not selected (the backend reconcile keys on this id).
+  final int? rosterMemberId;
+  final String displayName;
+  final int eventCount;
+
+  factory RosterEventDiffEntry.fromJson(Map<String, dynamic> json) {
+    return RosterEventDiffEntry(
+      rosterMemberId: (json['roster_member_id'] as num?)?.toInt(),
+      displayName: json['display_name'] as String? ?? 'Unknown',
+      eventCount: (json['event_count'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+/// The difference between a roster's current membership and the members on its
+/// future events.
+class RosterEventDiff {
+  const RosterEventDiff({
+    this.extra = const [],
+    this.missing = const [],
+  });
+
+  /// People on future events who are no longer active roster members (removable).
+  final List<RosterEventDiffEntry> extra;
+
+  /// Active roster members absent from one or more future events (addable).
+  final List<RosterEventDiffEntry> missing;
+
+  bool get isEmpty => extra.isEmpty && missing.isEmpty;
+
+  factory RosterEventDiff.fromJson(Map<String, dynamic> json) {
+    List<RosterEventDiffEntry> parse(String key) =>
+        ((json[key] as List<dynamic>?) ?? [])
+            .map((e) =>
+                RosterEventDiffEntry.fromJson(e as Map<String, dynamic>))
+            .toList();
+    return RosterEventDiff(
+      extra: parse('extra'),
+      missing: parse('missing'),
+    );
+  }
+}

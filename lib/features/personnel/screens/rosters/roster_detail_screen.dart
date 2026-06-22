@@ -59,10 +59,20 @@ class RosterDetailScreen extends ConsumerWidget {
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
         middle: Text(rosterName),
-        trailing: CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: () => _showAddMemberDialog(context, ref, roster),
-          child: const Icon(CupertinoIcons.person_badge_plus),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: () => _showReconcileDialog(context, ref),
+              child: const Icon(CupertinoIcons.arrow_2_squarepath),
+            ),
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: () => _showAddMemberDialog(context, ref, roster),
+              child: const Icon(CupertinoIcons.person_badge_plus),
+            ),
+          ],
         ),
       ),
       child: SafeArea(
@@ -203,71 +213,248 @@ class RosterDetailScreen extends ConsumerWidget {
       BuildContext context, WidgetRef ref, Roster roster) async {
     final nameController = TextEditingController();
     final emailController = TextEditingController();
+    var applyToFutureEvents = false;
 
     await showCupertinoDialog<void>(
       context: context,
-      builder: (d) => CupertinoAlertDialog(
-        title: const Text('Add Member'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            CupertinoTextField(
-              controller: nameController,
-              placeholder: 'Name',
-              autofocus: true,
+      builder: (d) => StatefulBuilder(
+        builder: (context, setState) => CupertinoAlertDialog(
+          title: const Text('Add Member'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              CupertinoTextField(
+                controller: nameController,
+                placeholder: 'Name',
+                autofocus: true,
+              ),
+              const SizedBox(height: 8),
+              CupertinoTextField(
+                controller: emailController,
+                placeholder: 'Email (optional)',
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Add to future events using this roster',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  CupertinoSwitch(
+                    value: applyToFutureEvents,
+                    onChanged: (v) => setState(() => applyToFutureEvents = v),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: () => Navigator.of(d).pop(),
+              child: const Text('Cancel'),
             ),
-            const SizedBox(height: 8),
-            CupertinoTextField(
-              controller: emailController,
-              placeholder: 'Email (optional)',
-              keyboardType: TextInputType.emailAddress,
-              autocorrect: false,
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () async {
+                final name = nameController.text.trim();
+                final email = emailController.text.trim();
+                Navigator.of(d).pop();
+                if (name.isEmpty) return;
+                try {
+                  await ref.read(personnelRepositoryProvider).addRosterMember(
+                        bandId,
+                        rosterId,
+                        name: name,
+                        email: email.isNotEmpty ? email : null,
+                        applyToFutureEvents: applyToFutureEvents,
+                      );
+                  ref.invalidate(
+                    rosterDetailProvider((bandId: bandId, rosterId: rosterId)),
+                  );
+                } catch (_) {
+                  if (context.mounted) {
+                    _showError(context, 'Failed to add member.');
+                  }
+                }
+              },
+              child: const Text('Add'),
             ),
           ],
         ),
-        actions: [
-          CupertinoDialogAction(
-            onPressed: () => Navigator.of(d).pop(),
-            child: const Text('Cancel'),
-          ),
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            onPressed: () async {
-              final name = nameController.text.trim();
-              final email = emailController.text.trim();
-              Navigator.of(d).pop();
-              if (name.isEmpty) return;
-              try {
-                await ref.read(personnelRepositoryProvider).addRosterMember(
-                      bandId,
-                      rosterId,
-                      name: name,
-                      email: email.isNotEmpty ? email : null,
-                    );
-                ref.invalidate(
-                  rosterDetailProvider((bandId: bandId, rosterId: rosterId)),
-                );
-              } catch (_) {
-                if (context.mounted) {
-                  _showError(context, 'Failed to add member.');
-                }
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
       ),
     );
     nameController.dispose();
     emailController.dispose();
   }
 
-  void _showError(BuildContext context, String message) {
+  Future<void> _showReconcileDialog(
+      BuildContext context, WidgetRef ref) async {
+    final RosterEventDiff diff;
+    try {
+      diff = await ref
+          .read(personnelRepositoryProvider)
+          .getFutureEventsDiff(bandId, rosterId);
+    } catch (_) {
+      if (context.mounted) {
+        _showError(context, 'Failed to load future event differences.');
+      }
+      return;
+    }
+    if (!context.mounted) return;
+
+    if (diff.isEmpty) {
+      _showInfo(
+        context,
+        'In Sync',
+        'Future events are already in sync with this roster.',
+      );
+      return;
+    }
+
+    final removeIds = <int>{};
+    final addIds = <int>{};
+    var applying = false;
+
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (popupContext) => StatefulBuilder(
+        builder: (context, setState) {
+          Widget entryTile(RosterEventDiffEntry e, Set<int> selection) {
+            final id = e.rosterMemberId;
+            final selectable = id != null;
+            return CupertinoListTile(
+              title: Text(e.displayName),
+              subtitle: Text(
+                '${e.eventCount} event${e.eventCount == 1 ? '' : 's'}',
+              ),
+              trailing: selectable
+                  ? CupertinoSwitch(
+                      value: selection.contains(id),
+                      onChanged: (v) => setState(() {
+                        if (v) {
+                          selection.add(id);
+                        } else {
+                          selection.remove(id);
+                        }
+                      }),
+                    )
+                  : const Text(
+                      'n/a',
+                      style: TextStyle(color: CupertinoColors.tertiaryLabel),
+                    ),
+            );
+          }
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            color: CupertinoColors.systemBackground.resolveFrom(context),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        CupertinoButton(
+                          padding: EdgeInsets.zero,
+                          onPressed: applying
+                              ? null
+                              : () => Navigator.of(popupContext).pop(),
+                          child: const Text('Cancel'),
+                        ),
+                        const Text(
+                          'Sync future events',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        CupertinoButton(
+                          padding: EdgeInsets.zero,
+                          onPressed:
+                              (applying || (removeIds.isEmpty && addIds.isEmpty))
+                                  ? null
+                                  : () async {
+                                      setState(() => applying = true);
+                                      try {
+                                        await ref
+                                            .read(personnelRepositoryProvider)
+                                            .reconcileFutureEvents(
+                                              bandId,
+                                              rosterId,
+                                              removeMemberIds: removeIds.toList(),
+                                              addMemberIds: addIds.toList(),
+                                            );
+                                        ref.invalidate(
+                                          rosterDetailProvider((
+                                            bandId: bandId,
+                                            rosterId: rosterId
+                                          )),
+                                        );
+                                        // Close only after the request succeeds.
+                                        if (popupContext.mounted) {
+                                          Navigator.of(popupContext).pop();
+                                        }
+                                      } catch (_) {
+                                        // Show the error while the modal (and
+                                        // its context) is still mounted.
+                                        if (popupContext.mounted) {
+                                          setState(() => applying = false);
+                                          _showError(popupContext,
+                                              'Failed to update future events.');
+                                        }
+                                      }
+                                    },
+                          child: applying
+                              ? const CupertinoActivityIndicator()
+                              : const Text('Apply'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        if (diff.extra.isNotEmpty)
+                          CupertinoListSection.insetGrouped(
+                            header: const Text(
+                                'ON FUTURE EVENTS BUT NOT ON THE ROSTER'),
+                            children: diff.extra
+                                .map((e) => entryTile(e, removeIds))
+                                .toList(),
+                          ),
+                        if (diff.missing.isNotEmpty)
+                          CupertinoListSection.insetGrouped(
+                            header: const Text(
+                                'ON THE ROSTER BUT MISSING FROM FUTURE EVENTS'),
+                            children: diff.missing
+                                .map((e) => entryTile(e, addIds))
+                                .toList(),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showError(BuildContext context, String message) =>
+      _showInfo(context, 'Error', message);
+
+  void _showInfo(BuildContext context, String title, String message) {
     showCupertinoDialog<void>(
       context: context,
       builder: (d) => CupertinoAlertDialog(
-        title: const Text('Error'),
+        title: Text(title),
         content: Text(message),
         actions: [
           CupertinoDialogAction(
@@ -460,10 +647,36 @@ class _MemberRow extends ConsumerWidget {
       ),
     );
     if (confirmed != true || !context.mounted) return false;
+
+    // Ask whether to also remove this person from future events.
+    final applyToFuture = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (d) => CupertinoAlertDialog(
+        title: const Text('Future Events'),
+        content: Text(
+          'Also remove ${member.name} from future events using this roster?',
+        ),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.of(d).pop(false),
+            child: const Text('Roster only'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.of(d).pop(true),
+            child: const Text('Remove from events'),
+          ),
+        ],
+      ),
+    );
+    if (!context.mounted) return false;
+
     try {
-      await ref
-          .read(personnelRepositoryProvider)
-          .removeRosterMember(bandId, member.id);
+      await ref.read(personnelRepositoryProvider).removeRosterMember(
+            bandId,
+            member.id,
+            applyToFutureEvents: applyToFuture ?? false,
+          );
       ref.invalidate(
         rosterDetailProvider((bandId: bandId, rosterId: rosterId)),
       );

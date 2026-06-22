@@ -165,6 +165,10 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/rosters/$rosterId/set-default';
   static String mobileBandRostersInitialize(int bandId) =>
       '/api/mobile/bands/$bandId/rosters/initialize';
+  static String mobileBandRosterFutureEventsDiff(int bandId, int rosterId) =>
+      '/api/mobile/bands/$bandId/rosters/$rosterId/future-events-diff';
+  static String mobileBandRosterReconcileFutureEvents(int bandId, int rosterId) =>
+      '/api/mobile/bands/$bandId/rosters/$rosterId/reconcile-future-events';
 
   // Personnel — Roster Slots
   static String mobileBandRosterSlots(int bandId, int rosterId) =>

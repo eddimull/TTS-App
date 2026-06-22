@@ -277,7 +277,7 @@ class PersonnelRepository {
     List<int> removeMemberIds = const [],
     List<int> addMemberIds = const [],
   }) async {
-    await _dio.post<Map<String, dynamic>>(
+    await _dio.post<void>(
       ApiEndpoints.mobileBandRosterReconcileFutureEvents(bandId, rosterId),
       data: {
         'remove_member_ids': removeMemberIds,

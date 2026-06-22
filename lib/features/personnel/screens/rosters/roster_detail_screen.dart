@@ -308,12 +308,17 @@ class RosterDetailScreen extends ConsumerWidget {
     if (!context.mounted) return;
 
     if (diff.isEmpty) {
-      _showError(context, 'Future events are already in sync with this roster.');
+      _showInfo(
+        context,
+        'In Sync',
+        'Future events are already in sync with this roster.',
+      );
       return;
     }
 
     final removeIds = <int>{};
     final addIds = <int>{};
+    var applying = false;
 
     await showCupertinoModalPopup<void>(
       context: context,
@@ -359,7 +364,9 @@ class RosterDetailScreen extends ConsumerWidget {
                       children: [
                         CupertinoButton(
                           padding: EdgeInsets.zero,
-                          onPressed: () => Navigator.of(popupContext).pop(),
+                          onPressed: applying
+                              ? null
+                              : () => Navigator.of(popupContext).pop(),
                           child: const Text('Cancel'),
                         ),
                         const Text(
@@ -368,31 +375,43 @@ class RosterDetailScreen extends ConsumerWidget {
                         ),
                         CupertinoButton(
                           padding: EdgeInsets.zero,
-                          onPressed: (removeIds.isEmpty && addIds.isEmpty)
-                              ? null
-                              : () async {
-                                  Navigator.of(popupContext).pop();
-                                  try {
-                                    await ref
-                                        .read(personnelRepositoryProvider)
-                                        .reconcileFutureEvents(
-                                          bandId,
-                                          rosterId,
-                                          removeMemberIds: removeIds.toList(),
-                                          addMemberIds: addIds.toList(),
+                          onPressed:
+                              (applying || (removeIds.isEmpty && addIds.isEmpty))
+                                  ? null
+                                  : () async {
+                                      setState(() => applying = true);
+                                      try {
+                                        await ref
+                                            .read(personnelRepositoryProvider)
+                                            .reconcileFutureEvents(
+                                              bandId,
+                                              rosterId,
+                                              removeMemberIds: removeIds.toList(),
+                                              addMemberIds: addIds.toList(),
+                                            );
+                                        ref.invalidate(
+                                          rosterDetailProvider((
+                                            bandId: bandId,
+                                            rosterId: rosterId
+                                          )),
                                         );
-                                    ref.invalidate(
-                                      rosterDetailProvider(
-                                          (bandId: bandId, rosterId: rosterId)),
-                                    );
-                                  } catch (_) {
-                                    if (context.mounted) {
-                                      _showError(context,
-                                          'Failed to update future events.');
-                                    }
-                                  }
-                                },
-                          child: const Text('Apply'),
+                                        // Close only after the request succeeds.
+                                        if (popupContext.mounted) {
+                                          Navigator.of(popupContext).pop();
+                                        }
+                                      } catch (_) {
+                                        // Show the error while the modal (and
+                                        // its context) is still mounted.
+                                        if (popupContext.mounted) {
+                                          setState(() => applying = false);
+                                          _showError(popupContext,
+                                              'Failed to update future events.');
+                                        }
+                                      }
+                                    },
+                          child: applying
+                              ? const CupertinoActivityIndicator()
+                              : const Text('Apply'),
                         ),
                       ],
                     ),
@@ -428,11 +447,14 @@ class RosterDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _showError(BuildContext context, String message) {
+  void _showError(BuildContext context, String message) =>
+      _showInfo(context, 'Error', message);
+
+  void _showInfo(BuildContext context, String title, String message) {
     showCupertinoDialog<void>(
       context: context,
       builder: (d) => CupertinoAlertDialog(
-        title: const Text('Error'),
+        title: Text(title),
         content: Text(message),
         actions: [
           CupertinoDialogAction(

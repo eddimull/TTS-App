@@ -172,6 +172,18 @@ class _AddressAutocompleteFieldState
   }
 
   @override
+  void didUpdateWidget(covariant AddressAutocompleteField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the parent swaps in a different controller, move our listener over so
+    // the old one isn't left with a stale listener and the new one still drives
+    // autocomplete.
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onChanged);
+      widget.controller.addListener(_onChanged);
+    }
+  }
+
+  @override
   void dispose() {
     _debounce?.cancel();
     _removeDropdown();

@@ -194,4 +194,35 @@ void main() {
       expect(r.members, isEmpty);
     });
   });
+
+  group('RosterEventDiff.fromJson', () {
+    test('test_parses_extra_and_missing', () {
+      final diff = RosterEventDiff.fromJson({
+        'extra': [
+          {'roster_member_id': 5, 'display_name': 'Quit Quincy', 'event_count': 3},
+        ],
+        'missing': [
+          {'roster_member_id': 8, 'display_name': 'New Nina', 'event_count': 2},
+        ],
+      });
+      expect(diff.isEmpty, false);
+      expect(diff.extra.single.rosterMemberId, 5);
+      expect(diff.extra.single.displayName, 'Quit Quincy');
+      expect(diff.extra.single.eventCount, 3);
+      expect(diff.missing.single.rosterMemberId, 8);
+    });
+
+    test('test_handles_null_roster_member_id_and_empty', () {
+      final diff = RosterEventDiff.fromJson({
+        'extra': [
+          {'roster_member_id': null, 'display_name': 'Legacy Larry', 'event_count': 1},
+        ],
+      });
+      expect(diff.extra.single.rosterMemberId, isNull);
+      expect(diff.missing, isEmpty);
+
+      final empty = RosterEventDiff.fromJson({});
+      expect(empty.isEmpty, true);
+    });
+  });
 }

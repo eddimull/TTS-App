@@ -90,14 +90,17 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
 
   /// The address fields as a comparable list, in a stable order. Used both for
   /// the loaded baseline and the current form values to detect a real change.
+  /// Includes country so switching to a country with no states (stateId stays
+  /// null) is still recognised as an address change.
   List<String?> _addressSnapshotOf(AccountProfile p) =>
-      [p.address1, p.address2, p.city, p.stateId, p.zip];
+      [p.address1, p.address2, p.city, p.stateId, p.countryId, p.zip];
 
   List<String?> get _currentAddress => [
         _emptyToNull(_address1.text),
         _emptyToNull(_address2.text),
         _emptyToNull(_city.text),
         _stateId,
+        _countryId,
         _emptyToNull(_zip.text),
       ];
 

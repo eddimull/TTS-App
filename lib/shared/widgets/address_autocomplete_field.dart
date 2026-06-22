@@ -260,6 +260,10 @@ class _AddressAutocompleteFieldState
       widget.controller.text = prediction.name;
       _lastSearchedText = prediction.name;
       widget.controller.addListener(_onChanged);
+      // Programmatic text changes don't fire CupertinoTextField.onChanged, so
+      // notify the parent ourselves — otherwise selecting a suggestion wouldn't
+      // count as an address change (e.g. the "When did you move?" prompt).
+      widget.onChanged?.call(prediction.name);
       return;
     }
 
@@ -280,9 +284,15 @@ class _AddressAutocompleteFieldState
         _lastSearchedText = street;
       });
       if (components != null) widget.onResolved(components);
+      // See note above: a programmatic set doesn't trigger onChanged.
+      widget.onChanged?.call(street);
     } finally {
-      if (mounted) setState(() => _geocoding = false);
-      widget.controller.addListener(_onChanged);
+      // Only re-attach when still mounted — otherwise we'd register a listener
+      // on the external controller pointing at a disposed State.
+      if (mounted) {
+        setState(() => _geocoding = false);
+        widget.controller.addListener(_onChanged);
+      }
     }
   }
 

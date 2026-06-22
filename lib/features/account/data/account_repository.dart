@@ -40,6 +40,7 @@ class AccountRepository {
     String? countryId,
     String? zip,
     required bool emailNotifications,
+    String? movedAt,
   }) async {
     final data = <String, dynamic>{
       'name': name,
@@ -56,6 +57,13 @@ class AccountRepository {
     if (password != null && password.isNotEmpty) {
       data['password'] = password;
       data['password_confirmation'] = password;
+    }
+
+    // Only sent when the user changed their address: tells the backend which
+    // events to recompute mileage for (those on/after the move date). Omitted
+    // otherwise, in which case the backend leaves cached mileage untouched.
+    if (movedAt != null) {
+      data['moved_at'] = movedAt;
     }
 
     final response = await _dio.patch<Map<String, dynamic>>(

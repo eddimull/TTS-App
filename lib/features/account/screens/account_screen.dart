@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/widgets/address_autocomplete_field.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../data/models/account_profile.dart';
@@ -61,6 +62,15 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
   bool _deleting = false;
   Map<String, String> _fieldErrors = {};
 
+  // Snapshot of the address as it was loaded, so we can tell whether the user
+  // actually changed it. Only an address change surfaces the "When did you
+  // move?" prompt and sends moved_at to the backend for mileage recalculation.
+  late List<String?> _originalAddress;
+
+  // The user's move date, defaulting to today. Only relevant — and only sent —
+  // when the address changed. Drives which events recompute mileage.
+  DateTime _movedDate = DateTime.now();
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +85,33 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
     _countryId = p.countryId;
     _stateId = p.stateId;
     _emailNotifications = p.emailNotifications;
+    _originalAddress = _addressSnapshotOf(p);
+  }
+
+  /// The address fields as a comparable list, in a stable order. Used both for
+  /// the loaded baseline and the current form values to detect a real change.
+  /// Includes country so switching to a country with no states (stateId stays
+  /// null) is still recognised as an address change.
+  List<String?> _addressSnapshotOf(AccountProfile p) =>
+      [p.address1, p.address2, p.city, p.stateId, p.countryId, p.zip];
+
+  List<String?> get _currentAddress => [
+        _emptyToNull(_address1.text),
+        _emptyToNull(_address2.text),
+        _emptyToNull(_city.text),
+        _stateId,
+        _countryId,
+        _emptyToNull(_zip.text),
+      ];
+
+  /// True once the user edits any address field away from what was loaded.
+  /// Only then do we ask when they moved and recompute mileage.
+  bool get _addressChanged {
+    final current = _currentAddress;
+    for (var i = 0; i < current.length; i++) {
+      if (current[i] != _originalAddress[i]) return true;
+    }
+    return false;
   }
 
   @override
@@ -112,6 +149,10 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
       _countryId = p.countryId;
       _stateId = p.stateId;
       _emailNotifications = p.emailNotifications;
+      // The saved profile is the new baseline; the move prompt resets until the
+      // user edits the address again.
+      _originalAddress = _addressSnapshotOf(p);
+      _movedDate = DateTime.now();
     });
   }
 
@@ -142,6 +183,9 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
       _fieldErrors = {};
     });
     try {
+      // Only tell the backend about a move when the address actually changed —
+      // otherwise cached mileage must be left untouched.
+      final movedAt = _addressChanged ? _formatDate(_movedDate) : null;
       await ref.read(accountProvider.notifier).save(
             name: _name.text.trim(),
             email: _email.text.trim(),
@@ -153,6 +197,7 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
             countryId: _countryId,
             zip: _emptyToNull(_zip.text),
             emailNotifications: _emailNotifications,
+            movedAt: movedAt,
           );
       if (!mounted) return;
       _password.clear();
@@ -285,6 +330,46 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
     setState(() => _stateId = selected.id);
   }
 
+  Future<void> _pickMovedDate() async {
+    DateTime picked = _movedDate;
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (ctx) => Container(
+        height: 280,
+        color: CupertinoColors.systemBackground.resolveFrom(ctx),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                CupertinoButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                CupertinoButton(
+                  onPressed: () {
+                    setState(() => _movedDate = picked);
+                    Navigator.pop(ctx);
+                  },
+                  child: const Text('Done'),
+                ),
+              ],
+            ),
+            Expanded(
+              child: CupertinoDatePicker(
+                mode: CupertinoDatePickerMode.date,
+                initialDateTime: _movedDate,
+                // A move can't be in the future; cap at today.
+                maximumDate: DateTime.now(),
+                onDateTimeChanged: (dt) => picked = dt,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Shows a bottom Cupertino picker and returns the chosen item, or null if
   /// dismissed. [initial] < 0 starts at the top.
   Future<T?> _showPicker<T>({
@@ -335,6 +420,54 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
   String? _emptyToNull(String s) {
     final t = s.trim();
     return t.isEmpty ? null : t;
+  }
+
+  /// Rebuild so the "When did you move?" row appears/disappears as the user
+  /// edits an address field. The text controllers hold the values; we only need
+  /// a frame to re-evaluate [_addressChanged].
+  void _onAddressChanged(String _) => setState(() {});
+
+  /// Fill city/state/zip from a geocoded suggestion. The street is already
+  /// written into [_address1] by the autocomplete widget. State is a lookup
+  /// dropdown here (not free text), so map the geocoded name to a state id.
+  void _onAddressResolved(AddressComponents c) {
+    if (c.city.isNotEmpty) _city.text = c.city;
+    if (c.zip.isNotEmpty) _zip.text = c.zip;
+
+    final matchedStateId = _matchStateId(c.stateLong, c.stateShort);
+    setState(() {
+      if (matchedStateId != null) _stateId = matchedStateId;
+    });
+  }
+
+  /// Resolve a geocoded state (full name, e.g. "Louisiana", or abbreviation,
+  /// e.g. "LA") to a state id from the loaded lookup list. Returns null when no
+  /// confident match — the user can still pick the state manually.
+  String? _matchStateId(String longName, String shortName) {
+    final long = longName.trim().toLowerCase();
+    final short = shortName.trim().toLowerCase();
+    for (final s in widget.state.states) {
+      final name = s.name.trim().toLowerCase();
+      if (name == long || name == short) return s.id;
+    }
+    return null;
+  }
+
+  /// ISO yyyy-MM-dd — the format the backend's `moved_at` (date) rule expects.
+  String _formatDate(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  /// Human-friendly label for the move-date row (e.g. "Today" for the default).
+  String _movedDateLabel() {
+    final now = DateTime.now();
+    if (_movedDate.year == now.year &&
+        _movedDate.month == now.month &&
+        _movedDate.day == now.day) {
+      return 'Today';
+    }
+    return _formatDate(_movedDate);
   }
 
   void _showMessage(String title, String body) {
@@ -393,6 +526,7 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
     TextInputType? keyboardType,
     bool obscure = false,
     String? placeholder,
+    ValueChanged<String>? onChanged,
   }) {
     final error = _fieldErrors[fieldKey];
     final labelColor = CupertinoColors.secondaryLabel.resolveFrom(context);
@@ -410,6 +544,7 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
             placeholder: placeholder,
             autocorrect: !obscure,
             enableSuggestions: !obscure,
+            onChanged: onChanged,
           ),
           if (error != null) ...[
             const SizedBox(height: 4),
@@ -432,6 +567,7 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
     String placeholder,
     VoidCallback? onTap, {
     String? fieldKey,
+    String? subtitle,
   }) {
     final labelColor = CupertinoColors.secondaryLabel.resolveFrom(context);
     final error = fieldKey == null ? null : _fieldErrors[fieldKey];
@@ -441,6 +577,13 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: TextStyle(fontSize: 13, color: labelColor)),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(fontSize: 12, color: labelColor),
+            ),
+          ],
           const SizedBox(height: 4),
           Semantics(
             button: true,
@@ -510,8 +653,15 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
         _field('Password', _password, 'password',
             obscure: true, placeholder: 'Leave blank to keep current'),
         const SizedBox(height: 8),
-        _field('Address 1', _address1, 'address1'),
-        _field('Address 2', _address2, 'address2'),
+        AddressAutocompleteField(
+          label: 'Address 1',
+          controller: _address1,
+          placeholder: 'Street address',
+          error: _fieldErrors['address1'],
+          onChanged: _onAddressChanged,
+          onResolved: _onAddressResolved,
+        ),
+        _field('Address 2', _address2, 'address2', onChanged: _onAddressChanged),
         _pickerRow('Country', _countryName(_countryId), 'Select country',
             widget.state.countries.isEmpty ? null : _pickCountry,
             fieldKey: 'country_id'),
@@ -521,8 +671,21 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
             hasStates ? 'Select state' : 'No states for country',
             hasStates ? _pickState : null,
             fieldKey: 'state_id'),
-        _field('City', _city, 'city'),
-        _field('Zip', _zip, 'zip', keyboardType: TextInputType.number),
+        _field('City', _city, 'city', onChanged: _onAddressChanged),
+        _field('Zip', _zip, 'zip',
+            keyboardType: TextInputType.number, onChanged: _onAddressChanged),
+        // Only ask when the address actually changed. The subtitle explains why
+        // we need the date: it decides which events' mileage gets recalculated.
+        if (_addressChanged)
+          _pickerRow(
+            'When did you move?',
+            _movedDateLabel(),
+            'Select date',
+            _pickMovedDate,
+            fieldKey: 'moved_at',
+            subtitle: "We'll recalculate mileage for events on or after this "
+                'date. Earlier events keep their original mileage.',
+          ),
         const SizedBox(height: 12),
         // Email notifications toggle
         Padding(

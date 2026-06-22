@@ -150,6 +150,35 @@ void main() {
       expect(dio.lastPatchData!['password_confirmation'], 'super-secret');
     });
 
+    test('updateAccount includes moved_at when provided', () async {
+      final dio = _FakeDio(accountPayload());
+      final repo = AccountRepository(dio);
+
+      await repo.updateAccount(
+        name: 'New Name',
+        email: 'jane@example.com',
+        emailNotifications: true,
+        movedAt: '2026-03-01',
+      );
+
+      expect(dio.lastPatchData!['moved_at'], '2026-03-01');
+    });
+
+    test('updateAccount omits moved_at when null', () async {
+      final dio = _FakeDio(accountPayload());
+      final repo = AccountRepository(dio);
+
+      // No move date (e.g. address unchanged) — the key must be absent so the
+      // backend leaves cached mileage untouched.
+      await repo.updateAccount(
+        name: 'New Name',
+        email: 'jane@example.com',
+        emailNotifications: true,
+      );
+
+      expect(dio.lastPatchData!.containsKey('moved_at'), isFalse);
+    });
+
     test('requestDeletion issues a DELETE', () async {
       final dio = _FakeDio(accountPayload());
       final repo = AccountRepository(dio);

@@ -1313,8 +1313,9 @@ class _MediaSectionState extends ConsumerState<_MediaSection> {
               file: File(path),
             );
       }
-      // Invalidate so finished uploads refresh into the grid.
-      ref.invalidate(eventDetailProvider(widget.eventKey));
+      // No invalidate here: enqueue is fire-and-forget, so uploads are still
+      // in flight. The ref.listen in build() refreshes the grid when an
+      // upload for this event actually finishes.
     } finally {
       if (mounted) setState(() => _enqueueing = false);
     }
@@ -1329,6 +1330,24 @@ class _MediaSectionState extends ConsumerState<_MediaSection> {
 
   @override
   Widget build(BuildContext context) {
+    // Refresh the event detail when a background upload for THIS event
+    // finishes. We count done-tasks for this event in prev vs next and only
+    // invalidate on the rising edge (a newly-done task), so we never loop:
+    // invalidate → refetch → rebuild re-registers this listener, but the queue
+    // state is unchanged, so the callback does not refire.
+    ref.listen<List<UploadTask>>(uploadQueueProvider, (prev, next) {
+      int doneForEvent(List<UploadTask>? list) =>
+          list
+              ?.where((t) =>
+                  t.eventId == widget.eventId &&
+                  t.status == UploadStatus.done)
+              .length ??
+          0;
+      if (doneForEvent(next) > doneForEvent(prev)) {
+        ref.invalidate(eventDetailProvider(widget.eventKey));
+      }
+    });
+
     final tasks = ref.watch(uploadQueueProvider);
     // Active tasks for this event (queued or uploading).
     final activeTasks = tasks.where((t) =>

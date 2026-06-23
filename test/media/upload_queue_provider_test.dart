@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,6 +26,36 @@ class FakeMediaRepository implements MediaRepository {
     onInitiated?.call('u-$uploadCalls');
     onProgress?.call(1.0);
     if (fail) throw Exception('boom');
+    return MediaFile.fromJson({
+      'id': bandId,
+      'filename': file.path.split('/').last,
+      'media_type': 'image',
+      'mime_type': 'image/jpeg',
+      'file_size': 1,
+      'formatted_size': '1 B',
+    });
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// A repo whose [uploadFile] only completes when [gate] is completed, so a
+/// test can observe the task mid-upload and prove enqueue did not block.
+class GatedMediaRepository implements MediaRepository {
+  final Completer<void> gate = Completer<void>();
+
+  @override
+  Future<MediaFile> uploadFile(int bandId, File file,
+      {String? folderPath,
+      int? eventId,
+      String? existingUploadId,
+      cancelToken,
+      void Function(double)? onProgress,
+      void Function(String)? onInitiated}) async {
+    onInitiated?.call('u-1');
+    await gate.future; // blocks until the test signals completion
+    onProgress?.call(1.0);
     return MediaFile.fromJson({
       'id': bandId,
       'filename': file.path.split('/').last,
@@ -71,6 +102,30 @@ void main() {
     final tasks = c.read(uploadQueueProvider);
     expect(tasks.single.status, UploadStatus.done);
     expect(repo.uploadCalls, 1);
+  });
+
+  test('enqueue returns before the upload completes (non-blocking)', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final repo = GatedMediaRepository();
+    final c = ProviderContainer(overrides: [
+      mediaRepositoryProvider.overrideWithValue(repo),
+      uploadQueueStorageProvider.overrideWithValue(UploadQueueStorage(prefs)),
+    ]);
+    addTearDown(c.dispose);
+
+    // enqueue must resolve even though the upload is gated open.
+    await c
+        .read(uploadQueueProvider.notifier)
+        .enqueue(bandId: 5, eventId: 3, file: file);
+
+    // Right after enqueue the task is still uploading, NOT done — proving
+    // enqueue did not block on the upload.
+    expect(c.read(uploadQueueProvider).single.status, UploadStatus.uploading);
+
+    // Now let the upload finish and confirm it transitions to done.
+    repo.gate.complete();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(c.read(uploadQueueProvider).single.status, UploadStatus.done);
   });
 
   test('failed upload is marked failed and retryable', () async {

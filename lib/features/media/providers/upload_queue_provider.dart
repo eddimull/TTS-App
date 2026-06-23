@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -126,12 +127,16 @@ class UploadQueueNotifier extends Notifier<List<UploadTask>> {
     );
     state = [...state, task];
     _persist();
-    await _run(id);
+    // Fire-and-forget: uploads run in the background and must outlive the
+    // screen that enqueued them, so we do NOT await the run here. enqueue
+    // resolves as soon as the task is queued.
+    unawaited(_run(id));
   }
 
   Future<void> retry(String id) async {
     _set(id, (t) => t.copyWith(status: UploadStatus.queued, error: () => null));
-    await _run(id);
+    // Fire-and-forget (see enqueue): don't block the caller on the upload.
+    unawaited(_run(id));
   }
 
   void cancel(String id) {

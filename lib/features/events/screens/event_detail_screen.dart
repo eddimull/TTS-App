@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:timelines_plus/timelines_plus.dart';
@@ -1296,16 +1298,12 @@ class _MediaSectionState extends ConsumerState<_MediaSection> {
     final bandId = ref.read(selectedBandProvider).value ?? 0;
     if (bandId == 0) return; // No active band — bail silently.
 
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: true,
-      type: FileType.any,
-    );
-    if (result == null || result.files.isEmpty) return;
+    final paths = await _pickMediaPaths();
+    if (paths.isEmpty) return;
 
     setState(() => _enqueueing = true);
     try {
-      for (final f in result.files) {
-        final path = f.path;
+      for (final path in paths) {
         if (path == null) continue;
         await ref.read(uploadQueueProvider.notifier).enqueue(
               bandId: bandId,
@@ -1319,6 +1317,72 @@ class _MediaSectionState extends ConsumerState<_MediaSection> {
     } finally {
       if (mounted) setState(() => _enqueueing = false);
     }
+  }
+
+  /// Returns the on-disk paths of the media the user picked, or an empty list
+  /// if they cancelled. On mobile, offers Photos/camera/file sources via an
+  /// action sheet; on desktop/web, goes straight to the file picker (there is
+  /// no Photos concept there). Every source yields real on-disk files, which
+  /// the chunked, resumable upload queue streams regardless of size — so large
+  /// videos are safe.
+  Future<List<String?>> _pickMediaPaths() async {
+    final bool useMobilePicker = !kIsWeb && (Platform.isIOS || Platform.isAndroid);
+    if (!useMobilePicker) {
+      return _pickFilePaths();
+    }
+
+    final String? choice = await showCupertinoModalPopup<String>(
+      context: context,
+      builder: (sheetContext) => CupertinoActionSheet(
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () => Navigator.pop(sheetContext, 'library'),
+            child: const Text('Photo/Video Library'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () => Navigator.pop(sheetContext, 'camera'),
+            child: const Text('Take Photo or Video'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () => Navigator.pop(sheetContext, 'file'),
+            child: const Text('Choose File'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(sheetContext, null),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+
+    switch (choice) {
+      case 'library':
+        // pickMultipleMedia returns both images and videos at full quality.
+        final picked = await ImagePicker().pickMultipleMedia(imageQuality: 100);
+        return picked.map((x) => x.path).toList();
+      case 'camera':
+        // Camera capture is one item at a time.
+        final shot = await ImagePicker().pickImage(
+          source: ImageSource.camera,
+          imageQuality: 100,
+        );
+        return shot == null ? const [] : [shot.path];
+      case 'file':
+        return _pickFilePaths();
+      default:
+        return const []; // Cancelled.
+    }
+  }
+
+  /// The existing arbitrary-file picker, shared by mobile's "Choose File"
+  /// action and the desktop/web path.
+  Future<List<String?>> _pickFilePaths() async {
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.any,
+    );
+    if (result == null || result.files.isEmpty) return const [];
+    return result.files.map((f) => f.path).toList();
   }
 
   void _showQueueSheet(BuildContext context) {

@@ -88,36 +88,60 @@ class MediaRepository {
 
   static const int chunkSize = 2 * 1024 * 1024; // 2 MB
 
+  /// Queries the server for the progress of an in-flight chunked upload.
+  /// Returns the raw status map, e.g. `{total_chunks, chunks_uploaded, status}`.
+  Future<Map<String, dynamic>> chunkUploadStatus(
+      int bandId, String uploadId) async {
+    final resp =
+        await _dio.get('/api/mobile/bands/$bandId/media/upload/$uploadId');
+    return (resp.data as Map).cast<String, dynamic>();
+  }
+
   Future<MediaFile> uploadFile(
     int bandId,
     File file, {
     String? folderPath,
     int? eventId,
+    String? existingUploadId,
+    CancelToken? cancelToken,
     void Function(double progress)? onProgress,
+    void Function(String uploadId)? onInitiated,
   }) async {
     final filename = file.path.split('/').last;
     final filesize = await file.length();
     final mimeType = _mimeTypeFromPath(filename);
     final totalChunks = (filesize / chunkSize).ceil().clamp(1, 999999);
 
-    // 1. Initiate
-    final initiateResp = await _dio.post(
-      '/api/mobile/bands/$bandId/media/upload/initiate',
-      data: {
-        'filename': filename,
-        'filesize': filesize,
-        'mime_type': mimeType,
-        'total_chunks': totalChunks,
-        if (folderPath != null) 'folder_path': folderPath,
-        if (eventId != null) 'event_id': eventId,
-      },
-    );
-    final uploadId = initiateResp.data['upload_id'] as String;
+    String uploadId;
+    int startChunk = 0;
 
-    // 2. Upload chunks
+    if (existingUploadId != null) {
+      // Resume: ask the server how many chunks it already has.
+      final status = await chunkUploadStatus(bandId, existingUploadId);
+      uploadId = existingUploadId;
+      startChunk = (status['chunks_uploaded'] as num?)?.toInt() ?? 0;
+    } else {
+      // 1. Initiate
+      final initiateResp = await _dio.post(
+        '/api/mobile/bands/$bandId/media/upload/initiate',
+        data: {
+          'filename': filename,
+          'filesize': filesize,
+          'mime_type': mimeType,
+          'total_chunks': totalChunks,
+          if (folderPath != null) 'folder_path': folderPath,
+          if (eventId != null) 'event_id': eventId,
+        },
+        cancelToken: cancelToken,
+      );
+      uploadId = initiateResp.data['upload_id'] as String;
+    }
+    onInitiated?.call(uploadId);
+
+    // 2. Upload remaining chunks
     final raf = await file.open();
     try {
-      for (int i = 0; i < totalChunks; i++) {
+      for (int i = startChunk; i < totalChunks; i++) {
         final start = i * chunkSize;
         final end =
             (start + chunkSize < filesize) ? start + chunkSize : filesize;
@@ -134,6 +158,7 @@ class MediaRepository {
         await _dio.post(
           '/api/mobile/bands/$bandId/media/upload/$uploadId/chunk',
           data: formData,
+          cancelToken: cancelToken,
         );
 
         onProgress?.call((i + 1) / totalChunks);
@@ -145,6 +170,7 @@ class MediaRepository {
     // 3. Complete
     final completeResp = await _dio.post(
       '/api/mobile/bands/$bandId/media/upload/$uploadId/complete',
+      cancelToken: cancelToken,
     );
 
     return MediaFile.fromJson(

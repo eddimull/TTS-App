@@ -107,4 +107,73 @@ void main() {
     // should not throw; status remains a terminal state
     expect([UploadStatus.failed, UploadStatus.done], contains(c.read(uploadQueueProvider).single.status));
   });
+
+  test('build restores persisted tasks as paused, filtering missing files',
+      () async {
+    final prefs = await SharedPreferences.getInstance();
+    final storage = UploadQueueStorage(prefs);
+    storage.write([
+      PersistedUploadTask(
+        id: 'task-0-99',
+        filePath: file.path,
+        filename: 'a.jpg',
+        bandId: 5,
+        eventId: 3,
+        uploadId: 'u-prev',
+      ),
+      PersistedUploadTask(
+        id: 'task-1-100',
+        filePath: '${tmp.path}/gone.jpg', // does not exist
+        filename: 'gone.jpg',
+        bandId: 5,
+        eventId: 3,
+      ),
+    ]);
+
+    final c = ProviderContainer(overrides: [
+      mediaRepositoryProvider.overrideWithValue(FakeMediaRepository()),
+      uploadQueueStorageProvider.overrideWithValue(storage),
+    ]);
+    addTearDown(c.dispose);
+
+    final tasks = c.read(uploadQueueProvider);
+    expect(tasks.length, 1); // missing file filtered out
+    expect(tasks.single.id, 'task-0-99');
+    expect(tasks.single.status, UploadStatus.paused);
+    expect(tasks.single.uploadId, 'u-prev');
+  });
+
+  test('enqueue after restore does not collide with restored task id',
+      () async {
+    final prefs = await SharedPreferences.getInstance();
+    final storage = UploadQueueStorage(prefs);
+    // Simulate a prior session that persisted task-0-<hash> for this file.
+    storage.write([
+      PersistedUploadTask(
+        id: 'task-0-${file.path.hashCode}',
+        filePath: file.path,
+        filename: 'a.jpg',
+        bandId: 5,
+        eventId: 3,
+      ),
+    ]);
+
+    final c = ProviderContainer(overrides: [
+      mediaRepositoryProvider.overrideWithValue(FakeMediaRepository()),
+      uploadQueueStorageProvider.overrideWithValue(storage),
+    ]);
+    addTearDown(c.dispose);
+
+    // Re-enqueue the SAME file. The counter must be seeded past the restored
+    // task so the generated id is unique.
+    await c
+        .read(uploadQueueProvider.notifier)
+        .enqueue(bandId: 5, eventId: 3, file: file);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    final ids = c.read(uploadQueueProvider).map((t) => t.id).toSet();
+    expect(ids.length, c.read(uploadQueueProvider).length,
+        reason: 'all task ids must be unique');
+    expect(c.read(uploadQueueProvider).length, 2);
+  });
 }

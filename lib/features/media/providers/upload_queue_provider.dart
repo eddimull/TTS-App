@@ -54,10 +54,21 @@ class UploadTask {
 class UploadQueueNotifier extends Notifier<List<UploadTask>> {
   final Map<String, CancelToken> _tokens = {};
   int _counter = 0;
+  bool _disposed = false;
 
   @override
   List<UploadTask> build() {
+    ref.onDispose(() => _disposed = true);
     final persisted = ref.read(uploadQueueStorageProvider).read();
+    // Seed the counter past any restored ids ('task-<counter>-<hash>') so a
+    // re-enqueued file cannot collide with a restored task from a prior session.
+    for (final p in persisted) {
+      final parts = p.id.split('-');
+      if (parts.length >= 2 && parts.first == 'task') {
+        final n = int.tryParse(parts[1]);
+        if (n != null && n >= _counter) _counter = n + 1;
+      }
+    }
     return persisted
         .where((p) => File(p.filePath).existsSync())
         .map((p) => UploadTask(
@@ -75,6 +86,7 @@ class UploadQueueNotifier extends Notifier<List<UploadTask>> {
   MediaRepository get _repo => ref.read(mediaRepositoryProvider);
 
   void _persist() {
+    if (_disposed) return;
     ref.read(uploadQueueStorageProvider).write(
           state
               .where((t) =>
@@ -93,6 +105,9 @@ class UploadQueueNotifier extends Notifier<List<UploadTask>> {
   }
 
   void _set(String id, UploadTask Function(UploadTask) f) {
+    // An in-flight upload's async callbacks may fire after the notifier is
+    // disposed (e.g. user navigated away). Assigning to `state` then throws.
+    if (_disposed) return;
     state = [for (final t in state) if (t.id == id) f(t) else t];
   }
 

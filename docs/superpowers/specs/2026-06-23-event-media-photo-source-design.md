@@ -15,8 +15,8 @@ cannot pull straight from their photo roll or capture media on the spot.
 
 On mobile (iOS/Android), let the user choose media from:
 
-1. **Photo/Video Library** — multiple photos *and* videos, full quality.
-2. **Take Photo or Video** — capture a new photo/video with the camera.
+1. **Photo/Video Library** — multiple photos *and* videos.
+2. **Take Photo** — capture a new photo with the camera.
 3. **Choose File** — the existing arbitrary-file picker.
 
 Desktop/web behavior is unchanged (goes straight to the file picker).
@@ -24,7 +24,10 @@ Desktop/web behavior is unchanged (goes straight to the file picker).
 ## Non-goals
 
 - No change to the upload queue, repository, API, or backend.
-- No compression/transcoding of picked media (originals upload intact).
+- No video capture from the camera. `image_picker` has no combined
+  photo-or-video camera call; "Take Photo" uses `pickImage(camera)` (photo
+  only). Capturing video is out of scope; users can still upload an existing
+  video from the library or via Choose File.
 - No new tests for the platform-plugin picker flow (can't run headless).
 
 ## Why videos "just work"
@@ -53,13 +56,15 @@ final bool useMobilePicker = !kIsWeb && (Platform.isIOS || Platform.isAndroid);
 ```
 
 - **Mobile:** show a `CupertinoActionSheet` with actions
-  `Photo/Video Library`, `Take Photo or Video`, `Choose File`, and a Cancel
-  button. Branch on the chosen value:
+  `Photo/Video Library`, `Take Photo`, `Choose File`, and a Cancel button.
+  Branch on the chosen value:
   - **library** → `ImagePicker().pickMultipleMedia(imageQuality: 100)` →
-    `List<XFile>` (images and videos, full quality).
+    `List<XFile>` (images and videos). `imageQuality: 100` minimizes image
+    compression; `image_picker` still re-encodes images, while videos pass
+    through untouched.
   - **camera** → `ImagePicker().pickImage(source: ImageSource.camera,
     imageQuality: 100)` for a captured photo. (Single item; camera capture is
-    inherently one-at-a-time.)
+    inherently one-at-a-time. Photo only — see Non-goals.)
   - **file** → existing
     `FilePicker.platform.pickFiles(allowMultiple: true, type: FileType.any)`.
 - **Desktop/web:** skip the sheet, call `FilePicker` directly as today.

@@ -1341,7 +1341,7 @@ class _MediaSectionState extends ConsumerState<_MediaSection> {
           ),
           CupertinoActionSheetAction(
             onPressed: () => Navigator.pop(sheetContext, 'camera'),
-            child: const Text('Take Photo or Video'),
+            child: const Text('Take Photo'),
           ),
           CupertinoActionSheetAction(
             onPressed: () => Navigator.pop(sheetContext, 'file'),
@@ -1357,11 +1357,13 @@ class _MediaSectionState extends ConsumerState<_MediaSection> {
 
     switch (choice) {
       case 'library':
-        // pickMultipleMedia returns both images and videos at full quality.
+        // pickMultipleMedia returns both images and videos. imageQuality: 100
+        // minimizes image compression (image_picker still re-encodes images;
+        // videos pass through untouched).
         final picked = await ImagePicker().pickMultipleMedia(imageQuality: 100);
         return picked.map((x) => x.path).toList();
       case 'camera':
-        // Camera capture is one item at a time.
+        // Camera photo capture, one item at a time.
         final shot = await ImagePicker().pickImage(
           source: ImageSource.camera,
           imageQuality: 100,

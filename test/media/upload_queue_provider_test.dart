@@ -128,6 +128,31 @@ void main() {
     expect(c.read(uploadQueueProvider).single.status, UploadStatus.done);
   });
 
+  test('uploadId is persisted immediately on initiate (before completion)',
+      () async {
+    final prefs = await SharedPreferences.getInstance();
+    final storage = UploadQueueStorage(prefs);
+    final repo = GatedMediaRepository();
+    final c = ProviderContainer(overrides: [
+      mediaRepositoryProvider.overrideWithValue(repo),
+      uploadQueueStorageProvider.overrideWithValue(storage),
+    ]);
+    addTearDown(c.dispose);
+
+    await c
+        .read(uploadQueueProvider.notifier)
+        .enqueue(bandId: 5, eventId: 3, file: file);
+    // The upload is gated open (never completes), so the finally-block persist
+    // has not run. Allow the onInitiated callback to fire.
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    // Still uploading — yet the uploadId must already be in storage so a kill
+    // here would leave a resumable task.
+    expect(c.read(uploadQueueProvider).single.status, UploadStatus.uploading);
+    final persisted = storage.read();
+    expect(persisted.single.uploadId, 'u-1');
+  });
+
   test('failed upload is marked failed and retryable', () async {
     final prefs = await SharedPreferences.getInstance();
     final repo = FakeMediaRepository(fail: true);

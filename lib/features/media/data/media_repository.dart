@@ -91,9 +91,12 @@ class MediaRepository {
   /// Queries the server for the progress of an in-flight chunked upload.
   /// Returns the raw status map, e.g. `{total_chunks, chunks_uploaded, status}`.
   Future<Map<String, dynamic>> chunkUploadStatus(
-      int bandId, String uploadId) async {
-    final resp =
-        await _dio.get('/api/mobile/bands/$bandId/media/upload/$uploadId');
+      int bandId, String uploadId,
+      {CancelToken? cancelToken}) async {
+    final resp = await _dio.get(
+      '/api/mobile/bands/$bandId/media/upload/$uploadId',
+      cancelToken: cancelToken,
+    );
     return (resp.data as Map).cast<String, dynamic>();
   }
 
@@ -117,7 +120,8 @@ class MediaRepository {
 
     if (existingUploadId != null) {
       // Resume: ask the server how many chunks it already has.
-      final status = await chunkUploadStatus(bandId, existingUploadId);
+      final status = await chunkUploadStatus(bandId, existingUploadId,
+          cancelToken: cancelToken);
       uploadId = existingUploadId;
       startChunk = (status['chunks_uploaded'] as num?)?.toInt() ?? 0;
     } else {

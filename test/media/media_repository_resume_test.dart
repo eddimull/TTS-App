@@ -61,6 +61,39 @@ void main() {
     expect(chunkPosts.length, 2);
   });
 
+  test('resume forwards the cancelToken to the status GET', () async {
+    final tmp = await Directory.systemTemp.createTemp();
+    final file = File('${tmp.path}/big.bin')
+      ..writeAsBytesSync(List.filled(5 * 1024 * 1024, 1));
+    CancelToken? statusGetToken;
+    final token = CancelToken();
+
+    final dio = Dio(BaseOptions(baseUrl: 'http://x'));
+    dio.httpClientAdapter = _FakeAdapter((o) async {
+      if (o.method == 'GET' && o.path.endsWith('/u1')) {
+        statusGetToken = o.cancelToken;
+        return _json(
+            {'total_chunks': 3, 'chunks_uploaded': 1, 'status': 'uploading'});
+      }
+      if (o.path.contains('/chunk')) return _json({'success': true});
+      return _json({
+        'media': {
+          'id': 1,
+          'filename': 'big.bin',
+          'media_type': 'other',
+          'mime_type': 'application/octet-stream',
+          'file_size': 5,
+        }
+      });
+    });
+
+    final repo = MediaRepository(dio);
+    await repo.uploadFile(7, file,
+        eventId: 3, existingUploadId: 'u1', cancelToken: token);
+
+    expect(statusGetToken, same(token));
+  });
+
   test('fresh upload posts all chunks and returns media', () async {
     final tmp = await Directory.systemTemp.createTemp();
     final file = File('${tmp.path}/small.bin')

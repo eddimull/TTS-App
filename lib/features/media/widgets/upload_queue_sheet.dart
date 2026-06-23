@@ -25,7 +25,11 @@ class UploadQueueSheet extends ConsumerWidget {
         color: CupertinoColors.systemBackground.resolveFrom(context),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      child: Column(
+      // Inset for the device bottom safe-area (home indicator) so the last
+      // task row is not obscured on iOS.
+      child: SafeArea(
+        top: false,
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // ── Drag handle ─────────────────────────────────────────────────────
@@ -106,6 +110,7 @@ class UploadQueueSheet extends ConsumerWidget {
               ),
             ),
         ],
+        ),
       ),
     );
   }
@@ -120,9 +125,10 @@ class _UploadTaskRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Cancel applies to in-progress tasks. Paused (restored) tasks get a
+    // Resume action instead, and failed tasks get Retry.
     final isActive = task.status == UploadStatus.uploading ||
-        task.status == UploadStatus.queued ||
-        task.status == UploadStatus.paused;
+        task.status == UploadStatus.queued;
 
     final statusColor = switch (task.status) {
       UploadStatus.done => CupertinoColors.systemGreen,
@@ -218,6 +224,16 @@ class _UploadTaskRow extends StatelessWidget {
               onPressed: () => notifier.retry(task.id),
               child: Icon(
                 CupertinoIcons.arrow_clockwise,
+                size: 20,
+                color: CupertinoColors.systemBlue.resolveFrom(context),
+              ),
+            )
+          else if (task.status == UploadStatus.paused)
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: () => notifier.retry(task.id),
+              child: Icon(
+                CupertinoIcons.play_arrow_solid,
                 size: 20,
                 color: CupertinoColors.systemBlue.resolveFrom(context),
               ),

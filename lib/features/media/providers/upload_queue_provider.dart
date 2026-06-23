@@ -170,8 +170,12 @@ class UploadQueueNotifier extends Notifier<List<UploadTask>> {
         eventId: current.eventId,
         existingUploadId: current.uploadId,
         cancelToken: token,
-        onInitiated: (uploadId) =>
-            _set(id, (t) => t.copyWith(uploadId: uploadId)),
+        onInitiated: (uploadId) {
+          // Persist the uploadId immediately so a kill mid-upload leaves a
+          // resumable task (the finally-block persist may never run).
+          _set(id, (t) => t.copyWith(uploadId: uploadId));
+          _persist();
+        },
         onProgress: (p) => _set(id, (t) => t.copyWith(progress: p)),
       );
       _set(id, (t) => t.copyWith(status: UploadStatus.done, progress: 1));

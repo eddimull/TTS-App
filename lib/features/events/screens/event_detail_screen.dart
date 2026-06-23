@@ -1322,9 +1322,16 @@ class _MediaSectionState extends ConsumerState<_MediaSection> {
   }
 
   void _showQueueSheet(BuildContext context) {
+    // showCupertinoModalPopup creates a new route with a fresh widget tree, so
+    // the ProviderScope ancestor is lost. Re-attach the existing container via
+    // UncontrolledProviderScope so the sheet reads the same upload queue.
+    final container = ProviderScope.containerOf(context);
     showCupertinoModalPopup<void>(
       context: context,
-      builder: (_) => const UploadQueueSheet(),
+      builder: (_) => UncontrolledProviderScope(
+        container: container,
+        child: const UploadQueueSheet(),
+      ),
     );
   }
 

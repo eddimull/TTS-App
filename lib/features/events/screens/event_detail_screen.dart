@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +8,7 @@ import 'package:timelines_plus/timelines_plus.dart';
 import 'package:map_launcher/map_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/cache/cache_invalidator.dart';
+import '../../../shared/providers/selected_band_provider.dart';
 import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
 import '../../../shared/widgets/error_view.dart';
@@ -13,6 +16,8 @@ import '../../../shared/widgets/status_chip.dart';
 import '../../bookings/widgets/venue_picker.dart' show geocodeAddress, VenuePreviewCard;
 import '../../contacts/contact_detail_screen.dart';
 import '../../contacts/contact_ref.dart';
+import '../../media/providers/upload_queue_provider.dart';
+import '../../media/widgets/upload_queue_sheet.dart';
 import '../data/events_repository.dart';
 import '../data/models/event_detail.dart';
 import '../data/models/event_member.dart';
@@ -158,12 +163,23 @@ class _EventDetailView extends StatelessWidget {
             _NotesBox(html: event.notes!),
           ],
 
-          // Attachments
+          // Attachments (band-internal files — read-only)
           if (event.attachments.isNotEmpty) ...[
             const SizedBox(height: 20),
             const _SectionHeader(title: 'Attachments'),
             const SizedBox(height: 8),
             _AttachmentsSection(attachments: event.attachments),
+          ],
+
+          // Media (client-shared photos/files — writers can upload)
+          if (event.media.isNotEmpty || event.canWrite) ...[
+            const SizedBox(height: 20),
+            _MediaSection(
+              media: event.media,
+              eventKey: event.key,
+              eventId: event.id,
+              canWrite: event.canWrite,
+            ),
           ],
 
           // Attire
@@ -1246,6 +1262,242 @@ class _ContactLink extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Media (client-shared) ─────────────────────────────────────────────────────
+
+/// A self-contained ConsumerStatefulWidget so it can read Riverpod providers
+/// (bandId, uploadQueueProvider, eventDetailProvider) without touching the
+/// parent StatelessWidget _EventDetailView.
+class _MediaSection extends ConsumerStatefulWidget {
+  const _MediaSection({
+    required this.media,
+    required this.eventKey,
+    required this.eventId,
+    required this.canWrite,
+  });
+
+  final List<EventMedia> media;
+  final String eventKey;
+  final int eventId;
+  final bool canWrite;
+
+  @override
+  ConsumerState<_MediaSection> createState() => _MediaSectionState();
+}
+
+class _MediaSectionState extends ConsumerState<_MediaSection> {
+  bool _enqueueing = false;
+
+  Future<void> _pickAndUploadMedia() async {
+    final bandId = ref.read(selectedBandProvider).value ?? 0;
+    if (bandId == 0) return; // No active band — bail silently.
+
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.any,
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    setState(() => _enqueueing = true);
+    try {
+      for (final f in result.files) {
+        final path = f.path;
+        if (path == null) continue;
+        await ref.read(uploadQueueProvider.notifier).enqueue(
+              bandId: bandId,
+              eventId: widget.eventId,
+              file: File(path),
+            );
+      }
+      // Invalidate so finished uploads refresh into the grid.
+      ref.invalidate(eventDetailProvider(widget.eventKey));
+    } finally {
+      if (mounted) setState(() => _enqueueing = false);
+    }
+  }
+
+  void _showQueueSheet(BuildContext context) {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (_) => const UploadQueueSheet(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tasks = ref.watch(uploadQueueProvider);
+    // Active tasks for this event (queued or uploading).
+    final activeTasks = tasks.where((t) =>
+        t.eventId == widget.eventId &&
+        (t.status == UploadStatus.uploading ||
+            t.status == UploadStatus.queued ||
+            t.status == UploadStatus.paused)).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Section header row ──────────────────────────────────────────────
+        Row(
+          children: [
+            const Expanded(
+              child: _SectionHeader(title: 'Media (shared with clients)'),
+            ),
+            if (widget.canWrite)
+              CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: _enqueueing ? null : _pickAndUploadMedia,
+                child: _enqueueing
+                    ? const CupertinoActivityIndicator()
+                    : const Icon(CupertinoIcons.cloud_upload),
+              ),
+          ],
+        ),
+        // ── Active-upload inline banner ─────────────────────────────────────
+        if (activeTasks.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          _ActiveUploadBanner(
+            tasks: activeTasks,
+            onTap: () => _showQueueSheet(context),
+          ),
+        ],
+        const SizedBox(height: 8),
+        // ── Media grid or empty hint ────────────────────────────────────────
+        if (widget.media.isEmpty)
+          Text(
+            'No media yet',
+            style: TextStyle(
+              fontSize: 14,
+              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            ),
+          )
+        else
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 4,
+              mainAxisSpacing: 4,
+            ),
+            itemCount: widget.media.length,
+            itemBuilder: (context, i) => _MediaGridCell(item: widget.media[i]),
+          ),
+      ],
+    );
+  }
+}
+
+// ── Active-upload inline banner ────────────────────────────────────────────────
+
+class _ActiveUploadBanner extends StatelessWidget {
+  const _ActiveUploadBanner({required this.tasks, required this.onTap});
+  final List<UploadTask> tasks;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    // Show total progress as an average across active tasks.
+    final avgProgress =
+        tasks.isEmpty ? 0.0 : tasks.map((t) => t.progress).reduce((a, b) => a + b) / tasks.length;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: CupertinoColors.systemBlue.resolveFrom(context).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            const CupertinoActivityIndicator(),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tasks.length == 1
+                        ? 'Uploading 1 file…'
+                        : 'Uploading ${tasks.length} files…',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: CupertinoColors.systemBlue.resolveFrom(context),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: SizedBox(
+                      height: 3,
+                      child: Stack(
+                        children: [
+                          Container(
+                            color: CupertinoColors.systemBlue
+                                .resolveFrom(context)
+                                .withValues(alpha: 0.25),
+                          ),
+                          FractionallySizedBox(
+                            widthFactor: avgProgress.clamp(0.0, 1.0),
+                            child: Container(
+                              color: CupertinoColors.systemBlue.resolveFrom(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              CupertinoIcons.chevron_right,
+              size: 14,
+              color: CupertinoColors.systemBlue.resolveFrom(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Single media grid cell ─────────────────────────────────────────────────────
+
+class _MediaGridCell extends StatelessWidget {
+  const _MediaGridCell({required this.item});
+  final EventMedia item;
+
+  @override
+  Widget build(BuildContext context) {
+    final isImage = item.mimeType.startsWith('image/');
+    final thumbUrl = item.thumbnailUrl.isNotEmpty
+        ? resolveAttachmentUrl(item.thumbnailUrl)
+        : '';
+
+    if (isImage && thumbUrl.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: AuthThumbnail(url: thumbUrl),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
+        child: Center(
+          child: Icon(
+            attachmentIcon(item.mimeType),
+            size: 28,
+            color: CupertinoColors.secondaryLabel.resolveFrom(context),
+          ),
+        ),
       ),
     );
   }

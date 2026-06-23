@@ -36,6 +36,39 @@ class EventAttachment {
   }
 }
 
+class EventMedia {
+  const EventMedia({
+    required this.id,
+    required this.filename,
+    required this.mediaType,
+    required this.mimeType,
+    required this.fileSize,
+    this.formattedSize = '',
+    this.thumbnailUrl = '',
+    this.createdAt,
+  });
+
+  final int id;
+  final String filename;
+  final String mediaType;
+  final String mimeType;
+  final int fileSize;
+  final String formattedSize;
+  final String thumbnailUrl;
+  final String? createdAt;
+
+  factory EventMedia.fromJson(Map<String, dynamic> json) => EventMedia(
+        id: (json['id'] as num).toInt(),
+        filename: json['filename'] as String? ?? '',
+        mediaType: json['media_type'] as String? ?? 'other',
+        mimeType: json['mime_type'] as String? ?? '',
+        fileSize: (json['file_size'] as num?)?.toInt() ?? 0,
+        formattedSize: json['formatted_size'] as String? ?? '',
+        thumbnailUrl: json['thumbnail_url'] as String? ?? '',
+        createdAt: json['created_at'] as String?,
+      );
+}
+
 class EventTimelineEntry {
   const EventTimelineEntry({required this.title, this.time});
   final String title;
@@ -191,6 +224,7 @@ class EventDetail {
     this.wedding,
     required this.contacts,
     required this.attachments,
+    this.media = const [],
     this.rosterStatus,
   });
 
@@ -242,6 +276,7 @@ class EventDetail {
   final WeddingDetail? wedding;
   final List<EventContact> contacts;
   final List<EventAttachment> attachments;
+  final List<EventMedia> media;
 
   /// One of "green", "yellow", "red", "none", or null.
   final String? rosterStatus;
@@ -282,6 +317,11 @@ class EventDetail {
         ? rawAttachments.cast<Map<String, dynamic>>().map(EventAttachment.fromJson).toList()
         : <EventAttachment>[];
 
+    final rawMedia = json['media'];
+    final media = rawMedia is List
+        ? rawMedia.cast<Map<String, dynamic>>().map(EventMedia.fromJson).toList()
+        : <EventMedia>[];
+
     return EventDetail(
       id: (json['id'] as num).toInt(),
       key: json['key'] as String,
@@ -320,6 +360,7 @@ class EventDetail {
       wedding: wedding,
       contacts: contacts,
       attachments: attachments,
+      media: media,
       rosterStatus: json['roster_status'] as String?,
     );
   }

@@ -8,8 +8,8 @@
 // Runs headless via `flutter test` against the pure JSON<->JSON adapter layer.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tts_bandmate/features/finances/_spike/payout_flow_adapter.dart';
-import 'package:tts_bandmate/features/finances/_spike/spike_seed.dart';
+import 'package:tts_bandmate/features/finances/payout_editor/data/payout_flow_adapter.dart';
+import 'package:tts_bandmate/features/finances/payout_editor/data/payout_flow_sample.dart';
 
 /// Compares the logic contract of two TTS flows, ignoring node/edge ordering and
 /// all layout fields. Returns null on match or a human-readable diff.

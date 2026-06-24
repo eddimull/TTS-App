@@ -1,12 +1,13 @@
-// SPIKE — throwaway. Delete this folder to revert the vyuh_node_flow experiment.
+// Sample payout flows used as test fixtures and as a fallback/demo seed for the
+// editor before a real config is loaded from the API.
 //
-// Seed flow for the payout-editor touch spike. The base is the real backend
-// fixture `PayoutFlowCalculationTest::test_multiple_outputs_with_percentage_allocations`
+// The base (`kFixtureFlow`) is the real backend fixture
+// `PayoutFlowCalculationTest::test_multiple_outputs_with_percentage_allocations`
 // (TTS repo): one income node fanning out to two payoutGroup nodes at 50% each.
 //
-// We add a `conditional` node by hand so the on-device test exercises the
-// two-output (true/false) branch-wiring path. The conditional is UI-only on the
-// backend today, so its presence is purely to test Vyuh's multi-named-port wiring.
+// `kSeedFlowWithConditional` adds a `conditional` node to exercise the
+// two-output (true/false) branch-wiring path. Note: the backend doesn't yet
+// evaluate conditional branches — it passes the amount through to all outputs.
 
 /// The real fixture, verbatim from the backend test (edges carry no handles,
 /// nodes carry no position — exactly as the calculation engine consumes them).

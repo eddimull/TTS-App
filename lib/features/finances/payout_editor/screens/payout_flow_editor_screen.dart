@@ -27,18 +27,18 @@ import 'package:vyuh_node_flow/editor.dart';
 import 'package:vyuh_node_flow/nodes.dart';
 import 'package:vyuh_node_flow/themes.dart';
 
-import '../payout_editor/config/node_config_form.dart';
-import 'payout_flow_adapter.dart';
-import 'spike_seed.dart';
+import '../config/node_config_form.dart';
+import '../data/payout_flow_adapter.dart';
+import '../data/payout_flow_sample.dart';
 
-class PayoutFlowSpikeScreen extends StatefulWidget {
-  const PayoutFlowSpikeScreen({super.key});
+class PayoutFlowEditorScreen extends StatefulWidget {
+  const PayoutFlowEditorScreen({super.key});
 
   @override
-  State<PayoutFlowSpikeScreen> createState() => _PayoutFlowSpikeScreenState();
+  State<PayoutFlowEditorScreen> createState() => _PayoutFlowEditorScreenState();
 }
 
-class _PayoutFlowSpikeScreenState extends State<PayoutFlowSpikeScreen> {
+class _PayoutFlowEditorScreenState extends State<PayoutFlowEditorScreen> {
   late final NodeFlowController<Map<String, dynamic>, dynamic> _controller;
 
   /// Id of the node currently grabbed via long-press, or null.

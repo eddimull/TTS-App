@@ -18,12 +18,14 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import 'package:vyuh_node_flow/connections.dart';
 import 'package:vyuh_node_flow/controller.dart';
 import 'package:vyuh_node_flow/editor.dart';
 import 'package:vyuh_node_flow/nodes.dart';
+import 'package:vyuh_node_flow/ports.dart';
 import 'package:vyuh_node_flow/themes.dart';
 
 import '../config/node_config_form.dart';
@@ -262,8 +264,106 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
     return best;
   }
 
+  /// Graph-space radius (in logical px) around a port within which a press
+  /// counts as "on the port" — generous so a thumb reliably hits it.
+  static const double _portHitRadius = 34.0;
+
+  /// Default port widget size (theme default is 12x12).
+  static const Size _portSize = Size(12, 12);
+
+  /// The port's true visual center in graph coordinates. Uses the library's
+  /// own geometry (visualPosition + visual port origin), NOT position+offset —
+  /// `port.offset` is a small edge nudge, so naive math puts right-side output
+  /// ports a full node-width away and they never hit-test.
+  Offset _portCenter(Node<Map<String, dynamic>> node, Port port) {
+    return node.getPortCenter(port.id, portSize: port.size ?? _portSize);
+  }
+
+  /// A port hit result: enough to start a connection drag.
+  ({String nodeId, String portId, bool isOutput, Offset center, Rect bounds})?
+      _portAtGraph(Offset graphPoint) {
+    ({String nodeId, String portId, bool isOutput, Offset center, Rect bounds})?
+        best;
+    double bestDist = _portHitRadius;
+    for (final node in _controller.nodes.values) {
+      for (final port in node.ports) {
+        final center = _portCenter(node, port);
+        final dist = (graphPoint - center).distance;
+        if (dist <= bestDist) {
+          bestDist = dist;
+          best = (
+            nodeId: node.id,
+            portId: port.id,
+            isOutput: port.type == PortType.output,
+            center: center,
+            bounds: node.getBounds(),
+          );
+        }
+      }
+    }
+    return best;
+  }
+
+  /// While dragging a connection: the source port's id + direction, so we can
+  /// find a valid (opposite-direction) target. Null when not connecting.
+  ({String nodeId, String portId, bool isOutput})? _connectSource;
+  bool get _connecting => _connectSource != null;
+
+  /// Whether a valid target was under the finger at the last move (for the
+  /// hover haptic — fire once on entering a valid target, not every frame).
+  bool _hadValidTarget = false;
+
+  /// Find a port that is a VALID connection target for the current source:
+  /// opposite direction, different node. Forgiving radius so near-misses count.
+  ({String nodeId, String portId, Offset center, Rect bounds})?
+      _targetPortFor(Offset graphPoint) {
+    final src = _connectSource;
+    if (src == null) return null;
+    ({String nodeId, String portId, Offset center, Rect bounds})? best;
+    double bestDist = _portHitRadius;
+    for (final node in _controller.nodes.values) {
+      if (node.id == src.nodeId) continue; // no same-node
+      for (final port in node.ports) {
+        // Output source → input target, and vice versa.
+        final isOutput = port.type == PortType.output;
+        if (isOutput == src.isOutput) continue;
+        final center = _portCenter(node, port);
+        final dist = (graphPoint - center).distance;
+        if (dist <= bestDist) {
+          bestDist = dist;
+          best = (nodeId: node.id, portId: port.id, center: center, bounds: node.getBounds());
+        }
+      }
+    }
+    return best;
+  }
+
   void _onLongPressStart(LongPressStartDetails d) {
-    final node = _nodeAtGraph(_toGraph(d.localPosition));
+    final graph = _toGraph(d.localPosition);
+
+    // Port under the finger → start a connection drag from it.
+    final port = _portAtGraph(graph);
+    if (port != null) {
+      final result = _controller.startConnectionDrag(
+        nodeId: port.nodeId,
+        portId: port.portId,
+        isOutput: port.isOutput,
+        startPoint: port.center,
+        nodeBounds: port.bounds,
+      );
+      if (result.allowed) {
+        _connectSource =
+            (nodeId: port.nodeId, portId: port.portId, isOutput: port.isOutput);
+        _hadValidTarget = false;
+        // mediumImpact (not selectionClick) so the start is clearly felt — a
+        // selectionClick is too faint to distinguish on many devices.
+        HapticFeedback.mediumImpact(); // started a connection
+        return;
+      }
+    }
+
+    // Otherwise a node-body press → move that node.
+    final node = _nodeAtGraph(graph);
     if (node != null) {
       _lastLongPressOffset = Offset.zero;
       // Drive the on-node cue via `selected` — an observable the editor's own
@@ -271,11 +371,31 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
       // setState here would repaint the overlay pill but not the cached node
       // widget.)
       node.isSelected = true;
+      HapticFeedback.selectionClick(); // grabbed a node to move
       setState(() => _grabbedNodeId = node.id);
     }
   }
 
   void _onLongPressMove(LongPressMoveUpdateDetails d) {
+    final graph = _toGraph(d.localPosition);
+
+    if (_connecting) {
+      // Highlight the valid target port (if any) under the finger.
+      final target = _targetPortFor(graph);
+      _controller.updateConnectionDrag(
+        graphPosition: graph,
+        targetNodeId: target?.nodeId,
+        targetPortId: target?.portId,
+        targetNodeBounds: target?.bounds,
+      );
+      // Light tick the first frame we enter a valid target, so you can FEEL
+      // when releasing would connect.
+      final valid = target != null;
+      if (valid && !_hadValidTarget) HapticFeedback.selectionClick();
+      _hadValidTarget = valid;
+      return;
+    }
+
     final id = _grabbedNodeId;
     if (id == null) return;
     // offsetFromOrigin is cumulative; take the per-frame screen delta and
@@ -286,6 +406,27 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
   }
 
   void _onLongPressEnd(LongPressEndDetails d) {
+    if (_connecting) {
+      // Complete the connection if released over a VALID target port (correct
+      // direction, different node); otherwise cancel.
+      final target = _targetPortFor(_toGraph(d.localPosition));
+      Connection<dynamic>? created;
+      if (target != null) {
+        created = _controller.completeConnectionDrag(
+          targetNodeId: target.nodeId,
+          targetPortId: target.portId,
+        );
+      } else {
+        _controller.cancelConnectionDrag();
+      }
+      if (created != null) {
+        HapticFeedback.mediumImpact(); // connected!
+      }
+      _connectSource = null;
+      _hadValidTarget = false;
+      return;
+    }
+
     final id = _grabbedNodeId;
     if (id != null) {
       _controller.nodes[id]?.isSelected = false;

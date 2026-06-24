@@ -185,8 +185,23 @@ Tested iteratively on a physical device. Three issues found and addressed:
 above, the editor is usable: hit-testing is solid, port wiring works (including
 the conditional's true/false outputs), and **long-press-to-move (200ms hold) with
 an on-node lift cue (scale + accent border + glow) feels natural** — the user
-confirmed it "looks perfect." The adapter round-trips the real backend fixture
-with the payout logic contract intact (6/6 tests green).
+confirmed it "looks perfect."
+
+**JSON verified end-to-end against the real backend (not eyeballed).** The exact
+"Dump JSON" output captured from the device was run through the live Laravel
+engine (`tests/Feature/MobileFlowJsonVerificationTest.php`, in Docker, 2 tests
+green): it persists through the `flow_diagram` JSON cast unchanged, is accepted by
+`BandPayoutConfig::calculatePayouts()`, and computes a sensible distribution. The
+mobile flow's adapter unit tests are green (6/6) and the round-trip preserves the
+logic contract.
+
+This verification corrected two things I'd assumed:
+1. An earlier "conditional dead-ends to $0" claim was **wrong** — that $0 was a
+   test-harness bug (band had no owner, so `allMembers` resolved to nobody).
+2. **Verified** conditional behavior (`BandPayoutConfig.php` ~L849 else-branch):
+   an unhandled node type passes the **full amount through to ALL outgoing
+   edges, ignoring `sourceHandle`**. So a conditional is currently a transparent
+   pass-through — both branches receive the amount; it does not gate or branch.
 
 Recommended path: native port on `vyuh_node_flow` at ~3–6 weeks, carrying forward
 `PayoutFlowAdapter` (the durable artifact) and the long-press-to-move pattern.
@@ -199,5 +214,7 @@ Caveats to budget for:
   workaround makes this moot, but if that fix lands we can reassess.
 - Backend work (mobile API endpoints to fetch/save/preview configs) is still
   required and was out of scope here.
-- `conditional` nodes render/edit but the backend doesn't calculate branches yet —
-  same limitation as web.
+- `conditional` nodes render/edit and pass through, but the backend does NOT
+  evaluate the condition or gate branches yet (verified above) — same limitation
+  as web. Don't ship a conditional as if it gates payouts until the backend
+  implements branch evaluation.

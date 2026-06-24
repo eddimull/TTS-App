@@ -388,10 +388,11 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
         targetPortId: target?.portId,
         targetNodeBounds: target?.bounds,
       );
-      // Light tick the first frame we enter a valid target, so you can FEEL
-      // when releasing would connect.
+      // Fire the same strong haptic as a completed connect the moment the
+      // finger enters a valid target (still down) — so the "this will connect"
+      // moment feels identical whether you hold or release.
       final valid = target != null;
-      if (valid && !_hadValidTarget) HapticFeedback.selectionClick();
+      if (valid && !_hadValidTarget) HapticFeedback.mediumImpact();
       _hadValidTarget = valid;
       return;
     }

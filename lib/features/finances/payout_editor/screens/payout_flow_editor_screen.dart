@@ -1,26 +1,25 @@
-// SPIKE — throwaway. A bare NodeFlowEditor wired to the seed via the adapter,
-// for assessing touch feel on a physical device. Not routed into app nav.
+// Payout flow editor screen. Loads a band's payout config, renders its
+// flow_diagram on the vyuh_node_flow canvas, and (for owners) saves edits back
+// via the mobile API. Non-owners get a navigable read-only view.
 //
-// On-device checklist this screen supports:
-//   1. LONG-PRESS a node, then drag to move it (see gesture note below)
-//   2. DOUBLE-TAP a node to configure it (single tap can't be used — see the
-//      events note in build())
-//   3. TAP a connection line to delete it; DRAG from a port to create one
-//   4. tap "Dump TTS JSON" to confirm the reverse adapter produces backend-valid
-//      flow JSON from whatever you've drawn (printed to the console + a sheet).
+// Interactions (owner/edit mode):
+//   • LONG-PRESS a node, then drag to move it
+//   • DOUBLE-TAP a node to configure it
+//   • TAP a connection line to delete it; DRAG from a port to create one
 //
 // Gesture note: vyuh_node_flow 0.27.3 has a known mobile bug where a single
 // finger on a node is claimed by the canvas InteractiveViewer for panning
 // instead of dragging the node (upstream issue #24 / PR #31). Rather than fight
 // the gesture arena, this screen adds a LONG-PRESS-TO-MOVE overlay: a normal
 // one-finger drag pans the canvas (the library's default); a long-press grabs
-// the node under your finger and subsequent movement repositions it via
-// controller.moveNode(). Ports/taps still fall through to the editor.
-
-import 'dart:convert';
+// the node under your finger and repositions it via controller.moveNode().
+// Configure opens on DOUBLE-tap because the editor fires single-tap on
+// pointer-down, which would pre-empt the long-press.
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import 'package:vyuh_node_flow/connections.dart';
 import 'package:vyuh_node_flow/controller.dart';
 import 'package:vyuh_node_flow/editor.dart';
@@ -29,17 +28,69 @@ import 'package:vyuh_node_flow/themes.dart';
 
 import '../config/node_config_form.dart';
 import '../data/payout_flow_adapter.dart';
-import '../data/payout_flow_sample.dart';
+import '../data/payout_flow_repository.dart';
+import '../providers/payout_flow_provider.dart';
 
-class PayoutFlowEditorScreen extends StatefulWidget {
-  const PayoutFlowEditorScreen({super.key});
+/// Loads a band's payout config and hosts the flow editor. Editing/saving is
+/// gated to band owners (the backend PATCH is owner-only); others get a
+/// read-only view.
+class PayoutFlowEditorScreen extends ConsumerWidget {
+  const PayoutFlowEditorScreen({
+    super.key,
+    required this.bandId,
+    required this.configId,
+  });
+
+  final int bandId;
+  final int configId;
 
   @override
-  State<PayoutFlowEditorScreen> createState() => _PayoutFlowEditorScreenState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final configAsync = ref.watch(
+      payoutConfigProvider(PayoutConfigRef(bandId: bandId, configId: configId)),
+    );
+    final isOwner = ref.watch(isSelectedBandOwnerProvider);
+
+    return configAsync.when(
+      loading: () => const CupertinoPageScaffold(
+        navigationBar: CupertinoNavigationBar(middle: Text('Payout Flow')),
+        child: Center(child: CupertinoActivityIndicator()),
+      ),
+      error: (e, _) => CupertinoPageScaffold(
+        navigationBar: const CupertinoNavigationBar(middle: Text('Payout Flow')),
+        child: ErrorView(
+          message: ErrorView.friendlyMessage(e),
+          onRetry: () => ref.invalidate(payoutConfigProvider(
+              PayoutConfigRef(bandId: bandId, configId: configId))),
+        ),
+      ),
+      data: (config) => _EditorBody(
+        bandId: bandId,
+        config: config,
+        readOnly: !isOwner,
+      ),
+    );
+  }
 }
 
-class _PayoutFlowEditorScreenState extends State<PayoutFlowEditorScreen> {
+class _EditorBody extends ConsumerStatefulWidget {
+  const _EditorBody({
+    required this.bandId,
+    required this.config,
+    required this.readOnly,
+  });
+
+  final int bandId;
+  final PayoutConfigDetail config;
+  final bool readOnly;
+
+  @override
+  ConsumerState<_EditorBody> createState() => _EditorBodyState();
+}
+
+class _EditorBodyState extends ConsumerState<_EditorBody> {
   late final NodeFlowController<Map<String, dynamic>, dynamic> _controller;
+  bool _saving = false;
 
   /// Id of the node currently grabbed via long-press, or null.
   String? _grabbedNodeId;
@@ -52,9 +103,10 @@ class _PayoutFlowEditorScreenState extends State<PayoutFlowEditorScreen> {
   @override
   void initState() {
     super.initState();
+    final flow = widget.config.flowDiagram;
     _controller = NodeFlowController<Map<String, dynamic>, dynamic>(
-      nodes: nodesFromTts(kSeedFlowWithConditional),
-      connections: connectionsFromTts(kSeedFlowWithConditional),
+      nodes: nodesFromTts(flow),
+      connections: connectionsFromTts(flow),
     );
   }
 
@@ -64,30 +116,44 @@ class _PayoutFlowEditorScreenState extends State<PayoutFlowEditorScreen> {
     super.dispose();
   }
 
-  void _dumpJson() {
-    final tts = ttsFromControllerState(
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    final flow = ttsFromControllerState(
       _controller.nodes.values,
       _controller.connections,
     );
-    final pretty = const JsonEncoder.withIndent('  ').convert(tts);
-    debugPrint('=== TTS flow_diagram from live graph ===\n$pretty');
-    showCupertinoModalPopup<void>(
+    try {
+      await ref.read(payoutFlowRepositoryProvider).updateFlow(
+            widget.bandId,
+            widget.config.id,
+            flow,
+          );
+      // Refresh the configs list so any name/active changes surface.
+      ref.invalidate(payoutConfigsProvider(widget.bandId));
+      if (mounted) {
+        await _alert('Saved', 'Payout flow saved.');
+      }
+    } catch (e) {
+      if (mounted) {
+        await _alert('Save failed', ErrorView.friendlyMessage(e));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _alert(String title, String message) {
+    return showCupertinoDialog<void>(
       context: context,
-      builder: (_) => CupertinoActionSheet(
-        title: const Text('TTS flow_diagram (reverse adapter)'),
-        message: SizedBox(
-          height: 360,
-          child: SingleChildScrollView(
-            child: Text(
-              pretty,
-              style: const TextStyle(fontFamily: 'Menlo', fontSize: 11),
-            ),
+      builder: (dlg) => CupertinoAlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(dlg),
+            child: const Text('OK'),
           ),
-        ),
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Close'),
-        ),
+        ],
       ),
     );
   }
@@ -229,14 +295,20 @@ class _PayoutFlowEditorScreenState extends State<PayoutFlowEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final readOnly = widget.readOnly;
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
-        middle: const Text('Payout Flow Spike'),
-        trailing: CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: _dumpJson,
-          child: const Text('Dump JSON'),
-        ),
+        middle: Text(widget.config.name),
+        trailing: readOnly
+            ? const Text('View only',
+                style: TextStyle(fontSize: 14, color: CupertinoColors.systemGrey))
+            : CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const CupertinoActivityIndicator()
+                    : const Text('Save'),
+              ),
       ),
       child: SafeArea(
         child: Stack(
@@ -244,52 +316,56 @@ class _PayoutFlowEditorScreenState extends State<PayoutFlowEditorScreen> {
             NodeFlowEditor<Map<String, dynamic>, dynamic>(
               controller: _controller,
               theme: NodeFlowTheme.light,
-              behavior: NodeFlowBehavior.design,
+              // Owners can edit; everyone else gets a navigable read-only view.
+              behavior:
+                  readOnly ? NodeFlowBehavior.inspect : NodeFlowBehavior.design,
               nodeBuilder: _buildNode,
-              events: NodeFlowEvents<Map<String, dynamic>, dynamic>(
-                // DOUBLE-tap (not single) opens configure. The editor fires
-                // NodeEvents.onTap from Listener.onPointerDown (instant, on the
-                // first touch), so single-tap-to-configure would pre-empt our
-                // long-press-to-move. onDoubleTap fires from a real
-                // DoubleTapGestureRecognizer that won't trip on a long hold, so
-                // the two gestures coexist cleanly: double-tap = configure,
-                // long-press = move.
-                node: NodeEvents<Map<String, dynamic>>(
-                  onDoubleTap: _openConfigSheet,
-                ),
-                // Single tap on a connection → confirm + delete (no node overlay
-                // collision).
-                connection: ConnectionEvents<Map<String, dynamic>, dynamic>(
-                  onTap: _confirmDeleteConnection,
-                ),
-              ),
+              events: readOnly
+                  ? null
+                  : NodeFlowEvents<Map<String, dynamic>, dynamic>(
+                      // DOUBLE-tap (not single) opens configure. The editor fires
+                      // NodeEvents.onTap from Listener.onPointerDown (instant, on
+                      // the first touch), so single-tap-to-configure would
+                      // pre-empt our long-press-to-move. onDoubleTap fires from a
+                      // real DoubleTapGestureRecognizer that won't trip on a long
+                      // hold, so the two gestures coexist cleanly: double-tap =
+                      // configure, long-press = move.
+                      node: NodeEvents<Map<String, dynamic>>(
+                        onDoubleTap: _openConfigSheet,
+                      ),
+                      // Single tap on a connection → confirm + delete.
+                      connection:
+                          ConnectionEvents<Map<String, dynamic>, dynamic>(
+                        onTap: _confirmDeleteConnection,
+                      ),
+                    ),
             ),
-            // Transparent overlay that ONLY claims the long-press gesture.
-            // Taps and one-finger drags fall through to the editor (canvas pan,
-            // port wiring); a long-press grabs the node under the finger.
+            // Transparent overlay that ONLY claims the long-press gesture (used
+            // for node moves). Disabled in read-only mode.
             //
             // RawGestureDetector (not GestureDetector) so we can shorten the
             // hold duration to ~200ms — snappy enough to feel synced with the
             // lift animation, with enough margin that quick taps/pans don't
             // accidentally grab a node.
-            Positioned.fill(
-              child: RawGestureDetector(
-                behavior: HitTestBehavior.translucent,
-                gestures: {
-                  LongPressGestureRecognizer:
-                      GestureRecognizerFactoryWithHandlers<
-                          LongPressGestureRecognizer>(
-                    () => LongPressGestureRecognizer(
-                      duration: const Duration(milliseconds: 200),
+            if (!readOnly)
+              Positioned.fill(
+                child: RawGestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  gestures: {
+                    LongPressGestureRecognizer:
+                        GestureRecognizerFactoryWithHandlers<
+                            LongPressGestureRecognizer>(
+                      () => LongPressGestureRecognizer(
+                        duration: const Duration(milliseconds: 200),
+                      ),
+                      (r) => r
+                        ..onLongPressStart = _onLongPressStart
+                        ..onLongPressMoveUpdate = _onLongPressMove
+                        ..onLongPressEnd = _onLongPressEnd,
                     ),
-                    (r) => r
-                      ..onLongPressStart = _onLongPressStart
-                      ..onLongPressMoveUpdate = _onLongPressMove
-                      ..onLongPressEnd = _onLongPressEnd,
-                  ),
-                },
+                  },
+                ),
               ),
-            ),
             if (_grabbedNodeId != null)
               const Positioned(
                 left: 0,
@@ -313,14 +389,14 @@ class _PayoutFlowEditorScreenState extends State<PayoutFlowEditorScreen> {
     final grabbed = node.selected.value;
     switch (node.type) {
       case 'income':
-        return _SpikeNode(
+        return _FlowNode(
           title: 'Income',
           color: const Color(0xFF2E7D32),
           subtitle: '\$${node.data['amount']}',
           grabbed: grabbed,
         );
       case 'conditional':
-        return _SpikeNode(
+        return _FlowNode(
           title: 'Condition',
           color: const Color(0xFFB26A00),
           subtitle:
@@ -331,14 +407,14 @@ class _PayoutFlowEditorScreenState extends State<PayoutFlowEditorScreen> {
       case 'payoutGroup':
         final mode = node.data['distributionMode'];
         final pct = node.data['incomingAllocationValue'];
-        return _SpikeNode(
+        return _FlowNode(
           title: node.data['label']?.toString() ?? 'Payout',
           color: const Color(0xFF1565C0),
           subtitle: '$pct% · $mode',
           grabbed: grabbed,
         );
       default:
-        return _SpikeNode(
+        return _FlowNode(
           title: node.type,
           color: CupertinoColors.systemGrey,
           grabbed: grabbed,
@@ -347,8 +423,8 @@ class _PayoutFlowEditorScreenState extends State<PayoutFlowEditorScreen> {
   }
 }
 
-class _SpikeNode extends StatelessWidget {
-  const _SpikeNode({
+class _FlowNode extends StatelessWidget {
+  const _FlowNode({
     required this.title,
     required this.color,
     this.subtitle,

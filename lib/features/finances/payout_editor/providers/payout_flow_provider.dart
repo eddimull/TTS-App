@@ -1,6 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
+import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 
 import '../data/payout_flow_repository.dart';
+
+/// Whether the current user owns the selected band — gates editing/saving
+/// (the backend PATCH endpoint is owner-only).
+final isSelectedBandOwnerProvider = Provider<bool>((ref) {
+  final bandId = ref.watch(selectedBandProvider).value;
+  final auth = ref.watch(authProvider).value;
+  if (bandId == null || auth is! AuthAuthenticated) return false;
+  for (final b in auth.bands) {
+    if (b.id == bandId) return b.isOwner;
+  }
+  return false;
+});
 
 /// Lists a band's payout configs (summaries). Mirrors the finances provider
 /// pattern: AsyncNotifier with the param passed via constructor.

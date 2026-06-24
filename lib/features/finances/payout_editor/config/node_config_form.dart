@@ -48,6 +48,50 @@ class PayoutNodeOptions {
   ];
   static const incomingAllocationTypes = ['remainder', 'percentage', 'fixed'];
   static const memberTypeFilters = ['all', 'members_only', 'substitutes_only'];
+
+  /// Human-readable labels for raw enum values (mirrors the web schema's
+  /// `label:` fields). Falls back to the raw value when unmapped.
+  static const Map<String, String> labels = {
+    // condition types
+    'bookingPrice': 'Booking Price',
+    'eventCount': 'Event Count',
+    'eventType': 'Event Type',
+    'dayOfWeek': 'Day of Week',
+    'memberCount': 'Member Count',
+    'eventMultiplier': 'Event Value Multiplier',
+    // operators
+    '>': 'Greater than (>)',
+    '<': 'Less than (<)',
+    '>=': 'At least (≥)',
+    '<=': 'At most (≤)',
+    '==': 'Equals (=)',
+    '!=': 'Not equal (≠)',
+    // cut / distribution / allocation
+    'percentage': 'Percentage',
+    'fixed': 'Fixed amount',
+    'tiered': 'Tiered',
+    'equal_split': 'Equal split',
+    'weighted': 'Weighted',
+    'remainder': 'Remainder',
+    // source types
+    'roster': 'Roster',
+    'paymentGroup': 'Payment group',
+    'specific': 'Specific members',
+    'roles': 'Role slots',
+    'allMembers': 'All members',
+    // member type filter
+    'all': 'All',
+    'members_only': 'Members only',
+    'substitutes_only': 'Substitutes only',
+    // event types
+    'performance': 'Performance',
+    'rehearsal': 'Rehearsal',
+    'recording': 'Recording',
+    'other': 'Other',
+  };
+
+  /// Display label for a raw value (days of week and unmapped values pass through).
+  static String labelFor(String value) => labels[value] ?? value;
 }
 
 /// A modal config form for a single node. Edits [data] in place; calls
@@ -73,6 +117,13 @@ class NodeConfigForm extends StatefulWidget {
 class _NodeConfigFormState extends State<NodeConfigForm> {
   Map<String, dynamic> get _d => widget.data;
 
+  String _friendlyType(String type) => const {
+        'income': 'Income',
+        'bandCut': 'Band Cut',
+        'conditional': 'Condition',
+        'payoutGroup': 'Payout Group',
+      }[type] ?? type;
+
   void _set(String key, dynamic value) {
     setState(() => _d[key] = value);
     widget.onChanged();
@@ -87,9 +138,13 @@ class _NodeConfigFormState extends State<NodeConfigForm> {
 
   @override
   Widget build(BuildContext context) {
+    // Prefer the node's own label; fall back to a friendly type name.
+    final title = (widget.data['label'] as String?)?.trim().isNotEmpty == true
+        ? widget.data['label'] as String
+        : _friendlyType(widget.nodeType);
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
-        middle: Text('Configure ${widget.nodeType}'),
+        middle: Text(title),
         trailing: widget.onDelete == null
             ? null
             : CupertinoButton(
@@ -316,7 +371,7 @@ class _EnumField extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(child: Text(value, style: const TextStyle(fontSize: 14, color: CupertinoColors.label), overflow: TextOverflow.ellipsis)),
+              Flexible(child: Text(PayoutNodeOptions.labelFor(value), style: const TextStyle(fontSize: 14, color: CupertinoColors.label), overflow: TextOverflow.ellipsis)),
               const Icon(CupertinoIcons.chevron_up_chevron_down, size: 16, color: CupertinoColors.systemGrey),
             ],
           ),
@@ -335,7 +390,7 @@ class _EnumField extends StatelessWidget {
                 onChanged(o);
                 Navigator.pop(sheetCtx);
               },
-              child: Text(o, style: TextStyle(fontWeight: o == value ? FontWeight.bold : FontWeight.normal)),
+              child: Text(PayoutNodeOptions.labelFor(o), style: TextStyle(fontWeight: o == value ? FontWeight.bold : FontWeight.normal)),
             ),
         ],
         cancelButton: CupertinoActionSheetAction(

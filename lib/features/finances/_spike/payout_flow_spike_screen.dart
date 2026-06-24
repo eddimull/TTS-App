@@ -18,6 +18,7 @@
 import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
 import 'package:vyuh_node_flow/controller.dart';
 import 'package:vyuh_node_flow/editor.dart';
 import 'package:vyuh_node_flow/nodes.dart';
@@ -163,12 +164,27 @@ class _PayoutFlowSpikeScreenState extends State<PayoutFlowSpikeScreen> {
             // Transparent overlay that ONLY claims the long-press gesture.
             // Taps and one-finger drags fall through to the editor (canvas pan,
             // port wiring); a long-press grabs the node under the finger.
+            //
+            // RawGestureDetector (not GestureDetector) so we can shorten the
+            // hold duration to ~200ms — snappy enough to feel synced with the
+            // lift animation, with enough margin that quick taps/pans don't
+            // accidentally grab a node.
             Positioned.fill(
-              child: GestureDetector(
+              child: RawGestureDetector(
                 behavior: HitTestBehavior.translucent,
-                onLongPressStart: _onLongPressStart,
-                onLongPressMoveUpdate: _onLongPressMove,
-                onLongPressEnd: _onLongPressEnd,
+                gestures: {
+                  LongPressGestureRecognizer:
+                      GestureRecognizerFactoryWithHandlers<
+                          LongPressGestureRecognizer>(
+                    () => LongPressGestureRecognizer(
+                      duration: const Duration(milliseconds: 200),
+                    ),
+                    (r) => r
+                      ..onLongPressStart = _onLongPressStart
+                      ..onLongPressMoveUpdate = _onLongPressMove
+                      ..onLongPressEnd = _onLongPressEnd,
+                  ),
+                },
               ),
             ),
             if (_grabbedNodeId != null)

@@ -3,8 +3,10 @@
 //
 // On-device checklist this screen supports:
 //   1. LONG-PRESS a node, then drag to move it (see gesture note below)
-//   2. wire ports — especially the conditional's `true` / `false` outputs
-//   3. tap "Dump TTS JSON" to confirm the reverse adapter produces backend-valid
+//   2. DOUBLE-TAP a node to configure it (single tap can't be used — see the
+//      events note in build())
+//   3. TAP a connection line to delete it; DRAG from a port to create one
+//   4. tap "Dump TTS JSON" to confirm the reverse adapter produces backend-valid
 //      flow JSON from whatever you've drawn (printed to the console + a sheet).
 //
 // Gesture note: vyuh_node_flow 0.27.3 has a known mobile bug where a single
@@ -19,11 +21,13 @@ import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
+import 'package:vyuh_node_flow/connections.dart';
 import 'package:vyuh_node_flow/controller.dart';
 import 'package:vyuh_node_flow/editor.dart';
 import 'package:vyuh_node_flow/nodes.dart';
 import 'package:vyuh_node_flow/themes.dart';
 
+import '../payout_editor/config/node_config_form.dart';
 import 'payout_flow_adapter.dart';
 import 'spike_seed.dart';
 
@@ -84,6 +88,88 @@ class _PayoutFlowSpikeScreenState extends State<PayoutFlowSpikeScreen> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Close'),
         ),
+      ),
+    );
+  }
+
+  // ── Configure node (double tap) ──────────────────────────────────────────
+
+  /// Pushes the full-fidelity NodeConfigForm (keepable widget) for this node.
+  void _openConfigSheet(Node<Map<String, dynamic>> node) {
+    Navigator.of(context).push(
+      CupertinoPageRoute<void>(
+        builder: (_) => NodeConfigForm(
+          nodeType: node.type,
+          data: node.data,
+          onChanged: () => _repaintNode(node),
+          onDelete: () => _confirmDeleteNode(node),
+        ),
+      ),
+    );
+  }
+
+  /// node.data is a plain (non-observable) map, so the editor's Observer won't
+  /// repaint on its own after an edit. Toggle `selected` — which _buildNode
+  /// reads — to force the node widget to rebuild and pick up the new values.
+  void _repaintNode(Node<Map<String, dynamic>> node) {
+    node.isSelected = !node.selected.value;
+    node.isSelected = false;
+    if (mounted) setState(() {});
+  }
+
+  // ── Delete (tap edge to delete; delete node from config sheet) ────────────
+
+  void _confirmDeleteConnection(Connection<dynamic> connection) {
+    showCupertinoDialog<void>(
+      context: context,
+      builder: (dlg) => CupertinoAlertDialog(
+        title: const Text('Delete connection?'),
+        content: Text(
+          '${connection.sourceNodeId} → ${connection.targetNodeId}',
+        ),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(dlg),
+            child: const Text('Cancel'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () {
+              // removeConnection throws if already gone — guard against it.
+              if (_controller.connections.any((c) => c.id == connection.id)) {
+                _controller.removeConnection(connection.id);
+              }
+              Navigator.pop(dlg);
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteNode(Node<Map<String, dynamic>> node) {
+    showCupertinoDialog<void>(
+      context: context,
+      builder: (dlg) => CupertinoAlertDialog(
+        title: const Text('Delete node?'),
+        content: Text('${node.data['label'] ?? node.type} and its connections'),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(dlg),
+            child: const Text('Cancel'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () {
+              if (_controller.nodes.containsKey(node.id)) {
+                _controller.removeNode(node.id);
+              }
+              Navigator.pop(dlg);
+            },
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }
@@ -160,6 +246,23 @@ class _PayoutFlowSpikeScreenState extends State<PayoutFlowSpikeScreen> {
               theme: NodeFlowTheme.light,
               behavior: NodeFlowBehavior.design,
               nodeBuilder: _buildNode,
+              events: NodeFlowEvents<Map<String, dynamic>, dynamic>(
+                // DOUBLE-tap (not single) opens configure. The editor fires
+                // NodeEvents.onTap from Listener.onPointerDown (instant, on the
+                // first touch), so single-tap-to-configure would pre-empt our
+                // long-press-to-move. onDoubleTap fires from a real
+                // DoubleTapGestureRecognizer that won't trip on a long hold, so
+                // the two gestures coexist cleanly: double-tap = configure,
+                // long-press = move.
+                node: NodeEvents<Map<String, dynamic>>(
+                  onDoubleTap: _openConfigSheet,
+                ),
+                // Single tap on a connection → confirm + delete (no node overlay
+                // collision).
+                connection: ConnectionEvents<Map<String, dynamic>, dynamic>(
+                  onTap: _confirmDeleteConnection,
+                ),
+              ),
             ),
             // Transparent overlay that ONLY claims the long-press gesture.
             // Taps and one-finger drags fall through to the editor (canvas pan,

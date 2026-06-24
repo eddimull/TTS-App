@@ -304,36 +304,86 @@ class _FieldRow extends StatelessWidget {
       );
 }
 
-class _TextField extends StatelessWidget {
+class _TextField extends StatefulWidget {
   const _TextField({required this.label, required this.value, required this.onChanged});
   final String label;
   final String value;
   final ValueChanged<String> onChanged;
   @override
+  State<_TextField> createState() => _TextFieldState();
+}
+
+class _TextFieldState extends State<_TextField> {
+  // Persistent controller: created once so typing doesn't recreate it on every
+  // parent rebuild (which would reset the caret to offset 0 — the cursor-jump
+  // bug). The controller is the source of truth while editing.
+  late final TextEditingController _c =
+      TextEditingController(text: widget.value);
+
+  @override
+  void didUpdateWidget(covariant _TextField old) {
+    super.didUpdateWidget(old);
+    // Only adopt an externally-changed value (not our own edits), and never
+    // clobber the caret mid-type.
+    if (widget.value != _c.text) _c.text = widget.value;
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => _FieldRow(
-        label: label,
+        label: widget.label,
         child: CupertinoTextField(
-          controller: TextEditingController(text: value),
-          onSubmitted: onChanged,
-          onChanged: onChanged,
+          controller: _c,
+          onSubmitted: widget.onChanged,
+          onChanged: widget.onChanged,
         ),
       );
 }
 
-class _NumberField extends StatelessWidget {
+class _NumberField extends StatefulWidget {
   const _NumberField({required this.label, required this.value, required this.onChanged});
   final String label;
   final dynamic value;
   final ValueChanged<num> onChanged;
   @override
+  State<_NumberField> createState() => _NumberFieldState();
+}
+
+class _NumberFieldState extends State<_NumberField> {
+  late final TextEditingController _c =
+      TextEditingController(text: '${widget.value ?? ''}');
+
+  @override
+  void didUpdateWidget(covariant _NumberField old) {
+    super.didUpdateWidget(old);
+    final incoming = '${widget.value ?? ''}';
+    // Adopt external changes, but ignore reformatting of the same number the
+    // user is currently typing (e.g. "5" vs 5) to avoid caret jumps.
+    if (num.tryParse(_c.text.trim()) != widget.value && incoming != _c.text) {
+      _c.text = incoming;
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => _FieldRow(
-        label: label,
+        label: widget.label,
         child: CupertinoTextField(
-          controller: TextEditingController(text: '${value ?? ''}'),
+          controller: _c,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           onChanged: (raw) {
             final n = num.tryParse(raw.trim());
-            if (n != null) onChanged(n);
+            if (n != null) widget.onChanged(n);
           },
         ),
       );

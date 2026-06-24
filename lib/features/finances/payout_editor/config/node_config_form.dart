@@ -362,21 +362,34 @@ class _EnumField extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   @override
-  Widget build(BuildContext context) => _FieldRow(
-        label: label,
-        child: CupertinoButton(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          color: CupertinoColors.tertiarySystemFill,
-          onPressed: () => _pick(context),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(child: Text(PayoutNodeOptions.labelFor(value), style: const TextStyle(fontSize: 14, color: CupertinoColors.label), overflow: TextOverflow.ellipsis)),
-              const Icon(CupertinoIcons.chevron_up_chevron_down, size: 16, color: CupertinoColors.systemGrey),
-            ],
-          ),
+  Widget build(BuildContext context) {
+    // Resolve dynamic colors against the current brightness — passing them
+    // unresolved (as static constants) falls back to light-mode values, which
+    // renders dark text on the dark fill in dark mode.
+    final fill = CupertinoDynamicColor.resolve(
+        CupertinoColors.tertiarySystemFill, context);
+    final textColor =
+        CupertinoDynamicColor.resolve(CupertinoColors.label, context);
+    return _FieldRow(
+      label: label,
+      child: CupertinoButton(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        color: fill,
+        onPressed: () => _pick(context),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+                child: Text(PayoutNodeOptions.labelFor(value),
+                    style: TextStyle(fontSize: 14, color: textColor),
+                    overflow: TextOverflow.ellipsis)),
+            const Icon(CupertinoIcons.chevron_up_chevron_down,
+                size: 16, color: CupertinoColors.systemGrey),
+          ],
         ),
-      );
+      ),
+    );
+  }
 
   void _pick(BuildContext context) {
     showCupertinoModalPopup<void>(

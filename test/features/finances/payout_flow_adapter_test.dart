@@ -94,6 +94,35 @@ void main() {
       }
     });
 
+    test('port offsets follow vyuh convention (edge-relative x, absolute y)', () {
+      // Per the library's own examples, offset.x is a tiny nudge past the node
+      // edge (~-2 left / ~+2 right), NOT an absolute box coordinate, and
+      // offset.y is an absolute pixel position within the node height. Getting
+      // this wrong flings the port (and the node's interactive bounds) far off
+      // the visible body, so node drag silently fails while the canvas still pans.
+      const nodeHeight = 96.0;
+      final vyuh = vyuhJsonFromTts(kSeedFlowWithConditional);
+      final cond = (vyuh['nodes'] as List)
+          .cast<Map<String, dynamic>>()
+          .firstWhere((n) => n['id'] == 'conditional-1');
+
+      for (final p in (cond['ports'] as List).cast<Map<String, dynamic>>()) {
+        final ox = (p['offset']['x'] as num).abs();
+        final oy = p['offset']['y'] as num;
+        expect(ox, lessThan(10),
+            reason: 'port ${p['id']} offset.x must be a small edge nudge, got ${p['offset']['x']}');
+        expect(oy, inInclusiveRange(0, nodeHeight),
+            reason: 'port ${p['id']} offset.y must be within node height, got $oy');
+      }
+
+      // The two conditional outputs must be at distinct vertical positions.
+      final outs = (cond['ports'] as List)
+          .cast<Map<String, dynamic>>()
+          .where((p) => p['type'] == 'output')
+          .toList();
+      expect(outs[0]['offset']['y'], isNot(outs[1]['offset']['y']));
+    });
+
     test('rejects a flow without exactly one income node', () {
       final bad = {
         'nodes': [

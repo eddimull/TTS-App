@@ -146,8 +146,42 @@ on-device.
   loader names may differ slightly at 0.27.3. The adapter is insulated (pure JSON); only the
   screen touches Vyuh's live API, and it's throwaway.
 
+## On-device findings (2026-06-24, Galaxy S21 Ultra / Android 15)
+
+Tested iteratively on a physical device. Three issues found and addressed:
+
+1. **Worktree build gap** — fresh git worktree lacked the gitignored
+   `android/app/google-services.json`; the Google Services Gradle plugin failed
+   the build. Copied from the main repo. (Setup quirk, not a spike finding.)
+
+2. **Node hit-testing broke (fixed).** Nodes weren't draggable at all — canvas
+   panned but nodes didn't respond. Root cause: the adapter computed `Port.offset`
+   as an absolute box coordinate (`x = node width`) instead of vyuh's
+   **edge-relative nudge** convention (`x ≈ ±2`, `y` = absolute pixel within node
+   height), confirmed against the library's own `simple.dart`/`controlling_nodes.dart`.
+   Wrong offsets mis-size the node's interactive/spatial-index bounds, so touches
+   miss the node silently (no error). Fixed in `_portsJsonFor`; guarded by a test.
+
+3. **Single-finger node drag needs two fingers (worked around).** After the
+   hit-test fix, hit-detection was solid but moving a node required two fingers —
+   the canvas `InteractiveViewer` wins the single-finger gesture-arena
+   competition before the node's drag lock engages on touch. This is a **known,
+   unresolved upstream bug**: open issue
+   [#24](https://github.com/vyuh-tech/vyuh_node_flow/issues/24) "Node Drag Not
+   Working on Mobile", with an in-flight, unmerged, third-party-fork fix in PR
+   [#31](https://github.com/vyuh-tech/vyuh_node_flow/pulls/31).
+
+   **Workaround chosen (first-party, no external code):** a **long-press-to-move**
+   overlay. A normal one-finger drag pans the canvas (the library's default); a
+   long-press grabs the node under the finger and subsequent movement repositions
+   it via `controller.moveNode(id, screenDelta / zoom)`, hit-tested with
+   `node.containsPoint` in graph space. Ports/taps fall through to the editor.
+   This sidesteps the gesture-arena race entirely and is arguably a better mobile
+   pattern (explicit grab, like rearranging home-screen icons).
+
 ## Decision output
 
-The spike concludes with a one-paragraph verdict recorded back in this doc (or the PR/issue):
-**go** (native port at ~3–6 weeks, gated risk cleared) or **no-go** (fall back to WebView),
-with a sentence on how touch actually felt.
+The spike concludes with a one-paragraph verdict recorded here:
+**go** (native port at ~3–6 weeks, gated risk cleared) or **no-go** (fall back to
+WebView), with a sentence on how touch felt — pending confirmation that
+long-press-to-move feels acceptable on-device.

@@ -198,8 +198,13 @@ List<Map<String, dynamic>> _portsJsonFor(String type) {
             'name': p.id,
             'type': p.type.name,
             'position': p.position.name,
+            // vyuh convention (see the package's own examples): offset.x is a
+            // tiny nudge just past the node edge (negative on the left, positive
+            // on the right), and offset.y is an absolute pixel position within
+            // the node height. Using absolute box coordinates here mis-sizes the
+            // node's interactive bounds and silently breaks node dragging.
             'offset': {
-              'x': p.position == PortPosition.left ? 0.0 : _kNodeSize.width,
+              'x': p.position == PortPosition.left ? -2.0 : 2.0,
               'y': _kNodeSize.height * p.fraction,
             },
           })

@@ -47,6 +47,7 @@ dependencies:
   scrollable_positioned_list: ^0.3.8
   webview_flutter: ^4.13.0
   flutter_timezone: ^5.1.0
+  vyuh_node_flow: 0.27.3 # SPIKE: payout flow editor evaluation — remove if spike fails
 
 dev_dependencies:
   flutter_test:

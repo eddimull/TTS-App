@@ -167,6 +167,7 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
     Navigator.of(context).push(
       CupertinoPageRoute<void>(
         builder: (_) => NodeConfigForm(
+          bandId: widget.bandId,
           nodeType: node.type,
           data: node.data,
           onChanged: () => _repaintNode(node),

@@ -10,6 +10,11 @@
 // (resources/js/composables/useFlowNodeSchemas.js in the TTS repo).
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tts_bandmate/features/personnel/providers/roles_provider.dart';
+
+import '../providers/payout_flow_provider.dart';
+import 'node_list_fields.dart';
 
 /// Enum option sets, mirrored from the web schema.
 class PayoutNodeOptions {
@@ -96,25 +101,27 @@ class PayoutNodeOptions {
 
 /// A modal config form for a single node. Edits [data] in place; calls
 /// [onChanged] after each edit so the host can repaint the node and persist.
-class NodeConfigForm extends StatefulWidget {
+class NodeConfigForm extends ConsumerStatefulWidget {
   const NodeConfigForm({
     super.key,
+    required this.bandId,
     required this.nodeType,
     required this.data,
     required this.onChanged,
     this.onDelete,
   });
 
+  final int bandId;
   final String nodeType;
   final Map<String, dynamic> data;
   final VoidCallback onChanged;
   final VoidCallback? onDelete;
 
   @override
-  State<NodeConfigForm> createState() => _NodeConfigFormState();
+  ConsumerState<NodeConfigForm> createState() => _NodeConfigFormState();
 }
 
-class _NodeConfigFormState extends State<NodeConfigForm> {
+class _NodeConfigFormState extends ConsumerState<NodeConfigForm> {
   Map<String, dynamic> get _d => widget.data;
 
   String _friendlyType(String type) => const {
@@ -182,7 +189,7 @@ class _NodeConfigFormState extends State<NodeConfigForm> {
           if (_d['cutType'] != 'tiered')
             _NumberField(label: 'Value', value: _d['value'], onChanged: (v) => _set('value', v)),
           if (_d['cutType'] == 'tiered')
-            const _DeferredField(label: 'Tier table', hint: 'tierConfig — list editor coming'),
+            TierConfigField(data: _d, onChanged: widget.onChanged),
         ];
       case 'conditional':
         final condType = '${_d['conditionType'] ?? 'bookingPrice'}';
@@ -248,13 +255,12 @@ class _NodeConfigFormState extends State<NodeConfigForm> {
         _ToggleField(label: 'Weight by attendance', value: roster['useAttendanceWeighting'] != false, onChanged: (v) => _setNested('rosterConfig', 'useAttendanceWeighting', v)),
         _EnumField(label: 'Member type', value: '${roster['memberTypeFilter'] ?? 'all'}', options: PayoutNodeOptions.memberTypeFilters, onChanged: (v) => _setNested('rosterConfig', 'memberTypeFilter', v)),
         _NumberField(label: 'Min events to qualify', value: roster['minEventsToQualify'], onChanged: (v) => _setNested('rosterConfig', 'minEventsToQualify', v)),
+        _rosterRoleFilterField(),
       ],
       if (sourceType == 'paymentGroup')
         _NumberField(label: 'Payment group ID', value: _d['paymentGroupId'], onChanged: (v) => _set('paymentGroupId', v)),
-      if (sourceType == 'specific')
-        const _DeferredField(label: 'Specific members', hint: 'specificMembers — list editor coming'),
-      if (sourceType == 'roles')
-        const _DeferredField(label: 'Role slots', hint: 'roleSlots — list editor coming'),
+      if (sourceType == 'specific') _specificMembersField(),
+      if (sourceType == 'roles') _roleSlotsField(),
 
       const _SectionHeader('Incoming allocation'),
       _EnumField(label: 'Type', value: incomingType, options: PayoutNodeOptions.incomingAllocationTypes, onChanged: (v) => _set('incomingAllocationType', v)),
@@ -264,14 +270,77 @@ class _NodeConfigFormState extends State<NodeConfigForm> {
       const _SectionHeader('Distribution'),
       _EnumField(label: 'Mode', value: distMode, options: PayoutNodeOptions.distributionModes, onChanged: (v) => _set('distributionMode', v)),
       if (distMode == 'percentage' || distMode == 'fixed' || distMode == 'weighted')
-        const _DeferredField(label: 'Per-member allocations', hint: 'memberAllocations — list editor coming'),
+        _memberAllocationsField(),
       if (distMode == 'tiered')
-        const _DeferredField(label: 'Tier table', hint: 'tierConfig — list editor coming'),
+        TierConfigField(data: _d, onChanged: widget.onChanged),
 
       const _SectionHeader('Overrides'),
       _ToggleField(label: 'Respect custom payouts', value: _d['respectCustomPayouts'] != false, onChanged: (v) => _set('respectCustomPayouts', v)),
       _NumberField(label: 'Minimum payout (\$)', value: _d['minimumPayout'], onChanged: (v) => _set('minimumPayout', v)),
     ];
+  }
+
+  // ── Async-backed list fields (members / roles loaded from the band) ────────
+
+  /// Small loading/error stand-in while the band's members/roles load.
+  Widget _loadingNote(String what) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(children: [
+          const CupertinoActivityIndicator(radius: 8),
+          const SizedBox(width: 8),
+          Text('Loading $what…',
+              style: const TextStyle(fontSize: 13, color: CupertinoColors.systemGrey)),
+        ]),
+      );
+
+  Widget _specificMembersField() {
+    final async = ref.watch(payoutBandMembersProvider(widget.bandId));
+    return async.when(
+      loading: () => _loadingNote('members'),
+      error: (_, __) => const Text('Could not load members',
+          style: TextStyle(fontSize: 13, color: CupertinoColors.systemRed)),
+      data: (members) => SpecificMembersField(
+          data: _d, onChanged: widget.onChanged, members: members),
+    );
+  }
+
+  Widget _memberAllocationsField() {
+    final async = ref.watch(payoutBandMembersProvider(widget.bandId));
+    return async.when(
+      loading: () => _loadingNote('members'),
+      error: (_, __) => const Text('Could not load members',
+          style: TextStyle(fontSize: 13, color: CupertinoColors.systemRed)),
+      data: (members) => MemberAllocationsField(
+          data: _d, onChanged: widget.onChanged, members: members),
+    );
+  }
+
+  Widget _roleSlotsField() {
+    final async = ref.watch(rolesProvider(widget.bandId));
+    return async.when(
+      loading: () => _loadingNote('roles'),
+      error: (_, __) => const Text('Could not load roles',
+          style: TextStyle(fontSize: 13, color: CupertinoColors.systemRed)),
+      data: (roles) =>
+          RoleSlotsField(data: _d, onChanged: widget.onChanged, roles: roles),
+    );
+  }
+
+  /// Role multi-select for the Roster source — pick which roles the payout
+  /// goes to. Empty = all roles. Writes rosterConfig.filterByRoleId (the
+  /// backend's preferred id-based filter).
+  Widget _rosterRoleFilterField() {
+    final async = ref.watch(rolesProvider(widget.bandId));
+    return async.when(
+      loading: () => _loadingNote('roles'),
+      error: (_, __) => const Text('Could not load roles',
+          style: TextStyle(fontSize: 13, color: CupertinoColors.systemRed)),
+      data: (roles) => RosterRoleFilterField(
+        data: _d,
+        onChanged: widget.onChanged,
+        roles: roles,
+      ),
+    );
   }
 }
 
@@ -463,17 +532,4 @@ class _EnumField extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Placeholder for nested-list fields whose dedicated row editor is a follow-up.
-class _DeferredField extends StatelessWidget {
-  const _DeferredField({required this.label, required this.hint});
-  final String label;
-  final String hint;
-  @override
-  Widget build(BuildContext context) => _FieldRow(
-        label: label,
-        child: Text(hint,
-            style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: CupertinoColors.systemGrey)),
-      );
 }

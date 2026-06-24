@@ -1,8 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
+import 'package:tts_bandmate/features/band_settings/data/models/band_member.dart';
+import 'package:tts_bandmate/features/band_settings/providers/band_settings_provider.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 
 import '../data/payout_flow_repository.dart';
+
+/// Band members for the specific-members picker (reuses the band-settings repo).
+final payoutBandMembersProvider =
+    FutureProvider.family<List<BandMember>, int>((ref, bandId) {
+  return ref.watch(bandSettingsRepositoryProvider).getMembers(bandId);
+});
 
 /// Whether the current user owns the selected band — gates editing/saving
 /// (the backend PATCH endpoint is owner-only).

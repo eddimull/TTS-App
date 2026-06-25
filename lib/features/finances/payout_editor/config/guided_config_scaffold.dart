@@ -46,7 +46,7 @@ class _OptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const accent = CupertinoColors.activeBlue;
+    final accent = CupertinoDynamicColor.resolve(CupertinoColors.activeBlue, context);
     final border = selected
         ? accent
         : CupertinoDynamicColor.resolve(CupertinoColors.systemGrey4, context);
@@ -66,7 +66,7 @@ class _OptionCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(spec.icon, size: 22, color: selected ? accent : CupertinoColors.systemGrey),
+            Icon(spec.icon, size: 22, color: selected ? accent : CupertinoColors.secondaryLabel),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -76,12 +76,12 @@ class _OptionCard extends StatelessWidget {
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: label)),
                   const SizedBox(height: 1),
                   Text(spec.description,
-                      style: const TextStyle(fontSize: 12, color: CupertinoColors.systemGrey)),
+                      style: const TextStyle(fontSize: 12, color: CupertinoColors.secondaryLabel)),
                 ],
               ),
             ),
             if (selected)
-              const Icon(CupertinoIcons.checkmark_alt, size: 18, color: CupertinoColors.activeBlue),
+              Icon(CupertinoIcons.checkmark_alt, size: 18, color: accent),
           ],
         ),
       ),

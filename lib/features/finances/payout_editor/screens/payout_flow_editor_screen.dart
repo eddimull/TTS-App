@@ -276,6 +276,7 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
           bandId: widget.bandId,
           nodeType: node.type,
           data: node.data,
+          previewValues: (_nodeValues[node.id] as Map?)?.cast<String, dynamic>(),
           onChanged: () => _repaintNode(node),
           onDelete: () => _confirmDeleteNode(node),
         ),

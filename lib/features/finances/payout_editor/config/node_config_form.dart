@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tts_bandmate/features/personnel/providers/roles_provider.dart';
 
 import '../providers/payout_flow_provider.dart';
+import 'guided_config_scaffold.dart';
 import 'node_list_fields.dart';
 
 /// Enum option sets, mirrored from the web schema.
@@ -109,6 +110,7 @@ class NodeConfigForm extends ConsumerStatefulWidget {
     required this.data,
     required this.onChanged,
     this.onDelete,
+    this.previewValues,
   });
 
   final int bandId;
@@ -116,6 +118,10 @@ class NodeConfigForm extends ConsumerStatefulWidget {
   final Map<String, dynamic> data;
   final VoidCallback onChanged;
   final VoidCallback? onDelete;
+
+  /// This node's computed values from the preview API (input/output/allocated/
+  /// perMember/memberCount/bandCut), or null when not yet available.
+  final Map<String, dynamic>? previewValues;
 
   @override
   ConsumerState<NodeConfigForm> createState() => _NodeConfigFormState();
@@ -149,101 +155,143 @@ class _NodeConfigFormState extends ConsumerState<NodeConfigForm> {
     final title = (widget.data['label'] as String?)?.trim().isNotEmpty == true
         ? widget.data['label'] as String
         : _friendlyType(widget.nodeType);
-    return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
-        middle: Text(title),
-        trailing: widget.onDelete == null
-            ? null
-            : CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: () {
-                  Navigator.pop(context);
-                  widget.onDelete!();
-                },
-                child: const Icon(
-                  CupertinoIcons.delete,
-                  color: CupertinoColors.destructiveRed,
-                ),
-              ),
-      ),
-      child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Shared across all node types: toggle the node off/on. A
-            // deactivated node is bypassed by the backend (amount passes
-            // through). Mirrors the web editor's node toggle.
-            _ToggleField(
-              label: 'Node active',
-              value: _d['deactivated'] != true,
-              onChanged: (v) => _set('deactivated', !v),
+    return GuidedConfigScaffold(
+      title: title,
+      trailing: widget.onDelete == null
+          ? null
+          : CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: () {
+                Navigator.pop(context);
+                widget.onDelete!();
+              },
+              child: const Icon(CupertinoIcons.delete,
+                  color: CupertinoColors.destructiveRed),
             ),
-            const SizedBox(height: 4),
-            ..._fieldsForType(),
-          ],
-        ),
-      ),
+      preview: _previewBar(),
+      steps: _stepsForType(),
     );
   }
 
-  List<Widget> _fieldsForType() {
+  PreviewBar _previewBar() {
+    final v = widget.previewValues;
+    String money(dynamic n) {
+      final d = (n as num?)?.toDouble() ?? 0;
+      return '\$${d.toStringAsFixed(d.truncateToDouble() == d ? 0 : 2)}';
+    }
+
     switch (widget.nodeType) {
+      case 'payoutGroup':
+        final mc = v?['memberCount'];
+        return PreviewBar(
+          label: 'Each member gets',
+          value: v == null
+              ? null
+              : '${money(v['perMember'])}${mc != null ? ' · $mc people' : ''}',
+        );
+      case 'bandCut':
+        return PreviewBar(label: 'To members', value: v == null ? null : money(v['output']));
+      case 'income':
+        return PreviewBar(label: 'Output', value: v == null ? null : money(v['output']));
+      default:
+        return PreviewBar(label: 'Input', value: v == null ? null : money(v['input']));
+    }
+  }
+
+  List<ConfigStep> _stepsForType() {
+    switch (widget.nodeType) {
+      case 'payoutGroup':
+        return _payoutGroupSteps();
       case 'income':
         return [
-          _TextField(label: 'Label', value: '${_d['label'] ?? ''}', onChanged: (v) => _set('label', v)),
-          _NumberField(label: 'Amount (\$)', value: _d['amount'], onChanged: (v) => _set('amount', v)),
+          ConfigStep(
+            tab: 'Income',
+            question: 'How much income?',
+            subtitle: 'The money entering this flow.',
+            builder: (_) => Column(children: [
+              _activeToggle(),
+              _TextField(label: 'Label', value: '${_d['label'] ?? ''}', onChanged: (v) => _set('label', v)),
+              _NumberField(label: 'Amount (\$)', value: _d['amount'], onChanged: (v) => _set('amount', v)),
+            ]),
+          ),
         ];
       case 'bandCut':
         return [
-          _TextField(label: 'Label', value: '${_d['customLabel'] ?? ''}', onChanged: (v) => _set('customLabel', v)),
-          _EnumField(label: 'Cut type', value: '${_d['cutType'] ?? 'percentage'}', options: PayoutNodeOptions.cutTypes, onChanged: (v) => _set('cutType', v)),
-          if (_d['cutType'] != 'tiered')
-            _NumberField(label: 'Value', value: _d['value'], onChanged: (v) => _set('value', v)),
-          if (_d['cutType'] == 'tiered')
-            TierConfigField(data: _d, onChanged: widget.onChanged),
+          ConfigStep(
+            tab: 'The cut',
+            question: "What's the band's cut?",
+            subtitle: 'Taken before members are paid.',
+            builder: (_) => Column(children: [
+              _activeToggle(),
+              _TextField(label: 'Label', value: '${_d['customLabel'] ?? ''}', onChanged: (v) => _set('customLabel', v)),
+              OptionCardGroup(
+                selected: '${_d['cutType'] ?? 'percentage'}',
+                options: kCutSpecs,
+                onSelect: (v) => _set('cutType', v),
+              ),
+              if (_d['cutType'] != 'tiered')
+                _NumberField(label: 'Value', value: _d['value'], onChanged: (v) => _set('value', v)),
+              if (_d['cutType'] == 'tiered')
+                TierConfigField(data: _d, onChanged: widget.onChanged),
+            ]),
+          ),
         ];
       case 'conditional':
         final condType = '${_d['conditionType'] ?? 'bookingPrice'}';
         return [
-          _TextField(label: 'Label', value: '${_d['label'] ?? ''}', onChanged: (v) => _set('label', v)),
-          _EnumField(
-            label: 'Condition type',
-            value: condType,
-            options: PayoutNodeOptions.conditionTypes,
-            onChanged: (v) {
-              // Reset operator if the new type doesn't allow the current one.
-              final ops = PayoutNodeOptions.operatorsFor(v);
-              if (!ops.contains(_d['operator'])) _d['operator'] = ops.first;
-              _set('conditionType', v);
-            },
+          ConfigStep(
+            tab: 'Condition',
+            question: 'When does this apply?',
+            subtitle: 'Routes to TRUE or FALSE based on the booking.',
+            builder: (_) => Column(children: [
+              _activeToggle(),
+              _TextField(label: 'Label', value: '${_d['label'] ?? ''}', onChanged: (v) => _set('label', v)),
+              _EnumRow(label: 'If', value: condType, options: PayoutNodeOptions.conditionTypes, onChanged: (v) {
+                // Reset operator if the new type doesn't allow the current one.
+                final ops = PayoutNodeOptions.operatorsFor(v);
+                if (!ops.contains(_d['operator'])) _d['operator'] = ops.first;
+                _set('conditionType', v);
+              }),
+              _EnumRow(
+                label: 'Is',
+                value: '${_d['operator'] ?? PayoutNodeOptions.operatorsFor(condType).first}',
+                options: PayoutNodeOptions.operatorsFor(condType),
+                onChanged: (v) => _set('operator', v),
+              ),
+              _valueFieldForCondition(condType),
+            ]),
           ),
-          _EnumField(
-            label: 'Operator',
-            value: '${_d['operator'] ?? PayoutNodeOptions.operatorsFor(condType).first}',
-            options: PayoutNodeOptions.operatorsFor(condType),
-            onChanged: (v) => _set('operator', v),
-          ),
-          _valueFieldForCondition(condType),
         ];
-      case 'payoutGroup':
-        return _payoutGroupFields();
       default:
-        return [_TextField(label: 'Label', value: '${_d['label'] ?? ''}', onChanged: (v) => _set('label', v))];
+        return [
+          ConfigStep(
+            tab: 'Config',
+            question: 'Settings',
+            subtitle: '',
+            builder: (_) => _TextField(label: 'Label', value: '${_d['label'] ?? ''}', onChanged: (v) => _set('label', v)),
+          ),
+        ];
     }
   }
+
+  Widget _activeToggle() => _ToggleField(
+        label: 'Node active',
+        value: _d['deactivated'] != true,
+        onChanged: (v) => _set('deactivated', !v),
+      );
 
   Widget _valueFieldForCondition(String condType) {
     switch (condType) {
       case 'eventType':
-        return _EnumField(label: 'Value', value: '${_d['value'] ?? PayoutNodeOptions.eventTypes.first}', options: PayoutNodeOptions.eventTypes, onChanged: (v) => _set('value', v));
+        return _EnumRow(label: 'Value', value: '${_d['value'] ?? PayoutNodeOptions.eventTypes.first}', options: PayoutNodeOptions.eventTypes, onChanged: (v) => _set('value', v));
       case 'dayOfWeek':
-        return _EnumField(label: 'Value', value: '${_d['value'] ?? PayoutNodeOptions.daysOfWeek.first}', options: PayoutNodeOptions.daysOfWeek, onChanged: (v) => _set('value', v));
+        return _EnumRow(label: 'Value', value: '${_d['value'] ?? PayoutNodeOptions.daysOfWeek.first}', options: PayoutNodeOptions.daysOfWeek, onChanged: (v) => _set('value', v));
       default:
         return _NumberField(label: 'Value', value: _d['value'], onChanged: (v) => _set('value', v));
     }
   }
 
-  List<Widget> _payoutGroupFields() {
+  List<ConfigStep> _payoutGroupSteps() {
     final sourceType = '${_d['sourceType'] ?? 'roster'}';
     final distMode = '${_d['distributionMode'] ?? 'equal_split'}';
     final incomingType = '${_d['incomingAllocationType'] ?? 'remainder'}';
@@ -251,52 +299,66 @@ class _NodeConfigFormState extends ConsumerState<NodeConfigForm> {
     final roster = Map<String, dynamic>.from(_d['rosterConfig'] as Map? ?? {});
 
     return [
-      _TextField(label: 'Label', value: '${_d['label'] ?? ''}', onChanged: (v) => _set('label', v)),
-      const _SectionHeader('Source'),
-      _EnumField(label: 'Source type', value: sourceType, options: PayoutNodeOptions.sourceTypes, onChanged: (v) => _set('sourceType', v)),
-
-      if (sourceType == 'allMembers') ...[
-        _ToggleField(label: 'Include owners', value: allMembers['includeOwners'] == true, onChanged: (v) => _setNested('allMembersConfig', 'includeOwners', v)),
-        _ToggleField(label: 'Include members', value: allMembers['includeMembers'] == true, onChanged: (v) => _setNested('allMembersConfig', 'includeMembers', v)),
-        _ToggleField(label: 'Include production', value: allMembers['includeProduction'] == true, onChanged: (v) => _setNested('allMembersConfig', 'includeProduction', v)),
-        if (allMembers['includeProduction'] == true)
-          _NumberField(label: 'Production count', value: allMembers['productionCount'], onChanged: (v) => _setNested('allMembersConfig', 'productionCount', v)),
-      ],
-      if (sourceType == 'roster') ...[
-        _ToggleField(label: 'Weight by attendance', value: roster['useAttendanceWeighting'] != false, onChanged: (v) => _setNested('rosterConfig', 'useAttendanceWeighting', v)),
-        _EnumField(label: 'Member type', value: '${roster['memberTypeFilter'] ?? 'all'}', options: PayoutNodeOptions.memberTypeFilters, onChanged: (v) => _setNested('rosterConfig', 'memberTypeFilter', v)),
-        _NumberField(label: 'Min events to qualify', value: roster['minEventsToQualify'], onChanged: (v) => _setNested('rosterConfig', 'minEventsToQualify', v)),
-        _rosterRoleFilterField(),
-      ],
-      if (sourceType == 'paymentGroup')
-        _NumberField(label: 'Payment group ID', value: _d['paymentGroupId'], onChanged: (v) => _set('paymentGroupId', v)),
-      if (sourceType == 'specific') _specificMembersField(),
-      if (sourceType == 'roles') _roleSlotsField(),
-
-      const _SectionHeader('Incoming allocation'),
-      _EnumField(label: 'Type', value: incomingType, options: PayoutNodeOptions.incomingAllocationTypes, onChanged: (v) => _set('incomingAllocationType', v)),
-      if (incomingType != 'remainder')
-        _NumberField(label: incomingType == 'percentage' ? 'Percent (%)' : 'Amount (\$)', value: _d['incomingAllocationValue'], onChanged: (v) => _set('incomingAllocationValue', v)),
-
-      const _SectionHeader('Distribution'),
-      _EnumField(label: 'Mode', value: distMode, options: PayoutNodeOptions.distributionModes, onChanged: (v) => _set('distributionMode', v)),
-      // Fixed mode pays each member a flat amount (fixedAmountPerMember), so it
-      // gets a single amount field — NOT the per-member allocation list (which
-      // is for percentage/weighted splits).
-      if (distMode == 'fixed')
-        _NumberField(
-          label: 'Fixed amount per member (\$)',
-          value: _d['fixedAmountPerMember'],
-          onChanged: (v) => _set('fixedAmountPerMember', v),
-        ),
-      if (distMode == 'percentage' || distMode == 'weighted')
-        _memberAllocationsField(),
-      if (distMode == 'tiered')
-        TierConfigField(data: _d, onChanged: widget.onChanged),
-
-      const _SectionHeader('Overrides'),
-      _ToggleField(label: 'Respect custom payouts', value: _d['respectCustomPayouts'] != false, onChanged: (v) => _set('respectCustomPayouts', v)),
-      _NumberField(label: 'Minimum payout (\$)', value: _d['minimumPayout'], onChanged: (v) => _set('minimumPayout', v)),
+      ConfigStep(
+        tab: 'Recipients',
+        question: 'Who gets paid?',
+        subtitle: "Choose where this group's people come from.",
+        builder: (_) => Column(children: [
+          _activeToggle(),
+          _TextField(label: 'Label', value: '${_d['label'] ?? ''}', onChanged: (v) => _set('label', v)),
+          OptionCardGroup(selected: sourceType, options: kSourceSpecs, onSelect: (v) => _set('sourceType', v)),
+          if (sourceType == 'allMembers') ...[
+            _ToggleField(label: 'Include owners', value: allMembers['includeOwners'] == true, onChanged: (v) => _setNested('allMembersConfig', 'includeOwners', v)),
+            _ToggleField(label: 'Include members', value: allMembers['includeMembers'] == true, onChanged: (v) => _setNested('allMembersConfig', 'includeMembers', v)),
+            _ToggleField(label: 'Include production', value: allMembers['includeProduction'] == true, onChanged: (v) => _setNested('allMembersConfig', 'includeProduction', v)),
+            if (allMembers['includeProduction'] == true)
+              _NumberField(label: 'Production count', value: allMembers['productionCount'], onChanged: (v) => _setNested('allMembersConfig', 'productionCount', v)),
+          ],
+          if (sourceType == 'roster') ...[
+            _ToggleField(label: 'Weight by attendance', value: roster['useAttendanceWeighting'] != false, onChanged: (v) => _setNested('rosterConfig', 'useAttendanceWeighting', v)),
+            _EnumRow(label: 'Member type', value: '${roster['memberTypeFilter'] ?? 'all'}', options: PayoutNodeOptions.memberTypeFilters, onChanged: (v) => _setNested('rosterConfig', 'memberTypeFilter', v)),
+            _NumberField(label: 'Min events to qualify', value: roster['minEventsToQualify'], onChanged: (v) => _setNested('rosterConfig', 'minEventsToQualify', v)),
+            _rosterRoleFilterField(),
+          ],
+          if (sourceType == 'paymentGroup')
+            _NumberField(label: 'Payment group ID', value: _d['paymentGroupId'], onChanged: (v) => _set('paymentGroupId', v)),
+          if (sourceType == 'specific') _specificMembersField(),
+          if (sourceType == 'roles') _roleSlotsField(),
+        ]),
+      ),
+      ConfigStep(
+        tab: 'Take',
+        question: 'How much does this group take?',
+        subtitle: 'Out of the money flowing into this group.',
+        builder: (_) => Column(children: [
+          OptionCardGroup(selected: incomingType, options: kIncomingSpecs, onSelect: (v) => _set('incomingAllocationType', v)),
+          if (incomingType != 'remainder')
+            _NumberField(
+              label: incomingType == 'percentage' ? 'Percent (%)' : 'Amount (\$)',
+              value: _d['incomingAllocationValue'],
+              onChanged: (v) => _set('incomingAllocationValue', v),
+            ),
+        ]),
+      ),
+      ConfigStep(
+        tab: 'Split',
+        question: 'How is it split?',
+        subtitle: 'Among the people in this group.',
+        builder: (_) => Column(children: [
+          OptionCardGroup(selected: distMode, options: kDistributionSpecs, onSelect: (v) => _set('distributionMode', v)),
+          // Fixed mode pays each member a flat amount (fixedAmountPerMember), so
+          // it gets a single amount field — NOT the per-member allocation list
+          // (which is for percentage/weighted splits).
+          if (distMode == 'fixed')
+            _NumberField(label: 'Fixed amount per member (\$)', value: _d['fixedAmountPerMember'], onChanged: (v) => _set('fixedAmountPerMember', v)),
+          if (distMode == 'percentage' || distMode == 'weighted')
+            _memberAllocationsField(),
+          if (distMode == 'tiered')
+            TierConfigField(data: _d, onChanged: widget.onChanged),
+          _ToggleField(label: 'Respect custom payouts', value: _d['respectCustomPayouts'] != false, onChanged: (v) => _set('respectCustomPayouts', v)),
+          _NumberField(label: 'Minimum payout (\$)', value: _d['minimumPayout'], onChanged: (v) => _set('minimumPayout', v)),
+        ]),
+      ),
     ];
   }
 
@@ -365,17 +427,6 @@ class _NodeConfigFormState extends ConsumerState<NodeConfigForm> {
 }
 
 // ── Reusable Cupertino field building blocks ─────────────────────────────────
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title);
-  final String title;
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(top: 18, bottom: 6),
-        child: Text(title.toUpperCase(),
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: CupertinoColors.systemGrey)),
-      );
-}
 
 class _FieldRow extends StatelessWidget {
   const _FieldRow({required this.label, required this.child});
@@ -493,8 +544,8 @@ class _ToggleField extends StatelessWidget {
       );
 }
 
-class _EnumField extends StatelessWidget {
-  const _EnumField({required this.label, required this.value, required this.options, required this.onChanged});
+class _EnumRow extends StatelessWidget {
+  const _EnumRow({required this.label, required this.value, required this.options, required this.onChanged});
   final String label;
   final String value;
   final List<String> options;

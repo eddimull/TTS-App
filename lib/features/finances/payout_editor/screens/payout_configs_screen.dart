@@ -64,7 +64,9 @@ class PayoutConfigsScreen extends ConsumerWidget {
                   Text(tpl.name, style: const TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text(tpl.description,
-                      style: const TextStyle(fontSize: 12, color: CupertinoColors.systemGrey)),
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: CupertinoColors.systemGrey.resolveFrom(sheetCtx))),
                 ],
               ),
             ),
@@ -127,7 +129,7 @@ class PayoutConfigsScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
+    ).whenComplete(controller.dispose);
   }
 }
 
@@ -148,10 +150,13 @@ class _ConfigsList extends ConsumerWidget {
       ),
       data: (configs) {
         if (configs.isEmpty) {
-          return const EmptyStateView(
+          return EmptyStateView(
             icon: CupertinoIcons.money_dollar_circle,
             title: 'No payout configs',
-            subtitle: 'Tap + to create one from a template.',
+            // Only owners see the + button, so only they get the create hint.
+            subtitle: isOwner
+                ? 'Tap + to create one from a template.'
+                : 'Payout flow configurations for this band will appear here.',
           );
         }
         return CupertinoScrollbar(
@@ -205,9 +210,27 @@ class _ConfigsList extends ConsumerWidget {
             CupertinoActionSheetAction(
               onPressed: () async {
                 Navigator.pop(sheetCtx);
-                await ref
-                    .read(payoutConfigsProvider(bandId).notifier)
-                    .setActive(c.id);
+                try {
+                  await ref
+                      .read(payoutConfigsProvider(bandId).notifier)
+                      .setActive(c.id);
+                } catch (e) {
+                  if (context.mounted) {
+                    await showCupertinoDialog<void>(
+                      context: context,
+                      builder: (dlg) => CupertinoAlertDialog(
+                        title: const Text('Could not set active'),
+                        content: Text(ErrorView.friendlyMessage(e)),
+                        actions: [
+                          CupertinoDialogAction(
+                            onPressed: () => Navigator.pop(dlg),
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                }
               },
               child: const Text('Set as active'),
             ),

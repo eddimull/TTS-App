@@ -104,11 +104,27 @@ descriptions/icons are a new static map keyed by (field, value).
 
 ## Testing
 
-- The config form has no unit tests today (it's pure UI). Manual on-device
-  verification per node type: each option card writes the correct `data` key,
-  the preview reflects `node_values`, nested editors still work under the right
-  tab, and Save round-trips unchanged.
-- The adapter/merge tests are unaffected (no data-shape change) and must stay green.
+**Widget tests** (new — `test/features/finances/payout_config_form_test.dart`),
+pumping the form for a given node `data` and asserting behaviour via the
+`onChanged` callback and rendered text:
+
+- **Option-card → data key**: for each primary choice, tapping an `OptionCard`
+  writes the expected `data` key/value (e.g. tapping "Fixed amount" sets
+  `incomingAllocationType: 'fixed'`; tapping a distribution mode sets
+  `distributionMode`; tapping a bandCut type sets `cutType`). This is the core
+  regression guard — it's the wiring most likely to break in the rewrite.
+- **Tabs**: payoutGroup renders 3 tab chips (Recipients/Take/Split) and tapping
+  a chip swaps the visible question; simple types render a single tab.
+- **Conditional fields**: mode-specific inputs appear/hide correctly — fixed
+  distribution shows the per-member amount field (not the allocations list);
+  non-remainder "Take" shows the value field; tiered shows the tier editor.
+- **Preview bar**: given `node_values`, the bar shows the formatted figure;
+  given none, it shows the neutral placeholder (not stale numbers).
+
+Tests drive the widget through `WidgetTester` (tap + pump) and assert on the
+captured `onChanged` data and on-screen text — no backend or golden images.
+
+The adapter/merge suite is unaffected (no data-shape change) and must stay green.
 
 ## Risks
 

@@ -1,0 +1,28 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Submit the already-uploaded build for App Store review (no metadata changes)"
+  lane :submit_review do |options|
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_API_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: ENV["ASC_API_KEY_PATH"],
+    )
+
+    deliver(
+      api_key: api_key,
+      app_identifier: "band.tts.mate",
+      app_version: options[:version],
+      skip_binary_upload: true,
+      skip_metadata: true,
+      skip_screenshots: true,
+      submit_for_review: true,
+      automatic_release: false,
+      force: true,
+      precheck_include_in_app_purchases: false,
+      submission_information: {
+        add_id_info_uses_idfa: false
+      }
+    )
+  end
+end

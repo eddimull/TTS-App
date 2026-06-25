@@ -131,7 +131,13 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
           orElse: () => const {},
         );
     final amount = (income['data']?['amount'] as num?) ?? 0;
-    if (amount <= 0) return;
+    if (amount <= 0) {
+      // No valid amount to compute — drop any stale footers.
+      if (mounted && _nodeValues.isNotEmpty) {
+        setState(() => _nodeValues = const {});
+      }
+      return;
+    }
     try {
       final result = await ref
           .read(payoutFlowRepositoryProvider)
@@ -142,7 +148,8 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
             (result['node_values'] as Map?)?.cast<String, dynamic>() ?? const {};
       });
     } catch (_) {
-      // Leave the footer hidden if preview fails.
+      // Preview failed — hide the footer rather than show stale numbers.
+      if (mounted) setState(() => _nodeValues = const {});
     }
   }
 
@@ -959,7 +966,7 @@ class _FlowNode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final calcRows = calc.where((c) => true).toList();
+    final calcRows = calc;
     return AnimatedScale(
       scale: grabbed ? 1.06 : 1.0,
       duration: const Duration(milliseconds: 120),

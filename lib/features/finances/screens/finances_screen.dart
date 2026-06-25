@@ -102,7 +102,10 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
             trailing: CupertinoButton(
               padding: EdgeInsets.zero,
               onPressed: () => context.push('/finances/payout-flow'),
-              child: const Icon(CupertinoIcons.slider_horizontal_3),
+              child: const Icon(
+                CupertinoIcons.slider_horizontal_3,
+                semanticLabel: 'Payout flow editor',
+              ),
             ),
           ),
           // ── Unpaid / Paid tab switcher ──

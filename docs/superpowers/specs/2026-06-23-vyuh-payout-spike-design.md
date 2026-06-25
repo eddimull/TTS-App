@@ -1,8 +1,8 @@
-# Spike: vyuh_node_flow as the mobile payout flow editor
+# vyuh_node_flow as the mobile payout flow editor
 
 **Date:** 2026-06-23
-**Status:** Design — pending approval
-**Type:** Throwaway technical spike (not for merge)
+**Status:** Implemented — shipped as the payout flow editor feature (the GO verdict below was reached, then built out into the full feature).
+**Type:** Began as a throwaway spike; this document is retained as the design/decision record.
 
 ## Purpose
 

@@ -37,4 +37,17 @@ void main() {
       expect(picked, 'allMembers');
     });
   });
+
+  group('PreviewBar', () {
+    testWidgets('shows label + formatted value', (t) async {
+      await t.pumpWidget(host(const PreviewBar(label: 'Each member gets', value: r'$500')));
+      expect(find.text('Each member gets'), findsOneWidget);
+      expect(find.text(r'$500'), findsOneWidget);
+    });
+
+    testWidgets('shows placeholder when value is null', (t) async {
+      await t.pumpWidget(host(const PreviewBar(label: 'Each member gets', value: null)));
+      expect(find.text('—'), findsOneWidget);
+    });
+  });
 }

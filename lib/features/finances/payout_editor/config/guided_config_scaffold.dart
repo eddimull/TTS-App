@@ -88,3 +88,33 @@ class _OptionCard extends StatelessWidget {
     );
   }
 }
+
+/// Pinned bottom bar showing a node's computed figure. A null [value] renders a
+/// neutral placeholder rather than stale numbers.
+class PreviewBar extends StatelessWidget {
+  const PreviewBar({super.key, required this.label, required this.value});
+  final String label;
+  final String? value;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = CupertinoDynamicColor.resolve(CupertinoColors.secondarySystemBackground, context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(
+        color: bg,
+        border: Border(top: BorderSide(
+            color: CupertinoDynamicColor.resolve(CupertinoColors.separator, context))),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 13, color: CupertinoColors.secondaryLabel)),
+          Text(value ?? '—',
+              style: const TextStyle(
+                  fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
+        ],
+      ),
+    );
+  }
+}

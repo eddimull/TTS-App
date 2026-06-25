@@ -17,10 +17,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Pin the Go (mikefarah) yq so the parse below is identical on the
-      # ubuntu and macos runners, which ship different yq implementations.
-      - uses: mikefarah/yq@v4
-
+      # yq (Go/mikefarah, v4) is preinstalled on both the ubuntu and macos
+      # GitHub runner images, so the parse below behaves identically without
+      # any setup step. (The mikefarah/yq action is a Docker container action
+      # and cannot run on macOS runners.)
       - name: Resolve version name
         run: |
           set -euo pipefail

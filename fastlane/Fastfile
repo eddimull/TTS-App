@@ -1,0 +1,45 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Submit the already-uploaded build for App Store review (no metadata changes)"
+  lane :submit_review do |options|
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_API_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: ENV["ASC_API_KEY_PATH"],
+    )
+
+    # altool returns as soon as the upload transfers; ASC then spends several
+    # minutes "Processing" before the build is submittable. deliver does NOT
+    # poll for this, so wait explicitly for the build we just uploaded
+    # (identified by build_number:) to finish processing before submitting.
+    wait_for_build_processing(
+      api_key: api_key,
+      app_identifier: "band.tts.mate",
+      train_version: options[:version],
+      build_version: options[:build_number],
+    )
+
+    # NOTE: App Store *reviewer notes* live in app_review_information(notes:),
+    # which is metadata — and we run with skip_metadata: true to avoid touching
+    # the manually-managed listing. So we deliberately do NOT attach reviewer
+    # notes here (the CHANGELOG-derived notes are still surfaced on the Android
+    # "What's new" path). submission_information below only answers the IDFA
+    # questionnaire, which is required for the review submission to go through.
+    deliver(
+      api_key: api_key,
+      app_identifier: "band.tts.mate",
+      app_version: options[:version],
+      skip_binary_upload: true,
+      skip_metadata: true,
+      skip_screenshots: true,
+      submit_for_review: true,
+      automatic_release: false,
+      force: true,
+      precheck_include_in_app_purchases: false,
+      submission_information: {
+        add_id_info_uses_idfa: false
+      }
+    )
+  end
+end

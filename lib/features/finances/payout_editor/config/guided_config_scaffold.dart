@@ -5,6 +5,15 @@
 
 import 'package:flutter/cupertino.dart';
 
+/// Muted secondary text (card descriptions, subtitles, preview label).
+/// CupertinoColors.secondaryLabel is too dim on pure-black dark backgrounds, so
+/// this uses a brighter grey in dark mode while staying subdued in light mode.
+/// Resolve against context before use: `CupertinoDynamicColor.resolve(kSubtleText, context)`.
+const kSubtleText = CupertinoDynamicColor.withBrightness(
+  color: Color(0xFF6D6D72), // light mode — standard iOS secondary grey
+  darkColor: Color(0xFFAEAEB2), // dark mode — brighter for legibility on black
+);
+
 /// One selectable option: raw value + how to present it.
 class OptionSpec {
   const OptionSpec(this.value, this.icon, this.title, this.description);
@@ -66,7 +75,9 @@ class _OptionCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(spec.icon, size: 22, color: selected ? accent : CupertinoColors.secondaryLabel),
+            Icon(spec.icon,
+                size: 22,
+                color: selected ? accent : CupertinoDynamicColor.resolve(kSubtleText, context)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -76,7 +87,9 @@ class _OptionCard extends StatelessWidget {
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: label)),
                   const SizedBox(height: 1),
                   Text(spec.description,
-                      style: const TextStyle(fontSize: 12, color: CupertinoColors.secondaryLabel)),
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: CupertinoDynamicColor.resolve(kSubtleText, context))),
                 ],
               ),
             ),
@@ -109,7 +122,9 @@ class PreviewBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: CupertinoColors.secondaryLabel)),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 13, color: CupertinoDynamicColor.resolve(kSubtleText, context))),
           Text(value ?? '—',
               style: const TextStyle(
                   fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
@@ -216,7 +231,9 @@ class _GuidedConfigScaffoldState extends State<GuidedConfigScaffold> {
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 2),
                   Text(step.subtitle,
-                      style: const TextStyle(fontSize: 13, color: CupertinoColors.secondaryLabel)),
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: CupertinoDynamicColor.resolve(kSubtleText, context))),
                   const SizedBox(height: 14),
                   step.builder(context),
                 ],

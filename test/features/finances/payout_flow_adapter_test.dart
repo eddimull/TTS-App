@@ -102,7 +102,7 @@ void main() {
       // offset.y is an absolute pixel position within the node height. Getting
       // this wrong flings the port (and the node's interactive bounds) far off
       // the visible body, so node drag silently fails while the canvas still pans.
-      const nodeHeight = 170.0;
+      const nodeHeight = 200.0;
       final vyuh = vyuhJsonFromTts(kSeedFlowWithConditional);
       final cond = (vyuh['nodes'] as List)
           .cast<Map<String, dynamic>>()

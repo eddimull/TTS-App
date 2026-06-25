@@ -12,6 +12,13 @@ set -euo pipefail
 CHANGELOG="${1:-CHANGELOG.md}"
 MAX_LEN="${2:-4000}"
 
+# max-chars must be an integer >= 2 (we slice MAX_LEN-1 chars + a 1-char
+# ellipsis); otherwise the arithmetic below fails with an opaque shell error.
+if ! printf '%s' "$MAX_LEN" | grep -Eq '^[0-9]+$' || [ "$MAX_LEN" -lt 2 ]; then
+  echo "::error::release_notes.sh: max-chars must be an integer >= 2 (got: $MAX_LEN)" >&2
+  exit 1
+fi
+
 if [ ! -f "$CHANGELOG" ]; then
   echo "::error::release_notes.sh: changelog not found: $CHANGELOG" >&2
   exit 1

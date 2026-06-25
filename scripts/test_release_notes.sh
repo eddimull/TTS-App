@@ -79,4 +79,12 @@ case "$OUT_500" in
   *) echo "FAIL: 500-capped output should end with ellipsis"; fails=$((fails+1)) ;;
 esac
 
+# Invalid max-chars args must fail cleanly with a non-zero exit, not an
+# opaque arithmetic error.
+for bad in foo 0 1 -5 3.5; do
+  if bash "$SCRIPT" "$FIXTURE" "$bad" >/dev/null 2>&1; then
+    echo "FAIL: max-chars '$bad' should have been rejected"; fails=$((fails+1))
+  fi
+done
+
 if [ "$fails" -eq 0 ]; then echo "ALL PASS"; else echo "$fails FAILURES"; exit 1; fi

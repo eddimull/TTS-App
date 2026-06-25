@@ -9,6 +9,17 @@ platform :ios do
       key_filepath: ENV["ASC_API_KEY_PATH"],
     )
 
+    # altool returns as soon as the upload transfers; ASC then spends several
+    # minutes "Processing" before the build is submittable. deliver does NOT
+    # poll for this, so wait explicitly for the build we just uploaded
+    # (identified by build_number:) to finish processing before submitting.
+    wait_for_build_processing(
+      api_key: api_key,
+      app_identifier: "band.tts.mate",
+      train_version: options[:version],
+      build_version: options[:build_number],
+    )
+
     # Reviewer notes come from the sanitized CHANGELOG section the workflow
     # generated (passed as notes_path:). These go in submission_information's
     # review_notes — NOT what_to_test, which is the TestFlight field.

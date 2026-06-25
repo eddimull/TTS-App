@@ -149,7 +149,10 @@ jobs:
         timeout-minutes: 45
         run: |
           set -euo pipefail
-          bundle exec fastlane ios submit_review version:"$VERSION" notes_path:"$RELEASE_NOTES_PATH"
+          bundle exec fastlane ios submit_review \
+            version:"$VERSION" \
+            build_number:"$GITHUB_RUN_NUMBER" \
+            notes_path:"$RELEASE_NOTES_PATH"
 
       - name: Clean up keychain
         if: always()

@@ -17,6 +17,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Pin the Go (mikefarah) yq so the parse below is identical on the
+      # ubuntu and macos runners, which ship different yq implementations.
+      - uses: mikefarah/yq@v4
+
       - name: Resolve version name
         run: |
           set -euo pipefail
@@ -25,9 +29,10 @@ jobs:
           # so don't let `git describe` failing abort the step.
           VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
           if [ -z "$VERSION" ]; then
-            VERSION="$(sed -n 's/^version:[[:space:]]*\([^+]*\).*/\1/p' pubspec.yaml | head -n1 | tr -d '[:space:]')"
+            # pubspec version is `X.Y.Z+build`; drop the +build suffix.
+            VERSION="$(yq '.version' pubspec.yaml | sed 's/+.*//')"
           fi
-          if [ -z "$VERSION" ]; then
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
             echo "::error::Could not resolve a version name from git tags or pubspec.yaml" >&2
             exit 1
           fi

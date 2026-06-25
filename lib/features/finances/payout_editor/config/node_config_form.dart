@@ -280,7 +280,16 @@ class _NodeConfigFormState extends ConsumerState<NodeConfigForm> {
 
       const _SectionHeader('Distribution'),
       _EnumField(label: 'Mode', value: distMode, options: PayoutNodeOptions.distributionModes, onChanged: (v) => _set('distributionMode', v)),
-      if (distMode == 'percentage' || distMode == 'fixed' || distMode == 'weighted')
+      // Fixed mode pays each member a flat amount (fixedAmountPerMember), so it
+      // gets a single amount field — NOT the per-member allocation list (which
+      // is for percentage/weighted splits).
+      if (distMode == 'fixed')
+        _NumberField(
+          label: 'Fixed amount per member (\$)',
+          value: _d['fixedAmountPerMember'],
+          onChanged: (v) => _set('fixedAmountPerMember', v),
+        ),
+      if (distMode == 'percentage' || distMode == 'weighted')
         _memberAllocationsField(),
       if (distMode == 'tiered')
         TierConfigField(data: _d, onChanged: widget.onChanged),

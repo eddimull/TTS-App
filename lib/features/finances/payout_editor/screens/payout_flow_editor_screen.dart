@@ -575,7 +575,7 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
   Widget build(BuildContext context) {
     final readOnly = widget.readOnly;
     // Match the canvas + grid to the system brightness so the editor isn't a
-    // hard-white sheet in dark mode. Node cards stay white (legible on either).
+    // hard-white sheet in dark mode. Node cards adapt too (see _FlowNode).
     final isDark =
         CupertinoTheme.brightnessOf(context) == Brightness.dark;
     final editorTheme = isDark ? NodeFlowTheme.dark : NodeFlowTheme.light;

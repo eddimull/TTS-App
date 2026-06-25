@@ -47,8 +47,30 @@ class PayoutConfigsScreen extends ConsumerWidget {
 
   /// Create flow: pick a template, name it, create, open the editor.
   Future<void> _startCreate(BuildContext context, WidgetRef ref, int bandId) async {
-    final templates =
-        await ref.read(payoutFlowRepositoryProvider).listTemplates(bandId);
+    final List<PayoutTemplate> templates;
+    try {
+      templates =
+          await ref.read(payoutFlowRepositoryProvider).listTemplates(bandId);
+    } catch (e) {
+      // Surface a friendly error instead of an uncaught exception, consistent
+      // with the create / set-active / delete flows.
+      if (context.mounted) {
+        await showCupertinoDialog<void>(
+          context: context,
+          builder: (dlg) => CupertinoAlertDialog(
+            title: const Text('Could not load templates'),
+            content: Text(ErrorView.friendlyMessage(e)),
+            actions: [
+              CupertinoDialogAction(
+                onPressed: () => Navigator.pop(dlg),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
     if (!context.mounted || templates.isEmpty) return;
 
     final template = await showCupertinoModalPopup<PayoutTemplate>(

@@ -183,6 +183,66 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
     }
   }
 
+  // ── Add node ───────────────────────────────────────────────────────────────
+
+  static const _addLabels = {
+    'income': 'Income',
+    'bandCut': 'Band Cut',
+    'conditional': 'Condition',
+    'payoutGroup': 'Payout Group',
+  };
+
+  void _showAddNodeSheet() {
+    final hasIncome = _controller.nodes.values.any((n) => n.type == 'income');
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (sheetCtx) => CupertinoActionSheet(
+        title: const Text('Add node'),
+        actions: [
+          for (final type in kAddableNodeTypes)
+            CupertinoActionSheetAction(
+              // Only one income node is allowed (backend rule).
+              onPressed: (type == 'income' && hasIncome)
+                  ? () {}
+                  : () {
+                      Navigator.pop(sheetCtx);
+                      _addNode(type);
+                    },
+              child: Text(
+                type == 'income' && hasIncome
+                    ? 'Income (already added)'
+                    : _addLabels[type] ?? type,
+                style: TextStyle(
+                  color: (type == 'income' && hasIncome)
+                      ? CupertinoColors.inactiveGray
+                      : null,
+                ),
+              ),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(sheetCtx),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
+  void _addNode(String type) {
+    // Place the new node near the centre of the current viewport (graph coords).
+    final v = _controller.viewport;
+    final size = context.size ?? const Size(360, 600);
+    final center = Offset(
+      (size.width / 2 - v.x) / v.zoom,
+      (size.height / 2 - v.y) / v.zoom,
+    );
+    final id = 'node-${DateTime.now().microsecondsSinceEpoch}';
+    _controller.addNode(newNodeForType(type, id, center));
+    HapticFeedback.selectionClick();
+    setState(() {});
+    _refreshComputedValues();
+  }
+
   Future<void> _alert(String title, String message) {
     return showCupertinoDialog<void>(
       context: context,
@@ -449,13 +509,27 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
     _controller.moveNode(id, screenDelta / _controller.viewport.zoom);
   }
 
+  /// True if an edge with this exact source/sourcePort/target already exists.
+  /// Mirrors the web rule: duplicate connections (same source+target+handle)
+  /// are rejected; fan-out to DIFFERENT targets is fine.
+  bool _connectionExists(String sourceNodeId, String sourcePortId, String targetNodeId) {
+    return _controller.connections.any((c) =>
+        c.sourceNodeId == sourceNodeId &&
+        c.sourcePortId == sourcePortId &&
+        c.targetNodeId == targetNodeId);
+  }
+
   void _onLongPressEnd(LongPressEndDetails d) {
     if (_connecting) {
       // Complete the connection if released over a VALID target port (correct
-      // direction, different node); otherwise cancel.
+      // direction, different node) that isn't already connected; otherwise cancel.
       final target = _targetPortFor(_toGraph(d.localPosition));
+      final src = _connectSource;
+      final isDuplicate = target != null &&
+          src != null &&
+          _connectionExists(src.nodeId, src.portId, target.nodeId);
       Connection<dynamic>? created;
-      if (target != null) {
+      if (target != null && !isDuplicate) {
         created = _controller.completeConnectionDrag(
           targetNodeId: target.nodeId,
           targetPortId: target.portId,
@@ -583,6 +657,16 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
                   child: Center(
                     child: _GrabPill(),
                   ),
+                ),
+              ),
+            // Floating add-node button (owners only). Last in the stack so it
+            // sits above the long-press overlay and stays tappable.
+            if (!readOnly)
+              Positioned(
+                right: 20,
+                bottom: 24,
+                child: _FloatingAddButton(
+                  onPressed: _saving ? null : _showAddNodeSheet,
                 ),
               ),
           ],
@@ -973,6 +1057,35 @@ class _FlowNode extends StatelessWidget {
 }
 
 /// Transient cue shown while a node is grabbed via long-press.
+/// Floating circular "+" button to add a node.
+class _FloatingAddButton extends StatelessWidget {
+  const _FloatingAddButton({required this.onPressed});
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: CupertinoColors.activeBlue,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: CupertinoColors.black.withValues(alpha: 0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: const Icon(CupertinoIcons.add, size: 30, color: CupertinoColors.white),
+      ),
+    );
+  }
+}
+
 class _GrabPill extends StatelessWidget {
   const _GrabPill();
 

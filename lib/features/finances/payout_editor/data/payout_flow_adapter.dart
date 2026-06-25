@@ -259,6 +259,72 @@ List<Connection<dynamic>> connectionsFromTts(Map<String, dynamic> tts) {
   }).toList();
 }
 
+/// Node types that can be added, in palette order.
+const kAddableNodeTypes = ['income', 'bandCut', 'conditional', 'payoutGroup'];
+
+/// Default `data` for a freshly-added node, mirroring the web schema's
+/// createNode defaults (useFlowNodeSchemas.js).
+Map<String, dynamic> _defaultDataFor(String type) {
+  switch (type) {
+    case 'income':
+      return {'amount': 5000, 'label': 'Total Income', 'deactivated': false};
+    case 'bandCut':
+      return {'cutType': 'percentage', 'value': 10, 'tierConfig': null, 'deactivated': false};
+    case 'conditional':
+      return {
+        'label': 'Condition',
+        'conditionType': 'bookingPrice',
+        'operator': '>',
+        'value': 1000,
+        'deactivated': false,
+      };
+    case 'payoutGroup':
+      return {
+        'label': 'Payout Group',
+        'sourceType': 'roster',
+        'rosterConfig': {
+          'useAttendanceWeighting': true,
+          'filterByRoleId': [],
+          'memberTypeFilter': 'all',
+          'minEventsToQualify': 1,
+        },
+        'allMembersConfig': {
+          'includeOwners': true,
+          'includeMembers': true,
+          'includeProduction': false,
+          'productionCount': 0,
+        },
+        'distributionMode': 'equal_split',
+        'memberAllocations': [],
+        'tierConfig': null,
+        'incomingAllocationType': 'remainder',
+        'incomingAllocationValue': 0,
+        'respectCustomPayouts': true,
+        'minimumPayout': 0,
+        'deactivated': false,
+      };
+    default:
+      return {'deactivated': false};
+  }
+}
+
+/// Creates a fresh live [Node] of [type] at [position] with default data and
+/// synthesized ports — for the editor's add-node action. [id] must be unique.
+Node<Map<String, dynamic>> newNodeForType(
+  String type,
+  String id,
+  Offset position,
+) {
+  return Node<Map<String, dynamic>>(
+    id: id,
+    type: type,
+    position: position,
+    size: _kNodeSize,
+    data: _defaultDataFor(type),
+    ports: _portsJsonFor(type).map(_portFromJson).toList(),
+  );
+}
+
 /// Reads live controller state (nodes + connections) back into TTS flow JSON,
 /// MERGED onto [original] so web-only fields (positions, dimensions,
 /// handleBounds, edge coordinates, embedded node snapshots, runtime data) are
@@ -323,9 +389,24 @@ Map<String, dynamic> ttsFromControllerState(
     if (orig != null) {
       outEdges.add(orig); // preserve the web's rich edge verbatim
     } else {
-      final e = <String, dynamic>{'source': c.sourceNodeId, 'target': c.targetNodeId};
-      if (outs > 1) e['sourceHandle'] = c.sourcePortId;
-      outEdges.add(e);
+      // A NEW connection. Emit the same minimal-but-complete shape the web
+      // editor uses when it creates an edge (id/source/target/handles/type) —
+      // Vue Flow computes the render coordinates itself, but it WON'T draw an
+      // edge that lacks the handles/type, so a bare {source,target} is invisible
+      // on web. Target the input port of the destination type.
+      final targetType = liveNodeType[c.targetNodeId];
+      final inPort = (_kPortTable[targetType] ?? const [])
+          .where((p) => p.type == PortType.input)
+          .map((p) => p.id)
+          .firstOrNull;
+      outEdges.add({
+        'id': 'edge-${c.sourceNodeId}-${c.sourcePortId}-${c.targetNodeId}',
+        'source': c.sourceNodeId,
+        'target': c.targetNodeId,
+        'sourceHandle': c.sourcePortId,
+        if (inPort != null) 'targetHandle': inPort,
+        'type': 'custom',
+      });
     }
   }
 
@@ -342,6 +423,12 @@ Port _portFromJson(Map<String, dynamic> j) {
     name: j['name'] as String,
     type: PortType.values.byName(j['type'] as String),
     position: PortPosition.values.byName(j['position'] as String),
+    // Allow fan-out / fan-in: an output can feed multiple targets and an input
+    // can receive from multiple sources (the calc sums them). Without this the
+    // port defaults to multiConnections:false, and the library REPLACES the
+    // existing edge when a second connection is made — silently wiping the
+    // node's other connections.
+    multiConnections: true,
     offset: Offset(
       (j['offset']['x'] as num).toDouble(),
       (j['offset']['y'] as num).toDouble(),

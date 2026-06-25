@@ -219,5 +219,36 @@ void main() {
       expect(edge['sourceX'], 285.0);
       expect(edge['sourceNode'], {'id': 'income-1'});
     });
+
+    test('a NEW edge gets the fields the web editor needs to render it', () {
+      // Build live state, then add a fresh connection income -> payout-1 that
+      // is NOT in the original (the original has no such edge here... actually
+      // it does; use a second payout to make a genuinely new edge).
+      final orig = {
+        'nodes': [
+          {'id': 'income-1', 'type': 'income', 'data': {'amount': 1000}},
+          {'id': 'p1', 'type': 'payoutGroup', 'data': {'sourceType': 'roster'}},
+        ],
+        'edges': [
+          {'source': 'income-1', 'target': 'p1', 'sourceHandle': 'income-out', 'type': 'custom', 'sourceX': 1.0},
+        ],
+      };
+      final nodes = nodesFromTts(orig);
+      final conns = connectionsFromTts(orig);
+      // Add a brand-new connection p1(out) -> income? No — make income -> p1 a
+      // duplicate is wrong; instead add a self-consistent new edge by wiring a
+      // second connection from p1's output back is invalid. Simplest: drop the
+      // original edge from conns and re-add it as "new" by clearing origByPair.
+      final back = ttsFromControllerState(nodes, conns, {'nodes': orig['nodes'], 'edges': const []});
+      final edge = (back['edges'] as List).cast<Map<String, dynamic>>().single;
+
+      // No original to merge from → emitted as a new edge with render fields.
+      expect(edge['type'], 'custom');
+      expect(edge['id'], isNotNull);
+      expect(edge['source'], 'income-1');
+      expect(edge['target'], 'p1');
+      expect(edge['sourceHandle'], 'income-out');
+      expect(edge['targetHandle'], 'payoutgroup-in');
+    });
   });
 }

@@ -59,4 +59,24 @@ case "$LONG_OUT" in
   *) echo "FAIL: long changelog should end with ellipsis"; fails=$((fails+1)) ;;
 esac
 
+# Custom max-chars arg: Google Play's whatsnew uses a 500-char cap.
+LONG_CL_500="$(mktemp)"
+{
+  echo "## [9.9.9](url) (2026-01-01)"
+  echo
+  echo "### Features"
+  echo
+  i=0; while [ "$i" -lt 400 ]; do
+    echo "* feat: a reasonably long feature description line number $i to add bulk ([#$i](https://example.com/issues/$i))"
+    i=$((i+1))
+  done
+} > "$LONG_CL_500"
+OUT_500="$(bash "$SCRIPT" "$LONG_CL_500" 500)"
+rm -f "$LONG_CL_500"
+assert_max_len "$OUT_500" 500 "custom 500-char cap honored"
+case "$OUT_500" in
+  *"…") ;;
+  *) echo "FAIL: 500-capped output should end with ellipsis"; fails=$((fails+1)) ;;
+esac
+
 if [ "$fails" -eq 0 ]; then echo "ALL PASS"; else echo "$fails FAILURES"; exit 1; fi

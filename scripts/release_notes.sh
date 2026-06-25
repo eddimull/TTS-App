@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 # Extract the top-most version section from a release-please CHANGELOG and
-# sanitize it to store-safe plain text (no markdown), capped at 4000 chars.
+# sanitize it to store-safe plain text (no markdown), capped at a max length.
 #
-# Usage: release_notes.sh [path-to-CHANGELOG.md]   (default: CHANGELOG.md)
+# Usage: release_notes.sh [path-to-CHANGELOG.md] [max-chars]
+#   path-to-CHANGELOG.md  default: CHANGELOG.md
+#   max-chars             default: 4000 (Apple's "What to Test"/review limit).
+#                         Pass 500 for Google Play's "What's new" per-language
+#                         limit, which is much smaller than Apple's.
 set -euo pipefail
 
 CHANGELOG="${1:-CHANGELOG.md}"
-MAX_LEN=4000
+MAX_LEN="${2:-4000}"
 
 if [ ! -f "$CHANGELOG" ]; then
   echo "::error::release_notes.sh: changelog not found: $CHANGELOG" >&2
@@ -39,7 +43,7 @@ notes="$(printf "%s\n" "$section" \
   | sed -E 's/\*//g' \
   | sed -E '/^[[:space:]]*$/d')"
 
-# 3. Cap length at a word boundary.
+# 3. Hard-cap total length (leaving room for the 1-char ellipsis).
 if [ "${#notes}" -gt "$MAX_LEN" ]; then
   notes="${notes:0:$((MAX_LEN-1))}…"
 fi

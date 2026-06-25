@@ -169,7 +169,18 @@ class _NodeConfigFormState extends ConsumerState<NodeConfigForm> {
       child: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
-          children: _fieldsForType(),
+          children: [
+            // Shared across all node types: toggle the node off/on. A
+            // deactivated node is bypassed by the backend (amount passes
+            // through). Mirrors the web editor's node toggle.
+            _ToggleField(
+              label: 'Node active',
+              value: _d['deactivated'] != true,
+              onChanged: (v) => _set('deactivated', !v),
+            ),
+            const SizedBox(height: 4),
+            ..._fieldsForType(),
+          ],
         ),
       ),
     );

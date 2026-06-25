@@ -123,6 +123,7 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
     final flow = ttsFromControllerState(
       _controller.nodes.values,
       _controller.connections,
+      widget.config.flowDiagram, // merge onto the original to preserve web fields
     );
     try {
       await ref.read(payoutFlowRepositoryProvider).updateFlow(
@@ -130,8 +131,12 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
             widget.config.id,
             flow,
           );
-      // Refresh the configs list so any name/active changes surface.
+      // Invalidate BOTH the list and THIS config's detail provider — otherwise
+      // reopening the editor re-seeds from the cached pre-save flow and the
+      // edits appear to revert.
       ref.invalidate(payoutConfigsProvider(widget.bandId));
+      ref.invalidate(payoutConfigProvider(
+          PayoutConfigRef(bandId: widget.bandId, configId: widget.config.id)));
       if (mounted) {
         await _alert('Saved', 'Payout flow saved.');
       }
@@ -436,6 +441,16 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
     }
   }
 
+  /// A real tap-up that didn't move. If it landed on a connection, prompt to
+  /// delete it. Taps on nodes/ports/empty canvas are ignored here (nodes use
+  /// double-tap; ports use long-press) so this never interferes.
+  void _onTapUp(TapUpDetails d) {
+    final connId = _controller.hitTestConnections(_toGraph(d.localPosition));
+    if (connId == null) return;
+    final conn = _controller.connections.where((c) => c.id == connId);
+    if (conn.isNotEmpty) _confirmDeleteConnection(conn.first);
+  }
+
   @override
   Widget build(BuildContext context) {
     final readOnly = widget.readOnly;
@@ -476,11 +491,13 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
                       node: NodeEvents<Map<String, dynamic>>(
                         onDoubleTap: _openConfigSheet,
                       ),
-                      // Single tap on a connection → confirm + delete.
-                      connection:
-                          ConnectionEvents<Map<String, dynamic>, dynamic>(
-                        onTap: _confirmDeleteConnection,
-                      ),
+                      // NOTE: connection delete is NOT wired via the library's
+                      // ConnectionEvents.onTap — that fires from a raw
+                      // pointer-down (no movement check), so a stray brush while
+                      // panning instantly prompts delete. Instead our overlay's
+                      // TapGestureRecognizer (below) handles it: it only fires on
+                      // a real tap-up that didn't move, so panning never triggers
+                      // a delete.
                     ),
             ),
             // Transparent overlay that ONLY claims the long-press gesture (used
@@ -506,6 +523,16 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
                         ..onLongPressMoveUpdate = _onLongPressMove
                         ..onLongPressEnd = _onLongPressEnd,
                     ),
+                    // A real tap (down + up WITHOUT moving) on a connection
+                    // prompts delete. Because a pan moves the finger, the tap
+                    // recognizer loses the arena during a pan — so brushing a
+                    // connection while panning never triggers a delete.
+                    TapGestureRecognizer:
+                        GestureRecognizerFactoryWithHandlers<
+                            TapGestureRecognizer>(
+                      () => TapGestureRecognizer(),
+                      (r) => r..onTapUp = _onTapUp,
+                    ),
                   },
                 ),
               ),
@@ -527,6 +554,34 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
   }
 
   Widget _buildNode(BuildContext context, Node<Map<String, dynamic>> node) {
+    final deactivated = node.data['deactivated'] == true;
+    final inner = _buildNodeInner(node);
+    // Visual-only state: deactivated nodes render dimmed with a grey power
+    // badge; active nodes show a green one. The badge is NON-interactive
+    // (IgnorePointer) and stays INSIDE the node bounds so it neither shifts the
+    // node's content nor competes with the long-press move overlay. The actual
+    // toggle lives in the config sheet ("Node active").
+    return Stack(
+      children: [
+        Opacity(opacity: deactivated ? 0.45 : 1.0, child: inner),
+        Positioned(
+          top: 4,
+          right: 4,
+          child: IgnorePointer(
+            child: Icon(
+              CupertinoIcons.power,
+              size: 14,
+              color: deactivated
+                  ? CupertinoColors.systemGrey
+                  : CupertinoColors.activeGreen,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNodeInner(Node<Map<String, dynamic>> node) {
     // Read the observable so the editor's Observer repaints this node when it's
     // grabbed (selection is our grab indicator — see _onLongPressStart).
     final grabbed = node.selected.value;
@@ -545,6 +600,18 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
           subtitle:
               '${node.data['conditionType']} ${node.data['operator']} ${node.data['value']}',
           footer: 'true / false',
+          grabbed: grabbed,
+        );
+      case 'bandCut':
+        final label = (node.data['customLabel'] as String?)?.trim();
+        final cutType = node.data['cutType'] ?? 'percentage';
+        final value = node.data['value'];
+        return _FlowNode(
+          title: (label != null && label.isNotEmpty) ? label : 'Band Cut',
+          color: const Color(0xFF6A1B9A),
+          subtitle: cutType == 'tiered'
+              ? 'tiered'
+              : '${cutType == 'percentage' ? '$value%' : '\$$value'} $cutType',
           grabbed: grabbed,
         );
       case 'payoutGroup':
@@ -591,6 +658,11 @@ class _FlowNode extends StatelessWidget {
       curve: Curves.easeOut,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
+        // Fill the node's box (vyuh sizes it to node.size, 180x96). Without
+        // this the content shrinks to fit its text, leaving the node's bounds
+        // (and the power badge) floating in empty space to the right.
+        width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
           color: CupertinoColors.white,
           borderRadius: BorderRadius.circular(10),

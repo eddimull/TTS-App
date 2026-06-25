@@ -259,29 +259,81 @@ List<Connection<dynamic>> connectionsFromTts(Map<String, dynamic> tts) {
   }).toList();
 }
 
-/// Reads live controller state (nodes + connections) back into TTS flow JSON.
+/// Reads live controller state (nodes + connections) back into TTS flow JSON,
+/// MERGED onto [original] so web-only fields (positions, dimensions,
+/// handleBounds, edge coordinates, embedded node snapshots, runtime data) are
+/// preserved. The web editor depends on those; emitting a stripped flow breaks
+/// the web canvas. Mobile only owns: node `data` edits, node positions, and the
+/// set of nodes/edges (adds/removes).
 Map<String, dynamic> ttsFromControllerState(
   Iterable<Node<Map<String, dynamic>>> nodes,
   Iterable<Connection<dynamic>> connections,
+  Map<String, dynamic> original,
 ) {
-  final vyuh = {
-    'nodes': nodes
-        .map((n) => {
-              'id': n.id,
-              'type': n.type,
-              'data': n.data,
-            })
-        .toList(),
-    'connections': connections
-        .map((c) => {
-              'sourceNodeId': c.sourceNodeId,
-              'sourcePortId': c.sourcePortId,
-              'targetNodeId': c.targetNodeId,
-              'targetPortId': c.targetPortId,
-            })
-        .toList(),
+  final origNodes = (original['nodes'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
+  final origEdges = (original['edges'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
+  final origNodeById = {for (final n in origNodes) n['id'] as String: n};
+
+  // ── Nodes: preserve each original, overlay live data + position ──────────
+  final outNodes = <Map<String, dynamic>>[];
+  for (final n in nodes) {
+    final orig = origNodeById[n.id];
+    final pos = {'x': n.position.value.dx, 'y': n.position.value.dy};
+    if (orig != null) {
+      // Start from the full original; overlay only what mobile changed.
+      final merged = Map<String, dynamic>.from(orig);
+      merged['data'] = n.data; // mobile's config-form edits win
+      merged['position'] = pos;
+      if (merged.containsKey('computedPosition')) {
+        merged['computedPosition'] = {...pos, 'z': 0};
+      }
+      outNodes.add(merged);
+    } else {
+      // Mobile-added node: minimal shape; the web editor backfills the rest.
+      outNodes.add({'id': n.id, 'type': n.type, 'data': n.data, 'position': pos});
+    }
+  }
+
+  // ── Edges: preserve originals that still exist; add minimal new ones ──────
+  // Match by source+target+sourcePortId. Compare against the original's stored
+  // sourceHandle directly (NOT our "omit single-output handle" logic — the web
+  // stores a handle like "income-out" even for single-output nodes, so dropping
+  // it here would miss the match and strip the rich edge).
+  String edgeKey(String s, String t, String? h) => '$s|$t|${h ?? ''}';
+  final origByExactKey = <String, Map<String, dynamic>>{};
+  final origByPair = <String, Map<String, dynamic>>{};
+  for (final e in origEdges) {
+    final s = e['source'] as String, t = e['target'] as String;
+    origByExactKey[edgeKey(s, t, e['sourceHandle'] as String?)] = e;
+    origByPair['$s|$t'] = e; // fallback when handles differ in representation
+  }
+
+  final liveNodeType = {for (final n in nodes) n.id: n.type};
+  final outEdges = <Map<String, dynamic>>[];
+  for (final c in connections) {
+    final type = liveNodeType[c.sourceNodeId];
+    final outs = (_kPortTable[type] ?? const [])
+        .where((p) => p.type == PortType.output)
+        .length;
+    // For multi-output sources (conditional true/false) the handle is needed to
+    // disambiguate; otherwise source+target identifies the edge.
+    final orig = origByExactKey[
+            edgeKey(c.sourceNodeId, c.targetNodeId, c.sourcePortId)] ??
+        (outs > 1 ? null : origByPair['${c.sourceNodeId}|${c.targetNodeId}']);
+    if (orig != null) {
+      outEdges.add(orig); // preserve the web's rich edge verbatim
+    } else {
+      final e = <String, dynamic>{'source': c.sourceNodeId, 'target': c.targetNodeId};
+      if (outs > 1) e['sourceHandle'] = c.sourcePortId;
+      outEdges.add(e);
+    }
+  }
+
+  return {
+    'nodes': outNodes,
+    'edges': outEdges,
+    'version': original['version'] ?? '1.0',
   };
-  return ttsFromVyuhJson(vyuh);
 }
 
 Port _portFromJson(Map<String, dynamic> j) {

@@ -41,6 +41,8 @@ String? _logicDiff(Map<String, dynamic> a, Map<String, dynamic> b) {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('PayoutFlowAdapter round-trip (logic contract)', () {
     test('real backend fixture survives TTS -> Vyuh -> TTS', () {
       final vyuh = vyuhJsonFromTts(kFixtureFlow);
@@ -131,6 +133,91 @@ void main() {
         'edges': [],
       };
       expect(() => vyuhJsonFromTts(bad), throwsStateError);
+    });
+  });
+
+  group('ttsFromControllerState merge (preserve web-only fields)', () {
+    // An original flow carrying web-only presentation/runtime fields the web
+    // editor depends on — these must survive a mobile save.
+    final original = {
+      'nodes': [
+        {
+          'id': 'income-1',
+          'type': 'income',
+          'data': {'amount': 1000, 'label': 'Income'},
+          'position': {'x': 40.0, 'y': 200.0},
+          'dimensions': {'width': 238, 'height': 183},
+          'handleBounds': {'source': [], 'target': null},
+          'computedPosition': {'x': 40.0, 'y': 200.0, 'z': 0},
+          'selected': false,
+        },
+        {
+          'id': 'payout-1',
+          'type': 'payoutGroup',
+          'data': {
+            'label': 'Group A',
+            'sourceType': 'allMembers',
+            'allMembersConfig': {'includeOwners': true},
+            'incomingAllocationType': 'remainder',
+            'distributionMode': 'equal_split',
+          },
+          'position': {'x': 400.0, 'y': 200.0},
+          'dimensions': {'width': 220, 'height': 400},
+        },
+      ],
+      'edges': [
+        {
+          'source': 'income-1',
+          'target': 'payout-1',
+          // Web stores a handle even for single-output nodes — the merge must
+          // still match this edge and preserve its rich fields.
+          'sourceHandle': 'income-out',
+          'targetHandle': 'payoutgroup-in',
+          'sourceX': 285.0,
+          'sourceY': 760.0,
+          'sourceNode': {'id': 'income-1'},
+          'animated': false,
+        },
+      ],
+      'version': '1.0',
+    };
+
+    test('untouched nodes keep web-only fields; edited data is applied', () {
+      // Build live state from the original, then simulate a config-form edit:
+      // change the payout group's label.
+      final nodes = nodesFromTts(original);
+      final conns = connectionsFromTts(original);
+      nodes.firstWhere((n) => n.id == 'payout-1').data['label'] = 'Renamed';
+
+      final back = ttsFromControllerState(nodes, conns, original);
+      final backNodes =
+          (back['nodes'] as List).cast<Map<String, dynamic>>();
+
+      final income = backNodes.firstWhere((n) => n['id'] == 'income-1');
+      // Web-only fields preserved verbatim.
+      expect(income['dimensions'], {'width': 238, 'height': 183});
+      expect(income['handleBounds'], isNotNull);
+      expect(income.containsKey('computedPosition'), isTrue);
+
+      // The edit applied.
+      final payout = backNodes.firstWhere((n) => n['id'] == 'payout-1');
+      expect(payout['data']['label'], 'Renamed');
+      // And ITS web-only field survived too.
+      expect(payout['dimensions'], {'width': 220, 'height': 400});
+    });
+
+    test('edges preserve their web-only fields', () {
+      final nodes = nodesFromTts(original);
+      final conns = connectionsFromTts(original);
+
+      final back = ttsFromControllerState(nodes, conns, original);
+      final edge = (back['edges'] as List).cast<Map<String, dynamic>>().single;
+
+      expect(edge['source'], 'income-1');
+      expect(edge['target'], 'payout-1');
+      // Rich web edge fields carried through.
+      expect(edge['sourceX'], 285.0);
+      expect(edge['sourceNode'], {'id': 'income-1'});
     });
   });
 }

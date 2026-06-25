@@ -50,4 +50,47 @@ void main() {
       expect(find.text('—'), findsOneWidget);
     });
   });
+
+  group('GuidedConfigScaffold', () {
+    List<ConfigStep> steps() => [
+          ConfigStep(
+            tab: 'Recipients',
+            question: 'Who gets paid?',
+            subtitle: 'Choose the source.',
+            builder: (_) => const Text('STEP-RECIPIENTS'),
+          ),
+          ConfigStep(
+            tab: 'Take',
+            question: 'How much?',
+            subtitle: 'Of the incoming amount.',
+            builder: (_) => const Text('STEP-TAKE'),
+          ),
+        ];
+
+    testWidgets('renders a chip per step and shows the first step body', (t) async {
+      await t.pumpWidget(CupertinoApp(home: GuidedConfigScaffold(
+        title: 'Payout Group',
+        steps: steps(),
+        preview: const PreviewBar(label: 'pays', value: '3 people'),
+      )));
+      expect(find.text('Recipients'), findsOneWidget);
+      expect(find.text('Take'), findsOneWidget);
+      expect(find.text('Who gets paid?'), findsOneWidget);
+      expect(find.text('STEP-RECIPIENTS'), findsOneWidget);
+      expect(find.text('STEP-TAKE'), findsNothing);
+    });
+
+    testWidgets('tapping a tab switches the visible step', (t) async {
+      await t.pumpWidget(CupertinoApp(home: GuidedConfigScaffold(
+        title: 'Payout Group',
+        steps: steps(),
+        preview: const PreviewBar(label: 'pays', value: '3 people'),
+      )));
+      await t.tap(find.text('Take'));
+      await t.pump();
+      expect(find.text('STEP-TAKE'), findsOneWidget);
+      expect(find.text('How much?'), findsOneWidget);
+      expect(find.text('STEP-RECIPIENTS'), findsNothing);
+    });
+  });
 }

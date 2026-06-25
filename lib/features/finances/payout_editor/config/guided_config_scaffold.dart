@@ -118,3 +118,114 @@ class PreviewBar extends StatelessWidget {
     );
   }
 }
+
+/// One step/tab of a guided config: a tab label, a question heading + subtitle,
+/// and a builder for the step's body fields.
+class ConfigStep {
+  const ConfigStep({
+    required this.tab,
+    required this.question,
+    required this.subtitle,
+    required this.builder,
+  });
+  final String tab;
+  final String question;
+  final String subtitle;
+  final WidgetBuilder builder;
+}
+
+/// The guided config shell: nav bar (title + optional trailing), tab chips when
+/// there's more than one step, the active step's question + body (scrolling),
+/// and a pinned preview bar at the bottom.
+class GuidedConfigScaffold extends StatefulWidget {
+  const GuidedConfigScaffold({
+    super.key,
+    required this.title,
+    required this.steps,
+    required this.preview,
+    this.trailing,
+  });
+
+  final String title;
+  final List<ConfigStep> steps;
+  final Widget preview;
+  final Widget? trailing;
+
+  @override
+  State<GuidedConfigScaffold> createState() => _GuidedConfigScaffoldState();
+}
+
+class _GuidedConfigScaffoldState extends State<GuidedConfigScaffold> {
+  int _active = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    // Clamp in case the step list shrank (e.g. node type changed) between builds.
+    final active = _active < widget.steps.length ? _active : 0;
+    final step = widget.steps[active];
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(
+        middle: Text(widget.title),
+        trailing: widget.trailing,
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            if (widget.steps.length > 1)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Row(
+                  children: [
+                    for (var i = 0; i < widget.steps.length; i++)
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _active = i),
+                          child: Container(
+                            margin: EdgeInsets.only(right: i == widget.steps.length - 1 ? 0 : 6),
+                            padding: const EdgeInsets.symmetric(vertical: 7),
+                            decoration: BoxDecoration(
+                              color: i == active
+                                  ? CupertinoColors.activeBlue
+                                  : CupertinoDynamicColor.resolve(
+                                      CupertinoColors.tertiarySystemFill, context),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              widget.steps[i].tab,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: i == active
+                                    ? CupertinoColors.white
+                                    : CupertinoDynamicColor.resolve(
+                                        CupertinoColors.label, context),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                children: [
+                  Text(step.question,
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 2),
+                  Text(step.subtitle,
+                      style: const TextStyle(fontSize: 13, color: CupertinoColors.secondaryLabel)),
+                  const SizedBox(height: 14),
+                  step.builder(context),
+                ],
+              ),
+            ),
+            widget.preview,
+          ],
+        ),
+      ),
+    );
+  }
+}

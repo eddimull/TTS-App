@@ -105,6 +105,8 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/payout-flow/configs/$configId';
   static String mobilePayoutFlowPreview(int bandId) =>
       '/api/mobile/bands/$bandId/payout-flow/preview';
+  static String mobilePayoutFlowTemplates(int bandId) =>
+      '/api/mobile/bands/$bandId/payout-flow/templates';
 
   static String mobileEventSubs(String key) =>
       '/api/mobile/events/$key/subs';

@@ -11,6 +11,30 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Pin the Go (mikefarah) yq so the parse below is identical on the
+      # ubuntu and macos runners, which ship different yq implementations.
+      - uses: mikefarah/yq@v4
+
+      - name: Resolve version name
+        run: |
+          set -euo pipefail
+          # Prefer the latest git tag (set by release-please); fall back to
+          # pubspec.yaml before the first tag exists. A missing tag is expected,
+          # so don't let `git describe` failing abort the step.
+          VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
+          if [ -z "$VERSION" ]; then
+            # pubspec version is `X.Y.Z+build`; drop the +build suffix.
+            VERSION="$(yq '.version' pubspec.yaml | sed 's/+.*//')"
+          fi
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "::error::Could not resolve a version name from git tags or pubspec.yaml" >&2
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Resolved version name: $VERSION (build number: $GITHUB_RUN_NUMBER)"
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -83,7 +107,8 @@ jobs:
       - name: Build IPA
         run: |
           flutter build ipa --release \
-            --build-number=$GITHUB_RUN_NUMBER \
+            --build-name="$VERSION" \
+            --build-number="$GITHUB_RUN_NUMBER" \
             --dart-define=BASE_URL=${{ secrets.BASE_URL }} \
             --dart-define=PUSHER_APP_KEY=${{ secrets.PUSHER_APP_KEY }} \
             --dart-define=PUSHER_APP_CLUSTER=${{ secrets.PUSHER_APP_CLUSTER }} \

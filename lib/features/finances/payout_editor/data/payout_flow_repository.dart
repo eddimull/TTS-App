@@ -164,6 +164,13 @@ class PayoutFlowRepository {
       data: {'is_active': true},
     );
   }
+
+  /// Deletes a config (owner-only on the backend).
+  Future<void> deleteConfig(int bandId, int configId) async {
+    await _dio.delete<void>(
+      ApiEndpoints.mobilePayoutFlowConfig(bandId, configId),
+    );
+  }
 }
 
 final payoutFlowRepositoryProvider = Provider<PayoutFlowRepository>((ref) {

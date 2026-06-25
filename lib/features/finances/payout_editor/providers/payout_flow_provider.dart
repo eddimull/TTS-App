@@ -57,6 +57,12 @@ class _PayoutConfigsNotifier extends AsyncNotifier<List<PayoutConfigSummary>> {
     await ref.read(payoutFlowRepositoryProvider).setActive(_bandId, configId);
     await refresh();
   }
+
+  /// Deletes [configId] and refreshes the list.
+  Future<void> deleteConfig(int configId) async {
+    await ref.read(payoutFlowRepositoryProvider).deleteConfig(_bandId, configId);
+    await refresh();
+  }
 }
 
 final payoutConfigsProvider = AsyncNotifierProvider.family<

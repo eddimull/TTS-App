@@ -18,6 +18,8 @@ class _FakeRepo implements PayoutFlowRepository {
   @override
   Future<void> setActive(int b, int c) async {}
   @override
+  Future<void> deleteConfig(int b, int c) async {}
+  @override
   Future<PayoutConfigDetail> getConfig(int b, int c) => throw UnimplementedError();
   @override
   Future<PayoutConfigDetail> updateFlow(int b, int c, Map<String, dynamic> f, {bool? isActive}) => throw UnimplementedError();

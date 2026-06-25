@@ -28,6 +28,12 @@ class _FakeRepo implements PayoutFlowRepository {
   }
 
   @override
+  Future<void> deleteConfig(int bandId, int configId) async {
+    calls.add('deleteConfig:$configId');
+    _configs = _configs.where((c) => c.id != configId).toList();
+  }
+
+  @override
   Future<List<PayoutTemplate>> listTemplates(int bandId) async => const [];
 
   @override
@@ -72,5 +78,21 @@ void main() {
     final list = await c.read(payoutConfigsProvider(1).future);
     expect(list.firstWhere((e) => e.id == 2).isActive, isTrue);
     expect(list.firstWhere((e) => e.id == 1).isActive, isFalse);
+  });
+
+  test('deleteConfig calls the repo and refreshes (config removed)', () async {
+    final repo = _FakeRepo([
+      const PayoutConfigSummary(id: 1, name: 'A', isActive: false),
+      const PayoutConfigSummary(id: 2, name: 'B', isActive: false),
+    ]);
+    final c = containerWith(repo);
+    addTearDown(c.dispose);
+
+    await c.read(payoutConfigsProvider(1).future);
+    await c.read(payoutConfigsProvider(1).notifier).deleteConfig(1);
+
+    expect(repo.calls, contains('deleteConfig:1'));
+    final list = await c.read(payoutConfigsProvider(1).future);
+    expect(list.map((e) => e.id), [2]);
   });
 }

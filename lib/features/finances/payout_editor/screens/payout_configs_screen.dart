@@ -234,6 +234,18 @@ class _ConfigsList extends ConsumerWidget {
               },
               child: const Text('Set as active'),
             ),
+          // Deleting the active config is blocked here (frontend-only): the
+          // Delete action is only offered for inactive configs. Activate another
+          // first to remove this one.
+          if (!c.isActive)
+            CupertinoActionSheetAction(
+              isDestructiveAction: true,
+              onPressed: () {
+                Navigator.pop(sheetCtx);
+                _confirmDelete(context, ref, bandId, c);
+              },
+              child: const Text('Delete'),
+            ),
         ],
         cancelButton: CupertinoActionSheetAction(
           onPressed: () => Navigator.pop(sheetCtx),
@@ -241,6 +253,50 @@ class _ConfigsList extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Confirm + delete a config, then the notifier refreshes the list.
+  Future<void> _confirmDelete(
+      BuildContext context, WidgetRef ref, int bandId, PayoutConfigSummary c) async {
+    final confirmed = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (dlg) => CupertinoAlertDialog(
+        title: const Text('Delete config?'),
+        content: Text('"${c.name}" will be permanently deleted.'),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(dlg, false),
+            child: const Text('Cancel'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.pop(dlg, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      await ref.read(payoutConfigsProvider(bandId).notifier).deleteConfig(c.id);
+    } catch (e) {
+      if (context.mounted) {
+        await showCupertinoDialog<void>(
+          context: context,
+          builder: (dlg) => CupertinoAlertDialog(
+            title: const Text('Could not delete'),
+            content: Text(ErrorView.friendlyMessage(e)),
+            actions: [
+              CupertinoDialogAction(
+                onPressed: () => Navigator.pop(dlg),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
   }
 }
 

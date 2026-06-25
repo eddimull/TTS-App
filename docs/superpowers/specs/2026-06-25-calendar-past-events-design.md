@@ -74,8 +74,24 @@ static const String mobileDashboardLoadOlder = '/api/mobile/dashboard/load-older
 
 ### 3. Screen
 `lib/features/dashboard/screens/dashboard_screen.dart`, in the calendar's `onPageChanged`:
-- After updating `_focusedDay`, if the focused month is at or before `loadedFrom`'s month, call `ref.read(dashboardProvider.notifier).loadOlder()`.
-- `loadOlder()` is safe to call repeatedly (guards prevent overlap), so a loop / repeated invocation can cover multi-month jumps until `loadedFrom` covers the focused month or `hasReachedStart` is true.
+
+The trigger is a **strict watermark** comparison, not a month-equality check. `loadedFrom` is the genuine earliest-loaded date and only ever moves backward. The first day of the focused month must be **strictly before** `loadedFrom` for a fetch to fire:
+
+```
+focusedMonthFirstDay = DateTime(focusedDay.year, focusedDay.month, 1)
+while (focusedMonthFirstDay.isBefore(loadedFrom) && !hasReachedStart) {
+  await notifier.loadOlder();   // fetches before_date = loadedFrom, then loadedFrom -= 30d
+}
+```
+
+Why strict `<` against the watermark (and not `<=` against the month):
+- **Going forward never fetches** — a later month's first day is never before `loadedFrom`.
+- **Going back into already-loaded range never fetches** — those months are `>= loadedFrom`, so the condition is false.
+- **Only crossing past the real frontier fetches**, and each `loadOlder()` advances `loadedFrom` strictly backward, so a chunk is requested exactly once.
+
+`loadOlder()` always fetches `before_date = loadedFrom`. The loop handles multi-month jumps (e.g. swiping fast / jumping several months back) by repeating until the watermark covers the focused month or `hasReachedStart` is true. The in-flight guard (`isLoadingOlder`) plus `await` keeps overlapping calls from racing.
+
+**Avoided logic trap:** with the earlier `<=`-against-month design, "two back, one forward" or "forward then back within loaded range" would re-fire `loadOlder()` on every swipe — re-requesting a chunk relative to a stale `loadedFrom` (the dedup hid duplicate *data*, but the network round-trip was wasted every time). The strict-watermark trigger eliminates this.
 
 ### 4. Loading feedback
 While `isLoadingOlder` is true, show a subtle `CupertinoActivityIndicator` in the event-list header region when the focused month has no loaded events yet. Placement to be refined during implementation (flutter-ux-developer).
@@ -83,12 +99,16 @@ While `isLoadingOlder` is true, show a subtle `CupertinoActivityIndicator` in th
 ## Data flow
 
 ```
-swipe to older month
+swipe to a month
   → onPageChanged updates _focusedDay
-  → if focusedMonth <= loadedFrom: notifier.loadOlder()
-      → repo.loadOlderEvents(loadedFrom) → GET /api/mobile/dashboard/load-older?before_date=
-      → merge + dedup by id, loadedFrom -= 30d, hasReachedStart if empty
+  → while focusedMonthFirstDay < loadedFrom AND !hasReachedStart:
+      notifier.loadOlder()
+        → repo.loadOlderEvents(loadedFrom) → GET /api/mobile/dashboard/load-older?before_date=
+        → merge + dedup by id, loadedFrom -= 30d, hasReachedStart if empty
   → calendar markers + event list re-render over the larger event set
+
+(forward navigation, or back into already-loaded range, never fetches:
+ focusedMonthFirstDay is not strictly before the loadedFrom watermark)
 ```
 
 ## Testing
@@ -102,6 +122,10 @@ swipe to older month
   - `loadedFrom` decrements by 30 days,
   - `hasReachedStart` set on empty response,
   - no double-fetch while `isLoadingOlder` is true.
+- Watermark-trigger tests (the navigation logic, with a fake repo that counts calls):
+  - **forward-then-back within loaded range fetches nothing** — after loading one chunk, focus a later month then return to an already-covered month; assert zero additional `loadOlderEvents` calls.
+  - **two-back, one-forward fetches each chunk exactly once** — jump two months past the frontier (two chunks fetched), then one month forward (no fetch); assert `loadOlderEvents` called exactly twice with strictly-decreasing `before_date`.
+  - **multi-month jump back loops until covered** — focus a month several chunks before `loadedFrom`; assert the loop fetches enough chunks for `loadedFrom` to cover it, stopping early if `hasReachedStart`.
 - Follows the existing `ProviderContainer` + fake-repo pattern.
 
 ## Out of scope

@@ -39,4 +39,24 @@ assert_contains "$OUT" "#48" "issue ref kept as plain text"
 # Under Apple's 4000-char cap:
 assert_max_len "$OUT" 4000 "within Apple limit"
 
+# Truncation: a long changelog must be capped at 4000 chars.
+LONG_CL="$(mktemp)"
+{
+  echo "## [9.9.9](url) (2026-01-01)"
+  echo
+  echo "### Features"
+  echo
+  i=0; while [ "$i" -lt 400 ]; do
+    echo "* feat: a reasonably long feature description line number $i to add bulk ([#$i](https://example.com/issues/$i))"
+    i=$((i+1))
+  done
+} > "$LONG_CL"
+LONG_OUT="$(bash "$SCRIPT" "$LONG_CL")"
+rm -f "$LONG_CL"
+assert_max_len "$LONG_OUT" 4000 "long changelog capped at 4000"
+case "$LONG_OUT" in
+  *"…") ;;
+  *) echo "FAIL: long changelog should end with ellipsis"; fails=$((fails+1)) ;;
+esac
+
 if [ "$fails" -eq 0 ]; then echo "ALL PASS"; else echo "$fails FAILURES"; exit 1; fi

@@ -35,13 +35,13 @@ notes="$(printf "%s\n" "$section" \
   | sed -E 's/\[([^]]+)\]\([^)]*\)/\1/g' \
   | sed -E 's/`([^`]*)`/\1/g' \
   | sed -E 's/\*\*([^*]*)\*\*/\1/g' \
-  | sed -E 's/^[[:space:]]*[\*\-][[:space:]]+/- /' \
+  | sed -E 's/^[[:space:]]*[*-][[:space:]]+/- /' \
   | sed -E 's/\*//g' \
   | sed -E '/^[[:space:]]*$/d')"
 
 # 3. Cap length at a word boundary.
 if [ "${#notes}" -gt "$MAX_LEN" ]; then
-  notes="$(printf "%s" "$notes" | cut -c1-$((MAX_LEN-1)))…"
+  notes="${notes:0:$((MAX_LEN-1))}…"
 fi
 
 printf "%s\n" "$notes"

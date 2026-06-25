@@ -9,6 +9,16 @@ platform :ios do
       key_filepath: ENV["ASC_API_KEY_PATH"],
     )
 
+    # Reviewer notes come from the sanitized CHANGELOG section the workflow
+    # generated (passed as notes_path:). These go in submission_information's
+    # review_notes — NOT what_to_test, which is the TestFlight field.
+    submission = { add_id_info_uses_idfa: false }
+    notes_path = options[:notes_path]
+    if notes_path && File.exist?(notes_path)
+      review_notes = File.read(notes_path).strip
+      submission[:review_notes] = review_notes unless review_notes.empty?
+    end
+
     deliver(
       api_key: api_key,
       app_identifier: "band.tts.mate",
@@ -20,9 +30,7 @@ platform :ios do
       automatic_release: false,
       force: true,
       precheck_include_in_app_purchases: false,
-      submission_information: {
-        add_id_info_uses_idfa: false
-      }
+      submission_information: submission
     )
   end
 end

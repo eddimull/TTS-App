@@ -31,6 +31,8 @@ import '../../features/library/screens/create_chart_screen.dart';
 import '../../features/library/screens/library_screen.dart';
 import '../../features/media/screens/media_screen.dart';
 import '../../features/finances/screens/finances_screen.dart';
+import '../../features/finances/payout_editor/screens/payout_configs_screen.dart';
+import '../../features/finances/payout_editor/screens/payout_flow_editor_screen.dart';
 import '../../features/more/screens/more_screen.dart';
 import '../../features/band_settings/screens/band_settings_screen.dart';
 import '../../features/personnel/screens/personnel_screen.dart';
@@ -315,6 +317,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/events/:key/setlist',
         builder: (_, state) => SetlistEditorScreen(
           eventKey: state.pathParameters['key']!,
+        ),
+      ),
+      GoRoute(
+        path: '/finances/payout-flow',
+        builder: (_, __) => const PayoutConfigsScreen(),
+      ),
+      GoRoute(
+        path: '/finances/payout-flow/:bandId/:configId',
+        builder: (_, state) => PayoutFlowEditorScreen(
+          bandId: int.parse(state.pathParameters['bandId']!),
+          configId: int.parse(state.pathParameters['configId']!),
         ),
       ),
       // Literal-segment routes before parameterised ones to avoid ambiguity

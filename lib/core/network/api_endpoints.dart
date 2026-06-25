@@ -98,6 +98,14 @@ class ApiEndpoints {
   static String mobileBandFinancesPaid(int bandId) =>
       '/api/mobile/bands/$bandId/finances/paid';
 
+  // Payout flow editor
+  static String mobilePayoutFlowConfigs(int bandId) =>
+      '/api/mobile/bands/$bandId/payout-flow/configs';
+  static String mobilePayoutFlowConfig(int bandId, int configId) =>
+      '/api/mobile/bands/$bandId/payout-flow/configs/$configId';
+  static String mobilePayoutFlowPreview(int bandId) =>
+      '/api/mobile/bands/$bandId/payout-flow/preview';
+
   static String mobileEventSubs(String key) =>
       '/api/mobile/events/$key/subs';
   static String mobileEventMemberSub(String key, int memberId) =>

@@ -97,8 +97,16 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
                 ? ref.read(unpaidServicesProvider(_params).notifier).refresh()
                 : ref.read(paidServicesProvider(_params).notifier).refresh(),
           ),
-          const CupertinoSliverNavigationBar(
-            largeTitle: Text('Finances'),
+          CupertinoSliverNavigationBar(
+            largeTitle: const Text('Finances'),
+            trailing: CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: () => context.push('/finances/payout-flow'),
+              child: const Icon(
+                CupertinoIcons.slider_horizontal_3,
+                semanticLabel: 'Payout flow editor',
+              ),
+            ),
           ),
           // ── Unpaid / Paid tab switcher ──
           SliverToBoxAdapter(

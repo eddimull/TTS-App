@@ -14,6 +14,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version name
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+          if [ -z "$VERSION" ]; then
+            VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Resolved version name: $VERSION (build number: $GITHUB_RUN_NUMBER)"
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -74,6 +85,7 @@ jobs:
       - name: Build AAB
         run: |
           flutter build appbundle --release \
+            --build-name=$VERSION \
             --build-number=$GITHUB_RUN_NUMBER \
             --dart-define=BASE_URL=${{ secrets.BASE_URL }} \
             --dart-define=PUSHER_APP_KEY=${{ secrets.PUSHER_APP_KEY }} \

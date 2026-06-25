@@ -295,6 +295,7 @@ Map<String, dynamic> _defaultDataFor(String type) {
           'productionCount': 0,
         },
         'distributionMode': 'equal_split',
+        'fixedAmountPerMember': 0,
         'memberAllocations': [],
         'tierConfig': null,
         'incomingAllocationType': 'remainder',

@@ -16,11 +16,19 @@ jobs:
 
       - name: Resolve version name
         run: |
-          VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+          set -euo pipefail
+          # Prefer the latest git tag (set by release-please); fall back to
+          # pubspec.yaml before the first tag exists. A missing tag is expected,
+          # so don't let `git describe` failing abort the step.
+          VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
           if [ -z "$VERSION" ]; then
-            VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
+            VERSION="$(sed -n 's/^version:[[:space:]]*\([^+]*\).*/\1/p' pubspec.yaml | head -n1 | tr -d '[:space:]')"
           fi
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not resolve a version name from git tags or pubspec.yaml" >&2
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "Resolved version name: $VERSION (build number: $GITHUB_RUN_NUMBER)"
 
       - name: Setup Flutter

@@ -51,6 +51,27 @@ class PayoutConfigDetail {
   }
 }
 
+/// A starter template the user can create a config from.
+class PayoutTemplate {
+  const PayoutTemplate({
+    required this.key,
+    required this.name,
+    required this.description,
+  });
+
+  final String key;
+  final String name;
+  final String description;
+
+  factory PayoutTemplate.fromJson(Map<String, dynamic> json) {
+    return PayoutTemplate(
+      key: json['key'] as String,
+      name: (json['name'] ?? '') as String,
+      description: (json['description'] ?? '') as String,
+    );
+  }
+}
+
 class PayoutFlowRepository {
   PayoutFlowRepository(this._dio);
 
@@ -108,6 +129,47 @@ class PayoutFlowRepository {
       },
     );
     return res.data!;
+  }
+
+  /// The starter templates offered when creating a config.
+  Future<List<PayoutTemplate>> listTemplates(int bandId) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobilePayoutFlowTemplates(bandId),
+    );
+    final raw = res.data!['templates'] as List<dynamic>;
+    return raw.cast<Map<String, dynamic>>().map(PayoutTemplate.fromJson).toList();
+  }
+
+  /// Creates a config from a template (created inactive on the backend).
+  /// The create response nests the config under a `config` key.
+  Future<PayoutConfigDetail> createConfig(
+    int bandId,
+    String name,
+    String template,
+  ) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobilePayoutFlowConfigs(bandId),
+      data: {'name': name, 'template': template},
+    );
+    return PayoutConfigDetail.fromJson(
+      (res.data!['config'] as Map).cast<String, dynamic>(),
+    );
+  }
+
+  /// Marks a config active (the backend deactivates the others). Sends only
+  /// is_active — no flow payload — so it can't clobber the saved flow.
+  Future<void> setActive(int bandId, int configId) async {
+    await _dio.patch<Map<String, dynamic>>(
+      ApiEndpoints.mobilePayoutFlowConfig(bandId, configId),
+      data: {'is_active': true},
+    );
+  }
+
+  /// Deletes a config (owner-only on the backend).
+  Future<void> deleteConfig(int bandId, int configId) async {
+    await _dio.delete<void>(
+      ApiEndpoints.mobilePayoutFlowConfig(bandId, configId),
+    );
   }
 }
 

@@ -41,6 +41,28 @@ class _PayoutConfigsNotifier extends AsyncNotifier<List<PayoutConfigSummary>> {
       () => ref.read(payoutFlowRepositoryProvider).listConfigs(_bandId),
     );
   }
+
+  /// Creates a config from [template] and refreshes the list. Returns the
+  /// created detail so the caller can open the editor for it.
+  Future<PayoutConfigDetail> createConfig(String name, String template) async {
+    final detail = await ref
+        .read(payoutFlowRepositoryProvider)
+        .createConfig(_bandId, name, template);
+    await refresh();
+    return detail;
+  }
+
+  /// Marks [configId] active (backend deactivates others) and refreshes.
+  Future<void> setActive(int configId) async {
+    await ref.read(payoutFlowRepositoryProvider).setActive(_bandId, configId);
+    await refresh();
+  }
+
+  /// Deletes [configId] and refreshes the list.
+  Future<void> deleteConfig(int configId) async {
+    await ref.read(payoutFlowRepositoryProvider).deleteConfig(_bandId, configId);
+    await refresh();
+  }
 }
 
 final payoutConfigsProvider = AsyncNotifierProvider.family<

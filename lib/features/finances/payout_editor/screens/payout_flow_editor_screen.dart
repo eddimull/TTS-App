@@ -276,6 +276,7 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
           bandId: widget.bandId,
           nodeType: node.type,
           data: node.data,
+          previewValues: (_nodeValues[node.id] as Map?)?.cast<String, dynamic>(),
           onChanged: () => _repaintNode(node),
           onDelete: () => _confirmDeleteNode(node),
         ),
@@ -573,6 +574,11 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
   @override
   Widget build(BuildContext context) {
     final readOnly = widget.readOnly;
+    // Match the canvas + grid to the system brightness so the editor isn't a
+    // hard-white sheet in dark mode. Node cards adapt too (see _FlowNode).
+    final isDark =
+        CupertinoTheme.brightnessOf(context) == Brightness.dark;
+    final editorTheme = isDark ? NodeFlowTheme.dark : NodeFlowTheme.light;
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
         middle: Text(widget.config.name),
@@ -592,7 +598,7 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
           children: [
             NodeFlowEditor<Map<String, dynamic>, dynamic>(
               controller: _controller,
-              theme: NodeFlowTheme.light,
+              theme: editorTheme,
               // Owners can edit; everyone else gets a navigable read-only view.
               behavior:
                   readOnly ? NodeFlowBehavior.inspect : NodeFlowBehavior.design,
@@ -892,7 +898,7 @@ class _BodyRow {
   final Color? boxColor;
   final bool mono;
 
-  Widget build() {
+  Widget build(BuildContext context) {
     if (isBox) {
       return Container(
         width: double.infinity,
@@ -912,6 +918,10 @@ class _BodyRow {
             )),
       );
     }
+    // Resolve `label` against context so the value is dark text on a light card
+    // and light text on a dark card.
+    final valueColor =
+        CupertinoDynamicColor.resolve(CupertinoColors.label, context);
     return Padding(
       padding: const EdgeInsets.only(top: 2),
       child: Row(
@@ -924,7 +934,7 @@ class _BodyRow {
             child: Text(value,
                 textAlign: TextAlign.right,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11, color: CupertinoColors.label)),
+                style: TextStyle(fontSize: 11, color: valueColor)),
           ),
         ],
       ),
@@ -967,6 +977,10 @@ class _FlowNode extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final calcRows = calc;
+    // Adaptive card fill: white in light mode, a raised dark grey in dark mode
+    // (distinct from the near-black canvas). Borders/icons/text accents stay.
+    final cardFill = CupertinoDynamicColor.resolve(
+        CupertinoColors.secondarySystemBackground, context);
     return AnimatedScale(
       scale: grabbed ? 1.06 : 1.0,
       duration: const Duration(milliseconds: 120),
@@ -977,7 +991,7 @@ class _FlowNode extends StatelessWidget {
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(
-          color: CupertinoColors.white,
+          color: cardFill,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: color, width: grabbed ? 3 : 2),
           boxShadow: grabbed
@@ -1008,7 +1022,7 @@ class _FlowNode extends StatelessWidget {
               ),
             ]),
             // Body fields
-            ...body.map((b) => b.build()),
+            ...body.map((b) => b.build(context)),
             // Branch chips (conditional)
             if (chips.isNotEmpty) ...[
               const SizedBox(height: 4),
@@ -1051,7 +1065,9 @@ class _FlowNode extends StatelessWidget {
                           style: TextStyle(
                               fontSize: 11,
                               fontWeight: r.bold ? FontWeight.bold : FontWeight.normal,
-                              color: r.color)),
+                              // Resolve so _kLabel (CupertinoColors.label) flips
+                              // dark↔light with the card; fixed accents pass through.
+                              color: CupertinoDynamicColor.resolve(r.color, context))),
                     ],
                   ),
                 ),

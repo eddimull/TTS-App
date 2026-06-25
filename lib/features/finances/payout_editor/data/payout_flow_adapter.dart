@@ -38,7 +38,7 @@ class _PortSpec {
 }
 
 /// Default node box size used when synthesizing layout for Vyuh.
-const Size _kNodeSize = Size(180, 96);
+const Size _kNodeSize = Size(210, 170);
 
 /// Per-type port tables. Input ports on the left, outputs on the right.
 /// `conditional` has two outputs named exactly 'true' / 'false' (the backend +

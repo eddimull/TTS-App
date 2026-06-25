@@ -102,6 +102,10 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
   /// offsetFromOrigin, not an incremental delta).
   Offset _lastLongPressOffset = Offset.zero;
 
+  /// Per-node computed values (input/output/bandCut/allocated/...) from the
+  /// preview calc, keyed by node id. Drives each node card's amounts footer.
+  Map<String, dynamic> _nodeValues = const {};
+
   @override
   void initState() {
     super.initState();
@@ -110,6 +114,36 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
       nodes: nodesFromTts(flow),
       connections: connectionsFromTts(flow),
     );
+    _refreshComputedValues();
+  }
+
+  /// Run the preview calc and stash per-node values for the cards. Uses the
+  /// income node's amount as the test amount (what the flow actually starts
+  /// with). Best-effort: failures just leave the amount footer hidden.
+  Future<void> _refreshComputedValues() async {
+    final flow = ttsFromControllerState(
+      _controller.nodes.values,
+      _controller.connections,
+      widget.config.flowDiagram,
+    );
+    final income = (flow['nodes'] as List).cast<Map<String, dynamic>>().firstWhere(
+          (n) => n['type'] == 'income',
+          orElse: () => const {},
+        );
+    final amount = (income['data']?['amount'] as num?) ?? 0;
+    if (amount <= 0) return;
+    try {
+      final result = await ref
+          .read(payoutFlowRepositoryProvider)
+          .preview(widget.bandId, flow, amount);
+      if (!mounted) return;
+      setState(() {
+        _nodeValues =
+            (result['node_values'] as Map?)?.cast<String, dynamic>() ?? const {};
+      });
+    } catch (_) {
+      // Leave the footer hidden if preview fails.
+    }
   }
 
   @override
@@ -189,6 +223,7 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
     node.isSelected = !node.selected.value;
     node.isSelected = false;
     if (mounted) setState(() {});
+    _refreshComputedValues(); // config edits can change the amounts
   }
 
   // ── Delete (tap edge to delete; delete node from config sheet) ────────────
@@ -212,6 +247,7 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
               // removeConnection throws if already gone — guard against it.
               if (_controller.connections.any((c) => c.id == connection.id)) {
                 _controller.removeConnection(connection.id);
+                _refreshComputedValues();
               }
               Navigator.pop(dlg);
             },
@@ -238,6 +274,7 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
             onPressed: () {
               if (_controller.nodes.containsKey(node.id)) {
                 _controller.removeNode(node.id);
+                _refreshComputedValues();
               }
               Navigator.pop(dlg);
             },
@@ -428,6 +465,7 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
       }
       if (created != null) {
         HapticFeedback.mediumImpact(); // connected!
+        _refreshComputedValues(); // new edge changes the amounts
       }
       _connectSource = null;
       _hadValidTarget = false;
@@ -585,82 +623,266 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
     // Read the observable so the editor's Observer repaints this node when it's
     // grabbed (selection is our grab indicator — see _onLongPressStart).
     final grabbed = node.selected.value;
+    final d = node.data;
+    final values = (_nodeValues[node.id] as Map?)?.cast<String, dynamic>();
+
     switch (node.type) {
       case 'income':
         return _FlowNode(
-          title: 'Income',
+          icon: CupertinoIcons.money_dollar,
+          title: (d['label'] as String?)?.trim().isNotEmpty == true
+              ? d['label'] as String
+              : 'Income',
           color: const Color(0xFF2E7D32),
-          subtitle: '\$${node.data['amount']}',
           grabbed: grabbed,
+          body: [_kv('Amount', _money(d['amount']))],
+          calc: [
+            if (values != null) _calc('Output', values['output'], _kGreen, bold: true),
+          ],
         );
       case 'conditional':
+        final cond = '${_condLabel(d['conditionType'])} '
+            '${d['operator']} ${_condValue(d)}';
         return _FlowNode(
-          title: 'Condition',
+          icon: CupertinoIcons.question_circle,
+          title: (d['label'] as String?)?.trim().isNotEmpty == true
+              ? d['label'] as String
+              : 'Condition',
           color: const Color(0xFFB26A00),
-          subtitle:
-              '${node.data['conditionType']} ${node.data['operator']} ${node.data['value']}',
-          footer: 'true / false',
           grabbed: grabbed,
+          body: [_summaryBox(cond, const Color(0xFFB26A00))],
+          chips: const [
+            (_kGreen, 'TRUE'),
+            (_kRed, 'FALSE'),
+          ],
+          calc: [
+            if (values != null) _calc('Input', values['input'], _kLabel),
+          ],
         );
       case 'bandCut':
-        final label = (node.data['customLabel'] as String?)?.trim();
-        final cutType = node.data['cutType'] ?? 'percentage';
-        final value = node.data['value'];
+        final label = (d['customLabel'] as String?)?.trim();
+        final cutType = '${d['cutType'] ?? 'percentage'}';
         return _FlowNode(
+          icon: CupertinoIcons.percent,
           title: (label != null && label.isNotEmpty) ? label : 'Band Cut',
-          color: const Color(0xFF6A1B9A),
-          subtitle: cutType == 'tiered'
-              ? 'tiered'
-              : '${cutType == 'percentage' ? '$value%' : '\$$value'} $cutType',
+          color: _kPurple,
           grabbed: grabbed,
+          body: [
+            _kv('Cut type', _capitalize(cutType)),
+            if (cutType != 'tiered' && cutType != 'none')
+              _kv(cutType == 'percentage' ? 'Percentage' : 'Amount',
+                  cutType == 'percentage' ? '${d['value']}%' : _money(d['value'])),
+            if (cutType == 'tiered')
+              _kv('Tiers', '${(d['tierConfig'] as List?)?.length ?? 0}'),
+          ],
+          calc: [
+            if (values != null) ...[
+              _calc('Input', values['input'], _kLabel),
+              _calc('Band cut', values['bandCut'], _kPurple, bold: true),
+              _calc('To members', values['output'], _kGreen, bold: true),
+            ],
+          ],
         );
       case 'payoutGroup':
-        final mode = node.data['distributionMode'];
-        final pct = node.data['incomingAllocationValue'];
+        final src = '${d['sourceType'] ?? 'roster'}';
+        final mode = '${d['distributionMode'] ?? 'equal_split'}';
+        final allocType = '${d['incomingAllocationType'] ?? 'remainder'}';
         return _FlowNode(
-          title: node.data['label']?.toString() ?? 'Payout',
+          icon: CupertinoIcons.group,
+          title: (d['label'] as String?)?.trim().isNotEmpty == true
+              ? d['label'] as String
+              : 'Payout Group',
           color: const Color(0xFF1565C0),
-          subtitle: '$pct% · $mode',
           grabbed: grabbed,
+          body: [
+            _kv('Source', _sourceLabel(src)),
+            _modeBox(_modeLabel(mode), const Color(0xFF1565C0)),
+            _kv(
+              'Allocation',
+              allocType == 'remainder'
+                  ? 'Remainder'
+                  : allocType == 'percentage'
+                      ? 'Takes ${d['incomingAllocationValue']}%'
+                      : 'Takes ${_money(d['incomingAllocationValue'])}',
+            ),
+            if (values != null && (values['memberCount'] ?? 0) > 0)
+              _kv('Members', '${values['memberCount']}'),
+          ],
+          calc: [
+            if (values != null) ...[
+              _calc('Input', values['input'], _kLabel),
+              _calc('Allocated', values['allocated'], const Color(0xFF1565C0), bold: true),
+              if ((values['memberCount'] ?? 0) > 0)
+                _calc('Per member', values['perMember'], _kGreen, bold: true),
+              _calc('Remaining', values['output'], CupertinoColors.systemGrey),
+            ],
+          ],
         );
       default:
         return _FlowNode(
+          icon: CupertinoIcons.square,
           title: node.type,
           color: CupertinoColors.systemGrey,
           grabbed: grabbed,
         );
     }
   }
+
+  // ── Node-card content helpers ────────────────────────────────────────────
+
+  static String _money(dynamic v) {
+    final n = (v as num?)?.toDouble() ?? 0;
+    return '\$${n.toStringAsFixed(n.truncateToDouble() == n ? 0 : 2)}';
+  }
+
+  static String _capitalize(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  static String _condLabel(dynamic t) => const {
+        'bookingPrice': 'Booking Price',
+        'eventCount': 'Event Count',
+        'eventType': 'Event Type',
+        'dayOfWeek': 'Day of Week',
+        'memberCount': 'Member Count',
+        'eventMultiplier': 'Event Multiplier',
+      }['$t'] ?? '$t';
+
+  static String _condValue(Map<String, dynamic> d) {
+    final t = '${d['conditionType']}';
+    if (t == 'bookingPrice') return _money(d['value']);
+    return '${d['value']}';
+  }
+
+  static String _sourceLabel(String s) => const {
+        'roster': 'Roster',
+        'paymentGroup': 'Payment group',
+        'specific': 'Specific members',
+        'roles': 'Role slots',
+        'allMembers': 'All members',
+      }[s] ?? s;
+
+  static String _modeLabel(String m) => const {
+        'equal_split': 'Equal split',
+        'percentage': 'Percentage',
+        'fixed': 'Fixed amount',
+        'tiered': 'Tiered',
+        'weighted': 'Weighted',
+      }[m] ?? m;
+
+  static _BodyRow _kv(String label, String value) => _BodyRow.kv(label, value);
+  static _BodyRow _summaryBox(String text, Color color) =>
+      _BodyRow.box(text, color, mono: true);
+  static _BodyRow _modeBox(String text, Color color) =>
+      _BodyRow.box(text, color);
+  static _CalcRow _calc(String label, dynamic value, Color color,
+          {bool bold = false}) =>
+      _CalcRow(label, _money(value), color, bold: bold);
+}
+
+const _kGreen = Color(0xFF16A34A);
+const _kRed = Color(0xFFDC2626);
+const _kPurple = Color(0xFF7E22CE);
+const _kLabel = CupertinoColors.label;
+
+/// A labelled body row: either a "label: value" line, or a coloured box
+/// (condition summary / distribution-mode pill).
+class _BodyRow {
+  _BodyRow.kv(this.label, this.value)
+      : isBox = false,
+        boxColor = null,
+        mono = false;
+  _BodyRow.box(this.value, this.boxColor, {this.mono = false})
+      : label = null,
+        isBox = true;
+
+  final String? label;
+  final String value;
+  final bool isBox;
+  final Color? boxColor;
+  final bool mono;
+
+  Widget build() {
+    if (isBox) {
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(top: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: boxColor!.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: boxColor!.withValues(alpha: 0.4)),
+        ),
+        child: Text(value,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: boxColor,
+              fontFamily: mono ? 'Menlo' : null,
+            )),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text('$label',
+              style: const TextStyle(
+                  fontSize: 11, color: CupertinoColors.systemGrey)),
+          Flexible(
+            child: Text(value,
+                textAlign: TextAlign.right,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11, color: CupertinoColors.label)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A computed-values footer row (label → coloured amount).
+class _CalcRow {
+  const _CalcRow(this.label, this.value, this.color, {this.bold = false});
+  final String label;
+  final String value;
+  final Color color;
+  final bool bold;
 }
 
 class _FlowNode extends StatelessWidget {
   const _FlowNode({
+    required this.icon,
     required this.title,
     required this.color,
-    this.subtitle,
-    this.footer,
+    this.body = const [],
+    this.chips = const [],
+    this.calc = const [],
     this.grabbed = false,
   });
 
+  final IconData icon;
   final String title;
   final Color color;
-  final String? subtitle;
-  final String? footer;
+  final List<_BodyRow> body;
+
+  /// Coloured label chips (e.g. conditional TRUE/FALSE).
+  final List<(Color, String)> chips;
+  final List<_CalcRow> calc;
 
   /// True while this node is grabbed via long-press — show a "lifted" cue.
   final bool grabbed;
 
   @override
   Widget build(BuildContext context) {
+    final calcRows = calc.where((c) => true).toList();
     return AnimatedScale(
       scale: grabbed ? 1.06 : 1.0,
       duration: const Duration(milliseconds: 120),
       curve: Curves.easeOut,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
-        // Fill the node's box (vyuh sizes it to node.size, 180x96). Without
-        // this the content shrinks to fit its text, leaving the node's bounds
-        // (and the power badge) floating in empty space to the right.
+        // Fill the node's box (vyuh sizes it to node.size).
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(
@@ -678,30 +900,70 @@ class _FlowNode extends StatelessWidget {
                 ]
               : null,
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              title,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+            // Header: icon + title
+            Row(children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(title,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: color, fontWeight: FontWeight.bold, fontSize: 13)),
               ),
-            ),
-            if (subtitle != null) ...[
+            ]),
+            // Body fields
+            ...body.map((b) => b.build()),
+            // Branch chips (conditional)
+            if (chips.isNotEmpty) ...[
               const SizedBox(height: 4),
-              Text(subtitle!,
-                  style: const TextStyle(
-                      fontSize: 12, color: CupertinoColors.label)),
+              Row(
+                children: [
+                  for (final (c, label) in chips)
+                    Expanded(
+                      child: Container(
+                        margin: EdgeInsets.only(right: label == chips.last.$2 ? 0 : 4),
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        decoration: BoxDecoration(
+                          color: c.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(5),
+                          border: Border.all(color: c.withValues(alpha: 0.4)),
+                        ),
+                        child: Text(label,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 10, fontWeight: FontWeight.bold, color: c)),
+                      ),
+                    ),
+                ],
+              ),
             ],
-            if (footer != null) ...[
+            // Computed-values footer
+            if (calcRows.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Container(height: 0.5, color: CupertinoColors.separator),
               const SizedBox(height: 4),
-              Text(footer!,
-                  style: const TextStyle(
-                      fontSize: 10, color: CupertinoColors.systemGrey)),
+              for (final r in calcRows)
+                Padding(
+                  padding: const EdgeInsets.only(top: 1),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('${r.label}:',
+                          style: const TextStyle(
+                              fontSize: 11, color: CupertinoColors.systemGrey)),
+                      Text(r.value,
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: r.bold ? FontWeight.bold : FontWeight.normal,
+                              color: r.color)),
+                    ],
+                  ),
+                ),
             ],
           ],
         ),

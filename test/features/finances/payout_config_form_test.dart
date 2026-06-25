@@ -93,4 +93,21 @@ void main() {
       expect(find.text('STEP-RECIPIENTS'), findsNothing);
     });
   });
+
+  group('option specs', () {
+    test('every payout enum value has a spec', () {
+      for (final v in ['roster', 'allMembers', 'specific', 'roles', 'paymentGroup']) {
+        expect(kSourceSpecs.any((s) => s.value == v), isTrue, reason: 'source $v');
+      }
+      for (final v in ['remainder', 'percentage', 'fixed']) {
+        expect(kIncomingSpecs.any((s) => s.value == v), isTrue, reason: 'incoming $v');
+      }
+      for (final v in ['equal_split', 'percentage', 'fixed', 'tiered', 'weighted']) {
+        expect(kDistributionSpecs.any((s) => s.value == v), isTrue, reason: 'dist $v');
+      }
+      for (final v in ['percentage', 'fixed', 'tiered']) {
+        expect(kCutSpecs.any((s) => s.value == v), isTrue, reason: 'cut $v');
+      }
+    });
+  });
 }

@@ -229,3 +229,34 @@ class _GuidedConfigScaffoldState extends State<GuidedConfigScaffold> {
     );
   }
 }
+
+// Option specs: icon + plain-language description per enum value. Titles reuse
+// PayoutNodeOptions.labelFor at the call site; these carry the icon + description.
+
+const kSourceSpecs = <OptionSpec>[
+  OptionSpec('roster', CupertinoIcons.person_2, 'Roster', "People on the band's roster"),
+  OptionSpec('allMembers', CupertinoIcons.star, 'All members', 'Everyone in the band'),
+  OptionSpec('specific', CupertinoIcons.person_crop_circle, 'Specific members', 'Pick individuals'),
+  OptionSpec('roles', CupertinoIcons.square_list, 'Role slots', 'By role on the roster'),
+  OptionSpec('paymentGroup', CupertinoIcons.group, 'Payment group', 'A saved payment group'),
+];
+
+const kIncomingSpecs = <OptionSpec>[
+  OptionSpec('remainder', CupertinoIcons.equal, 'Remainder', 'Everything left after other groups'),
+  OptionSpec('percentage', CupertinoIcons.percent, 'Percentage', 'A share of the incoming amount'),
+  OptionSpec('fixed', CupertinoIcons.money_dollar, 'Fixed amount', 'A set dollar amount'),
+];
+
+const kDistributionSpecs = <OptionSpec>[
+  OptionSpec('equal_split', CupertinoIcons.equal_circle, 'Equally', 'Everyone gets the same'),
+  OptionSpec('percentage', CupertinoIcons.percent, 'By percentage', 'Custom share per person'),
+  OptionSpec('fixed', CupertinoIcons.money_dollar, 'Fixed per member', 'Set dollar amount each'),
+  OptionSpec('tiered', CupertinoIcons.chart_bar, 'Tiered', 'Different amounts by tier'),
+  OptionSpec('weighted', CupertinoIcons.slider_horizontal_3, 'Weighted', 'Weighted shares per person'),
+];
+
+const kCutSpecs = <OptionSpec>[
+  OptionSpec('percentage', CupertinoIcons.percent, 'Percentage', 'A percent of the income'),
+  OptionSpec('fixed', CupertinoIcons.money_dollar, 'Fixed amount', 'A set dollar amount'),
+  OptionSpec('tiered', CupertinoIcons.chart_bar, 'Tiered', 'Different cuts by tier'),
+];

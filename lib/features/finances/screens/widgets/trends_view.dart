@@ -109,30 +109,22 @@ class _TrendsViewState extends ConsumerState<TrendsView> {
     final today = DateTime(now.year, now.month, now.day);
     DateTime temp =
         _snapshotDate != null ? DateTime.parse(_snapshotDate!) : today;
-    await showCupertinoModalPopup<void>(
+    final picked = await showCupertinoModalPopup<String>(
       context: context,
-      builder: (_) => Container(
+      builder: (sheetContext) => Container(
         height: 300,
-        color: CupertinoColors.systemBackground.resolveFrom(context),
+        color: CupertinoColors.systemBackground.resolveFrom(sheetContext),
         child: Column(
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 CupertinoButton(
-                  onPressed: () {
-                    final picked = DateFormat('yyyy-MM-dd').format(temp);
-                    Navigator.pop(context);
-                    if (mounted) {
-                      setState(() {
-                        _snapshotDate = picked;
-                        // True time travel: viewing the snapshot alone often
-                        // looks empty (little existed then), so default to the
-                        // snapshot-vs-current comparison — that's the insight.
-                        _compare = true;
-                      });
-                    }
-                  },
+                  // Pop the SHEET's route (sheetContext), returning the chosen
+                  // date — popping the State's context would dismiss the whole
+                  // Finances page back to "More".
+                  onPressed: () => Navigator.of(sheetContext)
+                      .pop(DateFormat('yyyy-MM-dd').format(temp)),
                   child: const Text('Done',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                 ),
@@ -150,6 +142,17 @@ class _TrendsViewState extends ConsumerState<TrendsView> {
         ),
       ),
     );
+
+    // picked is null if the sheet was dismissed without tapping Done.
+    if (picked != null && mounted) {
+      setState(() {
+        _snapshotDate = picked;
+        // True time travel: viewing the snapshot alone often looks empty
+        // (little existed then), so default to the snapshot-vs-current
+        // comparison — that's the insight.
+        _compare = true;
+      });
+    }
   }
 }
 

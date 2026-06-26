@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tts_bandmate/core/providers/core_providers.dart';
 import 'models/band_revenue.dart';
 import 'models/finance_booking.dart';
+import 'models/finance_trends.dart';
 
 class FinancesRepository {
   FinancesRepository(this._dio);
@@ -43,6 +44,27 @@ class FinancesRepository {
       ApiEndpoints.mobileBandFinancesRevenue(bandId),
     );
     return BandRevenue.fromJson(response.data!);
+  }
+
+  /// Fetches per-month finance trends for [bandId] and [year]. When
+  /// [snapshotDate] (YYYY-MM-DD) is set, the primary series is as-of that date;
+  /// [compareWithCurrent] (only meaningful with a snapshot) also returns the
+  /// current series for comparison.
+  Future<FinanceTrends> fetchTrends(
+    int bandId, {
+    required int year,
+    String? snapshotDate,
+    bool compareWithCurrent = false,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandFinancesTrends(bandId),
+      queryParameters: {
+        'year': year.toString(),
+        if (snapshotDate != null) 'snapshot_date': snapshotDate,
+        if (compareWithCurrent) 'compare_with_current': '1',
+      },
+    );
+    return FinanceTrends.fromJson(response.data!);
   }
 }
 

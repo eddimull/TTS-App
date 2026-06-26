@@ -44,7 +44,6 @@ class RevenueView extends ConsumerWidget {
             RevenueBarChart(revenue: revenue),
             const SizedBox(height: 12),
             _RevenueTable(revenue: revenue),
-            const SizedBox(height: 24),
           ]),
         );
       },

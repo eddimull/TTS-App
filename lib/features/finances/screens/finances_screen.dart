@@ -86,9 +86,13 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
 
   @override
   Widget build(BuildContext context) {
-    final bookingsAsync = widget.tab == _FinancesTab.unpaid
-        ? ref.watch(unpaidServicesProvider(_params))
-        : ref.watch(paidServicesProvider(_params));
+    // Only the Unpaid/Paid tabs read a bookings provider; the Revenue tab has
+    // its own provider, so don't keep a bookings provider alive there.
+    final bookingsAsync = switch (widget.tab) {
+      _FinancesTab.unpaid => ref.watch(unpaidServicesProvider(_params)),
+      _FinancesTab.paid => ref.watch(paidServicesProvider(_params)),
+      _FinancesTab.revenue => null,
+    };
 
     return CupertinoPageScaffold(
       child: CustomScrollView(
@@ -247,7 +251,7 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
               ),
             ),
           ),
-          bookingsAsync.when(
+          bookingsAsync!.when(
             loading: () => const SliverFillRemaining(
               child: Center(child: CupertinoActivityIndicator()),
             ),

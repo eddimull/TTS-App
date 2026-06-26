@@ -73,8 +73,8 @@ class _TrendsViewState extends ConsumerState<TrendsView> {
             },
           ),
           const SizedBox(height: 8),
-          if (trends.isEmpty)
-            _EmptyBody(year: _year)
+          if (_isFullyEmpty(trends))
+            _EmptyBody(year: _year, snapshotDate: _snapshotDate)
           else ...[
             TrendsChart(trends: trends),
             TrendsCountRow(trends: trends),
@@ -86,6 +86,19 @@ class _TrendsViewState extends ConsumerState<TrendsView> {
         ]),
       ),
     );
+  }
+
+  /// Empty only when there's nothing to show at all. When comparing, the
+  /// current series (and its delta cards) still carry the time-travel insight
+  /// even if the snapshot series is sparse, so don't blank the view then.
+  bool _isFullyEmpty(FinanceTrends trends) {
+    if (!trends.isEmpty) return false;
+    if (trends.comparing) {
+      final current = trends.currentMonths;
+      final currentEmpty = current == null || current.every((m) => m.isZero);
+      return currentEmpty;
+    }
+    return true;
   }
 
   Future<void> _pickSnapshot() async {
@@ -110,7 +123,15 @@ class _TrendsViewState extends ConsumerState<TrendsView> {
                   onPressed: () {
                     final picked = DateFormat('yyyy-MM-dd').format(temp);
                     Navigator.pop(context);
-                    if (mounted) setState(() => _snapshotDate = picked);
+                    if (mounted) {
+                      setState(() {
+                        _snapshotDate = picked;
+                        // True time travel: viewing the snapshot alone often
+                        // looks empty (little existed then), so default to the
+                        // snapshot-vs-current comparison — that's the insight.
+                        _compare = true;
+                      });
+                    }
                   },
                   child: const Text('Done',
                       style: TextStyle(fontWeight: FontWeight.w600)),
@@ -438,17 +459,26 @@ class _DeltaBadge extends StatelessWidget {
 // ── Empty ─────────────────────────────────────────────────────────────────────
 
 class _EmptyBody extends StatelessWidget {
-  const _EmptyBody({required this.year});
+  const _EmptyBody({required this.year, required this.snapshotDate});
   final int year;
+  final String? snapshotDate;
 
   @override
   Widget build(BuildContext context) {
+    final hasSnapshot = snapshotDate != null;
+    final asOf = hasSnapshot
+        ? DateFormat('MMM d, yyyy').format(DateTime.parse(snapshotDate!))
+        : null;
     return Padding(
       padding: const EdgeInsets.only(top: 48),
       child: EmptyStateView(
         icon: CupertinoIcons.chart_bar,
-        title: 'No activity in $year',
-        subtitle: 'Try another year or clear the snapshot date.',
+        title: hasSnapshot
+            ? 'Nothing booked for $year as of $asOf'
+            : 'No activity in $year',
+        subtitle: hasSnapshot
+            ? 'Those bookings were created after $asOf. Clear the date or pick a later one.'
+            : 'Try another year or set a snapshot date.',
       ),
     );
   }

@@ -364,13 +364,24 @@ class _SummaryCards extends StatelessWidget {
           Row(children: [
             Expanded(
               child: _StatCard(
+                label: 'Forecast',
+                value: _fmtCents(trends.totalForecastCents),
+                tint: CupertinoColors.systemGreen.resolveFrom(context),
+                deltaCents: trends.deltaForecastCents,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _StatCard(
                 label: 'Band cut',
                 value: _fmtCents(trends.totalNetCents),
                 tint: CupertinoColors.systemPurple.resolveFrom(context),
                 deltaCents: trends.deltaNetCents,
               ),
             ),
-            const SizedBox(width: 10),
+          ]),
+          const SizedBox(height: 10),
+          Row(children: [
             Expanded(
               child: _StatCard(
                 label: 'Bookings',

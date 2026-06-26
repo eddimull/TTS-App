@@ -89,8 +89,13 @@ class _TrendsViewState extends ConsumerState<TrendsView> {
   }
 
   Future<void> _pickSnapshot() async {
+    final now = DateTime.now();
+    // Date-only "today" so it's always within maximumDate (which is end of
+    // today). Using DateTime.now() for both initial and max can make the
+    // picker clamp/reset on the first selection.
+    final today = DateTime(now.year, now.month, now.day);
     DateTime temp =
-        _snapshotDate != null ? DateTime.parse(_snapshotDate!) : DateTime.now();
+        _snapshotDate != null ? DateTime.parse(_snapshotDate!) : today;
     await showCupertinoModalPopup<void>(
       context: context,
       builder: (_) => Container(
@@ -116,7 +121,7 @@ class _TrendsViewState extends ConsumerState<TrendsView> {
               child: CupertinoDatePicker(
                 mode: CupertinoDatePickerMode.date,
                 initialDateTime: temp,
-                maximumDate: DateTime.now(),
+                maximumDate: DateTime(now.year, now.month, now.day, 23, 59, 59),
                 onDateTimeChanged: (d) => temp = d,
               ),
             ),

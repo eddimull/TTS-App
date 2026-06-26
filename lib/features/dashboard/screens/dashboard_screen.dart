@@ -13,6 +13,7 @@ import '../../../shared/widgets/error_view.dart';
 import '../../auth/data/models/band_summary.dart';
 import '../../bookings/widgets/create_booking_sheet.dart';
 import '../../events/data/models/event_summary.dart';
+import '../dashboard_list_filter.dart';
 import '../providers/calendar_filter_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../widgets/calendar_event_marker.dart';
@@ -231,33 +232,25 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     final focusedDay = widget.focusedDay;
     final monthStart = DateTime(focusedDay.year, focusedDay.month, 1);
     final monthEnd = DateTime(focusedDay.year, focusedDay.month + 1, 1);
-    return !event.parsedDate.isBefore(monthStart) &&
+    // Mirror the list's "current month starts today" rule so the
+    // filter-is-hiding-events empty state stays consistent with what the list
+    // would actually show.
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final lowerBound = today.isAfter(monthStart) && today.isBefore(monthEnd)
+        ? today
+        : monthStart;
+    return !event.parsedDate.isBefore(lowerBound) &&
         event.parsedDate.isBefore(monthEnd);
   }
 
   List<EventSummary> _filterByDayOrMonth(List<EventSummary> events) {
-    final focusedDay = widget.focusedDay;
-    final selectedDay = widget.selectedDay;
-    if (selectedDay != null) {
-      final dayEvents =
-          events.where((e) => isSameDay(e.parsedDate, selectedDay)).toList();
-      if (dayEvents.isNotEmpty) return dayEvents;
-      final later = events
-          .where((e) => !e.parsedDate.isBefore(selectedDay))
-          .toList()
-        ..sort((a, b) => a.parsedDate.compareTo(b.parsedDate));
-      return later.take(1).toList();
-    }
-    final monthStart = DateTime(focusedDay.year, focusedDay.month, 1);
-    final monthEnd = DateTime(focusedDay.year, focusedDay.month + 1, 1);
-    return events
-        .where(
-          (e) =>
-              !e.parsedDate.isBefore(monthStart) &&
-              e.parsedDate.isBefore(monthEnd),
-        )
-        .toList()
-      ..sort((a, b) => a.parsedDate.compareTo(b.parsedDate));
+    return dashboardListEvents(
+      events: events,
+      focusedDay: widget.focusedDay,
+      selectedDay: widget.selectedDay,
+      now: DateTime.now(),
+    );
   }
 
   @override

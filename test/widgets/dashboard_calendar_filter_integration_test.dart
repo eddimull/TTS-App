@@ -30,15 +30,26 @@ void main() {
   const bandA = BandSummary(id: 1, name: 'Alpha', isOwner: true);
   const bandB = BandSummary(id: 2, name: 'Bravo', isOwner: false);
 
-  // The dashboard filters events to the focused month, which defaults to the
-  // month of DateTime.now(). Build dates in the current month so the test does
-  // not rot as the calendar advances (see avoid-time-bomb-date-tests).
-  String dayThisMonth(int day) {
+  // The dashboard list shows the focused month starting from today, so fixtures
+  // must be dated after today (and within this month) to appear. We avoid dating
+  // them ON today because a same-day event renders the perpetually-animating
+  // LiveNowCard, which makes pumpAndSettle never settle. Picking a day a little
+  // ahead but clamped inside the month keeps these filter tests in the upcoming
+  // window on any day of the month, without rotting (see
+  // avoid-time-bomb-date-tests).
+  String fmt(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  String upcomingInMonth() {
     final now = DateTime.now();
-    final d = DateTime(now.year, now.month, day);
-    return '${d.year.toString().padLeft(4, '0')}-'
-        '${d.month.toString().padLeft(2, '0')}-'
-        '${d.day.toString().padLeft(2, '0')}';
+    final lastDayOfMonth = DateTime(now.year, now.month + 1, 0).day;
+    // Tomorrow, but never spill past the month end. On the final day of the
+    // month there is no future-in-month day, so fall back to that last day —
+    // still >= today, still shown by the list.
+    final day = now.day < lastDayOfMonth ? now.day + 1 : lastDayOfMonth;
+    return fmt(DateTime(now.year, now.month, day));
   }
 
   EventSummary evt({
@@ -80,8 +91,8 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final events = [
-      evt(key: 'a', date: dayThisMonth(10), band: bandA),
-      evt(key: 'b', date: dayThisMonth(11), band: bandB),
+      evt(key: 'a', date: upcomingInMonth(), band: bandA),
+      evt(key: 'b', date: upcomingInMonth(), band: bandB),
     ];
 
     await tester.pumpWidget(host(events: events));
@@ -107,7 +118,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(400, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final events = [evt(key: 'a', date: dayThisMonth(10), band: bandA)];
+    final events = [evt(key: 'a', date: upcomingInMonth(), band: bandA)];
 
     await tester.pumpWidget(host(events: events));
     await tester.pumpAndSettle();

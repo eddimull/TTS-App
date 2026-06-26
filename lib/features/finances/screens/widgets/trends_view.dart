@@ -364,19 +364,19 @@ class _SummaryCards extends StatelessWidget {
           Row(children: [
             Expanded(
               child: _StatCard(
-                label: 'Forecast',
-                value: _fmtCents(trends.totalForecastCents),
-                tint: CupertinoColors.systemGreen.resolveFrom(context),
-                deltaCents: trends.deltaForecastCents,
+                label: 'Band cut',
+                value: _fmtCents(trends.totalNetCents),
+                tint: CupertinoColors.systemPurple.resolveFrom(context),
+                deltaCents: trends.deltaNetCents,
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: _StatCard(
-                label: 'Band cut',
-                value: _fmtCents(trends.totalNetCents),
-                tint: CupertinoColors.systemPurple.resolveFrom(context),
-                deltaCents: trends.deltaNetCents,
+                label: 'Bookings',
+                value: '${trends.totalCount}',
+                tint: CupertinoColors.systemOrange.resolveFrom(context),
+                deltaCount: trends.deltaCount,
               ),
             ),
           ]),
@@ -384,10 +384,10 @@ class _SummaryCards extends StatelessWidget {
           Row(children: [
             Expanded(
               child: _StatCard(
-                label: 'Bookings',
-                value: '${trends.totalCount}',
-                tint: CupertinoColors.systemOrange.resolveFrom(context),
-                deltaCount: trends.deltaCount,
+                label: 'Forecast',
+                value: _fmtCents(trends.totalForecastCents),
+                tint: CupertinoColors.systemGreen.resolveFrom(context),
+                deltaCents: trends.deltaForecastCents,
               ),
             ),
           ]),

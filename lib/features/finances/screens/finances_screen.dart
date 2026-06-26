@@ -9,10 +9,11 @@ import '../../../shared/widgets/status_chip.dart';
 import '../data/models/finance_booking.dart';
 import '../providers/finances_provider.dart';
 import 'widgets/revenue_view.dart';
+import 'widgets/trends_view.dart';
 
 final _fmt = NumberFormat.currency(symbol: '\$');
 
-enum _FinancesTab { unpaid, paid, revenue }
+enum _FinancesTab { unpaid, paid, revenue, trends }
 
 // ── Root screen ───────────────────────────────────────────────────────────────
 
@@ -84,6 +85,12 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
   FinancesParams get _params =>
       FinancesParams(bandId: widget.bandId, year: _selectedYear);
 
+  /// Pull-to-refresh for the Trends tab. The active TrendsView owns its
+  /// TrendsParams, so invalidate the whole family to force it to refetch.
+  Future<void> _refreshTrends() async {
+    ref.invalidate(trendsProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     // Only the Unpaid/Paid tabs read a bookings provider; the Revenue tab has
@@ -92,6 +99,7 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
       _FinancesTab.unpaid => ref.watch(unpaidServicesProvider(_params)),
       _FinancesTab.paid => ref.watch(paidServicesProvider(_params)),
       _FinancesTab.revenue => null,
+      _FinancesTab.trends => null,
     };
 
     return CupertinoPageScaffold(
@@ -105,6 +113,10 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
                 ref.read(paidServicesProvider(_params).notifier).refresh(),
               _FinancesTab.revenue =>
                 ref.read(revenueProvider(widget.bandId).notifier).refresh(),
+              // TrendsView owns its TrendsParams (year/snapshot/compare), so the
+              // screen can't target a single key — invalidate the family and the
+              // active view refetches (showing its own over-chart loading veil).
+              _FinancesTab.trends => _refreshTrends(),
             },
           ),
           CupertinoSliverNavigationBar(
@@ -127,22 +139,27 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
                 onValueChanged: widget.onTabChanged,
                 children: const {
                   _FinancesTab.unpaid: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    padding: EdgeInsets.symmetric(horizontal: 8),
                     child: Text('Unpaid'),
                   ),
                   _FinancesTab.paid: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    padding: EdgeInsets.symmetric(horizontal: 8),
                     child: Text('Paid'),
                   ),
                   _FinancesTab.revenue: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    padding: EdgeInsets.symmetric(horizontal: 8),
                     child: Text('Revenue'),
+                  ),
+                  _FinancesTab.trends: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Text('Trends'),
                   ),
                 },
               ),
             ),
           ),
-          if (widget.tab != _FinancesTab.revenue) ...[
+          if (widget.tab == _FinancesTab.unpaid ||
+              widget.tab == _FinancesTab.paid) ...[
           // ── Year stepper ──
           SliverToBoxAdapter(
             child: Padding(
@@ -313,8 +330,10 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
               );
             },
           ),
-          ] else
-            RevenueView(bandId: widget.bandId),
+          ] else if (widget.tab == _FinancesTab.revenue)
+            RevenueView(bandId: widget.bandId)
+          else
+            TrendsView(bandId: widget.bandId),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),

@@ -101,6 +101,8 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/finances/paid';
   static String mobileBandFinancesRevenue(int bandId) =>
       '/api/mobile/bands/$bandId/finances/revenue';
+  static String mobileBandFinancesTrends(int bandId) =>
+      '/api/mobile/bands/$bandId/finances/trends';
 
   // Payout flow editor
   static String mobilePayoutFlowConfigs(int bandId) =>

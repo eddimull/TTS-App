@@ -229,19 +229,11 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
       // empty-state branching decision.
       return !event.parsedDate.isBefore(selectedDay);
     }
-    final focusedDay = widget.focusedDay;
-    final monthStart = DateTime(focusedDay.year, focusedDay.month, 1);
-    final monthEnd = DateTime(focusedDay.year, focusedDay.month + 1, 1);
-    // Mirror the list's "current month starts today" rule so the
-    // filter-is-hiding-events empty state stays consistent with what the list
-    // would actually show.
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final lowerBound = today.isAfter(monthStart) && today.isBefore(monthEnd)
-        ? today
-        : monthStart;
-    return !event.parsedDate.isBefore(lowerBound) &&
-        event.parsedDate.isBefore(monthEnd);
+    // Mirror the list's "current month starts today" rule (shared helper) so
+    // the filter-is-hiding-events empty state stays consistent with what the
+    // list would actually show.
+    final range = FocusedMonthRange.of(widget.focusedDay, DateTime.now());
+    return range.contains(event.parsedDate);
   }
 
   List<EventSummary> _filterByDayOrMonth(List<EventSummary> events) {

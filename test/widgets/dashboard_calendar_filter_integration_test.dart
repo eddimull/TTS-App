@@ -31,11 +31,12 @@ void main() {
   const bandB = BandSummary(id: 2, name: 'Bravo', isOwner: false);
 
   // The dashboard list shows the focused month starting from today, so fixtures
-  // must be dated after today (and within this month) to appear. We avoid dating
-  // them ON today because a same-day event renders the perpetually-animating
-  // LiveNowCard, which makes pumpAndSettle never settle. Picking a day a little
-  // ahead but clamped inside the month keeps these filter tests in the upcoming
-  // window on any day of the month, without rotting (see
+  // must be dated after today (and within this month) to appear. On the last day
+  // of the month there is no future in-month day, so the fixture date can land on
+  // today — and a same-day event would otherwise render the perpetually-animating
+  // LiveNowCard and hang pumpAndSettle. To stay time-agnostic, every fixture also
+  // carries a time whose live window (start..start+4h) has already ended, so
+  // DashboardState.currentEvent is always null regardless of the wall clock (see
   // avoid-time-bomb-date-tests).
   String fmt(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-'
@@ -52,6 +53,14 @@ void main() {
     return fmt(DateTime(now.year, now.month, day));
   }
 
+  // A start time 5 hours before now — its 4-hour live window has already ended,
+  // so an event dated today is never treated as "live". HH:mm only; currentEvent
+  // rebuilds the start on today, so day rollover is irrelevant.
+  String pastLiveWindowTime() {
+    final t = DateTime.now().subtract(const Duration(hours: 5));
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
+
   EventSummary evt({
     required String key,
     required String date,
@@ -63,6 +72,7 @@ void main() {
         key: key,
         title: '$key title',
         date: date,
+        time: pastLiveWindowTime(),
         eventSource: source,
         status: status,
         band: band,

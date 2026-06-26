@@ -104,6 +104,32 @@ void main() {
     });
   });
 
+  group('FocusedMonthRange — shared lower-bound rule', () {
+    final now = DateTime(2026, 6, 15, 9, 0);
+
+    test('current month lower bound is today, end is next month', () {
+      final r = FocusedMonthRange.of(DateTime(2026, 6, 15), now);
+      expect(r.lowerBound, DateTime(2026, 6, 15));
+      expect(r.end, DateTime(2026, 7, 1));
+      expect(r.contains(DateTime(2026, 6, 14)), isFalse); // yesterday excluded
+      expect(r.contains(DateTime(2026, 6, 15)), isTrue); // today included
+      expect(r.contains(DateTime(2026, 6, 30)), isTrue);
+      expect(r.contains(DateTime(2026, 7, 1)), isFalse); // end exclusive
+    });
+
+    test('past month lower bound is the 1st', () {
+      final r = FocusedMonthRange.of(DateTime(2026, 5, 10), now);
+      expect(r.lowerBound, DateTime(2026, 5, 1));
+      expect(r.contains(DateTime(2026, 5, 1)), isTrue);
+    });
+
+    test('future month lower bound is the 1st', () {
+      final r = FocusedMonthRange.of(DateTime(2026, 7, 10), now);
+      expect(r.lowerBound, DateTime(2026, 7, 1));
+      expect(r.contains(DateTime(2026, 7, 1)), isTrue);
+    });
+  });
+
   group('dashboardListEvents — selected day behaviour preserved', () {
     final now = DateTime(2026, 6, 15, 9, 0);
     final focused = DateTime(2026, 6, 15);

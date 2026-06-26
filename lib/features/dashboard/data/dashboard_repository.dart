@@ -32,6 +32,22 @@ class DashboardRepository {
 
     return (events: events, upcomingCharts: upcomingCharts);
   }
+
+  /// Fetches an older 30-day window of events for the calendar's lazy
+  /// back-fetch. [beforeDate] is an ISO-8601 date string; the server returns
+  /// events in [beforeDate - 30d, beforeDate).
+  Future<List<EventSummary>> loadOlderEvents(String beforeDate) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileDashboardLoadOlder,
+      queryParameters: {'before_date': beforeDate},
+    );
+
+    final rawEvents = response.data?['events'] as List<dynamic>? ?? [];
+    return rawEvents
+        .cast<Map<String, dynamic>>()
+        .map(EventSummary.fromJson)
+        .toList();
+  }
 }
 
 final dashboardRepositoryProvider = Provider<DashboardRepository>((ref) {

@@ -143,6 +143,43 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       );
     });
   }
+
+  /// Fetches the next-older 30-day window of events and merges them into the
+  /// current state. Idempotent and self-guarding:
+  /// - no-op while a fetch is in flight ([DashboardState.isLoadingOlder]),
+  /// - no-op once history is exhausted ([DashboardState.hasReachedStart]),
+  /// - merges by event id so overlapping day boundaries never duplicate.
+  /// [loadedFrom] only ever moves backward (by 30 days per successful fetch).
+  Future<void> loadOlder() async {
+    final current = state.value;
+    if (current == null) return;
+    if (current.isLoadingOlder || current.hasReachedStart) return;
+
+    state = AsyncValue.data(current.copyWith(isLoadingOlder: true));
+
+    try {
+      final repo = ref.read(dashboardRepositoryProvider);
+      final older =
+          await repo.loadOlderEvents(current.loadedFrom.toIso8601String());
+
+      final existingIds = current.events.map((e) => e.id).toSet();
+      final merged = [
+        ...current.events,
+        ...older.where((e) => !existingIds.contains(e.id)),
+      ];
+
+      state = AsyncValue.data(current.copyWith(
+        events: merged,
+        loadedFrom: current.loadedFrom.subtract(const Duration(days: 30)),
+        isLoadingOlder: false,
+        hasReachedStart: older.isEmpty,
+      ));
+    } catch (_) {
+      state = AsyncValue.data(
+        (state.value ?? current).copyWith(isLoadingOlder: false),
+      );
+    }
+  }
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────

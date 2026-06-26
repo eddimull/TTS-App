@@ -21,7 +21,7 @@ class _RecordingCache implements BookingsCacheStorage {
 class _NoopDashboardNotifier extends DashboardNotifier {
   @override
   Future<DashboardState> build() async =>
-      const DashboardState(events: [], upcomingCharts: []);
+      DashboardState(events: const [], upcomingCharts: const [], loadedFrom: DateTime(2026));
 
   @override
   Future<void> refresh() async {}

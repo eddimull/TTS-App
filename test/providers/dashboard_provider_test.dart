@@ -25,6 +25,9 @@ class FakeDashboardRepository implements DashboardRepository {
     callCount++;
     return (events: _events, upcomingCharts: _charts);
   }
+
+  @override
+  Future<List<EventSummary>> loadOlderEvents(String beforeDate) async => const [];
 }
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -139,6 +142,11 @@ class _ThrowingDashboardRepository implements DashboardRepository {
   @override
   Future<({List<EventSummary> events, List<UpcomingChart> upcomingCharts})>
       getDashboard() async {
+    throw Exception('Network error');
+  }
+
+  @override
+  Future<List<EventSummary>> loadOlderEvents(String beforeDate) async {
     throw Exception('Network error');
   }
 }

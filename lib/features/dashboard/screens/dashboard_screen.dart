@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material, Theme, ThemeData;
 import 'package:intl/intl.dart';
@@ -123,6 +125,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 data: (state) => _DashboardContent(
                   events: state.events,
                   currentEvent: state.currentEvent,
+                  isLoadingOlder: state.isLoadingOlder,
                   focusedDay: _focusedDay,
                   selectedDay: _selectedDay,
                   onDaySelected: (selected, focused) {
@@ -137,6 +140,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       _focusedDay = focused;
                       _selectedDay = null;
                     });
+                    // Lazily pull older events if we swiped past the loaded
+                    // range. Fire-and-forget: the fetch updates provider state,
+                    // which rebuilds the calendar; errors are handled inside.
+                    unawaited(
+                      ref
+                          .read(dashboardProvider.notifier)
+                          .ensureMonthLoaded(focused),
+                    );
                   },
                 ),
               ),
@@ -172,6 +183,7 @@ class _DashboardContent extends ConsumerStatefulWidget {
   const _DashboardContent({
     required this.events,
     required this.currentEvent,
+    required this.isLoadingOlder,
     required this.focusedDay,
     required this.selectedDay,
     required this.onDaySelected,
@@ -180,6 +192,7 @@ class _DashboardContent extends ConsumerStatefulWidget {
 
   final List<EventSummary> events;
   final EventSummary? currentEvent;
+  final bool isLoadingOlder;
   final DateTime focusedDay;
   final DateTime? selectedDay;
   final void Function(DateTime selected, DateTime focused) onDaySelected;
@@ -288,6 +301,11 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           onPageChanged: widget.onPageChanged,
         ),
         const SizedBox(height: 8),
+        if (widget.isLoadingOlder)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(child: CupertinoActivityIndicator()),
+          ),
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 280),
           transitionBuilder: (child, animation) {

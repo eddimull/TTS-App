@@ -16,6 +16,8 @@ class ApiEndpoints {
   static const String mobileAccount = '/api/mobile/account';
 
   static const String mobileDashboard = '/api/mobile/dashboard';
+  static const String mobileDashboardLoadOlder =
+      '/api/mobile/dashboard/load-older';
   static String mobileBandEvents(int bandId) => '/api/mobile/bands/$bandId/events';
   static String mobileEventDetail(String key) => '/api/mobile/events/$key';
   static String mobileUpdateEvent(String key) => '/api/mobile/events/$key';

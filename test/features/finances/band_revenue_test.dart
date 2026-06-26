@@ -25,7 +25,7 @@ void main() {
   });
 
   group('derived getters', () {
-    final r = BandRevenue(years: const [
+    final r = const BandRevenue(years: [
       RevenueYear(year: 2026, totalCents: 200000),
       RevenueYear(year: 2025, totalCents: 98000),
     ]);
@@ -39,13 +39,13 @@ void main() {
       expect(cur.currentYearCents, 12345);
     });
     test('currentYearCents null when absent', () {
-      final r2 = BandRevenue(years: const [RevenueYear(year: 2000, totalCents: 100)]);
+      final r2 = const BandRevenue(years: [RevenueYear(year: 2000, totalCents: 100)]);
       expect(r2.currentYearCents, isNull);
     });
   });
 
   group('yearOverYearChange', () {
-    final r = BandRevenue(years: const [
+    final r = const BandRevenue(years: [
       RevenueYear(year: 2026, totalCents: 12000), // +20% over 2025
       RevenueYear(year: 2025, totalCents: 10000), // -50% under 2024
       RevenueYear(year: 2024, totalCents: 20000), // oldest -> null
@@ -56,7 +56,7 @@ void main() {
     test('oldest row returns null', () => expect(r.yearOverYearChange(2), isNull));
 
     test('previous total zero returns null (avoid div-by-zero)', () {
-      final z = BandRevenue(years: const [
+      final z = const BandRevenue(years: [
         RevenueYear(year: 2026, totalCents: 5000),
         RevenueYear(year: 2025, totalCents: 0),
       ]);

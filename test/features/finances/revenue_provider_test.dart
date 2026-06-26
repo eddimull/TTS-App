@@ -32,7 +32,7 @@ void main() {
 
   test('revenueProvider loads revenue from the repository', () async {
     final fake = _FakeFinancesRepository(
-      BandRevenue(years: const [RevenueYear(year: 2026, totalCents: 5000)]),
+      const BandRevenue(years: [RevenueYear(year: 2026, totalCents: 5000)]),
     );
     final container = containerWith(fake);
     addTearDown(container.dispose);
@@ -44,7 +44,7 @@ void main() {
 
   test('refresh re-fetches', () async {
     final fake = _FakeFinancesRepository(
-      BandRevenue(years: const [RevenueYear(year: 2026, totalCents: 5000)]),
+      const BandRevenue(years: [RevenueYear(year: 2026, totalCents: 5000)]),
     );
     final container = containerWith(fake);
     addTearDown(container.dispose);

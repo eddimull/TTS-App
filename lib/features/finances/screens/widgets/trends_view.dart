@@ -56,13 +56,21 @@ class _TrendsViewState extends ConsumerState<TrendsView> {
             availableYears: trends.availableYears,
             snapshotDate: _snapshotDate,
             compare: _compare,
-            onYear: (y) => setState(() => _year = y),
+            onYear: (y) {
+              if (mounted) setState(() => _year = y);
+            },
             onPickDate: _pickSnapshot,
-            onClearDate: () => setState(() {
-              _snapshotDate = null;
-              _compare = false;
-            }),
-            onToggleCompare: (v) => setState(() => _compare = v),
+            onClearDate: () {
+              if (mounted) {
+                setState(() {
+                  _snapshotDate = null;
+                  _compare = false;
+                });
+              }
+            },
+            onToggleCompare: (v) {
+              if (mounted) setState(() => _compare = v);
+            },
           ),
           const SizedBox(height: 8),
           if (trends.isEmpty)
@@ -95,9 +103,9 @@ class _TrendsViewState extends ConsumerState<TrendsView> {
               children: [
                 CupertinoButton(
                   onPressed: () {
-                    setState(() =>
-                        _snapshotDate = DateFormat('yyyy-MM-dd').format(temp));
+                    final picked = DateFormat('yyyy-MM-dd').format(temp);
                     Navigator.pop(context);
+                    if (mounted) setState(() => _snapshotDate = picked);
                   },
                   child: const Text('Done',
                       style: TextStyle(fontWeight: FontWeight.w600)),

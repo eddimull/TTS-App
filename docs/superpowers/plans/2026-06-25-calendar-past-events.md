@@ -931,4 +931,5 @@ git commit -m "feat(dashboard): lazy-load older events on calendar swipe-back"
 
 - [ ] **Backend:** from `/home/eddie/github/TTS`, run `docker compose exec app php artisan test --filter=DashboardTest` — all green.
 - [ ] **Frontend:** from `tts_bandmate`, run `flutter analyze` (no issues) and `flutter test test/features/dashboard/` (all green).
-- [ ] **Manual smoke (optional):** run the app against staging (after backend deploy), open the dashboard, confirm the past ~30 days show, swipe back a few months, confirm older events appear and the spinner shows briefly; swipe forward/back within range and confirm no extra network calls (check logs).
+- [ ] **Manual smoke (optional):** run the app against staging, open the dashboard, confirm the past ~30 days show, swipe back a few months, confirm older events appear and the spinner shows briefly; swipe forward/back within range and confirm no extra network calls (check logs).
+  - **Gated on backend deploy:** staging does NOT auto-deploy while the backend PR is a draft. The `load-older` endpoint won't exist on staging until the TTS backend PR is marked ready-for-review and merged. Until then this smoke step will 404 — run it only after the backend PR is merged. (Unit/feature tests on both sides are unaffected.)

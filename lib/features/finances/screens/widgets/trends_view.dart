@@ -76,8 +76,25 @@ class _TrendsViewState extends ConsumerState<TrendsView> {
           if (_isFullyEmpty(trends))
             _EmptyBody(year: _year, snapshotDate: _snapshotDate)
           else ...[
-            TrendsChart(trends: trends),
-            TrendsCountRow(trends: trends),
+            // Swipe the chart horizontally to step the focused year:
+            // left → later year, right → earlier year.
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragEnd: (details) {
+                final v = details.primaryVelocity ?? 0;
+                if (v < -150) {
+                  _stepYear(1, trends.availableYears); // swipe left → later
+                } else if (v > 150) {
+                  _stepYear(-1, trends.availableYears); // swipe right → earlier
+                }
+              },
+              child: Column(
+                children: [
+                  TrendsChart(trends: trends),
+                  TrendsCountRow(trends: trends),
+                ],
+              ),
+            ),
             const _Legend(),
             const SizedBox(height: 12),
             _SummaryCards(trends: trends),
@@ -86,6 +103,23 @@ class _TrendsViewState extends ConsumerState<TrendsView> {
         ]),
       ),
     );
+  }
+
+  /// Steps the focused year. [delta] is +1 for a later year, -1 for earlier.
+  /// When the data lists available years, stay within that set (ordered
+  /// newest-first); otherwise step the calendar year directly.
+  void _stepYear(int delta, List<int> availableYears) {
+    int next;
+    if (availableYears.contains(_year)) {
+      // availableYears is newest-first, so a later year is a lower index.
+      final idx = availableYears.indexOf(_year);
+      final nextIdx = idx - delta;
+      if (nextIdx < 0 || nextIdx >= availableYears.length) return; // at an edge
+      next = availableYears[nextIdx];
+    } else {
+      next = _year + delta;
+    }
+    if (next != _year && mounted) setState(() => _year = next);
   }
 
   /// Empty only when there's nothing to show at all. When comparing, the

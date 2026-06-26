@@ -22,28 +22,14 @@ class TrendsView extends ConsumerStatefulWidget {
   ConsumerState<TrendsView> createState() => _TrendsViewState();
 }
 
-class _TrendsViewState extends ConsumerState<TrendsView>
-    with SingleTickerProviderStateMixin {
+class _TrendsViewState extends ConsumerState<TrendsView> {
   int _year = DateTime.now().year;
   String? _snapshotDate; // YYYY-MM-DD
   bool _compare = false;
 
-  // Finger-tracking horizontal drag for swiping between years.
-  double _dragDx = 0;
-  late final AnimationController _snap = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 220),
-  );
-
   // Last successfully loaded data, kept on screen while a new year loads so the
-  // chart doesn't flash a spinner mid-swipe.
+  // chart doesn't flash a spinner when the year changes.
   FinanceTrends? _lastTrends;
-
-  @override
-  void dispose() {
-    _snap.dispose();
-    super.dispose();
-  }
 
   TrendsParams get _params => TrendsParams(
         bandId: widget.bandId,
@@ -106,26 +92,24 @@ class _TrendsViewState extends ConsumerState<TrendsView>
         if (_isFullyEmpty(trends))
           _EmptyBody(year: _year, snapshotDate: _snapshotDate)
         else ...[
-          // Drag the chart horizontally to change year; it follows the finger
-          // and snaps on release (left → later year, right → earlier).
+          // Flick the chart horizontally to change year (left → later year,
+          // right → earlier). The old chart stays visible while the new year
+          // loads, so there's no spinner flash.
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onHorizontalDragUpdate: (d) =>
-                setState(() => _dragDx += d.delta.dx),
-            onHorizontalDragEnd: (d) =>
-                _settleDrag(d.primaryVelocity ?? 0, trends.availableYears),
-            child: Transform.translate(
-              offset: Offset(_dragDx, 0),
-              child: Opacity(
-                // Fade slightly as it's dragged for a "paging" feel.
-                opacity: (1 - (_dragDx.abs() / 600)).clamp(0.4, 1.0),
-                child: Column(
-                  children: [
-                    TrendsChart(trends: trends),
-                    TrendsCountRow(trends: trends),
-                  ],
-                ),
-              ),
+            onHorizontalDragEnd: (d) {
+              final v = d.primaryVelocity ?? 0;
+              if (v < -250) {
+                _goToYear(_nextYear(1, trends.availableYears)); // left → later
+              } else if (v > 250) {
+                _goToYear(_nextYear(-1, trends.availableYears)); // right → earlier
+              }
+            },
+            child: Column(
+              children: [
+                TrendsChart(trends: trends),
+                TrendsCountRow(trends: trends),
+              ],
             ),
           ),
           const _Legend(),
@@ -150,64 +134,13 @@ class _TrendsViewState extends ConsumerState<TrendsView>
     return _year + delta;
   }
 
-  /// Called when a horizontal drag ends. Commits to the next/previous year if
-  /// the drag passed a distance/velocity threshold (animating the chart the
-  /// rest of the way out, then snapping the new year in from the other side),
-  /// otherwise springs the chart back to centre.
-  void _settleDrag(double velocity, List<int> availableYears) {
-    const distanceThreshold = 60.0;
-    const velocityThreshold = 300.0;
-    final width = context.size?.width ?? 320;
-
-    // Positive drag (finger moved right) → earlier year; negative → later.
-    final wantsEarlier = _dragDx > distanceThreshold || velocity > velocityThreshold;
-    final wantsLater = _dragDx < -distanceThreshold || velocity < -velocityThreshold;
-
-    int? target;
-    if (wantsEarlier) {
-      target = _nextYear(-1, availableYears);
-    } else if (wantsLater) {
-      target = _nextYear(1, availableYears);
+  /// Commits a year change from a flick. No-op when [year] is null (already at
+  /// the edge of the available range). The old chart stays via _lastTrends
+  /// while the new year loads.
+  void _goToYear(int? year) {
+    if (year != null && year != _year && mounted) {
+      setState(() => _year = year);
     }
-
-    if (target == null) {
-      _springBack();
-      return;
-    }
-
-    final committedYear = target;
-    final flingTo = wantsEarlier ? width : -width;
-    _snap
-      ..stop()
-      ..reset();
-    final from = _dragDx;
-    final anim = Tween<double>(begin: from, end: flingTo).animate(
-      CurvedAnimation(parent: _snap, curve: Curves.easeOut),
-    );
-    void listener() => setState(() => _dragDx = anim.value);
-    anim.addListener(listener);
-    _snap.forward().whenComplete(() {
-      anim.removeListener(listener);
-      if (!mounted) return;
-      // Year change triggers the refetch; the old chart stays via _lastTrends.
-      setState(() {
-        _year = committedYear;
-        _dragDx = 0; // new chart appears centred
-      });
-    });
-  }
-
-  void _springBack() {
-    _snap
-      ..stop()
-      ..reset();
-    final from = _dragDx;
-    final anim = Tween<double>(begin: from, end: 0).animate(
-      CurvedAnimation(parent: _snap, curve: Curves.easeOut),
-    );
-    void listener() => setState(() => _dragDx = anim.value);
-    anim.addListener(listener);
-    _snap.forward().whenComplete(() => anim.removeListener(listener));
   }
 
   /// Empty only when there's nothing to show at all. When comparing, the

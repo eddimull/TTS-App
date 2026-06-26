@@ -30,15 +30,35 @@ void main() {
   const bandA = BandSummary(id: 1, name: 'Alpha', isOwner: true);
   const bandB = BandSummary(id: 2, name: 'Bravo', isOwner: false);
 
-  // The dashboard filters events to the focused month, which defaults to the
-  // month of DateTime.now(). Build dates in the current month so the test does
-  // not rot as the calendar advances (see avoid-time-bomb-date-tests).
-  String dayThisMonth(int day) {
+  // The dashboard list shows the focused month starting from today, so fixtures
+  // must be dated after today (and within this month) to appear. On the last day
+  // of the month there is no future in-month day, so the fixture date can land on
+  // today — and a same-day event would otherwise render the perpetually-animating
+  // LiveNowCard and hang pumpAndSettle. To stay time-agnostic, every fixture also
+  // carries a time whose live window (start..start+4h) has already ended, so
+  // DashboardState.currentEvent is always null regardless of the wall clock (see
+  // avoid-time-bomb-date-tests).
+  String fmt(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  String upcomingInMonth() {
     final now = DateTime.now();
-    final d = DateTime(now.year, now.month, day);
-    return '${d.year.toString().padLeft(4, '0')}-'
-        '${d.month.toString().padLeft(2, '0')}-'
-        '${d.day.toString().padLeft(2, '0')}';
+    final lastDayOfMonth = DateTime(now.year, now.month + 1, 0).day;
+    // Tomorrow, but never spill past the month end. On the final day of the
+    // month there is no future-in-month day, so fall back to that last day —
+    // still >= today, still shown by the list.
+    final day = now.day < lastDayOfMonth ? now.day + 1 : lastDayOfMonth;
+    return fmt(DateTime(now.year, now.month, day));
+  }
+
+  // A start time 5 hours before now — its 4-hour live window has already ended,
+  // so an event dated today is never treated as "live". HH:mm only; currentEvent
+  // rebuilds the start on today, so day rollover is irrelevant.
+  String pastLiveWindowTime() {
+    final t = DateTime.now().subtract(const Duration(hours: 5));
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
   EventSummary evt({
@@ -52,6 +72,7 @@ void main() {
         key: key,
         title: '$key title',
         date: date,
+        time: pastLiveWindowTime(),
         eventSource: source,
         status: status,
         band: band,
@@ -80,8 +101,8 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final events = [
-      evt(key: 'a', date: dayThisMonth(10), band: bandA),
-      evt(key: 'b', date: dayThisMonth(11), band: bandB),
+      evt(key: 'a', date: upcomingInMonth(), band: bandA),
+      evt(key: 'b', date: upcomingInMonth(), band: bandB),
     ];
 
     await tester.pumpWidget(host(events: events));
@@ -107,7 +128,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(400, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final events = [evt(key: 'a', date: dayThisMonth(10), band: bandA)];
+    final events = [evt(key: 'a', date: upcomingInMonth(), band: bandA)];
 
     await tester.pumpWidget(host(events: events));
     await tester.pumpAndSettle();

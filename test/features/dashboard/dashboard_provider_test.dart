@@ -186,7 +186,7 @@ void main() {
       return notifier;
     }
 
-    test('forward-then-back within loaded range fetches nothing', () async {
+    test('forward-then-back within fully-loaded range fetches nothing', () async {
       final notifier = await build(_FakeDashboardRepository(
         initialEvents: const [],
         olderBatches: [
@@ -195,14 +195,46 @@ void main() {
       ));
       final loadedFrom = container.read(dashboardProvider).value!.loadedFrom;
 
+      // Forward two months (fully loaded) then back one month — both are after
+      // the watermark, so still fully loaded. No fetch.
       await notifier.ensureMonthLoaded(
         DateTime(loadedFrom.year, loadedFrom.month + 2, 1),
       );
       await notifier.ensureMonthLoaded(
-        DateTime(loadedFrom.year, loadedFrom.month, 1),
+        DateTime(loadedFrom.year, loadedFrom.month + 1, 1),
       );
 
       expect(fakeRepo.requestedBeforeDates, isEmpty);
+    });
+
+    test('swiping into the partial watermark month backfills it once', () async {
+      // The initial window starts mid-month (today − 30d), so the watermark's
+      // own month is only partially loaded. Swiping into it must fetch exactly
+      // once to fill the earlier days — then not fetch again on a revisit.
+      final notifier = await build(_FakeDashboardRepository(
+        initialEvents: const [],
+        olderBatches: [
+          [_event(2, '2026-05-15')],
+        ],
+      ));
+      final loadedFrom = container.read(dashboardProvider).value!.loadedFrom;
+      // Only run the meaningful assertion when the watermark is genuinely
+      // mid-month; if today happens to be the 1st, loadedFrom is month-aligned
+      // and there is nothing to backfill.
+      if (loadedFrom.day == 1) return;
+
+      await notifier.ensureMonthLoaded(
+        DateTime(loadedFrom.year, loadedFrom.month, 1),
+      );
+      expect(fakeRepo.requestedBeforeDates.length, 1,
+          reason: 'partial watermark month should backfill exactly once');
+
+      // Revisiting the same month does not fetch again (watermark moved back).
+      await notifier.ensureMonthLoaded(
+        DateTime(loadedFrom.year, loadedFrom.month, 1),
+      );
+      expect(fakeRepo.requestedBeforeDates.length, 1,
+          reason: 'revisit must not re-fetch');
     });
 
     test('two-back then one-forward fetches each chunk exactly once', () async {

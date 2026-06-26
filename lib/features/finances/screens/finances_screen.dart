@@ -8,10 +8,11 @@ import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../../../shared/widgets/status_chip.dart';
 import '../data/models/finance_booking.dart';
 import '../providers/finances_provider.dart';
+import 'widgets/revenue_view.dart';
 
 final _fmt = NumberFormat.currency(symbol: '\$');
 
-enum _FinancesTab { unpaid, paid }
+enum _FinancesTab { unpaid, paid, revenue }
 
 // ── Root screen ───────────────────────────────────────────────────────────────
 
@@ -85,17 +86,26 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
 
   @override
   Widget build(BuildContext context) {
-    final bookingsAsync = widget.tab == _FinancesTab.unpaid
-        ? ref.watch(unpaidServicesProvider(_params))
-        : ref.watch(paidServicesProvider(_params));
+    // Only the Unpaid/Paid tabs read a bookings provider; the Revenue tab has
+    // its own provider, so don't keep a bookings provider alive there.
+    final bookingsAsync = switch (widget.tab) {
+      _FinancesTab.unpaid => ref.watch(unpaidServicesProvider(_params)),
+      _FinancesTab.paid => ref.watch(paidServicesProvider(_params)),
+      _FinancesTab.revenue => null,
+    };
 
     return CupertinoPageScaffold(
       child: CustomScrollView(
         slivers: [
           CupertinoSliverRefreshControl(
-            onRefresh: () => widget.tab == _FinancesTab.unpaid
-                ? ref.read(unpaidServicesProvider(_params).notifier).refresh()
-                : ref.read(paidServicesProvider(_params).notifier).refresh(),
+            onRefresh: () => switch (widget.tab) {
+              _FinancesTab.unpaid =>
+                ref.read(unpaidServicesProvider(_params).notifier).refresh(),
+              _FinancesTab.paid =>
+                ref.read(paidServicesProvider(_params).notifier).refresh(),
+              _FinancesTab.revenue =>
+                ref.read(revenueProvider(widget.bandId).notifier).refresh(),
+            },
           ),
           CupertinoSliverNavigationBar(
             largeTitle: const Text('Finances'),
@@ -117,17 +127,22 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
                 onValueChanged: widget.onTabChanged,
                 children: const {
                   _FinancesTab.unpaid: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    padding: EdgeInsets.symmetric(horizontal: 12),
                     child: Text('Unpaid'),
                   ),
                   _FinancesTab.paid: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    padding: EdgeInsets.symmetric(horizontal: 12),
                     child: Text('Paid'),
+                  ),
+                  _FinancesTab.revenue: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('Revenue'),
                   ),
                 },
               ),
             ),
           ),
+          if (widget.tab != _FinancesTab.revenue) ...[
           // ── Year stepper ──
           SliverToBoxAdapter(
             child: Padding(
@@ -236,7 +251,7 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
               ),
             ),
           ),
-          bookingsAsync.when(
+          bookingsAsync!.when(
             loading: () => const SliverFillRemaining(
               child: Center(child: CupertinoActivityIndicator()),
             ),
@@ -298,6 +313,8 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
               );
             },
           ),
+          ] else
+            RevenueView(bandId: widget.bandId),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),

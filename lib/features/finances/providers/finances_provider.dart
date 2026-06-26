@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/finances_repository.dart';
+import '../data/models/band_revenue.dart';
 import '../data/models/finance_booking.dart';
 
 class FinancesParams {
@@ -57,4 +58,25 @@ class _PaidServicesNotifier extends AsyncNotifier<List<FinanceBooking>> {
 final paidServicesProvider = AsyncNotifierProvider.family<
     _PaidServicesNotifier, List<FinanceBooking>, FinancesParams>(
   (arg) => _PaidServicesNotifier(arg),
+);
+
+class _RevenueNotifier extends AsyncNotifier<BandRevenue> {
+  _RevenueNotifier(this._bandId);
+  final int _bandId;
+
+  @override
+  Future<BandRevenue> build() async {
+    return ref.watch(financesRepositoryProvider).fetchRevenue(_bandId);
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+        () => ref.read(financesRepositoryProvider).fetchRevenue(_bandId));
+  }
+}
+
+final revenueProvider =
+    AsyncNotifierProvider.family<_RevenueNotifier, BandRevenue, int>(
+  (arg) => _RevenueNotifier(arg),
 );

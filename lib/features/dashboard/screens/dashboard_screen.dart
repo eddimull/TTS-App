@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material, Theme, ThemeData;
 import 'package:intl/intl.dart';
@@ -138,10 +140,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       _focusedDay = focused;
                       _selectedDay = null;
                     });
-                    // Lazily pull older events if we swiped past the loaded range.
-                    ref
-                        .read(dashboardProvider.notifier)
-                        .ensureMonthLoaded(focused);
+                    // Lazily pull older events if we swiped past the loaded
+                    // range. Fire-and-forget: the fetch updates provider state,
+                    // which rebuilds the calendar; errors are handled inside.
+                    unawaited(
+                      ref
+                          .read(dashboardProvider.notifier)
+                          .ensureMonthLoaded(focused),
+                    );
                   },
                 ),
               ),

@@ -162,10 +162,14 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       final older =
           await repo.loadOlderEvents(current.loadedFrom.toIso8601String());
 
-      final existingIds = current.events.map((e) => e.id).toSet();
+      // Dedup only among events that have an id; events without one (e.g. some
+      // rehearsal/scheduled shapes) are always kept — collapsing them by a
+      // shared null id would silently drop distinct events.
+      final existingIds =
+          current.events.map((e) => e.id).whereType<int>().toSet();
       final merged = [
         ...current.events,
-        ...older.where((e) => !existingIds.contains(e.id)),
+        ...older.where((e) => e.id == null || !existingIds.contains(e.id)),
       ];
 
       state = AsyncValue.data(current.copyWith(

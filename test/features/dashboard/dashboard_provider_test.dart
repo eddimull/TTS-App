@@ -127,6 +127,33 @@ void main() {
       expect(ids, [1, 2], reason: 'duplicate id 1 must not be added twice');
     });
 
+    test('keeps distinct null-id events instead of collapsing them', () async {
+      // Events without an id (e.g. some rehearsal/scheduled shapes) must not be
+      // deduped against each other — they'd all share a null id and vanish.
+      EventSummary nullIdEvent(String key, String date) =>
+          EventSummary.fromJson({
+            'key': key,
+            'title': 'Event $key',
+            'date': date,
+            'event_source': 'rehearsal',
+          });
+
+      setUpContainer(_FakeDashboardRepository(
+        initialEvents: [nullIdEvent('a', '2026-06-20')],
+        olderBatches: [
+          [nullIdEvent('b', '2026-05-15'), nullIdEvent('c', '2026-05-16')],
+        ],
+      ));
+      final notifier = await buildNotifier();
+
+      await notifier.loadOlder();
+
+      final state = container.read(dashboardProvider).value!;
+      expect(state.events.length, 3,
+          reason: 'all three null-id events must be retained');
+      expect(state.events.every((e) => e.id == null), isTrue);
+    });
+
     test('loadedFrom decrements by 30 days per fetch', () async {
       setUpContainer(_FakeDashboardRepository(
         initialEvents: const [],

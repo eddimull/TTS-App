@@ -47,6 +47,9 @@ class _TrendsViewState extends ConsumerState<TrendsView> {
     final fresh = async.hasValue ? async.value : null;
     if (fresh != null) _lastTrends = fresh;
     final trends = _lastTrends;
+    // True while a refetch is in flight but we still have a prior chart to show
+    // (e.g. just flicked to a new year) — drives the over-chart loading veil.
+    final reloading = async.isLoading && trends != null;
 
     // First ever load (no data yet) shows a spinner; an error with no prior
     // data shows the error view. Otherwise we keep the last chart on screen.
@@ -105,10 +108,27 @@ class _TrendsViewState extends ConsumerState<TrendsView> {
                 _goToYear(_nextYear(-1, trends.availableYears)); // right → earlier
               }
             },
-            child: Column(
+            child: Stack(
               children: [
-                TrendsChart(trends: trends),
-                TrendsCountRow(trends: trends),
+                Column(
+                  children: [
+                    TrendsChart(trends: trends),
+                    TrendsCountRow(trends: trends),
+                  ],
+                ),
+                // Loading veil over the chart while a new year is fetched, so a
+                // flick visibly registers even when the prior chart stays up.
+                if (reloading)
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.systemBackground
+                            .resolveFrom(context)
+                            .withValues(alpha: 0.45),
+                      ),
+                      child: const Center(child: CupertinoActivityIndicator()),
+                    ),
+                  ),
               ],
             ),
           ),

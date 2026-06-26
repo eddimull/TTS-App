@@ -180,6 +180,38 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       );
     }
   }
+
+  /// Ensures events for [focusedDay]'s month are loaded, fetching older chunks
+  /// as needed. Fetches ONLY when the focused month falls strictly before the
+  /// month of the [DashboardState.loadedFrom] watermark — so forward navigation,
+  /// or returning into an already-loaded range (including the partially-loaded
+  /// watermark month itself), never triggers a fetch. Loops to cover multi-month
+  /// jumps, stopping when covered or history is exhausted.
+  Future<void> ensureMonthLoaded(DateTime focusedDay) async {
+    final monthStart = DateTime(focusedDay.year, focusedDay.month, 1);
+
+    while (true) {
+      final current = state.value;
+      if (current == null) return;
+      if (current.hasReachedStart) return;
+      // Compare at month granularity: the watermark month is considered
+      // covered, so only months strictly before it trigger a fetch.
+      final watermarkMonth =
+          DateTime(current.loadedFrom.year, current.loadedFrom.month, 1);
+      if (!monthStart.isBefore(watermarkMonth)) return; // already covered
+
+      final fromBefore = current.loadedFrom;
+      await loadOlder();
+
+      final after = state.value;
+      // Guard against non-progress (e.g. an errored fetch left loadedFrom put):
+      // if the watermark didn't move and start wasn't reached, stop to avoid a
+      // hot loop. The next swipe can retry.
+      if (after == null) return;
+      if (after.hasReachedStart) return;
+      if (!after.loadedFrom.isBefore(fromBefore)) return;
+    }
+  }
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────

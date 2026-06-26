@@ -169,4 +169,83 @@ void main() {
       expect(fakeRepo.requestedBeforeDates.length, 1);
     });
   });
+
+  group('DashboardNotifier.ensureMonthLoaded (watermark trigger)', () {
+    late ProviderContainer container;
+    late _FakeDashboardRepository fakeRepo;
+
+    Future<DashboardNotifier> build(_FakeDashboardRepository repo) async {
+      fakeRepo = repo;
+      container = ProviderContainer(overrides: [
+        dashboardRepositoryProvider.overrideWithValue(repo),
+        selectedBandProvider.overrideWith(() => _StubBand()),
+      ]);
+      addTearDown(container.dispose);
+      final notifier = container.read(dashboardProvider.notifier);
+      await container.read(dashboardProvider.future);
+      return notifier;
+    }
+
+    test('forward-then-back within loaded range fetches nothing', () async {
+      final notifier = await build(_FakeDashboardRepository(
+        initialEvents: const [],
+        olderBatches: [
+          [_event(2, '2026-05-15')],
+        ],
+      ));
+      final loadedFrom = container.read(dashboardProvider).value!.loadedFrom;
+
+      await notifier.ensureMonthLoaded(
+        DateTime(loadedFrom.year, loadedFrom.month + 2, 1),
+      );
+      await notifier.ensureMonthLoaded(
+        DateTime(loadedFrom.year, loadedFrom.month, 1),
+      );
+
+      expect(fakeRepo.requestedBeforeDates, isEmpty);
+    });
+
+    test('two-back then one-forward fetches each chunk exactly once', () async {
+      final notifier = await build(_FakeDashboardRepository(
+        initialEvents: const [],
+        olderBatches: [
+          [_event(2, '2026-05-15')],
+          [_event(3, '2026-04-15')],
+        ],
+      ));
+      final loadedFrom = container.read(dashboardProvider).value!.loadedFrom;
+
+      await notifier.ensureMonthLoaded(
+        DateTime(loadedFrom.year, loadedFrom.month - 2, 1),
+      );
+      final fetchesAfterBack = fakeRepo.requestedBeforeDates.length;
+      expect(fetchesAfterBack, greaterThanOrEqualTo(2));
+
+      await notifier.ensureMonthLoaded(
+        DateTime(loadedFrom.year, loadedFrom.month - 1, 1),
+      );
+      expect(fakeRepo.requestedBeforeDates.length, fetchesAfterBack);
+
+      for (var i = 1; i < fakeRepo.requestedBeforeDates.length; i++) {
+        final prev = DateTime.parse(fakeRepo.requestedBeforeDates[i - 1]);
+        final curr = DateTime.parse(fakeRepo.requestedBeforeDates[i]);
+        expect(curr.isBefore(prev), isTrue);
+      }
+    });
+
+    test('stops looping when hasReachedStart even if month not covered', () async {
+      final notifier = await build(_FakeDashboardRepository(
+        initialEvents: const [],
+        olderBatches: const [],
+      ));
+      final loadedFrom = container.read(dashboardProvider).value!.loadedFrom;
+
+      await notifier.ensureMonthLoaded(
+        DateTime(loadedFrom.year - 1, loadedFrom.month, 1),
+      );
+
+      expect(fakeRepo.requestedBeforeDates.length, 1);
+      expect(container.read(dashboardProvider).value!.hasReachedStart, isTrue);
+    });
+  });
 }

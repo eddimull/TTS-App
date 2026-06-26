@@ -22,10 +22,28 @@ class TrendsView extends ConsumerStatefulWidget {
   ConsumerState<TrendsView> createState() => _TrendsViewState();
 }
 
-class _TrendsViewState extends ConsumerState<TrendsView> {
+class _TrendsViewState extends ConsumerState<TrendsView>
+    with SingleTickerProviderStateMixin {
   int _year = DateTime.now().year;
   String? _snapshotDate; // YYYY-MM-DD
   bool _compare = false;
+
+  // Finger-tracking horizontal drag for swiping between years.
+  double _dragDx = 0;
+  late final AnimationController _snap = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 220),
+  );
+
+  // Last successfully loaded data, kept on screen while a new year loads so the
+  // chart doesn't flash a spinner mid-swipe.
+  FinanceTrends? _lastTrends;
+
+  @override
+  void dispose() {
+    _snap.dispose();
+    super.dispose();
+  }
 
   TrendsParams get _params => TrendsParams(
         bandId: widget.bandId,
@@ -38,88 +56,158 @@ class _TrendsViewState extends ConsumerState<TrendsView> {
   Widget build(BuildContext context) {
     final async = ref.watch(trendsProvider(_params));
 
-    return async.when(
-      loading: () => const SliverFillRemaining(
-        child: Center(child: CupertinoActivityIndicator()),
-      ),
-      error: (e, _) => SliverFillRemaining(
-        child: ErrorView(
-          message: ErrorView.friendlyMessage(e),
-          onRetry: () => ref.read(trendsProvider(_params).notifier).refresh(),
-        ),
-      ),
-      data: (trends) => SliverList(
-        delegate: SliverChildListDelegate([
-          const SizedBox(height: 8),
-          _ControlsRow(
-            year: _year,
-            availableYears: trends.availableYears,
-            snapshotDate: _snapshotDate,
-            compare: _compare,
-            onYear: (y) {
-              if (mounted) setState(() => _year = y);
-            },
-            onPickDate: _pickSnapshot,
-            onClearDate: () {
-              if (mounted) {
-                setState(() {
-                  _snapshotDate = null;
-                  _compare = false;
-                });
-              }
-            },
-            onToggleCompare: (v) {
-              if (mounted) setState(() => _compare = v);
-            },
+    // Remember the latest good data so a year change reloads underneath the
+    // existing chart instead of flashing a spinner.
+    final fresh = async.hasValue ? async.value : null;
+    if (fresh != null) _lastTrends = fresh;
+    final trends = _lastTrends;
+
+    // First ever load (no data yet) shows a spinner; an error with no prior
+    // data shows the error view. Otherwise we keep the last chart on screen.
+    if (trends == null) {
+      if (async.hasError) {
+        return SliverFillRemaining(
+          child: ErrorView(
+            message: ErrorView.friendlyMessage(async.error!),
+            onRetry: () => ref.read(trendsProvider(_params).notifier).refresh(),
           ),
-          const SizedBox(height: 8),
-          if (_isFullyEmpty(trends))
-            _EmptyBody(year: _year, snapshotDate: _snapshotDate)
-          else ...[
-            // Swipe the chart horizontally to step the focused year:
-            // left → later year, right → earlier year.
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onHorizontalDragEnd: (details) {
-                final v = details.primaryVelocity ?? 0;
-                if (v < -150) {
-                  _stepYear(1, trends.availableYears); // swipe left → later
-                } else if (v > 150) {
-                  _stepYear(-1, trends.availableYears); // swipe right → earlier
-                }
-              },
-              child: Column(
-                children: [
-                  TrendsChart(trends: trends),
-                  TrendsCountRow(trends: trends),
-                ],
+        );
+      }
+      return const SliverFillRemaining(
+        child: Center(child: CupertinoActivityIndicator()),
+      );
+    }
+
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        const SizedBox(height: 8),
+        _ControlsRow(
+          year: _year,
+          availableYears: trends.availableYears,
+          snapshotDate: _snapshotDate,
+          compare: _compare,
+          onYear: (y) {
+            if (mounted) setState(() => _year = y);
+          },
+          onPickDate: _pickSnapshot,
+          onClearDate: () {
+            if (mounted) {
+              setState(() {
+                _snapshotDate = null;
+                _compare = false;
+              });
+            }
+          },
+          onToggleCompare: (v) {
+            if (mounted) setState(() => _compare = v);
+          },
+        ),
+        const SizedBox(height: 8),
+        if (_isFullyEmpty(trends))
+          _EmptyBody(year: _year, snapshotDate: _snapshotDate)
+        else ...[
+          // Drag the chart horizontally to change year; it follows the finger
+          // and snaps on release (left → later year, right → earlier).
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onHorizontalDragUpdate: (d) =>
+                setState(() => _dragDx += d.delta.dx),
+            onHorizontalDragEnd: (d) =>
+                _settleDrag(d.primaryVelocity ?? 0, trends.availableYears),
+            child: Transform.translate(
+              offset: Offset(_dragDx, 0),
+              child: Opacity(
+                // Fade slightly as it's dragged for a "paging" feel.
+                opacity: (1 - (_dragDx.abs() / 600)).clamp(0.4, 1.0),
+                child: Column(
+                  children: [
+                    TrendsChart(trends: trends),
+                    TrendsCountRow(trends: trends),
+                  ],
+                ),
               ),
             ),
-            const _Legend(),
-            const SizedBox(height: 12),
-            _SummaryCards(trends: trends),
-          ],
-          const SizedBox(height: 24),
-        ]),
-      ),
+          ),
+          const _Legend(),
+          const SizedBox(height: 12),
+          _SummaryCards(trends: trends),
+        ],
+        const SizedBox(height: 24),
+      ]),
     );
   }
 
-  /// Steps the focused year. [delta] is +1 for a later year, -1 for earlier.
-  /// When the data lists available years, stay within that set (ordered
-  /// newest-first); otherwise step the calendar year directly.
-  void _stepYear(int delta, List<int> availableYears) {
-    int next;
+  /// Resolves the focused year after a drag/flick. [delta] is +1 for a later
+  /// year, -1 for earlier. Returns null if there's no year to move to (at an
+  /// edge of the available range), so the chart should spring back.
+  int? _nextYear(int delta, List<int> availableYears) {
     if (availableYears.contains(_year)) {
       // availableYears is newest-first, so a later year is a lower index.
-      final idx = availableYears.indexOf(_year);
-      final nextIdx = idx - delta;
-      if (nextIdx < 0 || nextIdx >= availableYears.length) return; // at an edge
-      next = availableYears[nextIdx];
-    } else {
-      next = _year + delta;
+      final nextIdx = availableYears.indexOf(_year) - delta;
+      if (nextIdx < 0 || nextIdx >= availableYears.length) return null;
+      return availableYears[nextIdx];
     }
-    if (next != _year && mounted) setState(() => _year = next);
+    return _year + delta;
+  }
+
+  /// Called when a horizontal drag ends. Commits to the next/previous year if
+  /// the drag passed a distance/velocity threshold (animating the chart the
+  /// rest of the way out, then snapping the new year in from the other side),
+  /// otherwise springs the chart back to centre.
+  void _settleDrag(double velocity, List<int> availableYears) {
+    const distanceThreshold = 60.0;
+    const velocityThreshold = 300.0;
+    final width = context.size?.width ?? 320;
+
+    // Positive drag (finger moved right) → earlier year; negative → later.
+    final wantsEarlier = _dragDx > distanceThreshold || velocity > velocityThreshold;
+    final wantsLater = _dragDx < -distanceThreshold || velocity < -velocityThreshold;
+
+    int? target;
+    if (wantsEarlier) {
+      target = _nextYear(-1, availableYears);
+    } else if (wantsLater) {
+      target = _nextYear(1, availableYears);
+    }
+
+    if (target == null) {
+      _springBack();
+      return;
+    }
+
+    final committedYear = target;
+    final flingTo = wantsEarlier ? width : -width;
+    _snap
+      ..stop()
+      ..reset();
+    final from = _dragDx;
+    final anim = Tween<double>(begin: from, end: flingTo).animate(
+      CurvedAnimation(parent: _snap, curve: Curves.easeOut),
+    );
+    void listener() => setState(() => _dragDx = anim.value);
+    anim.addListener(listener);
+    _snap.forward().whenComplete(() {
+      anim.removeListener(listener);
+      if (!mounted) return;
+      // Year change triggers the refetch; the old chart stays via _lastTrends.
+      setState(() {
+        _year = committedYear;
+        _dragDx = 0; // new chart appears centred
+      });
+    });
+  }
+
+  void _springBack() {
+    _snap
+      ..stop()
+      ..reset();
+    final from = _dragDx;
+    final anim = Tween<double>(begin: from, end: 0).animate(
+      CurvedAnimation(parent: _snap, curve: Curves.easeOut),
+    );
+    void listener() => setState(() => _dragDx = anim.value);
+    anim.addListener(listener);
+    _snap.forward().whenComplete(() => anim.removeListener(listener));
   }
 
   /// Empty only when there's nothing to show at all. When comparing, the

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/finances/data/finances_repository.dart';
 import 'package:tts_bandmate/features/finances/data/models/band_revenue.dart';
 import 'package:tts_bandmate/features/finances/data/models/finance_booking.dart';
+import 'package:tts_bandmate/features/finances/data/models/finance_trends.dart';
 import 'package:tts_bandmate/features/finances/providers/finances_provider.dart';
 
 class _FakeFinancesRepository implements FinancesRepository {
@@ -21,6 +22,12 @@ class _FakeFinancesRepository implements FinancesRepository {
       throw UnimplementedError();
   @override
   Future<List<FinanceBooking>> fetchPaid(int bandId, {int? year}) =>
+      throw UnimplementedError();
+  @override
+  Future<FinanceTrends> fetchTrends(int bandId,
+          {required int year,
+          String? snapshotDate,
+          bool compareWithCurrent = false}) =>
       throw UnimplementedError();
 }
 

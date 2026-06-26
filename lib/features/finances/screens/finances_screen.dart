@@ -85,6 +85,12 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
   FinancesParams get _params =>
       FinancesParams(bandId: widget.bandId, year: _selectedYear);
 
+  /// Pull-to-refresh for the Trends tab. The active TrendsView owns its
+  /// TrendsParams, so invalidate the whole family to force it to refetch.
+  Future<void> _refreshTrends() async {
+    ref.invalidate(trendsProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     // Only the Unpaid/Paid tabs read a bookings provider; the Revenue tab has
@@ -107,7 +113,10 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
                 ref.read(paidServicesProvider(_params).notifier).refresh(),
               _FinancesTab.revenue =>
                 ref.read(revenueProvider(widget.bandId).notifier).refresh(),
-              _FinancesTab.trends => Future<void>.value(),
+              // TrendsView owns its TrendsParams (year/snapshot/compare), so the
+              // screen can't target a single key — invalidate the family and the
+              // active view refetches (showing its own over-chart loading veil).
+              _FinancesTab.trends => _refreshTrends(),
             },
           ),
           CupertinoSliverNavigationBar(

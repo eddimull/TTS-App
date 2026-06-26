@@ -73,11 +73,16 @@ class FinanceTrends {
 
   bool get isEmpty => months.every((m) => m.isZero);
 
-  int? get currentTotalPaidCents => currentMonths?.fold(0, (s, m) => s! + m.paidCents);
-  int? get currentTotalUnpaidCents => currentMonths?.fold(0, (s, m) => s! + m.unpaidCents);
-  int? get currentTotalForecastCents => currentMonths?.fold(0, (s, m) => s! + m.forecastCents);
-  int? get currentTotalNetCents => currentMonths?.fold(0, (s, m) => s! + m.netCents);
-  int? get currentTotalCount => currentMonths?.fold(0, (s, m) => s! + m.count);
+  int? get currentTotalPaidCents =>
+      currentMonths?.fold<int>(0, (s, m) => s + m.paidCents);
+  int? get currentTotalUnpaidCents =>
+      currentMonths?.fold<int>(0, (s, m) => s + m.unpaidCents);
+  int? get currentTotalForecastCents =>
+      currentMonths?.fold<int>(0, (s, m) => s + m.forecastCents);
+  int? get currentTotalNetCents =>
+      currentMonths?.fold<int>(0, (s, m) => s + m.netCents);
+  int? get currentTotalCount =>
+      currentMonths?.fold<int>(0, (s, m) => s + m.count);
 
   int? get deltaPaidCents => comparing ? currentTotalPaidCents! - totalPaidCents : null;
   int? get deltaUnpaidCents => comparing ? currentTotalUnpaidCents! - totalUnpaidCents : null;

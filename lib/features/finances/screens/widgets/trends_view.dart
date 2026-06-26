@@ -298,13 +298,21 @@ class _ControlsRow extends StatelessWidget {
                         ),
                       ),
                       if (snapshotDate != null) ...[
-                        const SizedBox(width: 4),
-                        GestureDetector(
-                          onTap: onClearDate,
-                          child: Icon(CupertinoIcons.clear_circled_solid,
-                              size: 14,
-                              color: CupertinoColors.tertiaryLabel
-                                  .resolveFrom(context)),
+                        const SizedBox(width: 2),
+                        Semantics(
+                          button: true,
+                          label: 'Clear snapshot date',
+                          child: GestureDetector(
+                            onTap: onClearDate,
+                            behavior: HitTestBehavior.opaque,
+                            child: Padding(
+                              padding: const EdgeInsets.all(6),
+                              child: Icon(CupertinoIcons.clear_circled_solid,
+                                  size: 14,
+                                  color: CupertinoColors.tertiaryLabel
+                                      .resolveFrom(context)),
+                            ),
+                          ),
                         ),
                       ],
                     ]),

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tts_bandmate/core/providers/core_providers.dart';
+import 'models/band_revenue.dart';
 import 'models/finance_booking.dart';
 
 class FinancesRepository {
@@ -34,6 +35,14 @@ class FinancesRepository {
         .cast<Map<String, dynamic>>()
         .map(FinanceBooking.fromJson)
         .toList();
+  }
+
+  /// Fetches total recorded revenue grouped by year for [bandId], newest first.
+  Future<BandRevenue> fetchRevenue(int bandId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandFinancesRevenue(bandId),
+    );
+    return BandRevenue.fromJson(response.data!);
   }
 }
 

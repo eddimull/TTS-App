@@ -4,12 +4,21 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to build and deploy (e.g. v1.4.0). Required for manual runs.'
+        required: true
+        type: string
 
 jobs:
   notes-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Test the sanitizer against the same code the deploy jobs build:
+          # the selected tag on manual runs, the release tag otherwise.
+          ref: ${{ inputs.tag || github.ref }}
       - name: Test release-notes sanitizer
         run: bash scripts/test_release_notes.sh
 
@@ -20,13 +29,30 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Manual runs build the exact tag the operator selects; the
+          # release:published trigger leaves inputs.tag empty, so fall back to
+          # github.ref (the tag that published the release).
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Resolve version name
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
-          if [ -z "$VERSION" ]; then
-            VERSION="$(yq '.version' pubspec.yaml | sed 's/+.*//')"
+          # A manual (workflow_dispatch) run must supply an explicit tag so the
+          # version label always matches the code we checked out — never let it
+          # fall through to git describe and silently deploy the wrong version.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -z "$INPUT_TAG" ]; then
+              echo "::error::A release tag is required for manual runs." >&2
+              exit 1
+            fi
+            VERSION="$(echo "$INPUT_TAG" | sed 's/^v//')"
+          else
+            VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
+            if [ -z "$VERSION" ]; then
+              VERSION="$(yq '.version' pubspec.yaml | sed 's/+.*//')"
+            fi
           fi
           if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
             echo "::error::Could not resolve a version name" >&2
@@ -160,13 +186,30 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Manual runs build the exact tag the operator selects; the
+          # release:published trigger leaves inputs.tag empty, so fall back to
+          # github.ref (the tag that published the release).
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Resolve version name
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
-          if [ -z "$VERSION" ]; then
-            VERSION="$(yq '.version' pubspec.yaml | sed 's/+.*//')"
+          # A manual (workflow_dispatch) run must supply an explicit tag so the
+          # version label always matches the code we checked out — never let it
+          # fall through to git describe and silently deploy the wrong version.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -z "$INPUT_TAG" ]; then
+              echo "::error::A release tag is required for manual runs." >&2
+              exit 1
+            fi
+            VERSION="$(echo "$INPUT_TAG" | sed 's/^v//')"
+          else
+            VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
+            if [ -z "$VERSION" ]; then
+              VERSION="$(yq '.version' pubspec.yaml | sed 's/+.*//')"
+            fi
           fi
           if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
             echo "::error::Could not resolve a version name" >&2
@@ -259,13 +302,12 @@ jobs:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
-      - name: Upload to Play Store (Production, staged 10%)
+      - name: Upload to Play Store (Production)
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
           packageName: tts.band
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           track: production
-          status: inProgress
-          userFraction: 0.10
+          status: completed
           whatsNewDirectory: distribution/whatsnew

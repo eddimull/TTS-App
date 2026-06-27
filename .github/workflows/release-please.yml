@@ -9,18 +9,36 @@ permissions:
   contents: write
   pull-requests: write
   actions: write
+  # Required by the deploy job below: release-deploy's Android job mints a
+  # Google WIF token (id-token), and a reusable workflow can only use it if the
+  # caller grants it.
+  id-token: write
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  # Ship the release as soon as release-please cuts it. release-please creates
+  # the GitHub release with GITHUB_TOKEN, whose events do not trigger other
+  # workflows, so release-deploy's `on: release` never fires for it. Calling it
+  # directly as a reusable workflow makes merging the release PR ship to
+  # production hands-free.
+  deploy:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    uses: ./.github/workflows/release-deploy.yml
+    with:
+      tag: ${{ needs.release-please.outputs.tag_name }}
+    secrets: inherit
 
   # When release-please cuts a new release, refresh the static tag list in the
   # Release Deploy dropdown so the newest tags are always selectable. The

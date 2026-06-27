@@ -3,6 +3,16 @@ name: Release Deploy
 on:
   release:
     types: [published]
+  # Invoked by release-please.yml when it cuts a release: release-please creates
+  # the GitHub release with GITHUB_TOKEN, whose events do not trigger other
+  # workflows, so `on: release` never fires for it. A reusable-workflow call
+  # closes that gap and ships automatically on merge of the release PR.
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Release tag to deploy (e.g. v1.5.3)'
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       tag:

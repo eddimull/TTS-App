@@ -2,7 +2,9 @@ name: iOS Build
 
 on:
   push:
-    branches: [main]
+    # main builds the release-candidate TestFlight build; staging is the UAT
+    # channel (TestFlight + Play internal).
+    branches: [main, staging]
   workflow_dispatch:
 
 jobs:

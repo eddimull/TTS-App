@@ -302,6 +302,28 @@ jobs:
           ')"
           echo "Promoting versionCode $code to production"
 
+          # 2b. Idempotency: if production already carries this versionCode (e.g.
+          #     the deploy is being re-run, or only the iOS job failed last
+          #     time), there is nothing to promote. Skip rather than re-commit
+          #     the same release, which Play rejects. GET 404s when no
+          #     production release exists yet, so default to "{}" (first release).
+          prod_json="$(curl -fsS "$base/edits/$edit_id/tracks/production" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" 2>/dev/null || echo '{}')"
+          already="$(printf '%s' "$prod_json" | CODE="$code" python3 -c '
+          import json,os,sys
+          try: data=json.load(sys.stdin)
+          except Exception: data={}
+          code=int(os.environ["CODE"])
+          present=any(int(c)==code for r in data.get("releases",[]) for c in r.get("versionCodes",[]))
+          print("yes" if present else "no")
+          ')"
+          if [ "$already" = "yes" ]; then
+            echo "versionCode $code is already on the production track — nothing to promote (idempotent re-run)."
+            curl -fsS -X DELETE "$base/edits/$edit_id" \
+              -H "Authorization: Bearer $ACCESS_TOKEN" -o /dev/null 2>/dev/null || true
+            exit 0
+          fi
+
           # 3. Build the production track payload (release notes JSON-escaped by python).
           payload="$(VERSION="$VERSION" CODE="$code" NOTES_FILE=/tmp/whatsnew-en-US.txt python3 -c '
           import json,os

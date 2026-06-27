@@ -73,6 +73,43 @@ platform :ios do
       UI.user_error!("Missing/empty release notes at #{notes_path}. App Store requires a 'What's New' value to submit for review; the workflow's 'Generate release notes' step should have written this file.")
     end
 
+    # Idempotency for re-runs: if this version has already been submitted (the
+    # deploy is being re-run, e.g. to retry the Android job), don't submit
+    # again — App Store rejects a second submission of the same version. Only
+    # the states below are still submittable (preparing, or kicked back to the
+    # developer); anything else (waiting/in review/pending release/ready for
+    # sale/processing) means it's already in the pipeline. If the state check
+    # itself fails for any reason, fall through and submit as normal so a real
+    # first release is never silently skipped.
+    already_submitted =
+      begin
+        Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(
+          key_id: ENV["ASC_API_KEY_ID"],
+          issuer_id: ENV["ASC_ISSUER_ID"],
+          filepath: ENV["ASC_API_KEY_PATH"],
+        )
+        states = Spaceship::ConnectAPI::AppStoreVersion::AppStoreState
+        submittable = [
+          states::PREPARE_FOR_SUBMISSION,
+          states::DEVELOPER_REJECTED,
+          states::REJECTED,
+          states::METADATA_REJECTED,
+          states::INVALID_BINARY,
+        ]
+        app = Spaceship::ConnectAPI::App.find("band.tts.mate")
+        versions = app ? app.get_app_store_versions(filter: { versionString: options[:version] }) : []
+        v = versions.find { |x| x.version_string == options[:version] }
+        !v.nil? && !submittable.include?(v.app_store_state)
+      rescue => e
+        UI.important("Could not determine App Store submission state (#{e.message}); proceeding with submission.")
+        false
+      end
+
+    if already_submitted
+      UI.important("App Store version #{options[:version]} is already submitted/in review; skipping re-submission (idempotent re-run).")
+      next
+    end
+
     deliver(
       api_key: api_key,
       app_identifier: "band.tts.mate",

@@ -13,12 +13,33 @@ platform :ios do
     # minutes "Processing" before the build is submittable. deliver does NOT
     # poll for this, so wait explicitly for the build we just uploaded
     # (identified by build_number:) to finish processing before submitting.
-    wait_for_build_processing(
-      api_key: api_key,
-      app_identifier: "band.tts.mate",
-      train_version: options[:version],
-      build_version: options[:build_number],
-    )
+    #
+    # There is no built-in "wait for processing" action, so poll
+    # app_store_build_number until the build we uploaded appears in the edit
+    # version (live: false). It only returns once the build is processed and
+    # attachable; until then it raises, which we swallow and retry.
+    target_build = options[:build_number].to_s
+    deadline = Time.now + (40 * 60) # 40 min; step has a 45 min timeout
+    loop do
+      current = begin
+        app_store_build_number(
+          api_key: api_key,
+          app_identifier: "band.tts.mate",
+          version: options[:version],
+          live: false,
+        ).to_s
+      rescue => e
+        UI.message("Build #{target_build} not processed yet (#{e.message}); waiting 60s...")
+        nil
+      end
+
+      break if current == target_build
+
+      if Time.now > deadline
+        UI.user_error!("Timed out waiting for build #{target_build} (#{options[:version]}) to finish processing.")
+      end
+      sleep(60)
+    end
 
     # NOTE: App Store *reviewer notes* live in app_review_information(notes:),
     # which is metadata — and we run with skip_metadata: true to avoid touching

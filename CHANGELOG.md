@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.6.0](https://github.com/eddimull/TTS-App/compare/v1.5.3...v1.6.0) (2026-06-27)
+
+
+### Features
+
+* **ci:** staging/UAT branch + auto-deploy on release ([ad6c372](https://github.com/eddimull/TTS-App/commit/ad6c372499c10ba6e7711f687582fae535116f37))
+
+
+### Bug Fixes
+
+* **deploy:** address Copilot review ([28f1522](https://github.com/eddimull/TTS-App/commit/28f1522e937d53b17bbee8136cc5b8fb9af4a589))
+* **deploy:** make hands-off production deploy reliable ([ae715a3](https://github.com/eddimull/TTS-App/commit/ae715a33da0062f0363626a4b0c03d4fb4be211a))
+
 ## [1.5.3](https://github.com/eddimull/TTS-App/compare/v1.5.2...v1.5.3) (2026-06-27)
 
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0](https://github.com/eddimull/TTS-App/compare/v1.4.0...v1.5.0) (2026-06-27)
+
+
+### Features
+
+* **deploy:** release dropdown + resolve job for Release Deploy ([#57](https://github.com/eddimull/TTS-App/issues/57)) ([7f723eb](https://github.com/eddimull/TTS-App/commit/7f723ebafd7814932236e6c5a8a8e7e25bc7a07b))
+
+
+### Bug Fixes
+
+* **deploy:** repair store uploads and add tag selection to Release Deploy ([#55](https://github.com/eddimull/TTS-App/issues/55)) ([150172f](https://github.com/eddimull/TTS-App/commit/150172f9bf4009e9e67e88aec9d0ff938c73941b))
+
 ## [1.4.0](https://github.com/eddimull/TTS-App/compare/v1.3.0...v1.4.0) (2026-06-26)
 
 

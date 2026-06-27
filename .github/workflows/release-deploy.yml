@@ -51,8 +51,10 @@ jobs:
           if [ "$EVENT_NAME" = "release" ]; then
             tag="$RELEASE_TAG"
           elif [ "$INPUT_TAG" = "latest" ] || [ -z "$INPUT_TAG" ]; then
-            # Newest published release (excludes drafts/prereleases).
-            tag="$(gh release view --json tagName --jq .tagName)"
+            # The repo's "latest" release. The releases/latest API endpoint is
+            # explicitly defined as the most recent non-draft, non-prerelease
+            # release, so "latest" can't resolve to a draft or prerelease.
+            tag="$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name)"
           else
             tag="$INPUT_TAG"
           fi

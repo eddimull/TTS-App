@@ -2,9 +2,7 @@ name: iOS Build
 
 on:
   push:
-    # main builds the release-candidate TestFlight build; staging is the UAT
-    # channel (TestFlight + Play internal).
-    branches: [main, staging]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -23,16 +21,18 @@ jobs:
       - name: Resolve version name
         run: |
           set -euo pipefail
-          # Prefer the latest git tag (set by release-please); fall back to
-          # pubspec.yaml before the first tag exists. A missing tag is expected,
-          # so don't let `git describe` failing abort the step.
-          VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
-          if [ -z "$VERSION" ]; then
-            # pubspec version is `X.Y.Z+build`; drop the +build suffix.
-            VERSION="$(yq '.version' pubspec.yaml | sed 's/+.*//')"
+          # Use pubspec.yaml as the source of truth: release-please bumps it in
+          # the release commit, so the build is always named the released
+          # version. Reading the git tag here would race release-please creating
+          # that tag and could label the build with the previous version.
+          # pubspec version is `X.Y.Z+build`; drop the +build suffix.
+          VERSION="$(yq '.version' pubspec.yaml | sed 's/+.*//')"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            # Fall back to the latest git tag if pubspec has no usable version.
+            VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
           fi
           if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
-            echo "::error::Could not resolve a version name from git tags or pubspec.yaml" >&2
+            echo "::error::Could not resolve a version name from pubspec.yaml or git tags" >&2
             exit 1
           fi
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"

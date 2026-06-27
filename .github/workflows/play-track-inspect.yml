@@ -24,7 +24,10 @@ jobs:
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
           token_format: access_token
           # androidpublisher scope is required to read Play tracks.
-          scopes: https://www.googleapis.com/auth/androidpublisher
+          # NOTE: the input is access_token_scopes (NOT scopes) — auth@v2
+          # silently ignores an unknown 'scopes' input and falls back to the
+          # default cloud-platform scope, which 403s against the Play API.
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
 
       - name: Dump production and internal tracks
         env:

@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.5.3](https://github.com/eddimull/TTS-App/compare/v1.5.2...v1.5.3) (2026-06-27)
+
+
+### Bug Fixes
+
+* **deploy:** resolve iOS release-notes path independently of fastlane CWD ([df10d3c](https://github.com/eddimull/TTS-App/commit/df10d3c66c5556f6f794fa60f2066d160aebbbb7))
+* **deploy:** use access_token_scopes for Play androidpublisher access ([ecc09ce](https://github.com/eddimull/TTS-App/commit/ecc09ce538d30616f14f03c752bed670015deb2f))
+* **deploy:** wait for matching internal build before promoting; drop unsafe fallback ([e4c3696](https://github.com/eddimull/TTS-App/commit/e4c36966d06b79eb46afc0cc6d2e7edff43a0b72))
+
 ## [1.5.2](https://github.com/eddimull/TTS-App/compare/v1.5.1...v1.5.2) (2026-06-27)
 
 

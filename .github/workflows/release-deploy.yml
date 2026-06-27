@@ -6,59 +6,97 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag to build and deploy (e.g. v1.4.0). Required for manual runs.'
+        description: 'Release to deploy'
         required: true
-        type: string
+        type: choice
+        default: latest
+        # "latest" resolves to the newest published release at run time, so it
+        # never goes stale. The concrete tags below let you redeploy an older
+        # release. release-please appends each new tag here on release (see
+        # the "Sync deploy dropdown" step in release-please.yml).
+        options:
+          - latest
+          # BEGIN release tags (managed by release-please) — do not edit by hand
+          - v1.4.0
+          - v1.3.0
+          - v1.2.0
+          # END release tags
+
+permissions:
+  contents: read
 
 jobs:
-  notes-test:
+  # Turn the dropdown choice (or the release-published event) into one
+  # canonical, verified tag that every downstream job checks out. Resolving
+  # once here keeps the three jobs from drifting and means "latest" / a
+  # mis-cased entry can never reach an actual checkout.
+  resolve:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
-          # Test the sanitizer against the same code the deploy jobs build:
-          # the selected tag on manual runs, the release tag otherwise.
-          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+      - name: Resolve tag and version
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "release" ]; then
+            tag="$RELEASE_TAG"
+          elif [ "$INPUT_TAG" = "latest" ] || [ -z "$INPUT_TAG" ]; then
+            # The repo's "latest" release. The releases/latest API endpoint is
+            # explicitly defined as the most recent non-draft, non-prerelease
+            # release, so "latest" can't resolve to a draft or prerelease.
+            tag="$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name)"
+          else
+            tag="$INPUT_TAG"
+          fi
+
+          # Normalize: trim, drop a leading "v" if present, then re-add it so
+          # "V1.4.0", "1.4.0" and "v1.4.0" all map to the canonical "v1.4.0".
+          tag="$(echo "$tag" | tr -d '[:space:]')"
+          bare="$(echo "$tag" | sed 's/^[vV]//')"
+          tag="v$bare"
+
+          # Fail fast if the tag does not exist instead of letting checkout die
+          # with a cryptic git error later.
+          if ! git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "::error::Tag '$tag' does not exist. Pick an existing release from the dropdown." >&2
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$bare" >> "$GITHUB_OUTPUT"
+          echo "Resolved: tag=$tag version=$bare"
+
+  notes-test:
+    runs-on: ubuntu-latest
+    needs: resolve
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Test the sanitizer against the exact tag the deploy jobs build.
+          ref: ${{ needs.resolve.outputs.tag }}
       - name: Test release-notes sanitizer
         run: bash scripts/test_release_notes.sh
 
   release-ios:
     runs-on: macos-26
-    needs: notes-test
+    needs: [resolve, notes-test]
+    env:
+      VERSION: ${{ needs.resolve.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # Manual runs build the exact tag the operator selects; the
-          # release:published trigger leaves inputs.tag empty, so fall back to
-          # github.ref (the tag that published the release).
-          ref: ${{ inputs.tag || github.ref }}
-
-      - name: Resolve version name
-        env:
-          INPUT_TAG: ${{ inputs.tag }}
-        run: |
-          set -euo pipefail
-          # A manual (workflow_dispatch) run must supply an explicit tag so the
-          # version label always matches the code we checked out — never let it
-          # fall through to git describe and silently deploy the wrong version.
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            if [ -z "$INPUT_TAG" ]; then
-              echo "::error::A release tag is required for manual runs." >&2
-              exit 1
-            fi
-            VERSION="$(echo "$INPUT_TAG" | sed 's/^v//')"
-          else
-            VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
-            if [ -z "$VERSION" ]; then
-              VERSION="$(yq '.version' pubspec.yaml | sed 's/+.*//')"
-            fi
-          fi
-          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
-            echo "::error::Could not resolve a version name" >&2
-            exit 1
-          fi
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          ref: ${{ needs.resolve.outputs.tag }}
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -178,44 +216,17 @@ jobs:
 
   release-android:
     runs-on: ubuntu-latest
-    needs: notes-test
+    needs: [resolve, notes-test]
     permissions:
       contents: read
       id-token: write
+    env:
+      VERSION: ${{ needs.resolve.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # Manual runs build the exact tag the operator selects; the
-          # release:published trigger leaves inputs.tag empty, so fall back to
-          # github.ref (the tag that published the release).
-          ref: ${{ inputs.tag || github.ref }}
-
-      - name: Resolve version name
-        env:
-          INPUT_TAG: ${{ inputs.tag }}
-        run: |
-          set -euo pipefail
-          # A manual (workflow_dispatch) run must supply an explicit tag so the
-          # version label always matches the code we checked out — never let it
-          # fall through to git describe and silently deploy the wrong version.
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            if [ -z "$INPUT_TAG" ]; then
-              echo "::error::A release tag is required for manual runs." >&2
-              exit 1
-            fi
-            VERSION="$(echo "$INPUT_TAG" | sed 's/^v//')"
-          else
-            VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
-            if [ -z "$VERSION" ]; then
-              VERSION="$(yq '.version' pubspec.yaml | sed 's/+.*//')"
-            fi
-          fi
-          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
-            echo "::error::Could not resolve a version name" >&2
-            exit 1
-          fi
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          ref: ${{ needs.resolve.outputs.tag }}
 
       - name: Generate release notes
         run: |

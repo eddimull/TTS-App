@@ -250,6 +250,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      # Read access to query the Android Build workflow run we wait on below.
+      actions: read
     env:
       VERSION: ${{ needs.resolve.outputs.version }}
     steps:
@@ -257,6 +259,42 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ needs.resolve.outputs.tag }}
+
+      - name: Wait for the Android Build to finish uploading to internal
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # The Android Build workflow (android.yml) uploads this commit's AAB to
+          # the Play internal track, which we then promote to production. Both it
+          # and this job use Play "edits"; running them at once causes the build's
+          # upload to fail with "This edit has expired". So wait for that build
+          # run to COMPLETE before we touch Play at all — no concurrent edits.
+          #
+          # Match on the tag's commit (not github.sha, which differs on a manual
+          # dispatch of an older tag). On a manual redeploy the build ran long ago
+          # and is already completed, so this returns immediately.
+          SHA="$(git rev-parse HEAD)"
+          echo "Waiting for the Android Build run on commit $SHA ..."
+          deadline=$(( $(date +%s) + 1500 ))   # 25 min
+          while :; do
+            run="$(gh api "repos/$REPO/actions/workflows/android.yml/runs?head_sha=$SHA&per_page=1" \
+              --jq '.workflow_runs[0] | {status,conclusion}' 2>/dev/null || echo '{}')"
+            status="$(printf '%s' "$run" | python3 -c 'import sys,json; print((json.load(sys.stdin) or {}).get("status") or "none")')"
+            conclusion="$(printf '%s' "$run" | python3 -c 'import sys,json; print((json.load(sys.stdin) or {}).get("conclusion") or "")')"
+            if [ "$status" = "completed" ]; then
+              [ "$conclusion" = "success" ] && { echo "Android Build succeeded; proceeding to promote."; break; }
+              echo "::error::Android Build for $SHA concluded '$conclusion' — its internal upload didn't succeed, so there's nothing to promote. Re-run Android Build, then re-run this deploy."
+              exit 1
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error::Timed out (25 min) waiting for the Android Build run on $SHA to finish."
+              exit 1
+            fi
+            echo "Android Build status: ${status}; waiting 20s..."
+            sleep 20
+          done
 
       - name: Generate release notes
         run: |

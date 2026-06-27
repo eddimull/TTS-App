@@ -2,7 +2,9 @@ name: Android Build
 
 on:
   push:
-    branches: [main]
+    # main builds the release-candidate internal build that production
+    # promotes; staging is the UAT channel (TestFlight + Play internal).
+    branches: [main, staging]
   workflow_dispatch:
 
 jobs:

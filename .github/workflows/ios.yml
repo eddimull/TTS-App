@@ -25,8 +25,10 @@ jobs:
           # the release commit, so the build is always named the released
           # version. Reading the git tag here would race release-please creating
           # that tag and could label the build with the previous version.
-          # pubspec version is `X.Y.Z+build`; drop the +build suffix.
-          VERSION="$(yq '.version' pubspec.yaml | sed 's/+.*//')"
+          # pubspec version is `X.Y.Z+build`; drop the +build suffix. Keep the
+          # read non-fatal (|| true) under `set -euo pipefail` so a missing or
+          # broken yq doesn't abort the step before the git-tag fallback runs.
+          VERSION="$(yq '.version' pubspec.yaml 2>/dev/null | sed 's/+.*//' || true)"
           if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
             # Fall back to the latest git tag if pubspec has no usable version.
             VERSION="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"

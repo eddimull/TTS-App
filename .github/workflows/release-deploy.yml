@@ -289,7 +289,8 @@ jobs:
           base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE}"
 
           # 1+2. Find the versionCode to promote: the COMPLETED internal-track
-          #      release whose versionName matches this release ($VERSION). The
+          #      release whose name (the Play release `name` field, i.e. the
+          #      versionName) matches this release ($VERSION). The
           #      Android Build workflow uploads that build to the internal track
           #      on the release commit, which can lag the release-published
           #      event that starts this job — so poll until it appears (up to 20
@@ -310,8 +311,15 @@ jobs:
               }
             edit_id="$(printf '%s' "$edit_json" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')"
 
+            # Read the internal track. The app actively uses this track, so a
+            # read failure is a real auth/permission/network error, not "build
+            # not ready" — fail fast with a clear message instead of masking it
+            # as {} and burning the full 20-minute wait on a misleading error.
             internal_json="$(curl -fsS "$base/edits/$edit_id/tracks/internal" \
-              -H "Authorization: Bearer $ACCESS_TOKEN" 2>/dev/null || echo '{}')"
+              -H "Authorization: Bearer $ACCESS_TOKEN")" || {
+                echo "::error::Failed to read the Play internal track (auth/permission/network?). Aborting."
+                exit 1
+              }
             code="$(printf '%s' "$internal_json" | VERSION="$VERSION" python3 -c '
           import json,os,sys
           try: data=json.load(sys.stdin)

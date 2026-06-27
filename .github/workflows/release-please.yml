@@ -9,10 +9,6 @@ permissions:
   contents: write
   pull-requests: write
   actions: write
-  # Required by the deploy job below: release-deploy's Android job mints a
-  # Google WIF token (id-token), and a reusable workflow can only use it if the
-  # caller grants it.
-  id-token: write
 
 jobs:
   release-please:
@@ -35,6 +31,12 @@ jobs:
   deploy:
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
+    # Scope OIDC to just this job (least privilege): release-deploy's Android
+    # job mints a Google WIF token (id-token), and a reusable workflow can only
+    # use it if the calling job grants it. contents:read is for its checkouts.
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/release-deploy.yml
     with:
       tag: ${{ needs.release-please.outputs.tag_name }}

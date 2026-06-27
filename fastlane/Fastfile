@@ -55,18 +55,30 @@ platform :ios do
       sleep(60)
     end
 
-    # NOTE: App Store *reviewer notes* live in app_review_information(notes:),
-    # which is metadata — and we run with skip_metadata: true to avoid touching
-    # the manually-managed listing. So we deliberately do NOT attach reviewer
-    # notes here (the CHANGELOG-derived notes are still surfaced on the Android
-    # "What's new" path). submission_information below only answers the IDFA
-    # questionnaire, which is required for the review submission to go through.
+    # App Store requires a "What's New in This Version" (whatsNew) value before a
+    # non-first version can be submitted for review — without it the submission
+    # fails with "missing required attribute 'whatsNew'". We populate ONLY that
+    # one field, from the CHANGELOG: the workflow writes it to
+    # fastlane/metadata/en-US/release_notes.txt, and with skip_metadata: false
+    # deliver uploads only the metadata files that actually exist on disk. Since
+    # release_notes.txt is the only file we write, the rest of the
+    # manually-managed App Store listing (name, description, screenshots, etc.)
+    # is left untouched.
+    #
+    # NOTE: App Store *reviewer notes* (app_review_information(notes:)) are a
+    # different field and remain unset here. submission_information below only
+    # answers the IDFA questionnaire, which is required for review to go through.
+    notes_path = "fastlane/metadata/en-US/release_notes.txt"
+    unless File.exist?(notes_path) && !File.read(notes_path).strip.empty?
+      UI.user_error!("Missing/empty release notes at #{notes_path}. App Store requires a 'What's New' value to submit for review; the workflow's 'Generate release notes' step should have written this file.")
+    end
+
     deliver(
       api_key: api_key,
       app_identifier: "band.tts.mate",
       app_version: options[:version],
       skip_binary_upload: true,
-      skip_metadata: true,
+      skip_metadata: false,
       skip_screenshots: true,
       submit_for_review: true,
       automatic_release: false,

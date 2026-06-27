@@ -278,40 +278,54 @@ jobs:
           set -euo pipefail
           base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE}"
 
-          # 1. Open an edit. Capture the body first so an auth/permission
-          #    failure surfaces as a clear message rather than a JSON parse error.
-          edit_json="$(curl -fsS -X POST "$base/edits" \
-            -H "Authorization: Bearer $ACCESS_TOKEN" \
-            -H "Content-Length: 0")" || {
-              echo "::error::Failed to create a Play edit. Check that the service account has Android Publisher access and that the access token carries the androidpublisher scope (access_token_scopes)."
-              exit 1
-            }
-          edit_id="$(printf '%s' "$edit_json" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')"
-          echo "edit id: $edit_id"
+          # 1+2. Find the versionCode to promote: the COMPLETED internal-track
+          #      release whose versionName matches this release ($VERSION). The
+          #      Android Build workflow uploads that build to the internal track
+          #      on the release commit, which can lag the release-published
+          #      event that starts this job — so poll until it appears (up to 20
+          #      min). Use a FRESH edit each iteration: an edit is a
+          #      point-in-time snapshot and the internal upload commits its own
+          #      edit, which would otherwise leave a long-lived one stale. We do
+          #      NOT fall back to a different version's build — promoting a
+          #      mismatched code would ship the wrong binary.
+          deadline=$(( $(date +%s) + 1200 ))
+          edit_id=""
+          code=""
+          while :; do
+            edit_json="$(curl -fsS -X POST "$base/edits" \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              -H "Content-Length: 0")" || {
+                echo "::error::Failed to create a Play edit. Check that the service account has Android Publisher access and that the access token carries the androidpublisher scope (access_token_scopes)."
+                exit 1
+              }
+            edit_id="$(printf '%s' "$edit_json" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')"
 
-          # 2. Read the internal track and choose the versionCode to promote:
-          #    the completed release whose versionName matches this release
-          #    ($VERSION). If none matches by name, fall back to the highest
-          #    completed code (with a warning) rather than guessing silently.
-          internal_json="$(curl -fsS "$base/edits/$edit_id/tracks/internal" \
-            -H "Authorization: Bearer $ACCESS_TOKEN")"
-          echo "$internal_json" | python3 -m json.tool
-
-          code="$(printf '%s' "$internal_json" | VERSION="$VERSION" python3 -c '
+            internal_json="$(curl -fsS "$base/edits/$edit_id/tracks/internal" \
+              -H "Authorization: Bearer $ACCESS_TOKEN" 2>/dev/null || echo '{}')"
+            code="$(printf '%s' "$internal_json" | VERSION="$VERSION" python3 -c '
           import json,os,sys
-          data=json.load(sys.stdin)
+          try: data=json.load(sys.stdin)
+          except Exception: data={}
           version=os.environ["VERSION"]
-          rel=data.get("releases",[])
-          done=[r for r in rel if r.get("status")=="completed"]
-          matched=[r for r in done if str(r.get("name","")).lstrip("vV")==version]
-          chosen=matched or done
-          if not chosen: sys.exit("No completed release on the internal track to promote. Did the Android Build workflow upload this version?")
-          codes=sorted({int(c) for r in chosen for c in r.get("versionCodes",[])})
-          if not codes: sys.exit("Internal release has no versionCodes to promote.")
-          if not matched: sys.stderr.write("WARNING: no internal release named %r; promoting highest completed code %d\n"%(version,codes[-1]))
-          print(codes[-1])
+          done=[r for r in data.get("releases",[]) if r.get("status")=="completed" and str(r.get("name","")).lstrip("vV")==version]
+          codes=sorted({int(c) for r in done for c in r.get("versionCodes",[])})
+          print(codes[-1] if codes else "")
           ')"
-          echo "Promoting versionCode $code to production"
+            if [ -n "$code" ]; then
+              echo "Found internal build (versionCode $code) for $VERSION; promoting via edit $edit_id."
+              break
+            fi
+
+            # Not ready yet: abandon this snapshot and wait, unless out of time.
+            curl -fsS -X DELETE "$base/edits/$edit_id" \
+              -H "Authorization: Bearer $ACCESS_TOKEN" -o /dev/null 2>/dev/null || true
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error::No completed internal release named '$VERSION' after waiting 20 min. Ensure the Android Build workflow uploaded this version to the internal track."
+              exit 1
+            fi
+            echo "Internal build for $VERSION not on the internal track yet; waiting 30s..."
+            sleep 30
+          done
 
           # 2b. Idempotency: if production already carries this versionCode (e.g.
           #     the deploy is being re-run, or only the iOS job failed last

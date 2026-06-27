@@ -1,0 +1,61 @@
+name: Play Track Inspect (diagnostic)
+
+# Temporary, read-only diagnostic: dumps the current state of the Play
+# production + internal tracks so we can see what is blocking the production
+# rollout ("no existing users can upgrade"). Delete once the rollout issue is
+# resolved.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+          token_format: access_token
+          # androidpublisher scope is required to read Play tracks.
+          scopes: https://www.googleapis.com/auth/androidpublisher
+
+      - name: Dump production and internal tracks
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          PACKAGE: tts.band
+        run: |
+          set -euo pipefail
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE}"
+
+          echo "::group::Create edit"
+          edit_id="$(curl -fsS -X POST "$base/edits" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "Content-Length: 0" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')"
+          echo "edit id: $edit_id"
+          echo "::endgroup::"
+
+          for track in production internal beta alpha; do
+            echo "::group::Track: $track"
+            curl -fsS "$base/edits/$edit_id/tracks/$track" \
+              -H "Authorization: Bearer $ACCESS_TOKEN" \
+              | python3 -m json.tool || echo "(no $track track or not accessible)"
+            echo "::endgroup::"
+          done
+
+          echo "::group::All tracks (summary)"
+          curl -fsS "$base/edits/$edit_id/tracks" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            | python3 -m json.tool || true
+          echo "::endgroup::"
+
+          # Abandon the edit so we leave no changes behind (read-only).
+          curl -fsS -X DELETE "$base/edits/$edit_id" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" -o /dev/null \
+            && echo "edit abandoned (read-only, no changes committed)"

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/eddimull/TTS-App/compare/v1.5.0...v1.5.1) (2026-06-27)
+
+
+### Bug Fixes
+
+* **ci:** add `workflows` permission to sync-deploy-dropdown job ([#58](https://github.com/eddimull/TTS-App/issues/58)) ([9b40096](https://github.com/eddimull/TTS-App/commit/9b40096008fd6be9af05b2bf4f4cdda301c7ea83))
+
 ## [1.5.0](https://github.com/eddimull/TTS-App/compare/v1.4.0...v1.5.0) (2026-06-27)
 
 

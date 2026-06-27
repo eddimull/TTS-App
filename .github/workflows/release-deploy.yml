@@ -262,7 +262,10 @@ jobs:
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
           token_format: access_token
           # androidpublisher scope is required to read/promote Play tracks.
-          scopes: https://www.googleapis.com/auth/androidpublisher
+          # NOTE: the input is access_token_scopes (NOT scopes) — auth@v2
+          # silently ignores an unknown 'scopes' input and falls back to the
+          # default cloud-platform scope, which 403s against the Play API.
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
 
       - name: Promote internal build to production
         env:
@@ -272,10 +275,15 @@ jobs:
           set -euo pipefail
           base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE}"
 
-          # 1. Open an edit.
-          edit_id="$(curl -fsS -X POST "$base/edits" \
+          # 1. Open an edit. Capture the body first so an auth/permission
+          #    failure surfaces as a clear message rather than a JSON parse error.
+          edit_json="$(curl -fsS -X POST "$base/edits" \
             -H "Authorization: Bearer $ACCESS_TOKEN" \
-            -H "Content-Length: 0" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')"
+            -H "Content-Length: 0")" || {
+              echo "::error::Failed to create a Play edit. Check that the service account has Android Publisher access and that the access token carries the androidpublisher scope (access_token_scopes)."
+              exit 1
+            }
+          edit_id="$(printf '%s' "$edit_json" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')"
           echo "edit id: $edit_id"
 
           # 2. Read the internal track and choose the versionCode to promote:

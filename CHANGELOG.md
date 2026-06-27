@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.2](https://github.com/eddimull/TTS-App/compare/v1.5.1...v1.5.2) (2026-06-27)
+
+
+### Bug Fixes
+
+* **deploy:** make store submission idempotent on re-runs ([7c79e64](https://github.com/eddimull/TTS-App/commit/7c79e6437264b9cd1109542db9656fe4a53dbce7))
+* **deploy:** unblock App Store + Play production submission ([84600fe](https://github.com/eddimull/TTS-App/commit/84600fedca0c50afa07e85ac7c9336609733b0b4))
+
 ## [1.5.1](https://github.com/eddimull/TTS-App/compare/v1.5.0...v1.5.1) (2026-06-27)
 
 

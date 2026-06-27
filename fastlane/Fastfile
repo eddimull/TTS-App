@@ -68,7 +68,14 @@ platform :ios do
     # NOTE: App Store *reviewer notes* (app_review_information(notes:)) are a
     # different field and remain unset here. submission_information below only
     # answers the IDFA questionnaire, which is required for review to go through.
-    notes_path = "fastlane/metadata/en-US/release_notes.txt"
+    # Resolve the metadata dir from DELIVER_METADATA_PATH (an absolute path the
+    # workflow exports). Do NOT use a bare "fastlane/metadata" relative path:
+    # fastlane runs the lane with its working directory set to the fastlane/
+    # folder, so that would resolve to fastlane/fastlane/metadata and miss the
+    # file. Fall back to a path relative to this Fastfile for local runs.
+    metadata_path = ENV["DELIVER_METADATA_PATH"]
+    metadata_path = File.expand_path("metadata", __dir__) if metadata_path.nil? || metadata_path.empty?
+    notes_path = File.join(metadata_path, "en-US", "release_notes.txt")
     unless File.exist?(notes_path) && !File.read(notes_path).strip.empty?
       UI.user_error!("Missing/empty release notes at #{notes_path}. App Store requires a 'What's New' value to submit for review; the workflow's 'Generate release notes' step should have written this file.")
     end
@@ -114,6 +121,7 @@ platform :ios do
       api_key: api_key,
       app_identifier: "band.tts.mate",
       app_version: options[:version],
+      metadata_path: metadata_path,
       skip_binary_upload: true,
       skip_metadata: false,
       skip_screenshots: true,

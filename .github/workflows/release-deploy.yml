@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Test the sanitizer against the same code the deploy jobs build:
+          # the selected tag on manual runs, the release tag otherwise.
+          ref: ${{ inputs.tag || github.ref }}
       - name: Test release-notes sanitizer
         run: bash scripts/test_release_notes.sh
 
@@ -26,9 +30,9 @@ jobs:
         with:
           fetch-depth: 0
           # Manual runs build the exact tag the operator selects; the
-          # release:published trigger leaves this empty and checks out the
-          # ref that published the release.
-          ref: ${{ inputs.tag }}
+          # release:published trigger leaves inputs.tag empty, so fall back to
+          # github.ref (the tag that published the release).
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Resolve version name
         env:
@@ -183,9 +187,9 @@ jobs:
         with:
           fetch-depth: 0
           # Manual runs build the exact tag the operator selects; the
-          # release:published trigger leaves this empty and checks out the
-          # ref that published the release.
-          ref: ${{ inputs.tag }}
+          # release:published trigger leaves inputs.tag empty, so fall back to
+          # github.ref (the tag that published the release).
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Resolve version name
         env:

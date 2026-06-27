@@ -107,6 +107,9 @@ jobs:
           # because it is the only metadata file present, updates ONLY whatsNew.
           bash scripts/release_notes.sh CHANGELOG.md 4000 > fastlane/metadata/en-US/release_notes.txt
           echo "----- release_notes.txt -----"; cat fastlane/metadata/en-US/release_notes.txt
+          # Export the absolute metadata dir so the Fastfile finds it regardless
+          # of fastlane's working directory.
+          echo "DELIVER_METADATA_PATH=$PWD/fastlane/metadata" >> "$GITHUB_ENV"
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2

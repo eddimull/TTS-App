@@ -16,21 +16,13 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release to deploy'
+        # Free text: "latest" (the default) resolves to the newest published
+        # release at run time; or type a specific tag (e.g. v1.5.2) to redeploy
+        # an older one. The resolve job below validates the tag exists.
+        description: 'Release tag to deploy ("latest" or e.g. v1.5.2)'
         required: true
-        type: choice
+        type: string
         default: latest
-        # "latest" resolves to the newest published release at run time, so it
-        # never goes stale. The concrete tags below let you redeploy an older
-        # release. release-please appends each new tag here on release (see
-        # the "Sync deploy dropdown" step in release-please.yml).
-        options:
-          - latest
-          # BEGIN release tags (managed by release-please) — do not edit by hand
-          - v1.4.0
-          - v1.3.0
-          - v1.2.0
-          # END release tags
 
 permissions:
   contents: read

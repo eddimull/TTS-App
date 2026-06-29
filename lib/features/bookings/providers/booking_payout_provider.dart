@@ -17,11 +17,16 @@ class BookingPayoutNotifier extends AsyncNotifier<BookingPayout> {
   }
 
   Future<void> _refresh() async {
+    final previous = state;
     // ignore: invalid_use_of_internal_member
-    state = const AsyncLoading<BookingPayout>().copyWithPrevious(state);
-    state = await AsyncValue.guard(
+    state = const AsyncLoading<BookingPayout>().copyWithPrevious(previous);
+    final result = await AsyncValue.guard(
       () => ref.read(bookingsRepositoryProvider).fetchPayout(_key.bandId, _key.bookingId),
     );
+    // Preserve the previous value on the error path so the screen doesn't
+    // blank when a re-fetch fails after a mutation (Copilot review Finding 1).
+    // ignore: invalid_use_of_internal_member
+    state = result.copyWithPrevious(previous);
     ref.read(cacheInvalidatorProvider).onBookingDetailChanged(
           bandId: _key.bandId,
           bookingId: _key.bookingId,

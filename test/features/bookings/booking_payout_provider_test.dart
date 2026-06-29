@@ -78,6 +78,21 @@ class _ThrowingRepo extends _FakeRepo {
       throw _error;
 }
 
+// Repo whose mutation calls SUCCEED but whose fetchPayout throws on the second
+// call (the post-mutation refresh).  Used to verify Finding 1: _refresh() must
+// retain the previous value in state even when the re-fetch fails.
+class _RefetchFailingRepo extends _FakeRepo {
+  final Exception _refetchError = Exception('refresh network failure');
+
+  @override
+  Future<BookingPayout> fetchPayout(int bandId, int bookingId) async {
+    fetchCount++;
+    // First call (initial build) succeeds; subsequent calls (refresh) throw.
+    if (fetchCount > 1) throw _refetchError;
+    return _payout();
+  }
+}
+
 void main() {
   ProviderContainer makeContainer(_FakeRepo repo) {
     final c = ProviderContainer(overrides: [
@@ -247,6 +262,33 @@ void main() {
       final state = c.read(bookingPayoutProvider(key));
       expect(state, isA<AsyncError<BookingPayout>>());
       expect(state.hasValue, isTrue);
+    });
+  });
+
+  // ── Refetch failure tests (Copilot review Finding 1) ───────────────────────
+  //
+  // Mutation succeeds but the subsequent _refresh() fetchPayout call throws.
+  // The provider must end in AsyncError WITH the previous value retained
+  // (hasValue == true), so the screen body is not blanked.
+
+  group('mutation succeeds but _refresh() re-fetch fails → previous data retained', () {
+    test('switchConfig: re-fetch failure leaves state as AsyncError with hasValue == true', () async {
+      final repo = _RefetchFailingRepo();
+      final c = makeContainer(repo);
+      await c.read(bookingPayoutProvider(key).future); // prime to AsyncData
+
+      // switchConfig itself succeeds (mutation call is a no-op in _FakeRepo),
+      // but the following _refresh() will throw on fetchPayout call #2.
+      // The notifier does NOT rethrow the refresh error, so we just await it.
+      await c.read(bookingPayoutProvider(key).notifier).switchConfig(7);
+
+      final state = c.read(bookingPayoutProvider(key));
+      expect(state, isA<AsyncError<BookingPayout>>(),
+          reason: 'state should be AsyncError when refresh fails');
+      // Previous payout must still be present so the screen does not blank.
+      expect(state.hasValue, isTrue,
+          reason: 'previous payout should be retained in state.value');
+      expect(state.value, isNotNull);
     });
   });
 }

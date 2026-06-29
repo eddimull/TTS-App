@@ -92,25 +92,24 @@ class BookingPayoutScreen extends ConsumerWidget {
         middle: Text('Payout'),
       ),
       child: SafeArea(
-        child: payoutAsync.when(
-          // skipLoadingOnReload: keeps previous data visible during mutation
-          // re-fetches; the spinner only shows on the initial load (no
-          // previous value), which is the correct behaviour.
-          skipLoadingOnReload: true,
-          loading: () => const Center(child: CupertinoActivityIndicator()),
-          error: (e, _) =>
-              ErrorView(message: ErrorView.friendlyMessage(e)),
-          data: (payout) => _PayoutBody(
-            payout: payout,
-            bandId: bandId,
-            bookingId: bookingId,
-            currentUserId: currentUserId,
-            onSelectConfig: onSelectConfig,
-            onSetAttendance: onSetAttendance,
-            onDelete: onDelete,
-            onAdd: onAdd,
-          ),
-        ),
+        // Body selection: show the body whenever a payout value is available
+        // (covers data, reload-with-previous, AND error-with-previous), fall
+        // back to a full-screen error only on initial-load failure (no value),
+        // and show the spinner only on the initial load (Copilot review Finding 2).
+        child: payoutAsync.hasValue
+            ? _PayoutBody(
+                payout: payoutAsync.requireValue,
+                bandId: bandId,
+                bookingId: bookingId,
+                currentUserId: currentUserId,
+                onSelectConfig: onSelectConfig,
+                onSetAttendance: onSetAttendance,
+                onDelete: onDelete,
+                onAdd: onAdd,
+              )
+            : payoutAsync.hasError
+                ? ErrorView(message: ErrorView.friendlyMessage(payoutAsync.error!))
+                : const Center(child: CupertinoActivityIndicator()),
       ),
     );
   }

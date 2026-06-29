@@ -1,10 +1,7 @@
-import 'dart:io';
-
 import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_config.dart';
+import 'dev_tls.dart';
 import '../storage/secure_storage.dart';
 import 'api_endpoints.dart';
 import '../../shared/providers/selected_band_provider.dart';
@@ -48,18 +45,9 @@ class ApiClient {
       ),
     );
 
-    // Debug-only: accept self-signed / untrusted certs so the app can talk to a
-    // local HTTPS dev server (e.g. an mkcert cert the device doesn't trust).
-    // Never compiled into release builds — production keeps strict TLS.
-    if (kDebugMode) {
-      dio.httpClientAdapter = IOHttpClientAdapter(
-        createHttpClient: () {
-          final client = HttpClient();
-          client.badCertificateCallback = (cert, host, port) => true;
-          return client;
-        },
-      );
-    }
+    // Debug-only: trust the local HTTPS dev server's self-signed cert. No-op on
+    // web and in release builds. See dev_tls.dart.
+    configureDevTls(dio);
 
     dio.interceptors.add(
       InterceptorsWrapper(

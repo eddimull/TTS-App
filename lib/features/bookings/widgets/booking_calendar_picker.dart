@@ -417,8 +417,7 @@ class _LegendItem extends StatelessWidget {
             fontSize: 11,
             color: context.secondaryText,
             decoration: strikethrough ? TextDecoration.lineThrough : null,
-            decorationColor:
-                CupertinoColors.secondaryLabel.resolveFrom(context),
+            decorationColor: context.secondaryText,
           ),
         ),
       ],

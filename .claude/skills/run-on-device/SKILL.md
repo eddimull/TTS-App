@@ -22,26 +22,14 @@ is **silent**: `auth_provider.dart`'s `checkAuth`/`login` swallow it in
 
 **Do NOT try to fix this by installing the mkcert CA on the device.** That was
 tried and failed (Android user-CA trust + `network_security_config` is fiddly
-and hard to verify without root). The reliable fix is already in the code: a
-`kDebugMode`-gated `badCertificateCallback` in
-`lib/core/network/api_client.dart` that accepts any cert in **debug builds
-only** (never ships in release). If that block is gone, re-add it before
-running — it is what makes on-device login work.
-
-```dart
-// lib/core/network/api_client.dart, inside _buildDio() after creating `dio`
-if (kDebugMode) {
-  dio.httpClientAdapter = IOHttpClientAdapter(
-    createHttpClient: () {
-      final client = HttpClient();
-      client.badCertificateCallback = (cert, host, port) => true;
-      return client;
-    },
-  );
-}
-// needs: import 'dart:io'; import 'package:dio/io.dart';
-//        import 'package:flutter/foundation.dart';
-```
+and hard to verify without root). The reliable fix is already in the code:
+`configureDevTls(dio)` in `lib/core/network/api_client.dart` (impl in
+`dev_tls_io.dart`, with a web no-op stub via conditional import). In **debug
+builds only**, it trusts self-signed certs **for loopback hosts only** — so
+`localhost`/`127.0.0.1` dev servers work while staging/prod still get strict
+TLS. Never ships in release. If `configureDevTls` is gone or no longer called
+from `_buildDio()`, restore it before running — it is what makes on-device
+login work.
 
 ## Known-good environment (this machine)
 

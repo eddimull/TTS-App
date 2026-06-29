@@ -191,12 +191,10 @@ void main() {
       final c = makeThrowingContainer();
       await c.read(bookingPayoutProvider(key).future); // prime to AsyncData
 
-      expect(
-        () => c.read(bookingPayoutProvider(key).notifier).switchConfig(99),
+      await expectLater(
+        c.read(bookingPayoutProvider(key).notifier).switchConfig(99),
         throwsException,
       );
-      // Give microtask queue a chance to settle.
-      await Future<void>.value();
 
       final state = c.read(bookingPayoutProvider(key));
       expect(state, isA<AsyncError<BookingPayout>>());
@@ -209,11 +207,10 @@ void main() {
       final c = makeThrowingContainer();
       await c.read(bookingPayoutProvider(key).future);
 
-      expect(
-        () => c.read(bookingPayoutProvider(key).notifier).setAttendance(1, 2, 'absent'),
+      await expectLater(
+        c.read(bookingPayoutProvider(key).notifier).setAttendance(1, 2, 'absent'),
         throwsException,
       );
-      await Future<void>.value();
 
       final state = c.read(bookingPayoutProvider(key));
       expect(state, isA<AsyncError<BookingPayout>>());
@@ -224,11 +221,10 @@ void main() {
       final c = makeThrowingContainer();
       await c.read(bookingPayoutProvider(key).future);
 
-      expect(
-        () => c.read(bookingPayoutProvider(key).notifier).deleteAdjustment(7),
+      await expectLater(
+        c.read(bookingPayoutProvider(key).notifier).deleteAdjustment(7),
         throwsException,
       );
-      await Future<void>.value();
 
       final state = c.read(bookingPayoutProvider(key));
       expect(state, isA<AsyncError<BookingPayout>>());

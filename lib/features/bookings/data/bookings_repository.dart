@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tts_bandmate/core/providers/core_providers.dart';
 import '../../events/data/models/event_detail.dart';
 import 'models/booking_contact.dart';
+import 'models/booking_payout.dart';
 import 'models/booking_detail.dart';
 import 'models/booking_history_entry.dart';
 import 'models/booking_summary.dart';
@@ -379,6 +380,36 @@ class BookingsRepository {
       ApiEndpoints.mobileBookingContractViewUrl(bandId, bookingId),
     );
     return response.data!['url'] as String;
+  }
+
+  /// Fetch the full payout breakdown for a booking.
+  Future<BookingPayout> fetchPayout(int bandId, int bookingId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileBookingPayout(bandId, bookingId),
+    );
+    return BookingPayout.fromJson(response.data!);
+  }
+
+  /// Add a payout adjustment to a booking.
+  Future<void> addPayoutAdjustment(int bandId, int bookingId, Map<String, dynamic> body) async {
+    await _dio.post(ApiEndpoints.mobileBookingPayoutAdjustments(bandId, bookingId), data: body);
+  }
+
+  /// Delete a payout adjustment from a booking.
+  Future<void> deletePayoutAdjustment(int bandId, int bookingId, int adjustmentId) async {
+    await _dio.delete(ApiEndpoints.mobileBookingPayoutAdjustment(bandId, bookingId, adjustmentId));
+  }
+
+  /// Set the active payout configuration for a booking.
+  Future<void> updatePayoutConfiguration(int bandId, int bookingId, int configId) async {
+    await _dio.put(ApiEndpoints.mobileBookingPayoutConfiguration(bandId, bookingId),
+        data: {'payout_config_id': configId});
+  }
+
+  /// Update attendance status for a member on a booking event.
+  Future<void> updateAttendance(int bandId, int bookingId, int eventId, int memberId, String status) async {
+    await _dio.patch(ApiEndpoints.mobileEventMemberAttendance(bandId, bookingId, eventId, memberId),
+        data: {'attendance_status': status});
   }
 }
 

@@ -458,6 +458,14 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
                   onTap: () => context.push(
                       '/bookings/${widget.bandId}/${widget.bookingId}/payments'),
                 ),
+                if ((double.tryParse(b.price ?? '') ?? 0) > 0)
+                  BookingSectionTile(
+                    icon: CupertinoIcons.chart_pie,
+                    title: 'Payout',
+                    subtitle: 'Member breakdown across performances',
+                    onTap: () => context.push(
+                        '/bookings/${widget.bandId}/${widget.bookingId}/payout'),
+                  ),
 
                 // ── Inline contacts preview ───────────────────────────────
                 const SizedBox(height: 16),

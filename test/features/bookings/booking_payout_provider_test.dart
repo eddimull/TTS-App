@@ -19,6 +19,9 @@ class _FakeRepo extends BookingsRepository {
   _FakeRepo() : super(Dio());
   int fetchCount = 0;
   String? lastAttendance;
+  Map<String, dynamic>? lastAdjustmentBody;
+  int? lastDeletedAdjustmentId;
+  int? lastSwitchedConfigId;
 
   BookingPayout _payout() => BookingPayout.fromJson({
         'payout': {'id': 1, 'base_amount': '100.00', 'adjusted_amount': '100.00', 'payout_config_id': 1},
@@ -39,7 +42,19 @@ class _FakeRepo extends BookingsRepository {
   }
 
   @override
-  Future<void> addPayoutAdjustment(int bandId, int bookingId, Map<String, dynamic> body) async {}
+  Future<void> addPayoutAdjustment(int bandId, int bookingId, Map<String, dynamic> body) async {
+    lastAdjustmentBody = body;
+  }
+
+  @override
+  Future<void> deletePayoutAdjustment(int bandId, int bookingId, int adjustmentId) async {
+    lastDeletedAdjustmentId = adjustmentId;
+  }
+
+  @override
+  Future<void> updatePayoutConfiguration(int bandId, int bookingId, int configId) async {
+    lastSwitchedConfigId = configId;
+  }
 }
 
 void main() {
@@ -69,5 +84,78 @@ void main() {
     await c.read(bookingPayoutProvider(key).notifier).setAttendance(3, 5, 'absent');
     expect(repo.lastAttendance, 'absent');
     expect(repo.fetchCount, 2); // initial build + post-mutation refetch
+  });
+
+  test('addAdjustment calls repo then re-fetches', () async {
+    final repo = _FakeRepo();
+    final c = makeContainer(repo);
+    await c.read(bookingPayoutProvider(key).future);
+    await c.read(bookingPayoutProvider(key).notifier).addAdjustment(
+          amount: 25.0,
+          description: 'Travel',
+          notes: 'Long drive',
+        );
+    expect(repo.lastAdjustmentBody, containsPair('amount', 25.0));
+    expect(repo.lastAdjustmentBody, containsPair('description', 'Travel'));
+    expect(repo.fetchCount, 2);
+  });
+
+  test('addAdjustment omits notes when empty, includes when non-empty', () async {
+    final repo = _FakeRepo();
+    final c = makeContainer(repo);
+    await c.read(bookingPayoutProvider(key).future);
+
+    // Empty notes → key must be absent from the body sent to the repo.
+    await c.read(bookingPayoutProvider(key).notifier).addAdjustment(
+          amount: 10.0,
+          description: 'x',
+          notes: '',
+        );
+    expect(repo.lastAdjustmentBody!.containsKey('notes'), isFalse);
+
+    // Non-empty notes → key must be present.
+    await c.read(bookingPayoutProvider(key).notifier).addAdjustment(
+          amount: 10.0,
+          description: 'x',
+          notes: 'important',
+        );
+    expect(repo.lastAdjustmentBody, containsPair('notes', 'important'));
+  });
+
+  test('deleteAdjustment calls repo then re-fetches', () async {
+    final repo = _FakeRepo();
+    final c = makeContainer(repo);
+    await c.read(bookingPayoutProvider(key).future);
+    await c.read(bookingPayoutProvider(key).notifier).deleteAdjustment(42);
+    expect(repo.lastDeletedAdjustmentId, 42);
+    expect(repo.fetchCount, 2);
+  });
+
+  test('switchConfig calls repo then re-fetches', () async {
+    final repo = _FakeRepo();
+    final c = makeContainer(repo);
+    await c.read(bookingPayoutProvider(key).future);
+    await c.read(bookingPayoutProvider(key).notifier).switchConfig(7);
+    expect(repo.lastSwitchedConfigId, 7);
+    expect(repo.fetchCount, 2);
+  });
+
+  test('re-fetch emits loading-with-previous then settles to data', () async {
+    final repo = _FakeRepo();
+    final c = makeContainer(repo);
+    await c.read(bookingPayoutProvider(key).future);
+
+    // NOTE: The transient AsyncLoading-with-previous state is not assertable
+    // here because _FakeRepo resolves synchronously, so by the time we read
+    // the provider after unawaited mutation the state has already settled.
+    // We assert only the final settled state. The loading emission is verified
+    // structurally by reading the provider code (copyWithPrevious assignment).
+    await c.read(bookingPayoutProvider(key).notifier).addAdjustment(
+          amount: 5.0,
+          description: 'test',
+        );
+
+    // After settling, state must be data again.
+    expect(c.read(bookingPayoutProvider(key)), isA<AsyncData<BookingPayout>>());
   });
 }

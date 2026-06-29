@@ -17,6 +17,8 @@ class BookingPayoutNotifier extends AsyncNotifier<BookingPayout> {
   }
 
   Future<void> _refresh() async {
+    // ignore: invalid_use_of_internal_member
+    state = const AsyncLoading<BookingPayout>().copyWithPrevious(state);
     state = await AsyncValue.guard(
       () => ref.read(bookingsRepositoryProvider).fetchPayout(_key.bandId, _key.bookingId),
     );

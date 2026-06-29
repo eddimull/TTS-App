@@ -51,6 +51,16 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/bookings/$bookingId/payments';
   static String mobileBookingPayment(int bandId, int bookingId, int paymentId) =>
       '/api/mobile/bands/$bandId/bookings/$bookingId/payments/$paymentId';
+  static String mobileBookingPayout(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/payout';
+  static String mobileBookingPayoutAdjustments(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/payout/adjustments';
+  static String mobileBookingPayoutAdjustment(int bandId, int bookingId, int adjustmentId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/payout/adjustments/$adjustmentId';
+  static String mobileBookingPayoutConfiguration(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/payout/configuration';
+  static String mobileEventMemberAttendance(int bandId, int bookingId, int eventId, int memberId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/events/$eventId/members/$memberId/attendance';
   static String mobileBookingContract(int bandId, int bookingId) =>
       '/api/mobile/bands/$bandId/bookings/$bookingId/contract';
   static String mobileBookingContractUpload(int bandId, int bookingId) =>

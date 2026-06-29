@@ -57,6 +57,27 @@ class _FakeRepo extends BookingsRepository {
   }
 }
 
+// Repo that throws on every mutating call, to exercise the error surfacing path.
+class _ThrowingRepo extends _FakeRepo {
+  final Exception _error = Exception('network failure');
+
+  @override
+  Future<void> updatePayoutConfiguration(int bandId, int bookingId, int configId) async =>
+      throw _error;
+
+  @override
+  Future<void> updateAttendance(int bandId, int bookingId, int eventId, int memberId, String status) async =>
+      throw _error;
+
+  @override
+  Future<void> deletePayoutAdjustment(int bandId, int bookingId, int adjustmentId) async =>
+      throw _error;
+
+  @override
+  Future<void> addPayoutAdjustment(int bandId, int bookingId, Map<String, dynamic> body) async =>
+      throw _error;
+}
+
 void main() {
   ProviderContainer makeContainer(_FakeRepo repo) {
     final c = ProviderContainer(overrides: [
@@ -157,5 +178,79 @@ void main() {
 
     // After settling, state must be data again.
     expect(c.read(bookingPayoutProvider(key)), isA<AsyncData<BookingPayout>>());
+  });
+
+  // ── Error-surfacing tests (Imp2) ────────────────────────────────────────────
+
+  group('mutation repo failure → AsyncError with previous data retained', () {
+    // Helper: build a container with the throwing repo and prime the notifier
+    // so state starts as AsyncData (i.e. there IS a previous value to retain).
+    ProviderContainer makeThrowingContainer() => makeContainer(_ThrowingRepo());
+
+    test('switchConfig: state becomes AsyncError and hasValue == true', () async {
+      final c = makeThrowingContainer();
+      await c.read(bookingPayoutProvider(key).future); // prime to AsyncData
+
+      expect(
+        () => c.read(bookingPayoutProvider(key).notifier).switchConfig(99),
+        throwsException,
+      );
+      // Give microtask queue a chance to settle.
+      await Future<void>.value();
+
+      final state = c.read(bookingPayoutProvider(key));
+      expect(state, isA<AsyncError<BookingPayout>>());
+      // Previous data must be retained so the screen does not blank.
+      expect(state.hasValue, isTrue);
+      expect(state.value, isNotNull);
+    });
+
+    test('setAttendance: state becomes AsyncError and hasValue == true', () async {
+      final c = makeThrowingContainer();
+      await c.read(bookingPayoutProvider(key).future);
+
+      expect(
+        () => c.read(bookingPayoutProvider(key).notifier).setAttendance(1, 2, 'absent'),
+        throwsException,
+      );
+      await Future<void>.value();
+
+      final state = c.read(bookingPayoutProvider(key));
+      expect(state, isA<AsyncError<BookingPayout>>());
+      expect(state.hasValue, isTrue);
+    });
+
+    test('deleteAdjustment: state becomes AsyncError and hasValue == true', () async {
+      final c = makeThrowingContainer();
+      await c.read(bookingPayoutProvider(key).future);
+
+      expect(
+        () => c.read(bookingPayoutProvider(key).notifier).deleteAdjustment(7),
+        throwsException,
+      );
+      await Future<void>.value();
+
+      final state = c.read(bookingPayoutProvider(key));
+      expect(state, isA<AsyncError<BookingPayout>>());
+      expect(state.hasValue, isTrue);
+    });
+
+    test('addAdjustment: state becomes AsyncError, hasValue == true, and rethrows', () async {
+      final c = makeThrowingContainer();
+      await c.read(bookingPayoutProvider(key).future);
+
+      // addAdjustment must rethrow so the sheet's try/catch can catch it.
+      await expectLater(
+        c.read(bookingPayoutProvider(key).notifier).addAdjustment(
+          amount: 10.0,
+          description: 'Test',
+        ),
+        throwsException,
+      );
+
+      final state = c.read(bookingPayoutProvider(key));
+      expect(state, isA<AsyncError<BookingPayout>>());
+      expect(state.hasValue, isTrue);
+    });
   });
 }

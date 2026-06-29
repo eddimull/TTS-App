@@ -30,15 +30,57 @@ class BookingPayoutScreen extends ConsumerWidget {
 
     // Build mutation callbacks here so _PayoutBody stays ref-free.
     final notifier = ref.read(bookingPayoutProvider(key).notifier);
-    void onSelectConfig(int id) => notifier.switchConfig(id);
-    Future<void> onSetAttendance(int eventId, int memberId, String status) =>
-        notifier.setAttendance(eventId, memberId, status);
-    Future<void> onDelete(int id) => notifier.deleteAdjustment(id);
+
+    // Shows a Cupertino error alert for mutations that don't have their own
+    // sheet-level error handling.  Uses ErrorView.friendlyMessage so raw Dio
+    // error text never surfaces to the user.
+    Future<void> showMutationError(Object e) {
+      return showCupertinoDialog<void>(
+        context: context,
+        builder: (dialogContext) => CupertinoAlertDialog(
+          title: const Text('Something went wrong'),
+          content: Text(ErrorView.friendlyMessage(e)),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Future<void> onSelectConfig(int id) async {
+      try {
+        await notifier.switchConfig(id);
+      } catch (e) {
+        if (context.mounted) await showMutationError(e);
+      }
+    }
+
+    Future<void> onSetAttendance(int eventId, int memberId, String status) async {
+      try {
+        await notifier.setAttendance(eventId, memberId, status);
+      } catch (e) {
+        if (context.mounted) await showMutationError(e);
+      }
+    }
+
+    Future<void> onDelete(int id) async {
+      try {
+        await notifier.deleteAdjustment(id);
+      } catch (e) {
+        if (context.mounted) await showMutationError(e);
+      }
+    }
+
     Future<void> onAdd({
       required double amount,
       required String description,
       String? notes,
     }) =>
+        // addAdjustment rethrows so _AddAdjustmentSheet._save can catch it and
+        // show its own sheet-level error dialog.  No wrapping needed here.
         notifier.addAdjustment(
           amount: amount,
           description: description,
@@ -94,7 +136,7 @@ class _PayoutBody extends StatelessWidget {
   final int? currentUserId;
   // Callbacks are built in the parent ConsumerWidget so this widget stays
   // ref-free and is safe to use as a plain StatelessWidget.
-  final void Function(int configId) onSelectConfig;
+  final Future<void> Function(int configId) onSelectConfig;
   final Future<void> Function(int eventId, int memberId, String status)
       onSetAttendance;
   final Future<void> Function(int id) onDelete;
@@ -180,12 +222,21 @@ class _SummaryCard extends StatelessWidget {
               bold: true,
             ),
 
-            // Adjustments row only when present
+            // Adjustments row only when present — shows the signed NET DELTA,
+            // not the post-adjustment total (which would duplicate the "Total"
+            // stat tile and appear additive rather than subtractive).
             if (payout.hasAdjustments) ...[
               const SizedBox(height: 6),
               _FinRow(
                 label: 'Adjustments',
-                value: payout.displayAdjustedTotal,
+                value: payout.displayAdjustmentDelta,
+                // Red for negative delta (cost reduction applied), green for
+                // positive.  Zero is neutral so no color override needed.
+                valueColor: payout.adjustmentDelta < 0
+                    ? CupertinoColors.systemRed
+                    : payout.adjustmentDelta > 0
+                        ? CupertinoColors.systemGreen
+                        : null,
               ),
             ],
 
@@ -227,20 +278,32 @@ class _FinRow extends StatelessWidget {
     required this.label,
     required this.value,
     this.bold = false,
+    // Optional override for the value text colour (e.g. red for a negative
+    // adjustment delta).  Null means inherit from the default text style.
+    this.valueColor,
   });
 
   final String label;
   final String value;
   final bool bold;
+  final CupertinoDynamicColor? valueColor;
 
   @override
   Widget build(BuildContext context) {
     final weight = bold ? FontWeight.w600 : FontWeight.normal;
+    final resolvedValueColor = valueColor?.resolveFrom(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: TextStyle(fontSize: 15, fontWeight: weight)),
-        Text(value, style: TextStyle(fontSize: 15, fontWeight: weight)),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: weight,
+            color: resolvedValueColor,
+          ),
+        ),
       ],
     );
   }
@@ -297,7 +360,7 @@ class _ConfigSelector extends StatelessWidget {
   });
 
   final BookingPayout payout;
-  final void Function(int configId) onSelect;
+  final Future<void> Function(int configId) onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -361,7 +424,7 @@ class _ActiveConfigRow extends StatelessWidget {
 
   final PayoutConfigRef config;
   final List<PayoutConfigRef> availableConfigs;
-  final void Function(int configId) onSelect;
+  final Future<void> Function(int configId) onSelect;
 
   void _showPicker(BuildContext context) {
     showCupertinoModalPopup<void>(
@@ -1292,8 +1355,8 @@ class _AddAdjustmentSheetState extends State<_AddAdjustmentSheet> {
         showCupertinoDialog<void>(
           context: context,
           builder: (dialogContext) => CupertinoAlertDialog(
-            title: const Text('Error'),
-            content: Text(e.toString()),
+            title: const Text('Something went wrong'),
+            content: Text(ErrorView.friendlyMessage(e)),
             actions: [
               CupertinoDialogAction(
                 onPressed: () => Navigator.pop(dialogContext),

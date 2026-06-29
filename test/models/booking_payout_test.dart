@@ -66,4 +66,32 @@ void main() {
       expect(p.config, isNull);
     });
   });
+
+  group('BookingPayout adjustmentDelta / displayAdjustmentDelta', () {
+    test('negative delta: base 1000, adjusted 750 → delta -250 → "-\$250.00"', () {
+      final p = BookingPayout.fromJson(_flat());
+      expect(p.basePrice, 1000.0);
+      expect(p.adjustedTotal, 750.0);
+      expect(p.adjustmentDelta, -250.0);
+      expect(p.displayAdjustmentDelta, r'-$250.00');
+    });
+
+    test('positive delta: adjusted > base → prefix "+"', () {
+      final json = _flat();
+      // Override adjusted_amount to be higher than base to simulate a positive adjustment.
+      (json['payout'] as Map)['adjusted_amount'] = '1200.00';
+      final p = BookingPayout.fromJson(json);
+      expect(p.adjustmentDelta, 200.0);
+      expect(p.displayAdjustmentDelta, r'+$200.00');
+    });
+
+    test('zero delta: no adjustments applied → no sign prefix', () {
+      final json = _flat();
+      (json['payout'] as Map)['adjusted_amount'] = '1000.00';
+      final p = BookingPayout.fromJson(json);
+      expect(p.adjustmentDelta, 0.0);
+      // No sign prefix on zero.
+      expect(p.displayAdjustmentDelta, r'$0.00');
+    });
+  });
 }

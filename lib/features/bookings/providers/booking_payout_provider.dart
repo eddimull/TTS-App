@@ -28,49 +28,93 @@ class BookingPayoutNotifier extends AsyncNotifier<BookingPayout> {
         );
   }
 
+  // Wraps each mutation in the same error-surfacing pattern:
+  // 1. Set optimistic loading-with-previous so the UI stays populated.
+  // 2. Attempt the repo call.
+  // 3. On failure, surface AsyncError WITH the previous value retained
+  //    (copyWithPrevious) so the screen can show an error indicator without
+  //    blanking the existing data.  Then rethrow so call sites that want a
+  //    local error dialog (e.g. _AddAdjustmentSheet) can still catch it.
+  // 4. On success, trigger a refresh from the server.
+  //
+  // copyWithPrevious is marked @internal in Riverpod 3.x but is the
+  // recommended way to keep state.value populated on the error path.
+
   Future<void> addAdjustment({
     required double amount,
     required String description,
     String? notes,
   }) async {
-    await ref.read(bookingsRepositoryProvider).addPayoutAdjustment(
-      _key.bandId,
-      _key.bookingId,
-      {
-        'amount': amount,
-        'description': description,
-        if (notes != null && notes.isNotEmpty) 'notes': notes,
-      },
-    );
+    // ignore: invalid_use_of_internal_member
+    state = const AsyncLoading<BookingPayout>().copyWithPrevious(state);
+    try {
+      await ref.read(bookingsRepositoryProvider).addPayoutAdjustment(
+        _key.bandId,
+        _key.bookingId,
+        {
+          'amount': amount,
+          'description': description,
+          if (notes != null && notes.isNotEmpty) 'notes': notes,
+        },
+      );
+    } catch (e, st) {
+      // ignore: invalid_use_of_internal_member
+      state = AsyncValue<BookingPayout>.error(e, st).copyWithPrevious(state);
+      rethrow;
+    }
     await _refresh();
   }
 
   Future<void> deleteAdjustment(int adjustmentId) async {
-    await ref.read(bookingsRepositoryProvider).deletePayoutAdjustment(
-          _key.bandId,
-          _key.bookingId,
-          adjustmentId,
-        );
+    // ignore: invalid_use_of_internal_member
+    state = const AsyncLoading<BookingPayout>().copyWithPrevious(state);
+    try {
+      await ref.read(bookingsRepositoryProvider).deletePayoutAdjustment(
+            _key.bandId,
+            _key.bookingId,
+            adjustmentId,
+          );
+    } catch (e, st) {
+      // ignore: invalid_use_of_internal_member
+      state = AsyncValue<BookingPayout>.error(e, st).copyWithPrevious(state);
+      rethrow;
+    }
     await _refresh();
   }
 
   Future<void> switchConfig(int configId) async {
-    await ref.read(bookingsRepositoryProvider).updatePayoutConfiguration(
-          _key.bandId,
-          _key.bookingId,
-          configId,
-        );
+    // ignore: invalid_use_of_internal_member
+    state = const AsyncLoading<BookingPayout>().copyWithPrevious(state);
+    try {
+      await ref.read(bookingsRepositoryProvider).updatePayoutConfiguration(
+            _key.bandId,
+            _key.bookingId,
+            configId,
+          );
+    } catch (e, st) {
+      // ignore: invalid_use_of_internal_member
+      state = AsyncValue<BookingPayout>.error(e, st).copyWithPrevious(state);
+      rethrow;
+    }
     await _refresh();
   }
 
   Future<void> setAttendance(int eventId, int memberId, String status) async {
-    await ref.read(bookingsRepositoryProvider).updateAttendance(
-          _key.bandId,
-          _key.bookingId,
-          eventId,
-          memberId,
-          status,
-        );
+    // ignore: invalid_use_of_internal_member
+    state = const AsyncLoading<BookingPayout>().copyWithPrevious(state);
+    try {
+      await ref.read(bookingsRepositoryProvider).updateAttendance(
+            _key.bandId,
+            _key.bookingId,
+            eventId,
+            memberId,
+            status,
+          );
+    } catch (e, st) {
+      // ignore: invalid_use_of_internal_member
+      state = AsyncValue<BookingPayout>.error(e, st).copyWithPrevious(state);
+      rethrow;
+    }
     await _refresh();
   }
 }

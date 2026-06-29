@@ -153,6 +153,20 @@ class BookingPayout {
   String get displayBandCut => _money(bandCut);
   String get displayDistributable => _money(distributable);
 
+  // Net signed delta from adjustments (adjustedTotal - basePrice).
+  // Negative when adjustments reduce the total, positive when they add to it.
+  double get adjustmentDelta => adjustedTotal - basePrice;
+
+  // Signed display string: negative → "-$250.00", positive → "+$250.00".
+  // Matches the sign idiom used by PayoutAdjustment.displayAmount and adds
+  // an explicit "+" prefix on positive deltas for clarity in the summary row.
+  String get displayAdjustmentDelta {
+    final abs = _money(adjustmentDelta.abs());
+    if (adjustmentDelta < 0) return '-$abs';
+    if (adjustmentDelta > 0) return '+$abs';
+    return abs; // zero: no sign prefix
+  }
+
   factory BookingPayout.fromJson(Map<String, dynamic> json) {
     final payout = (json['payout'] as Map<String, dynamic>?) ?? const {};
     final result = json['result'] as Map<String, dynamic>?;

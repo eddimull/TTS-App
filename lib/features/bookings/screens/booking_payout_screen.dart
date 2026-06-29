@@ -28,12 +28,33 @@ class BookingPayoutScreen extends ConsumerWidget {
     final currentUserId =
         authState is AuthAuthenticated ? authState.user.id : null;
 
+    // Build mutation callbacks here so _PayoutBody stays ref-free.
+    final notifier = ref.read(bookingPayoutProvider(key).notifier);
+    void onSelectConfig(int id) => notifier.switchConfig(id);
+    Future<void> onSetAttendance(int eventId, int memberId, String status) =>
+        notifier.setAttendance(eventId, memberId, status);
+    Future<void> onDelete(int id) => notifier.deleteAdjustment(id);
+    Future<void> onAdd({
+      required double amount,
+      required String description,
+      String? notes,
+    }) =>
+        notifier.addAdjustment(
+          amount: amount,
+          description: description,
+          notes: notes,
+        );
+
     return CupertinoPageScaffold(
       navigationBar: const CupertinoNavigationBar(
         middle: Text('Payout'),
       ),
       child: SafeArea(
         child: payoutAsync.when(
+          // skipLoadingOnReload: keeps previous data visible during mutation
+          // re-fetches; the spinner only shows on the initial load (no
+          // previous value), which is the correct behaviour.
+          skipLoadingOnReload: true,
           loading: () => const Center(child: CupertinoActivityIndicator()),
           error: (e, _) =>
               ErrorView(message: ErrorView.friendlyMessage(e)),
@@ -42,8 +63,10 @@ class BookingPayoutScreen extends ConsumerWidget {
             bandId: bandId,
             bookingId: bookingId,
             currentUserId: currentUserId,
-            notifierKey: key,
-            ref: ref,
+            onSelectConfig: onSelectConfig,
+            onSetAttendance: onSetAttendance,
+            onDelete: onDelete,
+            onAdd: onAdd,
           ),
         ),
       ),
@@ -59,16 +82,27 @@ class _PayoutBody extends StatelessWidget {
     required this.bandId,
     required this.bookingId,
     required this.currentUserId,
-    required this.notifierKey,
-    required this.ref,
+    required this.onSelectConfig,
+    required this.onSetAttendance,
+    required this.onDelete,
+    required this.onAdd,
   });
 
   final BookingPayout payout;
   final int bandId;
   final int bookingId;
   final int? currentUserId;
-  final BookingPayoutKey notifierKey;
-  final WidgetRef ref;
+  // Callbacks are built in the parent ConsumerWidget so this widget stays
+  // ref-free and is safe to use as a plain StatelessWidget.
+  final void Function(int configId) onSelectConfig;
+  final Future<void> Function(int eventId, int memberId, String status)
+      onSetAttendance;
+  final Future<void> Function(int id) onDelete;
+  final Future<void> Function({
+    required double amount,
+    required String description,
+    String? notes,
+  }) onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -81,9 +115,7 @@ class _PayoutBody extends StatelessWidget {
         SliverToBoxAdapter(
           child: _ConfigSelector(
             payout: payout,
-            onSelect: (id) => ref
-                .read(bookingPayoutProvider(notifierKey).notifier)
-                .switchConfig(id),
+            onSelect: onSelectConfig,
           ),
         ),
 
@@ -101,9 +133,7 @@ class _PayoutBody extends StatelessWidget {
             child: _ByPerformanceSection(
               events: payout.events,
               currentUserId: currentUserId,
-              onSetAttendance: (eventId, memberId, status) => ref
-                  .read(bookingPayoutProvider(notifierKey).notifier)
-                  .setAttendance(eventId, memberId, status),
+              onSetAttendance: onSetAttendance,
             ),
           ),
 
@@ -111,16 +141,8 @@ class _PayoutBody extends StatelessWidget {
         SliverToBoxAdapter(
           child: _AdjustmentsSection(
             adjustments: payout.adjustments,
-            onDelete: (id) => ref
-                .read(bookingPayoutProvider(notifierKey).notifier)
-                .deleteAdjustment(id),
-            onAdd: ({required amount, required description, notes}) => ref
-                .read(bookingPayoutProvider(notifierKey).notifier)
-                .addAdjustment(
-                  amount: amount,
-                  description: description,
-                  notes: notes,
-                ),
+            onDelete: onDelete,
+            onAdd: onAdd,
           ),
         ),
 
@@ -300,7 +322,7 @@ class _NoConfigWarning extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: CupertinoColors.systemYellow.withValues(alpha: 0.15),
+        color: CupertinoColors.systemYellow.resolveFrom(context).withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: CupertinoColors.systemYellow.resolveFrom(context),
@@ -421,7 +443,7 @@ class _ActiveBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: CupertinoColors.systemGreen.withValues(alpha: 0.15),
+        color: CupertinoColors.systemGreen.resolveFrom(context).withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
           color: CupertinoColors.systemGreen.resolveFrom(context),
@@ -593,7 +615,7 @@ class _MemberRow extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: highlight
-            ? CupertinoColors.activeBlue.withValues(alpha: 0.07)
+            ? CupertinoColors.activeBlue.resolveFrom(context).withValues(alpha: 0.07)
             : null,
         border: showDivider
             ? Border(
@@ -931,14 +953,14 @@ class _AttendancePill extends StatelessWidget {
   Color _bgColor(BuildContext context) {
     switch (status) {
       case 'attended':
-        return CupertinoColors.systemGreen.withValues(alpha: 0.15);
+        return CupertinoColors.systemGreen.resolveFrom(context).withValues(alpha: 0.15);
       case 'absent':
-        return CupertinoColors.systemRed.withValues(alpha: 0.15);
+        return CupertinoColors.systemRed.resolveFrom(context).withValues(alpha: 0.15);
       case 'excused':
-        return CupertinoColors.systemOrange.withValues(alpha: 0.15);
+        return CupertinoColors.systemOrange.resolveFrom(context).withValues(alpha: 0.15);
       case 'confirmed':
       default:
-        return CupertinoColors.systemBlue.withValues(alpha: 0.15);
+        return CupertinoColors.systemBlue.resolveFrom(context).withValues(alpha: 0.15);
     }
   }
 

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../events/data/models/event_summary.dart';
 import '../../../shared/utils/time_format.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// A high-prominence banner shown on the dashboard when an event is currently
 /// in progress. Tapping navigates to the event detail screen.
@@ -94,7 +95,7 @@ class _LiveNowCardState extends State<LiveNowCard>
                     Icon(
                       CupertinoIcons.chevron_right,
                       size: 14,
-                      color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                      color: context.secondaryText,
                     ),
                   ],
                 ),
@@ -124,7 +125,7 @@ class _LiveNowCardState extends State<LiveNowCard>
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: CupertinoColors.label.resolveFrom(context),
+                              color: context.primaryText,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -134,8 +135,7 @@ class _LiveNowCardState extends State<LiveNowCard>
                             _subtitle,
                             style: TextStyle(
                               fontSize: 13,
-                              color: CupertinoColors.secondaryLabel
-                                  .resolveFrom(context),
+                              color: context.secondaryText,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

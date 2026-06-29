@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/band_member.dart';
 import '../providers/band_settings_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class MemberPermissionsScreen extends ConsumerWidget {
   const MemberPermissionsScreen({
@@ -45,11 +46,11 @@ class MemberPermissionsScreen extends ConsumerWidget {
     if (settingsAsync.hasError && !settingsAsync.hasValue) {
       return CupertinoPageScaffold(
         navigationBar: navBar,
-        child: const SafeArea(
+        child: SafeArea(
           child: Center(
             child: Text(
               'Failed to load permissions. Please try again.',
-              style: TextStyle(color: CupertinoColors.secondaryLabel),
+              style: TextStyle(color: context.secondaryText),
             ),
           ),
         ),
@@ -70,11 +71,11 @@ class MemberPermissionsScreen extends ConsumerWidget {
         child: ListView(
           children: [
             if (currentMember.isOwner)
-              const Padding(
-                padding: EdgeInsets.all(16),
+              Padding(
+                padding: const EdgeInsets.all(16),
                 child: Text(
                   'Owners have full access to all features.',
-                  style: TextStyle(color: CupertinoColors.secondaryLabel),
+                  style: TextStyle(color: context.secondaryText),
                 ),
               ),
             const SizedBox(height: 8),

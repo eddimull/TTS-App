@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// A tappable row used on the booking detail screen to navigate to sub-screens
 /// (Payments, Contacts, Contract, History). Shows an icon, title, optional
@@ -46,19 +47,19 @@ class BookingSectionTile extends StatelessWidget {
                   if (subtitle != null)
                     Text(
                       subtitle!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: CupertinoColors.secondaryLabel,
+                        color: context.secondaryText,
                       ),
                     ),
                 ],
               ),
             ),
             if (badge != null) ...[badge!, const SizedBox(width: 8)],
-            const Icon(
+            Icon(
               CupertinoIcons.chevron_forward,
               size: 14,
-              color: CupertinoColors.tertiaryLabel,
+              color: context.tertiaryText,
             ),
           ],
         ),

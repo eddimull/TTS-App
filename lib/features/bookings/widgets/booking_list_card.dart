@@ -4,6 +4,7 @@ import 'package:tts_bandmate/shared/widgets/band_identity_chip.dart';
 import 'package:tts_bandmate/shared/widgets/status_chip.dart';
 
 import '../data/models/booking_summary.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Single booking row in the bookings list. Renders the booking name with an
 /// inline `[N events]` chip when [booking.isMultiEvent], plus the spec
@@ -89,8 +90,7 @@ class BookingListCard extends StatelessWidget {
                         _subtitleFor(booking),
                         style: TextStyle(
                           fontSize: 13,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context),
+                          color: context.secondaryText,
                         ),
                       ),
                       if (booking.venueSummary != null &&
@@ -101,8 +101,7 @@ class BookingListCard extends StatelessWidget {
                             Icon(
                               CupertinoIcons.location,
                               size: 11,
-                              color: CupertinoColors.tertiaryLabel
-                                  .resolveFrom(context),
+                              color: context.tertiaryText,
                             ),
                             const SizedBox(width: 3),
                             Expanded(
@@ -110,8 +109,7 @@ class BookingListCard extends StatelessWidget {
                                 booking.venueSummary!,
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: CupertinoColors.secondaryLabel
-                                      .resolveFrom(context),
+                                  color: context.secondaryText,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -139,7 +137,7 @@ class BookingListCard extends StatelessWidget {
                 child: Icon(
                   CupertinoIcons.chevron_right,
                   size: 14,
-                  color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                  color: context.tertiaryText,
                 ),
               ),
             ],

@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/user_stats.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Expandable list of yearly booking summaries with per-booking detail rows.
 class BookingsByYearSection extends StatefulWidget {
@@ -130,8 +131,7 @@ class _YearGroup extends StatelessWidget {
                               inlineLine.toString(),
                               style: TextStyle(
                                 fontSize: 13,
-                                color: CupertinoColors.secondaryLabel
-                                    .resolveFrom(context),
+                                color: context.secondaryText,
                               ),
                             ),
                           ],
@@ -142,8 +142,7 @@ class _YearGroup extends StatelessWidget {
                             ? CupertinoIcons.chevron_up
                             : CupertinoIcons.chevron_down,
                         size: 14,
-                        color:
-                            CupertinoColors.tertiaryLabel.resolveFrom(context),
+                        color: context.tertiaryText,
                       ),
                     ],
                   ),
@@ -219,7 +218,7 @@ class _BookingDetailRow extends StatelessWidget {
                 _formatDate(booking.date),
                 style: TextStyle(
                   fontSize: 12,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  color: context.secondaryText,
                 ),
               ),
               if (booking.isUpcoming) ...[
@@ -260,7 +259,7 @@ class _BookingDetailRow extends StatelessWidget {
               booking.bandName,
               style: TextStyle(
                 fontSize: 13,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
             ),
           // Venue
@@ -270,7 +269,7 @@ class _BookingDetailRow extends StatelessWidget {
                 : booking.venueName,
             style: TextStyle(
               fontSize: 12,
-              color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+              color: context.tertiaryText,
             ),
           ),
           const SizedBox(height: 4),

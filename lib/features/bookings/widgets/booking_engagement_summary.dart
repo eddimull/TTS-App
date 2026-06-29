@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import '../data/models/booking_detail.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Top-of-screen engagement summary: optional `[N events]` chip on
 /// multi-event bookings, and a one-line subtitle
@@ -47,7 +48,7 @@ class BookingEngagementSummary extends StatelessWidget {
           Text(
             subtitle,
             style: TextStyle(
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
               fontSize: 14,
             ),
           ),

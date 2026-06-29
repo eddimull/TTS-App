@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/setlist_editor_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 // ── Chat turn model ────────────────────────────────────────────────────────────
 
@@ -146,7 +147,7 @@ class _RefineSheetState extends ConsumerState<_RefineSheet> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
           ),
         ),

@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/user_stats.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 
 /// Three summary cards: Earnings | Distance | Events
@@ -157,7 +158,7 @@ class _SummaryCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
           ),
           const SizedBox(height: 4),
@@ -175,7 +176,7 @@ class _SummaryCard extends StatelessWidget {
             secondary,
             style: TextStyle(
               fontSize: 13,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
           ),
           if (tertiary != null) ...[
@@ -184,7 +185,7 @@ class _SummaryCard extends StatelessWidget {
               tertiary!,
               style: TextStyle(
                 fontSize: 12,
-                color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                color: context.tertiaryText,
               ),
             ),
           ],

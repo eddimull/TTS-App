@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../data/models/contract_history_entry.dart';
 import '../../providers/contract_history_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class ContractHistoryList extends ConsumerWidget {
   const ContractHistoryList({super.key, required this.envelopeId});
@@ -117,7 +118,7 @@ class _Card extends StatelessWidget {
                 entry.createdAt == null ? '' : fmt.format(entry.createdAt!),
                 style: TextStyle(
                   fontSize: 12,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  color: context.secondaryText,
                 ),
               ),
               Container(

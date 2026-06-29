@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/user_stats.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Doughnut chart — each band contributes an earned slice (band color) and,
 /// when it has booked-but-unplayed gigs, a lighter "upcoming" slice in the
@@ -94,7 +95,7 @@ class EarningsPieChart extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: CupertinoColors.label.resolveFrom(context),
+                          color: context.primaryText,
                         ),
                       ),
                     ],

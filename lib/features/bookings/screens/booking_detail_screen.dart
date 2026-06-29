@@ -13,6 +13,7 @@ import '../data/models/booking_detail.dart';
 import '../providers/bookings_provider.dart';
 import '../widgets/booking_engagement_summary.dart';
 import '../widgets/booking_section_tile.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class BookingDetailScreen extends ConsumerWidget {
   const BookingDetailScreen({
@@ -287,7 +288,7 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
                   Text(
                     _eventCardSubtitle(e),
                     style: TextStyle(
-                      color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                      color: context.secondaryText,
                       fontSize: 13,
                     ),
                   ),
@@ -297,7 +298,7 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
             Icon(
               CupertinoIcons.chevron_right,
               size: 16,
-              color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+              color: context.tertiaryText,
             ),
           ],
         ),
@@ -547,7 +548,7 @@ class _SectionHeader extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: CupertinoColors.secondaryLabel.resolveFrom(context),
+          color: context.secondaryText,
           letterSpacing: 0.5,
         ),
       ),
@@ -693,8 +694,7 @@ class _InlineContactRow extends StatelessWidget {
                   Text(contact.role!,
                       style: TextStyle(
                           fontSize: 13,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context))),
+                          color: context.secondaryText)),
               ],
             ),
           ),

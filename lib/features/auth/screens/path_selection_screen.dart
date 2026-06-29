@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../../bands/providers/bands_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class PathSelectionScreen extends ConsumerStatefulWidget {
   const PathSelectionScreen({super.key});
@@ -78,7 +79,7 @@ class _PathSelectionScreenState extends ConsumerState<PathSelectionScreen> {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: CupertinoColors.label.resolveFrom(context),
+                    color: context.primaryText,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -86,8 +87,7 @@ class _PathSelectionScreenState extends ConsumerState<PathSelectionScreen> {
                   'You can always add or join a band later from Settings.',
                   style: TextStyle(
                     fontSize: 14,
-                    color:
-                        CupertinoColors.secondaryLabel.resolveFrom(context),
+                    color: context.secondaryText,
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -189,14 +189,13 @@ class _PathCard extends StatelessWidget {
                   Text(subtitle,
                       style: TextStyle(
                           fontSize: 13,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context))),
+                          color: context.secondaryText)),
                 ],
               ),
             ),
             Icon(CupertinoIcons.chevron_right,
                 size: 18,
-                color: CupertinoColors.tertiaryLabel.resolveFrom(context)),
+                color: context.tertiaryText),
           ],
         ),
       ),

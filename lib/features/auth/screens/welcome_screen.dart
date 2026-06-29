@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Pre-auth landing screen shown on a fresh launch before the user signs in.
 ///
@@ -165,7 +166,7 @@ class _DemoPanel extends StatelessWidget {
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: CupertinoColors.label.resolveFrom(context),
+              color: context.primaryText,
             ),
             textAlign: TextAlign.center,
           ),
@@ -174,7 +175,7 @@ class _DemoPanel extends StatelessWidget {
             caption,
             style: TextStyle(
               fontSize: 15,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
             textAlign: TextAlign.center,
           ),
@@ -276,12 +277,11 @@ class _LiveSessionPreview extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: CupertinoColors.label.resolveFrom(context))),
+                        color: context.primaryText)),
                 Text('Earth, Wind & Fire',
                     style: TextStyle(
                         fontSize: 13,
-                        color: CupertinoColors.secondaryLabel
-                            .resolveFrom(context))),
+                        color: context.secondaryText)),
                 const SizedBox(height: 8),
                 const Row(
                   children: [
@@ -301,14 +301,13 @@ class _LiveSessionPreview extends StatelessWidget {
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.5,
-                  color:
-                      CupertinoColors.secondaryLabel.resolveFrom(context))),
+                  color: context.secondaryText)),
           const SizedBox(height: 4),
           Text('Uptown Funk · Bruno Mars',
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: CupertinoColors.label.resolveFrom(context))),
+                  color: context.primaryText)),
         ],
       ),
     );
@@ -331,7 +330,7 @@ class _MockTag extends StatelessWidget {
       child: Text(label,
           style: TextStyle(
               fontSize: 11,
-              color: CupertinoColors.label.resolveFrom(context))),
+              color: context.primaryText)),
     );
   }
 }
@@ -357,7 +356,7 @@ class _SetlistPreview extends StatelessWidget {
               style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: CupertinoColors.label.resolveFrom(context))),
+                  color: context.primaryText)),
           const SizedBox(height: 10),
           for (final (trackNumber, title, artist) in songs) ...[
             Row(
@@ -379,20 +378,17 @@ class _SetlistPreview extends StatelessWidget {
                           style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color:
-                                  CupertinoColors.label.resolveFrom(context))),
+                              color: context.primaryText)),
                       Text(artist,
                           style: TextStyle(
                               fontSize: 11,
-                              color: CupertinoColors.secondaryLabel
-                                  .resolveFrom(context))),
+                              color: context.secondaryText)),
                     ],
                   ),
                 ),
                 Icon(CupertinoIcons.line_horizontal_3,
                     size: 15,
-                    color:
-                        CupertinoColors.tertiaryLabel.resolveFrom(context)),
+                    color: context.tertiaryText),
               ],
             ),
             const SizedBox(height: 10),
@@ -418,7 +414,7 @@ class _InvitePreview extends StatelessWidget {
               style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: CupertinoColors.label.resolveFrom(context))),
+                  color: context.primaryText)),
           const SizedBox(height: 12),
           // Invite code chip + QR glyph
           Row(
@@ -444,8 +440,7 @@ class _InvitePreview extends StatelessWidget {
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 1,
-                              color: CupertinoColors.label
-                                  .resolveFrom(context))),
+                              color: context.primaryText)),
                     ],
                   ),
                 ),
@@ -461,7 +456,7 @@ class _InvitePreview extends StatelessWidget {
                 ),
                 child: Icon(CupertinoIcons.qrcode,
                     size: 26,
-                    color: CupertinoColors.label.resolveFrom(context)),
+                    color: context.primaryText),
               ),
             ],
           ),
@@ -489,8 +484,7 @@ class _InvitePreview extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color:
-                                CupertinoColors.label.resolveFrom(context))),
+                            color: context.primaryText)),
                   ),
                 ),
                 Expanded(
@@ -500,8 +494,7 @@ class _InvitePreview extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                             fontSize: 12,
-                            color: CupertinoColors.secondaryLabel
-                                .resolveFrom(context))),
+                            color: context.secondaryText)),
                   ),
                 ),
               ],
@@ -534,14 +527,14 @@ class _ContractPreview extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: CupertinoColors.label.resolveFrom(context))),
+                      color: context.primaryText)),
             ],
           ),
           const SizedBox(height: 4),
           Text('Riverfront Wedding · Jun 20',
               style: TextStyle(
                   fontSize: 12,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context))),
+                  color: context.secondaryText)),
           const SizedBox(height: 14),
           // faux document lines
           for (final w in const [0.9, 0.75, 0.85, 0.6]) ...[
@@ -592,7 +585,7 @@ class _PaymentPreview extends StatelessWidget {
               style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: CupertinoColors.label.resolveFrom(context))),
+                  color: context.primaryText)),
           const SizedBox(height: 12),
           const _MockAmountRow(
               label: 'Total',
@@ -628,13 +621,11 @@ class _PaymentPreview extends StatelessWidget {
                           style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color:
-                                  CupertinoColors.label.resolveFrom(context))),
+                              color: context.primaryText)),
                       Text('Client Portal · Jun 2',
                           style: TextStyle(
                               fontSize: 11,
-                              color: CupertinoColors.secondaryLabel
-                                  .resolveFrom(context))),
+                              color: context.secondaryText)),
                     ],
                   ),
                 ),
@@ -674,7 +665,7 @@ class _MockAmountRow extends StatelessWidget {
           Text(label,
               style: TextStyle(
                   fontSize: 13,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context))),
+                  color: context.secondaryText)),
           Text(amount,
               style: TextStyle(
                   fontSize: 14,
@@ -701,7 +692,7 @@ class _DashboardPreview extends StatelessWidget {
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: CupertinoColors.label.resolveFrom(context))),
+                  color: context.primaryText)),
           const SizedBox(height: 12),
           const _MockEventRow(
             color: CupertinoColors.systemBlue,
@@ -761,7 +752,7 @@ class _MockEventRow extends StatelessWidget {
               style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context))),
+                  color: context.secondaryText)),
         ),
         Expanded(
           child: Column(
@@ -771,12 +762,11 @@ class _MockEventRow extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: CupertinoColors.label.resolveFrom(context))),
+                      color: context.primaryText)),
               Text(subtitle,
                   style: TextStyle(
                       fontSize: 12,
-                      color:
-                          CupertinoColors.secondaryLabel.resolveFrom(context))),
+                      color: context.secondaryText)),
             ],
           ),
         ),
@@ -852,7 +842,7 @@ class _MockBookingRow extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: CupertinoColors.label.resolveFrom(context))),
+                        color: context.primaryText)),
                 const SizedBox(height: 2),
                 Row(
                   children: [
@@ -868,8 +858,7 @@ class _MockBookingRow extends StatelessWidget {
                     Text(status,
                         style: TextStyle(
                             fontSize: 12,
-                            color: CupertinoColors.secondaryLabel
-                                .resolveFrom(context))),
+                            color: context.secondaryText)),
                   ],
                 ),
               ],
@@ -879,7 +868,7 @@ class _MockBookingRow extends StatelessWidget {
               style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: CupertinoColors.label.resolveFrom(context))),
+                  color: context.primaryText)),
         ],
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/data/models/band_summary.dart';
 import '../providers/library_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Full-screen modal form for creating a new chart.
 ///
@@ -174,8 +175,7 @@ class _CreateChartScreenState extends ConsumerState<CreateChartScreen> {
                                 '\$',
                                 style: TextStyle(
                                   fontSize: 17,
-                                  color: CupertinoColors.label
-                                      .resolveFrom(context),
+                                  color: context.primaryText,
                                 ),
                               ),
                               const SizedBox(width: 4),
@@ -337,8 +337,7 @@ class _SwitchRow extends StatelessWidget {
                     subtitle!,
                     style: TextStyle(
                       fontSize: 12,
-                      color:
-                          CupertinoColors.secondaryLabel.resolveFrom(context),
+                      color: context.secondaryText,
                     ),
                   ),
                 ],

@@ -4,6 +4,7 @@ import '../../../shared/providers/personal_band_provider.dart';
 import '../../../shared/widgets/band_identity_chip.dart';
 import '../../auth/data/models/band_summary.dart';
 import '../../auth/providers/auth_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// A sheet shown when the user taps "+" to add a chart to the merged library.
 ///
@@ -78,7 +79,7 @@ class _CreateChartSheetState extends ConsumerState<CreateChartSheet> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                    color: context.secondaryText,
                   ),
                 ),
               ),
@@ -154,14 +155,14 @@ class _BandRow extends StatelessWidget {
               textStyle: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-                color: CupertinoColors.label.resolveFrom(context),
+                color: context.primaryText,
               ),
             ),
             const Spacer(),
             Icon(
               CupertinoIcons.chevron_right,
               size: 16,
-              color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+              color: context.tertiaryText,
             ),
           ],
         ),
@@ -200,14 +201,14 @@ class _PersonalRow extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: CupertinoColors.label.resolveFrom(context),
+                      color: context.primaryText,
                     ),
                   ),
                   Text(
                     'Just for me, not tied to a band',
                     style: TextStyle(
                       fontSize: 12,
-                      color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                      color: context.secondaryText,
                     ),
                   ),
                 ],
@@ -219,7 +220,7 @@ class _PersonalRow extends StatelessWidget {
               Icon(
                 CupertinoIcons.chevron_right,
                 size: 16,
-                color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                color: context.tertiaryText,
               ),
           ],
         ),

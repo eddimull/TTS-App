@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class EmptyStateView extends StatelessWidget {
   const EmptyStateView({
@@ -22,15 +23,15 @@ class EmptyStateView extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w500,
-                color: CupertinoColors.secondaryLabel),
+                color: context.secondaryText),
           ),
           const SizedBox(height: 8),
           Text(
             subtitle,
-            style: const TextStyle(fontSize: 13, color: CupertinoColors.tertiaryLabel),
+            style: TextStyle(fontSize: 13, color: context.tertiaryText),
           ),
         ],
       ),

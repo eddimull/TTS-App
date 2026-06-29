@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_config.dart';
 import '../storage/secure_storage.dart';
@@ -43,6 +47,19 @@ class ApiClient {
         receiveTimeout: const Duration(seconds: 30),
       ),
     );
+
+    // Debug-only: accept self-signed / untrusted certs so the app can talk to a
+    // local HTTPS dev server (e.g. an mkcert cert the device doesn't trust).
+    // Never compiled into release builds — production keeps strict TLS.
+    if (kDebugMode) {
+      dio.httpClientAdapter = IOHttpClientAdapter(
+        createHttpClient: () {
+          final client = HttpClient();
+          client.badCertificateCallback = (cert, host, port) => true;
+          return client;
+        },
+      );
+    }
 
     dio.interceptors.add(
       InterceptorsWrapper(

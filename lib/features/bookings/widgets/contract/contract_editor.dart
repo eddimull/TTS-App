@@ -11,6 +11,7 @@ import 'contract_fixed_header.dart';
 import 'contract_send_sheet.dart';
 import 'contract_signature_block.dart';
 import 'contract_terms_list.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class ContractEditor extends ConsumerStatefulWidget {
   const ContractEditor({
@@ -222,7 +223,7 @@ class _ContractEditorState extends ConsumerState<ContractEditor> {
                               .textTheme
                               .textStyle
                               .copyWith(
-                                color: CupertinoColors.secondaryLabel,
+                                color: context.secondaryText,
                                 fontSize: 12,
                               ),
                         ),
@@ -280,7 +281,7 @@ class _ContractEditorState extends ConsumerState<ContractEditor> {
                                 .textTheme
                                 .textStyle
                                 .copyWith(
-                                  color: CupertinoColors.secondaryLabel,
+                                  color: context.secondaryText,
                                   fontSize: 11,
                                 ),
                           ),

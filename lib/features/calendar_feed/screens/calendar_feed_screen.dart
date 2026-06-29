@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/models/calendar_feed.dart';
 import '../providers/calendar_feed_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Lets the user subscribe their personal Google/Apple Calendar to the band
 /// events they're entitled to. The feed stays auto-updated by the calendar
@@ -63,7 +64,7 @@ class _FeedContent extends ConsumerWidget {
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 15,
-            color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            color: context.secondaryText,
           ),
         ),
         const SizedBox(height: 28),
@@ -159,7 +160,7 @@ class _ResetRow extends StatelessWidget {
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 13,
-            color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+            color: context.tertiaryText,
           ),
         ),
         CupertinoButton(
@@ -192,14 +193,14 @@ class _ErrorState extends StatelessWidget {
             Icon(
               CupertinoIcons.exclamationmark_circle,
               size: 44,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
             const SizedBox(height: 12),
             Text(
               "Couldn't load your calendar link.",
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
             ),
             const SizedBox(height: 16),

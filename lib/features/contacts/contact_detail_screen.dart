@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'contact_ref.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// A reusable, read-only detail view for a single person.
 ///
@@ -148,9 +149,7 @@ class ContactDetailScreen extends StatelessWidget {
         child: Center(
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: CupertinoColors.label
-                  .resolveFrom(ctx)
-                  .withValues(alpha: 0.9),
+              color: ctx.primaryText.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Padding(
@@ -248,7 +247,7 @@ class _Header extends StatelessWidget {
             roleLine!,
             style: TextStyle(
               fontSize: 15,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
             textAlign: TextAlign.center,
           ),
@@ -290,7 +289,7 @@ class _ActionRow extends StatelessWidget {
                 child: Icon(
                   CupertinoIcons.doc_on_doc,
                   size: 20,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  color: context.secondaryText,
                 ),
               ),
             )

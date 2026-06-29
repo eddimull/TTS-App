@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/band_role.dart';
 import '../../providers/roles_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class RolesScreen extends ConsumerWidget {
   const RolesScreen({super.key, required this.bandId});
@@ -21,13 +22,13 @@ class RolesScreen extends ConsumerWidget {
     }
 
     if (rolesAsync.hasError && !rolesAsync.hasValue) {
-      return const CupertinoPageScaffold(
+      return CupertinoPageScaffold(
         navigationBar: navBar,
         child: SafeArea(
           child: Center(
             child: Text(
               'Failed to load roles.',
-              style: TextStyle(color: CupertinoColors.secondaryLabel),
+              style: TextStyle(color: context.secondaryText),
             ),
           ),
         ),
@@ -51,7 +52,7 @@ class RolesScreen extends ConsumerWidget {
                 child: Text(
                   'No roles yet. Tap + to create one.',
                   style: TextStyle(
-                    color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                    color: context.secondaryText,
                   ),
                 ),
               )
@@ -157,7 +158,7 @@ class _RoleRow extends ConsumerWidget {
             : Text(
                 'Inactive',
                 style: TextStyle(
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  color: context.secondaryText,
                   fontSize: 13,
                 ),
               ),
@@ -166,7 +167,7 @@ class _RoleRow extends ConsumerWidget {
           onPressed: () => _showEditDialog(context, ref),
           child: Icon(
             CupertinoIcons.ellipsis,
-            color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            color: context.secondaryText,
             size: 20,
           ),
         ),

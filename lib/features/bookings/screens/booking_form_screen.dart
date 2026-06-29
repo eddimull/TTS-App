@@ -18,6 +18,7 @@ import '../widgets/event_sub_form_card.dart';
 import '../../events/data/events_repository.dart';
 import '../../events/data/models/event_summary.dart';
 import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Formats a numeric text field as a USD currency value (e.g. "$1,234.56").
 /// Digits are entered right-to-left like a cash register.
@@ -545,11 +546,11 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
                     prefix: Text('Event Type'),
                     child: CupertinoActivityIndicator(),
                   ),
-                  error: (_, __) => const CupertinoFormRow(
-                    prefix: Text('Event Type'),
+                  error: (_, __) => CupertinoFormRow(
+                    prefix: const Text('Event Type'),
                     child: Text('—',
                         style: TextStyle(
-                            color: CupertinoColors.secondaryLabel)),
+                            color: context.secondaryText)),
                   ),
                   data: (types) {
                     final selected = types
@@ -574,8 +575,7 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
                             const SizedBox(width: 4),
                             Icon(CupertinoIcons.chevron_right,
                                 size: 14,
-                                color: CupertinoColors.tertiaryLabel
-                                    .resolveFrom(context)),
+                                color: context.tertiaryText),
                           ],
                         ),
                       ),
@@ -597,14 +597,13 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
                                     _status!.substring(1)
                                 : 'pending',
                             style: TextStyle(
-                              color: CupertinoColors.label.resolveFrom(context),
+                              color: context.primaryText,
                             ),
                           ),
                           const SizedBox(width: 4),
                           Icon(CupertinoIcons.chevron_right,
                               size: 14,
-                              color: CupertinoColors.tertiaryLabel
-                                  .resolveFrom(context)),
+                              color: context.tertiaryText),
                         ],
                       ),
                     ),
@@ -699,7 +698,7 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
                     child: Text(
                       _depositCaption(),
                       style: TextStyle(
-                        color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                        color: context.secondaryText,
                         fontSize: 13,
                       ),
                     ),
@@ -720,7 +719,7 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
                       'EVENTS',
                       style: TextStyle(
                         fontSize: 13,
-                        color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                        color: context.secondaryText,
                         letterSpacing: 0.4,
                       ),
                     ),

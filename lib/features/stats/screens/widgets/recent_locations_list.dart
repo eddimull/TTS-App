@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/user_stats.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// A flat list (up to 20 items) of performance locations.
 class RecentLocationsList extends StatelessWidget {
@@ -43,8 +44,7 @@ class RecentLocationsList extends StatelessWidget {
                         child: Icon(
                           CupertinoIcons.map_pin,
                           size: 16,
-                          color: CupertinoColors.tertiaryLabel
-                              .resolveFrom(context),
+                          color: context.tertiaryText,
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -64,8 +64,7 @@ class RecentLocationsList extends StatelessWidget {
                               loc.venueName,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: CupertinoColors.secondaryLabel
-                                    .resolveFrom(context),
+                                color: context.secondaryText,
                               ),
                             ),
                             if (loc.fullAddress.isNotEmpty)
@@ -73,8 +72,7 @@ class RecentLocationsList extends StatelessWidget {
                                 loc.fullAddress,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: CupertinoColors.tertiaryLabel
-                                      .resolveFrom(context),
+                                  color: context.tertiaryText,
                                 ),
                               ),
                           ],
@@ -85,8 +83,7 @@ class RecentLocationsList extends StatelessWidget {
                         _formatDate(loc.date),
                         style: TextStyle(
                           fontSize: 12,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context),
+                          color: context.secondaryText,
                         ),
                       ),
                     ],

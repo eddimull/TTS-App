@@ -22,6 +22,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../data/venue_search_service.dart';
 import 'package:tts_bandmate/core/config/app_config.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Max length for a free-typed venue name — matches the backend's
 /// VARCHAR(255) venue_name column so an over-long name cannot be submitted.
@@ -213,8 +214,7 @@ class _VenueSearchSheetState extends State<VenueSearchSheet> {
                             'Start typing to search for a venue',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: CupertinoColors.secondaryLabel
-                                  .resolveFrom(context),
+                              color: context.secondaryText,
                             ),
                           ),
                         ),
@@ -264,8 +264,7 @@ class _VenueSearchSheetState extends State<VenueSearchSheet> {
                             'No autocomplete results',
                             style: TextStyle(
                               fontSize: 12,
-                              color: CupertinoColors.tertiaryLabel
-                                  .resolveFrom(context),
+                              color: context.tertiaryText,
                             ),
                           ),
                         ),
@@ -305,7 +304,7 @@ class _ResultRow extends StatelessWidget {
               Icon(
                 CupertinoIcons.map_pin,
                 size: 20,
-                color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                color: context.tertiaryText,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -317,7 +316,7 @@ class _ResultRow extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
-                        color: CupertinoColors.label.resolveFrom(context),
+                        color: context.primaryText,
                       ),
                     ),
                     if (prediction.address.isNotEmpty) ...[
@@ -326,8 +325,7 @@ class _ResultRow extends StatelessWidget {
                         prediction.address,
                         style: TextStyle(
                           fontSize: 13,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context),
+                          color: context.secondaryText,
                         ),
                       ),
                     ],
@@ -337,7 +335,7 @@ class _ResultRow extends StatelessWidget {
               Icon(
                 CupertinoIcons.chevron_right,
                 size: 14,
-                color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                color: context.tertiaryText,
               ),
             ],
           ),
@@ -386,7 +384,7 @@ class _FreeTextRow extends StatelessWidget {
                   TextSpan(
                     style: TextStyle(
                       fontSize: 15,
-                      color: CupertinoColors.label.resolveFrom(context),
+                      color: context.primaryText,
                     ),
                     children: [
                       const TextSpan(text: 'Use '),
@@ -560,7 +558,7 @@ class _VenueNameChip extends StatelessWidget {
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: CupertinoColors.label.resolveFrom(context),
+              color: context.primaryText,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -571,7 +569,7 @@ class _VenueNameChip extends StatelessWidget {
               address,
               style: TextStyle(
                 fontSize: 13,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -582,7 +580,7 @@ class _VenueNameChip extends StatelessWidget {
             'Drag the marker to adjust the pin.',
             style: TextStyle(
               fontSize: 12,
-              color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+              color: context.tertiaryText,
             ),
           ),
         ],
@@ -652,7 +650,7 @@ class VenuePreviewCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: CupertinoColors.label.resolveFrom(context),
+                          color: context.primaryText,
                         ),
                       ),
                       if (venueAddress.isNotEmpty) ...[
@@ -661,8 +659,7 @@ class VenuePreviewCard extends StatelessWidget {
                           venueAddress,
                           style: TextStyle(
                             fontSize: 13,
-                            color: CupertinoColors.secondaryLabel
-                                .resolveFrom(context),
+                            color: context.secondaryText,
                           ),
                         ),
                       ],
@@ -708,8 +705,7 @@ class VenuePreviewCard extends StatelessWidget {
                           child: Icon(
                             CupertinoIcons.xmark_circle,
                             size: 20,
-                            color: CupertinoColors.secondaryLabel
-                                .resolveFrom(context),
+                            color: context.secondaryText,
                           ),
                         ),
                       ),
@@ -775,7 +771,7 @@ class _MapPinPlaceholder extends StatelessWidget {
         child: Icon(
           CupertinoIcons.map_pin_ellipse,
           size: 36,
-          color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+          color: context.tertiaryText,
         ),
       ),
     );

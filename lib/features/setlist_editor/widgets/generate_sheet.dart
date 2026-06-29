@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/setlist_prompt_template.dart';
 import '../providers/prompt_templates_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -123,7 +124,7 @@ class _GenerateSheetState extends ConsumerState<_GenerateSheet> {
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         // Resolve dynamic color — do NOT freeze in const.
-                        color: CupertinoColors.label.resolveFrom(context),
+                        color: context.primaryText,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -206,14 +207,14 @@ class _GenerateSheetState extends ConsumerState<_GenerateSheet> {
           Icon(
             CupertinoIcons.bookmark,
             size: 12,
-            color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            color: context.secondaryText,
           ),
           const SizedBox(width: 4),
           Text(
             'Loaded: ${_loadedTpl!.name}',
             style: TextStyle(
               fontSize: 12,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
           ),
           const Spacer(),
@@ -283,7 +284,7 @@ class _TemplatesStrip extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             // Resolve dynamic color at build time; never const in TextStyle.
-            color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            color: context.secondaryText,
           ),
         ),
         const SizedBox(height: 6),

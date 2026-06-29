@@ -22,6 +22,7 @@ import '../widgets/bookings_filter_button.dart';
 import '../widgets/bookings_filter_sheet.dart';
 import '../widgets/bookings_month_strip.dart';
 import '../widgets/create_booking_sheet.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 // ── List item discriminated union ─────────────────────────────────────────────
 
@@ -484,7 +485,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                 Icon(
                   CupertinoIcons.eye_slash,
                   size: 48,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  color: context.secondaryText,
                 ),
                 const SizedBox(height: 12),
                 const Text('No bookings match your filters'),
@@ -526,10 +527,10 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     return Stack(
       children: [
         data.items.isEmpty
-            ? const Center(
+            ? Center(
                 child: Text(
                   'No matching bookings',
-                  style: TextStyle(color: CupertinoColors.secondaryLabel),
+                  style: TextStyle(color: context.secondaryText),
                 ),
               )
             : ScrollablePositionedList.builder(
@@ -601,7 +602,7 @@ class _MonthHeader extends StatelessWidget {
         style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: CupertinoColors.secondaryLabel.resolveFrom(context),
+          color: context.secondaryText,
           letterSpacing: 0.3,
         ),
       ),

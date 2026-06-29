@@ -8,6 +8,7 @@ import '../data/bookings_repository.dart';
 import '../data/models/booking_contact.dart';
 import '../data/models/contact_library_item.dart';
 import '../providers/bookings_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class BookingContactsScreen extends ConsumerStatefulWidget {
   const BookingContactsScreen({
@@ -163,9 +164,9 @@ class _BookingContactsScreenState
               return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(CupertinoIcons.person_2,
+                  Icon(CupertinoIcons.person_2,
                       size: 48,
-                      color: CupertinoColors.secondaryLabel),
+                      color: context.secondaryText),
                   const SizedBox(height: 12),
                   const Text('No contacts yet',
                       style: TextStyle(
@@ -259,20 +260,17 @@ class _ContactRow extends StatelessWidget {
                     Text(contact.role!,
                         style: TextStyle(
                             fontSize: 13,
-                            color: CupertinoColors.secondaryLabel
-                                .resolveFrom(context))),
+                            color: context.secondaryText)),
                   if (contact.email != null && contact.email!.isNotEmpty)
                     Text(contact.email!,
                         style: TextStyle(
                             fontSize: 13,
-                            color: CupertinoColors.secondaryLabel
-                                .resolveFrom(context))),
+                            color: context.secondaryText)),
                   if (contact.phone != null && contact.phone!.isNotEmpty)
                     Text(contact.phone!,
                         style: TextStyle(
                             fontSize: 13,
-                            color: CupertinoColors.secondaryLabel
-                                .resolveFrom(context))),
+                            color: context.secondaryText)),
                 ],
               ),
             ),
@@ -537,8 +535,7 @@ class _AddContactScreenState extends ConsumerState<_AddContactScreen> {
                                 ? CupertinoIcons.chevron_up
                                 : CupertinoIcons.chevron_down,
                             size: 14,
-                            color: CupertinoColors.tertiaryLabel
-                                .resolveFrom(context),
+                            color: context.tertiaryText,
                           ),
                         ],
                       ),
@@ -605,12 +602,12 @@ class _AddContactScreenState extends ConsumerState<_AddContactScreen> {
                     ),
                     data: (items) {
                       if (items.isEmpty) {
-                        return const Padding(
-                          padding: EdgeInsets.all(32),
+                        return Padding(
+                          padding: const EdgeInsets.all(32),
                           child: Center(
                             child: Text('No contacts found',
                                 style: TextStyle(
-                                    color: CupertinoColors.secondaryLabel)),
+                                    color: context.secondaryText)),
                           ),
                         );
                       }

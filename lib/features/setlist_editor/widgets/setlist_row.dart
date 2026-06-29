@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import '../data/models/event_setlist.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// A row representing a single song in the setlist editor.
 ///
@@ -43,7 +44,7 @@ class SetlistSongRow extends StatelessWidget {
       child: Text(
         '$songNumber',
         style: TextStyle(
-          color: CupertinoColors.secondaryLabel.resolveFrom(context),
+          color: context.secondaryText,
           fontSize: 14,
         ),
       ),
@@ -88,8 +89,7 @@ class SetlistSongRow extends StatelessWidget {
                       entry.displayArtist!,
                       style: TextStyle(
                         fontSize: 13,
-                        color:
-                            CupertinoColors.secondaryLabel.resolveFrom(context),
+                        color: context.secondaryText,
                       ),
                     ),
                   ),
@@ -247,7 +247,7 @@ class _Tag extends StatelessWidget {
         text,
         style: TextStyle(
           fontSize: 11,
-          color: CupertinoColors.secondaryLabel.resolveFrom(context),
+          color: context.secondaryText,
         ),
       ),
     );

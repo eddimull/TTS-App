@@ -5,6 +5,7 @@ import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../../data/models/band_revenue.dart';
 import '../../providers/finances_provider.dart';
 import 'revenue_bar_chart.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Revenue tab body. Returns a sliver (the parent screen owns the scroll view).
 class RevenueView extends ConsumerWidget {
@@ -134,7 +135,7 @@ class _StatCard extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 11,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
             maxLines: 2,
           ),
@@ -227,7 +228,7 @@ class _HeaderCell extends StatelessWidget {
       style: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.w600,
-        color: CupertinoColors.secondaryLabel.resolveFrom(context),
+        color: context.secondaryText,
       ),
     );
   }
@@ -318,7 +319,7 @@ class _ChangeCell extends StatelessWidget {
         textAlign: TextAlign.right,
         style: TextStyle(
           fontSize: 13,
-          color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+          color: context.tertiaryText,
         ),
       );
     }

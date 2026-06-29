@@ -7,6 +7,7 @@ import '../data/bookings_repository.dart';
 import '../data/models/booking_payment.dart';
 import '../providers/bookings_provider.dart';
 import '../widgets/payment_type_picker.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class BookingPaymentsScreen extends ConsumerWidget {
   const BookingPaymentsScreen({
@@ -82,13 +83,13 @@ class BookingPaymentsScreen extends ConsumerWidget {
 
                 // ── Payments list ───────────────────────────────────────
                 if (booking.payments.isEmpty)
-                  const SliverFillRemaining(
+                  SliverFillRemaining(
                     hasScrollBody: false,
                     child: Center(
                       child: Text(
                         'No payments recorded yet.',
                         style: TextStyle(
-                            color: CupertinoColors.secondaryLabel),
+                            color: context.secondaryText),
                       ),
                     ),
                   )
@@ -250,8 +251,7 @@ class _PaymentRow extends StatelessWidget {
                       payment.displayPaymentType,
                       style: TextStyle(
                           fontSize: 13,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context)),
+                          color: context.secondaryText),
                     ),
                     if (payment.date != null &&
                         payment.date!.isNotEmpty) ...[
@@ -259,8 +259,7 @@ class _PaymentRow extends StatelessWidget {
                         '  ·  ${_formatDate(payment.date!)}',
                         style: TextStyle(
                             fontSize: 13,
-                            color: CupertinoColors.secondaryLabel
-                                .resolveFrom(context)),
+                            color: context.secondaryText),
                       ),
                     ],
                   ],
@@ -531,8 +530,7 @@ class _RecordPaymentSheetState extends ConsumerState<_RecordPaymentSheet> {
                     children: [
                       Text('Date',
                           style: TextStyle(
-                              color: CupertinoColors.secondaryLabel
-                                  .resolveFrom(context))),
+                              color: context.secondaryText)),
                       Text(_formatDate(_date)),
                     ],
                   ),
@@ -556,16 +554,14 @@ class _RecordPaymentSheetState extends ConsumerState<_RecordPaymentSheet> {
                     children: [
                       Text('Payment Type',
                           style: TextStyle(
-                              color: CupertinoColors.secondaryLabel
-                                  .resolveFrom(context))),
+                              color: context.secondaryText)),
                       Row(
                         children: [
                           Text(_paymentTypeLabel),
                           const SizedBox(width: 4),
                           Icon(CupertinoIcons.chevron_right,
                               size: 14,
-                              color: CupertinoColors.tertiaryLabel
-                                  .resolveFrom(context)),
+                              color: context.tertiaryText),
                         ],
                       ),
                     ],

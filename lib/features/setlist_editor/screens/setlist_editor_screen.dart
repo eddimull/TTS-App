@@ -8,6 +8,7 @@ import '../widgets/generate_sheet.dart';
 import '../widgets/refine_sheet.dart';
 import '../widgets/setlist_row.dart';
 import '../widgets/song_picker_sheet.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class SetlistEditorScreen extends ConsumerStatefulWidget {
   const SetlistEditorScreen({super.key, required this.eventKey});
@@ -204,7 +205,7 @@ class _StatusBar extends ConsumerWidget {
             '${setlist.songCount} songs',
             style: TextStyle(
               fontSize: 13,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
           ),
           const Spacer(),
@@ -353,7 +354,7 @@ class _EmptyState extends StatelessWidget {
             Icon(
               CupertinoIcons.music_note_list,
               size: 56,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
             const SizedBox(height: 12),
             const Text(
@@ -368,7 +369,7 @@ class _EmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
             ),
           ],

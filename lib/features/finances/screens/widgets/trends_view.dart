@@ -7,6 +7,7 @@ import '../../data/models/finance_trends.dart';
 import '../../providers/finances_provider.dart';
 import 'trends_chart.dart';
 import 'trends_count_row.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 final _money = NumberFormat.currency(symbol: '\$');
 String _fmtCents(int cents) => _money.format(cents / 100.0);
@@ -309,8 +310,7 @@ class _ControlsRow extends StatelessWidget {
                               padding: const EdgeInsets.all(6),
                               child: Icon(CupertinoIcons.clear_circled_solid,
                                   size: 14,
-                                  color: CupertinoColors.tertiaryLabel
-                                      .resolveFrom(context)),
+                                  color: context.tertiaryText),
                             ),
                           ),
                         ),
@@ -329,8 +329,7 @@ class _ControlsRow extends StatelessWidget {
                   Text('Compare with current',
                       style: TextStyle(
                           fontSize: 13,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context))),
+                          color: context.secondaryText)),
                   const SizedBox(width: 8),
                   CupertinoSwitch(value: compare, onChanged: onToggleCompare),
                 ],
@@ -398,7 +397,7 @@ class _Legend extends StatelessWidget {
           Text(label,
               style: TextStyle(
                   fontSize: 11,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context))),
+                  color: context.secondaryText)),
         ]);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -512,7 +511,7 @@ class _StatCard extends StatelessWidget {
               style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context))),
+                  color: context.secondaryText)),
           const SizedBox(height: 4),
           Text(value,
               style: TextStyle(

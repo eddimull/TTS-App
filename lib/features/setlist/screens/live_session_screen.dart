@@ -5,6 +5,7 @@ import '../data/models/band_song.dart';
 import '../data/models/live_session.dart';
 import '../data/models/queue_entry.dart';
 import '../providers/live_session_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class LiveSessionScreen extends ConsumerStatefulWidget {
   const LiveSessionScreen({super.key, required this.eventKey});
@@ -87,7 +88,7 @@ class _NoSessionView extends ConsumerWidget {
               Icon(
                 CupertinoIcons.music_note_list,
                 size: 64,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
               const SizedBox(height: 16),
               const Text(
@@ -101,7 +102,7 @@ class _NoSessionView extends ConsumerWidget {
                     : 'Waiting for the captain to start the session.',
                 style: TextStyle(
                     fontSize: 15,
-                    color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                    color: context.secondaryText),
                 textAlign: TextAlign.center,
               ),
               if (canWrite) ...[
@@ -423,7 +424,7 @@ class _NowPlayingCard extends StatelessWidget {
                 current.artist!,
                 style: TextStyle(
                     fontSize: 15,
-                    color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                    color: context.secondaryText),
               ),
             if (current.leadSinger != null || current.songKey != null) ...[
               const SizedBox(height: 4),
@@ -446,7 +447,7 @@ class _NowPlayingCard extends StatelessWidget {
               session.isOnBreak ? 'On Break' : 'Queue empty',
               style: TextStyle(
                   fontSize: 17,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                  color: context.secondaryText),
             ),
 
           if (isCaptain && current != null && session.isActive) ...[
@@ -504,12 +505,12 @@ class _NowPlayingCard extends StatelessWidget {
             Row(
               children: [
                 Icon(CupertinoIcons.list_bullet_below_rectangle,
-                    size: 16, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                    size: 16, color: context.secondaryText),
                 const SizedBox(width: 6),
                 Text(
                   'UP NEXT',
                   style: TextStyle(
-                    color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                    color: context.secondaryText,
                     letterSpacing: 1.1,
                     fontSize: 12,
                   ),
@@ -568,7 +569,7 @@ class _QueueList extends StatelessWidget {
               style: TextStyle(
                   fontSize: 12,
                   letterSpacing: 1.2,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                  color: context.secondaryText),
             ),
           ),
           ...pending.map(
@@ -582,7 +583,7 @@ class _QueueList extends StatelessWidget {
               style: TextStyle(
                   fontSize: 12,
                   letterSpacing: 1.2,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                  color: context.secondaryText),
             ),
           ),
           ...played
@@ -623,7 +624,7 @@ class _QueueTile extends StatelessWidget {
               child: isPlayed
                   ? Icon(CupertinoIcons.checkmark,
                       size: 14,
-                      color: CupertinoColors.secondaryLabel.resolveFrom(context))
+                      color: context.secondaryText)
                   : Text(
                       '${entry.position}',
                       style: TextStyle(
@@ -654,7 +655,7 @@ class _QueueTile extends StatelessWidget {
                     entry.artist!,
                     style: TextStyle(
                         fontSize: 13,
-                        color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                        color: context.secondaryText),
                   ),
               ],
             ),
@@ -765,7 +766,7 @@ class _SongPickerSheetState extends State<_SongPickerSheet> {
                               Text(song.artist!,
                                   style: TextStyle(
                                       fontSize: 13,
-                                      color: CupertinoColors.secondaryLabel.resolveFrom(context))),
+                                      color: context.secondaryText)),
                           ],
                         ),
                       ),
@@ -801,13 +802,13 @@ class _Chip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 12, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+            Icon(icon, size: 12, color: context.secondaryText),
             const SizedBox(width: 4),
           ],
           Text(
             label,
             style: TextStyle(
-                fontSize: 12, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                fontSize: 12, color: context.secondaryText),
           ),
         ],
       ),

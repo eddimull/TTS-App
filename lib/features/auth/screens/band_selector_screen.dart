@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../data/models/band_summary.dart';
 import '../../../shared/providers/selected_band_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 class BandSelectorScreen extends ConsumerWidget {
   const BandSelectorScreen({super.key});
 
@@ -137,7 +138,7 @@ class _BandTile extends StatelessWidget {
               const SizedBox(width: 8),
             ],
             Icon(CupertinoIcons.chevron_right,
-                size: 18, color: CupertinoColors.tertiaryLabel.resolveFrom(context)),
+                size: 18, color: context.tertiaryText),
           ],
         ),
       ),

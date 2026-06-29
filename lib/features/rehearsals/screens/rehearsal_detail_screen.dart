@@ -6,6 +6,7 @@ import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/models/rehearsal_detail.dart';
 import '../data/rehearsals_repository.dart';
 import '../providers/rehearsals_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class RehearsalDetailScreen extends ConsumerWidget {
   const RehearsalDetailScreen({
@@ -244,7 +245,7 @@ class _RehearsalDetailViewState
               'No notes yet. Tap the edit button to add some.',
               style: TextStyle(
                   fontSize: 13,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                  color: context.secondaryText),
             ),
           const SizedBox(height: 20),
           const Text('Schedule',
@@ -271,7 +272,7 @@ class _RehearsalDetailViewState
                     rehearsal.schedule.locationName!,
                     style: TextStyle(
                         fontSize: 13,
-                        color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                        color: context.secondaryText),
                   ),
                 ],
               ],
@@ -331,7 +332,7 @@ class _InfoRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+        Icon(icon, size: 20, color: context.secondaryText),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -340,7 +341,7 @@ class _InfoRow extends StatelessWidget {
               Text(label,
                   style: TextStyle(
                       fontSize: 12,
-                      color: CupertinoColors.secondaryLabel.resolveFrom(context))),
+                      color: context.secondaryText)),
               const SizedBox(height: 2),
               Text(value, style: const TextStyle(fontSize: 15)),
             ],
@@ -363,7 +364,7 @@ class _AssociatedBookingRow extends StatelessWidget {
       child: Row(
         children: [
           Icon(CupertinoIcons.book,
-              size: 20, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+              size: 20, color: context.secondaryText),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -376,7 +377,7 @@ class _AssociatedBookingRow extends StatelessWidget {
                   _formatDate(booking.date),
                   style: TextStyle(
                       fontSize: 13,
-                      color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                      color: context.secondaryText),
                 ),
               ],
             ),

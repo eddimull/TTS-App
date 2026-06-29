@@ -19,6 +19,7 @@ import 'attachment_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../bookings/widgets/venue_picker.dart';
 import '../../bookings/data/venue_search_service.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 // ── Mutable edit-time models ──────────────────────────────────────────────────
 
@@ -1478,14 +1479,14 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                           'Search venue',
                           style: TextStyle(
                             fontSize: 14,
-                            color: CupertinoColors.placeholderText.resolveFrom(context),
+                            color: context.placeholderText,
                           ),
                         ),
                         const SizedBox(width: 4),
                         Icon(
                           CupertinoIcons.search,
                           size: 15,
-                          color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                          color: context.tertiaryText,
                         ),
                       ],
                     ),
@@ -1558,8 +1559,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                                   child: Icon(
                                     attachmentIcon(_attachments[i].mimeType),
                                     size: 20,
-                                    color: CupertinoColors.secondaryLabel
-                                        .resolveFrom(context),
+                                    color: context.secondaryText,
                                   ),
                                 ),
                               ),
@@ -1580,7 +1580,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                             _attachments[i].formattedSize,
                             style: TextStyle(
                               fontSize: 12,
-                              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                              color: context.secondaryText,
                             ),
                           ),
                         ],
@@ -1693,7 +1693,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                     'No timeline entries',
                     style: TextStyle(
                       fontSize: 14,
-                      color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                      color: context.secondaryText,
                     ),
                   ),
                 );
@@ -1840,7 +1840,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                     'No special dances',
                     style: TextStyle(
                       fontSize: 14,
-                      color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                      color: context.secondaryText,
                     ),
                   ),
                 ),
@@ -1878,7 +1878,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                                     child: Icon(
                                       CupertinoIcons.bars,
                                       size: 18,
-                                      color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                                      color: context.tertiaryText,
                                     ),
                                   ),
                                   const SizedBox(width: 10),
@@ -1896,7 +1896,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                                             _formatDanceTitle(_weddingDances![i].title),
                                             style: TextStyle(
                                               fontSize: 13,
-                                              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                                              color: context.secondaryText,
                                             ),
                                           ),
                                           if (_weddingDances![i].data?.isNotEmpty == true)
@@ -1909,7 +1909,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                                               'TBD',
                                               style: TextStyle(
                                                 fontSize: 15,
-                                                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                                                color: context.secondaryText,
                                               ),
                                             ),
                                         ],
@@ -2022,7 +2022,7 @@ class _SectionHeader extends StatelessWidget {
           fontSize: 12,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.5,
-          color: CupertinoColors.secondaryLabel.resolveFrom(context),
+          color: context.secondaryText,
         ),
       ),
     );
@@ -2119,7 +2119,7 @@ class _LabeledRow extends StatelessWidget {
             Icon(
               CupertinoIcons.chevron_right,
               size: 14,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
           ],
         ),

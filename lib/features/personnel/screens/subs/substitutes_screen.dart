@@ -7,6 +7,7 @@ import '../../data/models/band_sub.dart';
 import '../../providers/subs_provider.dart';
 import 'call_lists_screen.dart';
 import 'invite_sub_sheet.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Band-level substitutes hub: lists the band's subs (active + pending) and
 /// links to the per-role call lists. Adding a sub here invites them to sub for
@@ -209,7 +210,7 @@ class _EmptyHint extends StatelessWidget {
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w600,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
           ),
           const SizedBox(height: 8),
@@ -217,7 +218,7 @@ class _EmptyHint extends StatelessWidget {
             'Invite someone to sub for your band. They’ll get an email to accept.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+              color: context.tertiaryText,
             ),
           ),
           const SizedBox(height: 16),
@@ -242,9 +243,9 @@ class _ErrorBody extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
+          Text(
             'Failed to load substitutes.',
-            style: TextStyle(color: CupertinoColors.secondaryLabel),
+            style: TextStyle(color: context.secondaryText),
           ),
           const SizedBox(height: 12),
           CupertinoButton(onPressed: onRetry, child: const Text('Retry')),

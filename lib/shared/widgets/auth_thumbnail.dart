@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/core_providers.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// A thumbnail widget that fetches an authenticated image via [CachedNetworkImage].
 /// Reads the Bearer token once on init via [secureStorageProvider], then passes
@@ -49,7 +50,7 @@ class _AuthThumbnailState extends ConsumerState<AuthThumbnail> {
         child: Icon(
           CupertinoIcons.photo,
           size: 18,
-          color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+          color: context.tertiaryText,
         ),
       ),
     );

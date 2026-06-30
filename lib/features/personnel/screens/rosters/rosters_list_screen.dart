@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/roster.dart';
 import '../../providers/rosters_provider.dart';
 import 'roster_detail_screen.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class RostersListScreen extends ConsumerWidget {
   const RostersListScreen({super.key, required this.bandId});
@@ -22,13 +23,13 @@ class RostersListScreen extends ConsumerWidget {
     }
 
     if (rostersAsync.hasError && !rostersAsync.hasValue) {
-      return const CupertinoPageScaffold(
+      return CupertinoPageScaffold(
         navigationBar: navBar,
         child: SafeArea(
           child: Center(
             child: Text(
               'Failed to load rosters.',
-              style: TextStyle(color: CupertinoColors.secondaryLabel),
+              style: TextStyle(color: context.secondaryText),
             ),
           ),
         ),
@@ -52,7 +53,7 @@ class RostersListScreen extends ConsumerWidget {
                 child: Text(
                   'No rosters yet. Tap + to create one.',
                   style: TextStyle(
-                    color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                    color: context.secondaryText,
                   ),
                 ),
               )

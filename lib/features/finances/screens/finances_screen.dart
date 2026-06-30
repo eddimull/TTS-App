@@ -10,6 +10,7 @@ import '../data/models/finance_booking.dart';
 import '../providers/finances_provider.dart';
 import 'widgets/revenue_view.dart';
 import 'widgets/trends_view.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 final _fmt = NumberFormat.currency(symbol: '\$');
 
@@ -188,7 +189,7 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
-                        color: CupertinoColors.label.resolveFrom(context),
+                        color: context.primaryText,
                       ),
                     ),
                   ),
@@ -442,7 +443,7 @@ class _SummaryRow extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 15,
-            color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            color: context.secondaryText,
           ),
         ),
         Text(
@@ -540,7 +541,7 @@ class _FinanceCard extends StatelessWidget {
                         booking.displayDateRange,
                         style: TextStyle(
                           fontSize: 13,
-                          color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                          color: context.secondaryText,
                         ),
                       ),
                       if (booking.venueSummary != null &&
@@ -550,16 +551,14 @@ class _FinanceCard extends StatelessWidget {
                           children: [
                             Icon(CupertinoIcons.location,
                                 size: 11,
-                                color: CupertinoColors.tertiaryLabel
-                                    .resolveFrom(context)),
+                                color: context.tertiaryText),
                             const SizedBox(width: 3),
                             Expanded(
                               child: Text(
                                 booking.venueSummary!,
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: CupertinoColors.secondaryLabel
-                                      .resolveFrom(context),
+                                  color: context.secondaryText,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -583,22 +582,19 @@ class _FinanceCard extends StatelessWidget {
                           Text('·',
                               style: TextStyle(
                                   fontSize: 13,
-                                  color: CupertinoColors.tertiaryLabel
-                                      .resolveFrom(context))),
+                                  color: context.tertiaryText)),
                           Text(
                             '${booking.displayAmountPaid} paid',
                             style: TextStyle(
                               fontSize: 13,
-                              color: CupertinoColors.secondaryLabel
-                                  .resolveFrom(context),
+                              color: context.secondaryText,
                             ),
                           ),
                           if (isUnpaid) ...[
                             Text('·',
                                 style: TextStyle(
                                     fontSize: 13,
-                                    color: CupertinoColors.tertiaryLabel
-                                        .resolveFrom(context))),
+                                    color: context.tertiaryText)),
                             Text(
                               '${booking.displayAmountDue} due',
                               style: TextStyle(
@@ -619,7 +615,7 @@ class _FinanceCard extends StatelessWidget {
                 child: Icon(
                   CupertinoIcons.chevron_right,
                   size: 14,
-                  color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                  color: context.tertiaryText,
                 ),
               ),
             ],

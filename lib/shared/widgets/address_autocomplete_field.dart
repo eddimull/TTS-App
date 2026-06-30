@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tts_bandmate/core/config/app_config.dart';
 
 import '../../features/bookings/data/venue_search_service.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Structured result from the Geocoding API `address_components` array.
 ///
@@ -434,7 +435,7 @@ class _DropdownRow extends StatelessWidget {
               Icon(
                 CupertinoIcons.map_pin,
                 size: 18,
-                color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                color: context.tertiaryText,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -447,7 +448,7 @@ class _DropdownRow extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: CupertinoColors.label.resolveFrom(context),
+                        color: context.primaryText,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -458,8 +459,7 @@ class _DropdownRow extends StatelessWidget {
                         prediction.address,
                         style: TextStyle(
                           fontSize: 12,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context),
+                          color: context.secondaryText,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

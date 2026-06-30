@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/user_stats.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Expandable list of yearly travel summaries with per-event travel rows.
 class MileageByYearSection extends StatefulWidget {
@@ -69,7 +70,7 @@ class _MileageOriginNote extends StatelessWidget {
           Icon(
             CupertinoIcons.info_circle,
             size: 14,
-            color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+            color: context.tertiaryText,
           ),
           const SizedBox(width: 6),
           Expanded(
@@ -83,7 +84,7 @@ class _MileageOriginNote extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     height: 1.3,
-                    color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                    color: context.secondaryText,
                   ),
                 ),
                 CupertinoButton(
@@ -170,8 +171,7 @@ class _TravelYearGroup extends StatelessWidget {
                               '${year.eventCount} event${year.eventCount == 1 ? '' : 's'}  •  ${_formatMiles(year.totalMiles)} mi',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: CupertinoColors.secondaryLabel
-                                    .resolveFrom(context),
+                                color: context.secondaryText,
                               ),
                             ),
                           ],
@@ -182,8 +182,7 @@ class _TravelYearGroup extends StatelessWidget {
                             ? CupertinoIcons.chevron_up
                             : CupertinoIcons.chevron_down,
                         size: 14,
-                        color:
-                            CupertinoColors.tertiaryLabel.resolveFrom(context),
+                        color: context.tertiaryText,
                       ),
                     ],
                   ),
@@ -255,7 +254,7 @@ class _TravelEventDetailRow extends StatelessWidget {
             _formatDate(event.date),
             style: TextStyle(
               fontSize: 12,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
           ),
           const SizedBox(height: 3),
@@ -272,7 +271,7 @@ class _TravelEventDetailRow extends StatelessWidget {
               event.bandName,
               style: TextStyle(
                 fontSize: 13,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
             ),
           // Venue
@@ -282,7 +281,7 @@ class _TravelEventDetailRow extends StatelessWidget {
                 : event.venueName,
             style: TextStyle(
               fontSize: 12,
-              color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+              color: context.tertiaryText,
             ),
           ),
           const SizedBox(height: 4),
@@ -298,7 +297,7 @@ class _TravelEventDetailRow extends StatelessWidget {
                 _fmt(event.hours, ' hrs'),
                 style: TextStyle(
                   fontSize: 13,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  color: context.secondaryText,
                 ),
               ),
             ],

@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/bands_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class CreateBandScreen extends ConsumerStatefulWidget {
   const CreateBandScreen({super.key});
@@ -143,7 +144,7 @@ class _CreateBandScreenState extends ConsumerState<CreateBandScreen> {
         Text('They\'ll receive an email invitation.',
             style: TextStyle(
                 fontSize: 14,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context))),
+                color: context.secondaryText)),
         const SizedBox(height: 24),
         Row(
           children: [

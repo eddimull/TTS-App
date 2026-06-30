@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/upload_queue_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// A bottom sheet listing all upload tasks with per-file progress, retry, and
 /// cancel actions. Present via [showCupertinoModalPopup].
@@ -90,7 +91,7 @@ class UploadQueueSheet extends ConsumerWidget {
               child: Text(
                 'No uploads',
                 style: TextStyle(
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  color: context.secondaryText,
                 ),
               ),
             )

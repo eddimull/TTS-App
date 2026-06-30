@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -106,7 +107,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   'TTS Band Management',
                   style: TextStyle(
                     fontSize: 15,
-                    color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                    color: context.secondaryText,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -123,7 +124,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   prefix: Padding(
                     padding: const EdgeInsets.only(left: 12),
                     child: Icon(CupertinoIcons.mail,
-                        size: 20, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                        size: 20, color: context.secondaryText),
                   ),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
@@ -155,7 +156,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   prefix: Padding(
                     padding: const EdgeInsets.only(left: 12),
                     child: Icon(CupertinoIcons.lock,
-                        size: 20, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                        size: 20, color: context.secondaryText),
                   ),
                   suffix: Padding(
                     padding: const EdgeInsets.only(right: 8),
@@ -168,7 +169,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ? CupertinoIcons.eye_slash
                             : CupertinoIcons.eye,
                         size: 20,
-                        color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                        color: context.secondaryText,
                       ),
                     ),
                   ),
@@ -218,7 +219,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Text(
                       "Don't have an account?",
                       style: TextStyle(
-                        color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                        color: context.secondaryText,
                       ),
                     ),
                     CupertinoButton(

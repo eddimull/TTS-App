@@ -9,6 +9,7 @@ import 'package:flutter/material.dart'
 
 import '../../data/models/contract_term.dart';
 import 'contract_term_card.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 typedef TermFieldCb = void Function(int id, String value);
 
@@ -68,7 +69,7 @@ class ContractTermsList extends StatelessWidget {
               style: CupertinoTheme.of(context)
                   .textTheme
                   .textStyle
-                  .copyWith(color: CupertinoColors.secondaryLabel),
+                  .copyWith(color: context.secondaryText),
               textAlign: TextAlign.center,
             ),
             if (editMode) ...[

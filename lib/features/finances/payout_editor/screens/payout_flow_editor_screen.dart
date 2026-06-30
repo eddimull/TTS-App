@@ -19,6 +19,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import 'package:vyuh_node_flow/connections.dart';
@@ -918,10 +919,9 @@ class _BodyRow {
             )),
       );
     }
-    // Resolve `label` against context so the value is dark text on a light card
-    // and light text on a dark card.
-    final valueColor =
-        CupertinoDynamicColor.resolve(CupertinoColors.label, context);
+    // context.primaryText resolves CupertinoColors.label against context, so the
+    // value is dark text on a light card and light text on a dark card.
+    final valueColor = context.primaryText;
     return Padding(
       padding: const EdgeInsets.only(top: 2),
       child: Row(

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key, this.prefillEmail});
@@ -127,7 +128,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
             padding: const EdgeInsets.only(left: 12),
             child: Icon(icon,
                 size: 20,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                color: context.secondaryText),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
           decoration: BoxDecoration(
@@ -230,8 +231,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                 children: [
                   Text('Already have an account?',
                       style: TextStyle(
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context))),
+                          color: context.secondaryText)),
                   CupertinoButton(
                     padding: const EdgeInsets.only(left: 4),
                     onPressed: () => context.go('/login'),

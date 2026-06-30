@@ -16,6 +16,7 @@ import '../providers/library_provider.dart';
 import '../widgets/create_chart_sheet.dart';
 import '../widgets/library_filter_button.dart';
 import '../widgets/library_filter_sheet.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -347,8 +348,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                                           Icon(
                                             CupertinoIcons.eye_slash,
                                             size: 48,
-                                            color: CupertinoColors.secondaryLabel
-                                                .resolveFrom(context),
+                                            color: context.secondaryText,
                                           ),
                                           const SizedBox(height: 12),
                                           const Text(
@@ -391,11 +391,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                                 CupertinoSliverRefreshControl(onRefresh: _refresh),
                                 _buildNavBar(context),
                                 if (filtered.isEmpty)
-                                  const SliverFillRemaining(
+                                  SliverFillRemaining(
                                     child: Center(
                                       child: Text('No matching charts',
                                           style: TextStyle(
-                                              color: CupertinoColors.secondaryLabel)),
+                                              color: context.secondaryText)),
                                     ),
                                   )
                                 else
@@ -563,7 +563,7 @@ class _SectionHeader extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
           ),
         ),
@@ -668,8 +668,7 @@ class _ChartRow extends ConsumerWidget {
                         chart.composer,
                         style: TextStyle(
                           fontSize: 13,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context),
+                          color: context.secondaryText,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -683,7 +682,7 @@ class _ChartRow extends ConsumerWidget {
                 child: Icon(
                   CupertinoIcons.chevron_right,
                   size: 14,
-                  color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                  color: context.tertiaryText,
                 ),
               ),
             ],

@@ -5,6 +5,7 @@ import '../../../features/auth/data/models/band_summary.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../../shared/providers/selected_band_provider.dart';
 import '../../../shared/widgets/nav_row.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});
@@ -33,7 +34,7 @@ class MoreScreen extends ConsumerWidget {
               leading: Icon(
                 CupertinoIcons.arrow_2_squarepath,
                 size: 22,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
               onTap: () => _showBandSwitcher(context, ref, bands, bandId),
             ),
@@ -42,7 +43,7 @@ class MoreScreen extends ConsumerWidget {
             leading: Icon(
               CupertinoIcons.money_dollar_circle,
               size: 22,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
             onTap: () => context.push('/finances'),
           ),
@@ -51,7 +52,7 @@ class MoreScreen extends ConsumerWidget {
             leading: Icon(
               CupertinoIcons.person_2,
               size: 22,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
             onTap: () => context.push('/rehearsals'),
           ),
@@ -60,7 +61,7 @@ class MoreScreen extends ConsumerWidget {
             leading: Icon(
               CupertinoIcons.photo_on_rectangle,
               size: 22,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
             onTap: () => context.push('/media'),
           ),
@@ -69,7 +70,7 @@ class MoreScreen extends ConsumerWidget {
             leading: Icon(
               CupertinoIcons.chart_bar_alt_fill,
               size: 22,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
             onTap: () => context.push('/stats'),
           ),
@@ -78,7 +79,7 @@ class MoreScreen extends ConsumerWidget {
             leading: Icon(
               CupertinoIcons.calendar_badge_plus,
               size: 22,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
             onTap: () => context.push('/calendar-feed'),
           ),
@@ -88,7 +89,7 @@ class MoreScreen extends ConsumerWidget {
               leading: Icon(
                 CupertinoIcons.person_2_fill,
                 size: 22,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
               onTap: () => context.push('/personnel'),
             ),
@@ -97,7 +98,7 @@ class MoreScreen extends ConsumerWidget {
               leading: Icon(
                 CupertinoIcons.settings,
                 size: 22,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
               onTap: () => context.push('/band-settings'),
             ),

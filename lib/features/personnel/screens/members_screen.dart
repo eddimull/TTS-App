@@ -7,6 +7,7 @@ import '../../../features/band_settings/screens/member_permissions_screen.dart';
 import '../../../features/band_settings/screens/widgets/invite_section.dart';
 import '../../../features/contacts/contact_detail_screen.dart';
 import '../../../features/contacts/contact_ref.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class MembersScreen extends ConsumerWidget {
   const MembersScreen({super.key, required this.bandId});
@@ -26,13 +27,13 @@ class MembersScreen extends ConsumerWidget {
     }
 
     if (settingsAsync.hasError && !settingsAsync.hasValue) {
-      return const CupertinoPageScaffold(
+      return CupertinoPageScaffold(
         navigationBar: navBar,
         child: SafeArea(
           child: Center(
             child: Text(
               'Failed to load members. Please try again.',
-              style: TextStyle(color: CupertinoColors.secondaryLabel),
+              style: TextStyle(color: context.secondaryText),
               textAlign: TextAlign.center,
             ),
           ),

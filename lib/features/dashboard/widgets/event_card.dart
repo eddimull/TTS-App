@@ -4,6 +4,7 @@ import '../../events/data/models/event_summary.dart';
 import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/band_identity_chip.dart';
 import '../../../shared/widgets/status_chip.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class EventCard extends StatelessWidget {
   const EventCard({super.key, required this.event, this.onTap});
@@ -60,7 +61,7 @@ class EventCard extends StatelessWidget {
                             event.title,
                             style: TextStyle(
                                 fontSize: 15, fontWeight: FontWeight.bold,
-                                color: CupertinoColors.label.resolveFrom(context)),
+                                color: context.primaryText),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -76,7 +77,7 @@ class EventCard extends StatelessWidget {
                       _formatDate(event),
                       style: TextStyle(
                           fontSize: 13,
-                          color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                          color: context.secondaryText),
                     ),
                     // Band identity chip — visible only when the event carries
                     // band metadata (absent on legacy payloads).
@@ -91,7 +92,7 @@ class EventCard extends StatelessWidget {
                         event.venueName!,
                         style: TextStyle(
                             fontSize: 13,
-                            color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                            color: context.secondaryText),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -126,8 +127,8 @@ class _EventTypeIcon extends StatelessWidget {
     if (iconPath != null) {
       return Image.asset(iconPath, width: 40, height: 40, fit: BoxFit.contain);
     }
-    return const Icon(CupertinoIcons.music_mic,
-        size: 24, color: CupertinoColors.secondaryLabel);
+    return Icon(CupertinoIcons.music_mic,
+        size: 24, color: context.secondaryText);
   }
 }
 

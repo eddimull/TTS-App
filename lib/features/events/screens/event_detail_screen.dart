@@ -27,6 +27,7 @@ import '../data/models/sub_entry.dart';
 import '../providers/events_provider.dart';
 import 'attachment_widgets.dart';
 import '../widgets/part_of_booking_row.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class EventDetailScreen extends ConsumerWidget {
   const EventDetailScreen({
@@ -442,7 +443,7 @@ class _InfoRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+        Icon(icon, size: 20, color: context.secondaryText),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -452,7 +453,7 @@ class _InfoRow extends StatelessWidget {
                 label,
                 style: TextStyle(
                   fontSize: 12,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  color: context.secondaryText,
                 ),
               ),
               if (value.isNotEmpty) ...[
@@ -461,7 +462,7 @@ class _InfoRow extends StatelessWidget {
                   value,
                   style: TextStyle(
                     fontSize: 15,
-                    color: CupertinoColors.label.resolveFrom(context),
+                    color: context.primaryText,
                   ),
                 ),
               ],
@@ -791,7 +792,7 @@ class _SetlistRow extends StatelessWidget {
                 Text(
                   'Setlist',
                   style: TextStyle(
-                    color: CupertinoColors.label.resolveFrom(context),
+                    color: context.primaryText,
                   ),
                 ),
               ],
@@ -852,7 +853,7 @@ class _PerformanceSection extends StatelessWidget {
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context))),
+                  color: context.secondaryText)),
           const SizedBox(height: 6),
           _Card(
             child: Column(
@@ -872,7 +873,7 @@ class _PerformanceSection extends StatelessWidget {
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context))),
+                  color: context.secondaryText)),
           const SizedBox(height: 6),
           _Card(
             child: Column(
@@ -909,7 +910,7 @@ class _SongRow extends StatelessWidget {
               '$index.',
               style: TextStyle(
                   fontSize: 13,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                  color: context.secondaryText),
             ),
           ),
           Expanded(
@@ -958,7 +959,7 @@ class _ChartRow extends StatelessWidget {
         children: [
           Icon(CupertinoIcons.doc_text,
               size: 16,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+              color: context.secondaryText),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -969,7 +970,7 @@ class _ChartRow extends StatelessWidget {
                   Text(chart.composer!,
                       style: TextStyle(
                           fontSize: 13,
-                          color: CupertinoColors.secondaryLabel.resolveFrom(context))),
+                          color: context.secondaryText)),
               ],
             ),
           ),
@@ -1020,7 +1021,7 @@ class _WeddingSection extends StatelessWidget {
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                  color: context.secondaryText),
             ),
             const SizedBox(height: 8),
             for (int i = 0; i < wedding.dances.length; i++) ...[
@@ -1037,7 +1038,7 @@ class _WeddingSection extends StatelessWidget {
                         _formatDanceTitle(wedding.dances[i].title),
                         style: TextStyle(
                             fontSize: 13,
-                            color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                            color: context.secondaryText),
                       ),
                     ),
                     Expanded(
@@ -1097,7 +1098,7 @@ class _LodgingSection extends StatelessWidget {
                   else
                     Icon(CupertinoIcons.bed_double,
                         size: 18,
-                        color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                        color: context.secondaryText),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -1112,8 +1113,7 @@ class _LodgingSection extends StatelessWidget {
                           Text(items[i].data.toString(),
                               style: TextStyle(
                                   fontSize: 13,
-                                  color: CupertinoColors.secondaryLabel
-                                      .resolveFrom(context))),
+                                  color: context.secondaryText)),
                       ],
                     ),
                   ),
@@ -1190,7 +1190,7 @@ class _ContactRow extends StatelessWidget {
                       Text(contact.role!,
                           style: TextStyle(
                               fontSize: 13,
-                              color: CupertinoColors.secondaryLabel.resolveFrom(context))),
+                              color: context.secondaryText)),
                     if (contact.phone != null && contact.phone!.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       _ContactLink(
@@ -1218,7 +1218,7 @@ class _ContactRow extends StatelessWidget {
                 child: Icon(
                   CupertinoIcons.chevron_right,
                   size: 16,
-                  color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                  color: context.tertiaryText,
                 ),
               ),
             ],
@@ -1463,7 +1463,7 @@ class _MediaSectionState extends ConsumerState<_MediaSection> {
             'No media yet',
             style: TextStyle(
               fontSize: 14,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
           )
         else
@@ -1587,7 +1587,7 @@ class _MediaGridCell extends StatelessWidget {
           child: Icon(
             attachmentIcon(item.mimeType),
             size: 28,
-            color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            color: context.secondaryText,
           ),
         ),
       ),
@@ -1691,7 +1691,7 @@ class _AttachmentRow extends StatelessWidget {
                     attachment.formattedSize,
                     style: TextStyle(
                       fontSize: 12,
-                      color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                      color: context.secondaryText,
                     ),
                   ),
                 ],
@@ -1700,7 +1700,7 @@ class _AttachmentRow extends StatelessWidget {
             Icon(
               CupertinoIcons.chevron_right,
               size: 16,
-              color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+              color: context.tertiaryText,
             ),
           ],
         ),
@@ -1856,7 +1856,7 @@ class _RoleGroup extends StatelessWidget {
               fontSize: 11,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.8,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
           ),
         ),
@@ -1925,7 +1925,7 @@ class _MemberTile extends StatelessWidget {
                         slotLabel,
                         style: TextStyle(
                           fontSize: 12,
-                          color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                          color: context.secondaryText,
                         ),
                       ),
                     Text(
@@ -1993,7 +1993,7 @@ class _MemberTile extends StatelessWidget {
                       slotLabel,
                       style: TextStyle(
                         fontSize: 12,
-                        color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                        color: context.secondaryText,
                       ),
                     ),
                   Row(
@@ -2135,20 +2135,19 @@ class _SubPickerSheet extends ConsumerWidget {
                   ErrorView.friendlyMessage(e),
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      color:
-                          CupertinoColors.secondaryLabel.resolveFrom(context)),
+                      color: context.secondaryText),
                 ),
               ),
               data: (subs) {
                 if (subs.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Padding(
-                      padding: EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(24),
                       child: Text(
                         'No substitutes on call list for this role.',
                         textAlign: TextAlign.center,
                         style:
-                            TextStyle(color: CupertinoColors.secondaryLabel),
+                            TextStyle(color: context.secondaryText),
                       ),
                     ),
                   );
@@ -2181,8 +2180,7 @@ class _SubPickerSheet extends ConsumerWidget {
                                       style: TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w500,
-                                        color: CupertinoColors.label
-                                            .resolveFrom(context),
+                                        color: context.primaryText,
                                       ),
                                     ),
                                     if (sub.isCustom) ...[
@@ -2215,8 +2213,7 @@ class _SubPickerSheet extends ConsumerWidget {
                                     sub.email!,
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color: CupertinoColors.secondaryLabel
-                                          .resolveFrom(context),
+                                      color: context.secondaryText,
                                     ),
                                   ),
                               ],

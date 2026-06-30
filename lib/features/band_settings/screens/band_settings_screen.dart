@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/providers/selected_band_provider.dart';
 import '../providers/band_settings_provider.dart';
 import 'band_info_edit_screen.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class BandSettingsScreen extends ConsumerWidget {
   const BandSettingsScreen({super.key});
@@ -34,13 +35,13 @@ class BandSettingsScreen extends ConsumerWidget {
     }
 
     if (settingsAsync.hasError && !settingsAsync.hasValue) {
-      return const CupertinoPageScaffold(
+      return CupertinoPageScaffold(
         navigationBar: navBar,
         child: SafeArea(
           child: Center(
             child: Text(
               'Failed to load band settings. Please try again.',
-              style: TextStyle(color: CupertinoColors.secondaryLabel),
+              style: TextStyle(color: context.secondaryText),
               textAlign: TextAlign.center,
             ),
           ),

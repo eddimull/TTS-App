@@ -5,6 +5,7 @@ import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../data/models/booking_payout.dart';
 import '../providers/booking_payout_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
@@ -329,7 +330,7 @@ class _StatTile extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 12,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
             textAlign: TextAlign.center,
           ),
@@ -404,7 +405,7 @@ class _NoConfigWarning extends StatelessWidget {
               'No active payout configuration',
               style: TextStyle(
                 fontSize: 14,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
             ),
           ),
@@ -474,7 +475,7 @@ class _ActiveConfigRow extends StatelessWidget {
             Icon(
               CupertinoIcons.settings,
               size: 18,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -488,7 +489,7 @@ class _ActiveConfigRow extends StatelessWidget {
             Icon(
               CupertinoIcons.chevron_right,
               size: 14,
-              color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+              color: context.tertiaryText,
             ),
           ],
         ),
@@ -549,7 +550,7 @@ class _MemberPayoutsSection extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
                 letterSpacing: 0.4,
               ),
             ),
@@ -729,8 +730,7 @@ class _MemberRow extends StatelessWidget {
                           member.role!,
                           style: TextStyle(
                             fontSize: 12,
-                            color: CupertinoColors.secondaryLabel
-                                .resolveFrom(context),
+                            color: context.secondaryText,
                           ),
                         ),
                       if (member.role != null &&
@@ -739,8 +739,7 @@ class _MemberRow extends StatelessWidget {
                           '  ·  ',
                           style: TextStyle(
                             fontSize: 12,
-                            color: CupertinoColors.secondaryLabel
-                                .resolveFrom(context),
+                            color: context.secondaryText,
                           ),
                         ),
                       if (member.attendanceLabel != null)
@@ -748,8 +747,7 @@ class _MemberRow extends StatelessWidget {
                           member.attendanceLabel!,
                           style: TextStyle(
                             fontSize: 12,
-                            color: CupertinoColors.secondaryLabel
-                                .resolveFrom(context),
+                            color: context.secondaryText,
                           ),
                         ),
                     ],
@@ -806,7 +804,7 @@ class _ByPerformanceSection extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
                 letterSpacing: 0.4,
               ),
             ),
@@ -1153,8 +1151,7 @@ class _AdjustmentsSection extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color:
-                      CupertinoColors.secondaryLabel.resolveFrom(context),
+                  color: context.secondaryText,
                   letterSpacing: 0.4,
                 ),
               ),
@@ -1192,8 +1189,7 @@ class _AdjustmentsSection extends StatelessWidget {
                   'No adjustments',
                   style: TextStyle(
                     fontSize: 14,
-                    color:
-                        CupertinoColors.secondaryLabel.resolveFrom(context),
+                    color: context.secondaryText,
                   ),
                 ),
               ),
@@ -1266,8 +1262,7 @@ class _AdjustmentRow extends StatelessWidget {
                     adjustment.notes!,
                     style: TextStyle(
                       fontSize: 13,
-                      color: CupertinoColors.secondaryLabel
-                          .resolveFrom(context),
+                      color: context.secondaryText,
                     ),
                   ),
                 ],

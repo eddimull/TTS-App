@@ -10,6 +10,7 @@ import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/models/rehearsal_schedule.dart';
 import '../data/models/rehearsal_summary.dart';
 import '../providers/rehearsals_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class RehearsalsScreen extends ConsumerWidget {
   const RehearsalsScreen({super.key});
@@ -117,20 +118,20 @@ class _ScheduleTile extends StatelessWidget {
       subtitle: subtitle.isNotEmpty
           ? Text(
               subtitle,
-              style: const TextStyle(
-                  fontSize: 13, color: CupertinoColors.secondaryLabel),
+              style: TextStyle(
+                  fontSize: 13, color: context.secondaryText),
             )
           : null,
       children: schedule.upcomingRehearsals.isEmpty
           ? [
-              const Padding(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
                 child: Text(
                   'No upcoming rehearsals.',
                   style: TextStyle(
                       fontSize: 13,
-                      color: CupertinoColors.secondaryLabel),
+                      color: context.secondaryText),
                 ),
               ),
             ]
@@ -177,9 +178,9 @@ class _CupertinoExpandableState extends State<_CupertinoExpandable> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  const Icon(CupertinoIcons.music_mic,
+                  Icon(CupertinoIcons.music_mic,
                       size: 20,
-                      color: CupertinoColors.secondaryLabel),
+                      color: context.secondaryText),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -193,9 +194,9 @@ class _CupertinoExpandableState extends State<_CupertinoExpandable> {
                   AnimatedRotation(
                     turns: _expanded ? 0.25 : 0,
                     duration: const Duration(milliseconds: 200),
-                    child: const Icon(CupertinoIcons.chevron_right,
+                    child: Icon(CupertinoIcons.chevron_right,
                         size: 16,
-                        color: CupertinoColors.secondaryLabel),
+                        color: context.secondaryText),
                   ),
                 ],
               ),
@@ -235,7 +236,7 @@ class _RehearsalSubTile extends StatelessWidget {
               size: 20,
               color: rehearsal.isCancelled
                   ? CupertinoColors.systemRed
-                  : CupertinoColors.secondaryLabel,
+                  : context.secondaryText,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -250,7 +251,7 @@ class _RehearsalSubTile extends StatelessWidget {
                           ? TextDecoration.lineThrough
                           : null,
                       color: rehearsal.isCancelled
-                          ? CupertinoColors.secondaryLabel
+                          ? context.secondaryText
                           : null,
                     ),
                   ),
@@ -264,8 +265,8 @@ class _RehearsalSubTile extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(CupertinoIcons.chevron_right,
-                size: 16, color: CupertinoColors.tertiaryLabel),
+            Icon(CupertinoIcons.chevron_right,
+                size: 16, color: context.tertiaryText),
           ],
         ),
       ),

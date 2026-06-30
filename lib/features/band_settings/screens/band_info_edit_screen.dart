@@ -9,6 +9,7 @@ import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 import '../data/models/band_detail.dart';
 import '../providers/band_settings_provider.dart';
 import '../../bookings/data/venue_search_service.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 // ── Address component parsing ─────────────────────────────────────────────────
 
@@ -699,7 +700,7 @@ class _DropdownRow extends StatelessWidget {
               Icon(
                 CupertinoIcons.map_pin,
                 size: 18,
-                color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                color: context.tertiaryText,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -712,7 +713,7 @@ class _DropdownRow extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: CupertinoColors.label.resolveFrom(context),
+                        color: context.primaryText,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -723,8 +724,7 @@ class _DropdownRow extends StatelessWidget {
                         prediction.address,
                         style: TextStyle(
                           fontSize: 12,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context),
+                          color: context.secondaryText,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

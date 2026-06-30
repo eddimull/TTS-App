@@ -4,6 +4,7 @@
 // mutation; callers pass current values + onSelect/onChanged callbacks.
 
 import 'package:flutter/cupertino.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Muted secondary text (card descriptions, subtitles, preview label).
 /// CupertinoColors.secondaryLabel is too dim on pure-black dark backgrounds, so
@@ -62,7 +63,7 @@ class _OptionCard extends StatelessWidget {
     final fill = selected
         ? accent.withValues(alpha: 0.08)
         : CupertinoDynamicColor.resolve(CupertinoColors.systemBackground, context);
-    final label = CupertinoDynamicColor.resolve(CupertinoColors.label, context);
+    final label = context.primaryText;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -213,8 +214,7 @@ class _GuidedConfigScaffoldState extends State<GuidedConfigScaffold> {
                                 fontWeight: FontWeight.w600,
                                 color: i == active
                                     ? CupertinoColors.white
-                                    : CupertinoDynamicColor.resolve(
-                                        CupertinoColors.label, context),
+                                    : context.primaryText,
                               ),
                             ),
                           ),

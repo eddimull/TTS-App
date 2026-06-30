@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Left-aligned section header used between stats sections.
 class StatsSectionHeader extends StatelessWidget {
@@ -15,7 +16,7 @@ class StatsSectionHeader extends StatelessWidget {
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w700,
-          color: CupertinoColors.label.resolveFrom(context),
+          color: context.primaryText,
         ),
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/models/booking_history_entry.dart';
 import '../providers/bookings_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class BookingHistoryScreen extends ConsumerWidget {
   const BookingHistoryScreen({
@@ -30,10 +31,10 @@ class BookingHistoryScreen extends ConsumerWidget {
           error: (e, _) => ErrorView(message: ErrorView.friendlyMessage(e)),
           data: (entries) {
             if (entries.isEmpty) {
-              return const Center(
+              return Center(
                 child: Text(
                   'No history yet.',
-                  style: TextStyle(color: CupertinoColors.secondaryLabel),
+                  style: TextStyle(color: context.secondaryText),
                 ),
               );
             }
@@ -140,8 +141,7 @@ class _HistoryEntryTileState extends State<_HistoryEntryTile> {
                             entry.createdAtHuman!,
                             style: TextStyle(
                               fontSize: 12,
-                              color: CupertinoColors.secondaryLabel
-                                  .resolveFrom(context),
+                              color: context.secondaryText,
                             ),
                           ),
                         ),
@@ -154,8 +154,7 @@ class _HistoryEntryTileState extends State<_HistoryEntryTile> {
                       entry.causerName!,
                       style: TextStyle(
                         fontSize: 13,
-                        color: CupertinoColors.secondaryLabel
-                            .resolveFrom(context),
+                        color: context.secondaryText,
                       ),
                     ),
                   ],
@@ -232,7 +231,7 @@ class _ChangeLine extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: CupertinoColors.label.resolveFrom(context),
+              color: context.primaryText,
             ),
           ),
           Expanded(
@@ -240,7 +239,7 @@ class _ChangeLine extends StatelessWidget {
               '${change.oldValue ?? 'none'} → ${change.newValue ?? 'none'}',
               style: TextStyle(
                 fontSize: 13,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
             ),
           ),

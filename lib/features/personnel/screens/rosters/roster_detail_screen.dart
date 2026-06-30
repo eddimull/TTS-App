@@ -5,6 +5,7 @@ import '../../../../features/contacts/contact_ref.dart';
 import '../../data/models/roster.dart';
 import '../../providers/roles_provider.dart';
 import '../../providers/rosters_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class RosterDetailScreen extends ConsumerWidget {
   const RosterDetailScreen({
@@ -37,11 +38,11 @@ class RosterDetailScreen extends ConsumerWidget {
     if (detailAsync.hasError && !detailAsync.hasValue) {
       return CupertinoPageScaffold(
         navigationBar: navBar,
-        child: const SafeArea(
+        child: SafeArea(
           child: Center(
             child: Text(
               'Failed to load roster details.',
-              style: TextStyle(color: CupertinoColors.secondaryLabel),
+              style: TextStyle(color: context.secondaryText),
             ),
           ),
         ),
@@ -96,11 +97,11 @@ class RosterDetailScreen extends ConsumerWidget {
               ),
               children: roster.slots.isEmpty
                   ? [
-                      const CupertinoListTile(
+                      CupertinoListTile(
                         title: Text(
                           'No slots defined',
                           style: TextStyle(
-                              color: CupertinoColors.secondaryLabel),
+                              color: context.secondaryText),
                         ),
                       ),
                     ]
@@ -151,8 +152,7 @@ class RosterDetailScreen extends ConsumerWidget {
                     'No members yet. Tap the person+ icon to add one.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color:
-                          CupertinoColors.secondaryLabel.resolveFrom(context),
+                      color: context.secondaryText,
                     ),
                   ),
                 ),
@@ -343,9 +343,9 @@ class RosterDetailScreen extends ConsumerWidget {
                         }
                       }),
                     )
-                  : const Text(
+                  : Text(
                       'n/a',
-                      style: TextStyle(color: CupertinoColors.tertiaryLabel),
+                      style: TextStyle(color: context.tertiaryText),
                     ),
             );
           }
@@ -498,7 +498,7 @@ class _SlotRow extends ConsumerWidget {
         additionalInfo: Text(
           '${slot.memberCount}/${slot.quantity}',
           style: TextStyle(
-            color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            color: context.secondaryText,
             fontSize: 13,
           ),
         ),

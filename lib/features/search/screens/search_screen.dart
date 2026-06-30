@@ -7,6 +7,7 @@ import '../../contacts/contact_detail_screen.dart';
 import '../../contacts/contact_ref.dart';
 import '../data/models/search_models.dart';
 import '../providers/search_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -224,7 +225,7 @@ class _SectionHeaderTile extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: CupertinoColors.secondaryLabel.resolveFrom(context),
+          color: context.secondaryText,
           letterSpacing: 0.5,
         ),
       ),
@@ -343,8 +344,7 @@ class _BookingRow extends ConsumerWidget {
                               Icon(
                                 CupertinoIcons.location,
                                 size: 11,
-                                color: CupertinoColors.tertiaryLabel
-                                    .resolveFrom(context),
+                                color: context.tertiaryText,
                               ),
                               const SizedBox(width: 3),
                               Expanded(
@@ -352,8 +352,7 @@ class _BookingRow extends ConsumerWidget {
                                   booking.venueName,
                                   style: TextStyle(
                                     fontSize: 13,
-                                    color: CupertinoColors.secondaryLabel
-                                        .resolveFrom(context),
+                                    color: context.secondaryText,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -367,8 +366,7 @@ class _BookingRow extends ConsumerWidget {
                             booking.date,
                             style: TextStyle(
                               fontSize: 13,
-                              color: CupertinoColors.secondaryLabel
-                                  .resolveFrom(context),
+                              color: context.secondaryText,
                             ),
                           ),
                         ],
@@ -381,8 +379,7 @@ class _BookingRow extends ConsumerWidget {
                   child: Icon(
                     CupertinoIcons.chevron_right,
                     size: 14,
-                    color:
-                        CupertinoColors.tertiaryLabel.resolveFrom(context),
+                    color: context.tertiaryText,
                   ),
                 ),
               ],
@@ -491,7 +488,7 @@ class _CenteredHint extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 15,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
             ),
           ],

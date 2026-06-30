@@ -11,6 +11,7 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 import 'package:tts_bandmate/features/personnel/providers/roles_provider.dart';
 
 import '../providers/payout_flow_provider.dart';
@@ -558,8 +559,7 @@ class _EnumRow extends StatelessWidget {
     // renders dark text on the dark fill in dark mode.
     final fill = CupertinoDynamicColor.resolve(
         CupertinoColors.tertiarySystemFill, context);
-    final textColor =
-        CupertinoDynamicColor.resolve(CupertinoColors.label, context);
+    final textColor = context.primaryText;
     return _FieldRow(
       label: label,
       child: CupertinoButton(

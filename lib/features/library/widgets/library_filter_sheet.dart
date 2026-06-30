@@ -6,6 +6,7 @@ import '../../auth/data/models/band_summary.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../shared/widgets/band_avatar.dart';
 import '../providers/library_filter_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Modal popup contents for filtering the merged Library list by band.
 ///
@@ -130,7 +131,7 @@ class _SectionLabel extends StatelessWidget {
             fontSize: 13,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.6,
-            color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            color: context.secondaryText,
           ),
         ),
       ),

@@ -4,6 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../providers/band_settings_provider.dart';
 import '../../../bands/providers/bands_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class InviteSection extends ConsumerStatefulWidget {
   const InviteSection({super.key, required this.bandId});
@@ -122,7 +123,7 @@ class _InviteSectionState extends ConsumerState<InviteSection> {
                 ? CupertinoIcons.chevron_up
                 : CupertinoIcons.chevron_down,
             size: 16,
-            color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            color: context.secondaryText,
           ),
           onTap: () => setState(() => _expanded = !_expanded),
         ),
@@ -219,7 +220,7 @@ class _QrFullScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  color: context.secondaryText,
                 ),
               ),
             ],

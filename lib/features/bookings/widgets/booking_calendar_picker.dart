@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import '../data/models/booking_date_status.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// A custom month-grid calendar that decorates each day cell with a booking
 /// status indicator.
@@ -174,8 +175,7 @@ class _BookingCalendarPickerState extends State<BookingCalendarPicker> {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context),
+                          color: context.secondaryText,
                         ),
                       ),
                     ),
@@ -415,10 +415,9 @@ class _LegendItem extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 11,
-            color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            color: context.secondaryText,
             decoration: strikethrough ? TextDecoration.lineThrough : null,
-            decorationColor:
-                CupertinoColors.secondaryLabel.resolveFrom(context),
+            decorationColor: context.secondaryText,
           ),
         ),
       ],
@@ -477,7 +476,7 @@ class _SelectedDateSubtitle extends StatelessWidget {
                 info!.bookingTitle,
                 style: TextStyle(
                   fontSize: 12,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  color: context.secondaryText,
                 ),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,

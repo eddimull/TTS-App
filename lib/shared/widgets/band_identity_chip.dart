@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/data/models/band_summary.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import 'band_avatar.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// A horizontal `[avatar] [label]` row identifying a band — or, for personal
 /// bands, the authenticated user.
@@ -71,7 +72,7 @@ class _ChipRow extends StatelessWidget {
                 TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  color: context.secondaryText,
                 ),
           ),
         ),

@@ -6,6 +6,7 @@ import '../../../contacts/contact_ref.dart';
 import '../../data/models/call_list_entry.dart';
 import '../../providers/subs_provider.dart';
 import 'add_call_list_entry_sheet.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Per-role substitute call lists, grouped by instrument and shown in priority
 /// order. Adding a custom person here invites them to sub for the band.
@@ -36,9 +37,9 @@ class CallListsScreen extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'Failed to load call lists.',
-                  style: TextStyle(color: CupertinoColors.secondaryLabel),
+                  style: TextStyle(color: context.secondaryText),
                 ),
                 const SizedBox(height: 12),
                 CupertinoButton(
@@ -216,7 +217,7 @@ class _EmptyHint extends StatelessWidget {
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w600,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
           ),
           const SizedBox(height: 8),
@@ -224,7 +225,7 @@ class _EmptyHint extends StatelessWidget {
             'Add backups by role so you know who to call first.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+              color: context.tertiaryText,
             ),
           ),
           const SizedBox(height: 16),

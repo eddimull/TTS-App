@@ -10,6 +10,7 @@ import 'widgets/mileage_by_year_section.dart';
 import 'widgets/performance_map.dart';
 import 'widgets/recent_locations_list.dart';
 import 'widgets/stats_section_header.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Personal stats screen — mirrors the web /stats page.
 /// Mounted from More > My Stats via GoRouter (/stats).
@@ -155,7 +156,7 @@ class _InfoBanner extends StatelessWidget {
                 'Only bookings from after you joined each band are counted.',
                 style: TextStyle(
                   fontSize: 13,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  color: context.secondaryText,
                 ),
               ),
             ),
@@ -184,14 +185,14 @@ class _ErrorState extends StatelessWidget {
             Icon(
               CupertinoIcons.exclamationmark_circle,
               size: 44,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              color: context.secondaryText,
             ),
             const SizedBox(height: 12),
             Text(
               "Couldn't load your stats.",
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
             ),
             const SizedBox(height: 16),
@@ -222,7 +223,7 @@ class _EmptyState extends StatelessWidget {
             Icon(
               CupertinoIcons.chart_bar_alt_fill,
               size: 56,
-              color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+              color: context.tertiaryText,
             ),
             const SizedBox(height: 16),
             Text(
@@ -238,7 +239,7 @@ class _EmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 15,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
             ),
           ],

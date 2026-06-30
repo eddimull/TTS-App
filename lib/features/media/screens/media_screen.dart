@@ -8,6 +8,7 @@ import '../../../shared/widgets/auth_thumbnail.dart';
 import '../data/models/media_file.dart';
 import '../providers/media_provider.dart';
 import 'media_viewer.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class MediaScreen extends ConsumerStatefulWidget {
   const MediaScreen({super.key});
@@ -226,7 +227,7 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
                     children: [
                       Icon(CupertinoIcons.photo_on_rectangle,
                           size: 48,
-                          color: CupertinoColors.secondaryLabel.resolveFrom(context)),
+                          color: context.secondaryText),
                       const SizedBox(height: 12),
                       const Text('No media yet.'),
                     ],
@@ -416,7 +417,7 @@ class _FolderTile extends StatelessWidget {
                   name,
                   style: TextStyle(
                     fontSize: 11,
-                    color: CupertinoColors.label.resolveFrom(context),
+                    color: context.primaryText,
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 2,
@@ -544,7 +545,7 @@ class _MediaTile extends ConsumerWidget {
                   child: Icon(
                     _iconForType(file.mediaType),
                     size: 32,
-                    color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                    color: context.secondaryText,
                   ),
                 ),
               ),

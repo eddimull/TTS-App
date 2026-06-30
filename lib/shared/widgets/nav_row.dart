@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// A tappable card row with an optional leading icon, title, subtitle, and
 /// disclosure chevron. Matches the rounded-card style used throughout the app.
@@ -66,8 +67,7 @@ class NavRow extends StatelessWidget {
                     subtitle!,
                     style: TextStyle(
                       fontSize: 13,
-                      color:
-                          CupertinoColors.secondaryLabel.resolveFrom(context),
+                      color: context.secondaryText,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -81,7 +81,7 @@ class NavRow extends StatelessWidget {
             Icon(
               CupertinoIcons.chevron_right,
               size: 14,
-              color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+              color: context.tertiaryText,
             ),
           ],
         ],

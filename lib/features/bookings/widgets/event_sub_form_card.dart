@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/models/event_draft.dart';
 import '../data/venue_search_service.dart';
 import 'venue_picker.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 // ── Date/time formatting helpers ──────────────────────────────────────────────
 
@@ -180,8 +181,7 @@ class _PickerRow extends StatelessWidget {
                     child: Icon(
                       CupertinoIcons.clear_circled_solid,
                       size: 16,
-                      color:
-                          CupertinoColors.tertiaryLabel.resolveFrom(context),
+                      color: context.tertiaryText,
                     ),
                   ),
                 ),
@@ -190,7 +190,7 @@ class _PickerRow extends StatelessWidget {
               Icon(
                 CupertinoIcons.chevron_right,
                 size: 14,
-                color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+                color: context.tertiaryText,
               ),
             ],
           ),
@@ -752,16 +752,14 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
                         'Search venue',
                         style: TextStyle(
                           fontSize: 14,
-                          color: CupertinoColors.placeholderText
-                              .resolveFrom(context),
+                          color: context.placeholderText,
                         ),
                       ),
                       const SizedBox(width: 4),
                       Icon(
                         CupertinoIcons.search,
                         size: 15,
-                        color: CupertinoColors.tertiaryLabel
-                            .resolveFrom(context),
+                        color: context.tertiaryText,
                       ),
                     ],
                   ),

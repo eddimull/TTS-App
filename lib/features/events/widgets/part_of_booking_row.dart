@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// A tappable banner shown at the top of [EventDetailScreen] when the event
 /// was opened from a booking detail.  Tapping navigates back to that booking.
@@ -30,7 +31,7 @@ class PartOfBookingRow extends StatelessWidget {
             Text(
               'Part of: ',
               style: TextStyle(
-                color: CupertinoColors.label.resolveFrom(context),
+                color: context.primaryText,
               ),
             ),
             Flexible(

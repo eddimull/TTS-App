@@ -10,6 +10,7 @@ import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/library_repository.dart';
 import '../data/models/chart.dart';
 import '../providers/library_provider.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 // ── Upload type constants ─────────────────────────────────────────────────────
 
@@ -218,8 +219,7 @@ class _ChartDetailBody extends ConsumerWidget {
                           'No uploads yet. Tap + to add one.',
                           style: TextStyle(
                             fontSize: 14,
-                            color: CupertinoColors.secondaryLabel
-                                .resolveFrom(context),
+                            color: context.secondaryText,
                           ),
                         ),
                       )
@@ -261,7 +261,7 @@ class _SectionHeader extends StatelessWidget {
           fontSize: 12,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.5,
-          color: CupertinoColors.secondaryLabel.resolveFrom(context),
+          color: context.secondaryText,
         ),
       ),
     );
@@ -337,7 +337,7 @@ class _MetaRow extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 14,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
             ),
           ),
@@ -415,8 +415,7 @@ class _UploadRow extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
-                                color: CupertinoColors.secondaryLabel
-                                    .resolveFrom(context),
+                                color: context.secondaryText,
                               ),
                             ),
                           ),
@@ -428,8 +427,7 @@ class _UploadRow extends StatelessWidget {
                         upload.notes,
                         style: TextStyle(
                           fontSize: 13,
-                          color: CupertinoColors.secondaryLabel
-                              .resolveFrom(context),
+                          color: context.secondaryText,
                         ),
                       ),
                     ],
@@ -768,7 +766,7 @@ class _TypeSelector extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            color: context.secondaryText,
           ),
         ),
         const SizedBox(height: 8),
@@ -820,7 +818,7 @@ class _SheetTextField extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            color: context.secondaryText,
           ),
         ),
         const SizedBox(height: 6),
@@ -863,14 +861,14 @@ class _UploadProgressBar extends StatelessWidget {
               'Uploading…',
               style: TextStyle(
                 fontSize: 12,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
             ),
             Text(
               '${(progress * 100).toStringAsFixed(0)}%',
               style: TextStyle(
                 fontSize: 12,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
             ),
           ],

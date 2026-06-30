@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import '../../../shared/utils/booking_confirmation.dart';
 import '../../../shared/widgets/band_avatar.dart';
 import '../../events/data/models/event_summary.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Single-event marker: a small `BandAvatar` with a colored ring whose color
 /// and style encode the event source and (for bookings) confirmation status.
@@ -118,7 +119,7 @@ class CalendarDayMarkers extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
-                color: CupertinoColors.label.resolveFrom(context),
+                color: context.primaryText,
               ),
             ),
           ),

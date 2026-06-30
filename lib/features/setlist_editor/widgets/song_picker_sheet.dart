@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import '../data/models/event_setlist.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 // ── Public result type ────────────────────────────────────────────────────────
 
@@ -327,7 +328,7 @@ class _SongTile extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 15,
                         // label resolves correctly in light/dark mode.
-                        color: CupertinoColors.label.resolveFrom(context),
+                        color: context.primaryText,
                       ),
                     ),
                     if ((song.artist ?? '').isNotEmpty)
@@ -337,8 +338,7 @@ class _SongTile extends StatelessWidget {
                           song.artist!,
                           style: TextStyle(
                             fontSize: 13,
-                            color: CupertinoColors.secondaryLabel
-                                .resolveFrom(context),
+                            color: context.secondaryText,
                           ),
                         ),
                       ),
@@ -353,8 +353,7 @@ class _SongTile extends StatelessWidget {
                     song.songKey!,
                     style: TextStyle(
                       fontSize: 13,
-                      color:
-                          CupertinoColors.secondaryLabel.resolveFrom(context),
+                      color: context.secondaryText,
                     ),
                   ),
                 ),
@@ -384,7 +383,7 @@ class _EmptySearch extends StatelessWidget {
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 14,
-            color: CupertinoColors.secondaryLabel.resolveFrom(context),
+            color: context.secondaryText,
           ),
         ),
       ),

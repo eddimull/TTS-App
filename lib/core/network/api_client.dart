@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_config.dart';
+import 'dev_tls.dart';
 import '../storage/secure_storage.dart';
 import 'api_endpoints.dart';
 import '../../shared/providers/selected_band_provider.dart';
@@ -43,6 +44,10 @@ class ApiClient {
         receiveTimeout: const Duration(seconds: 30),
       ),
     );
+
+    // Debug-only: trust the local HTTPS dev server's self-signed cert. No-op on
+    // web and in release builds. See dev_tls.dart.
+    configureDevTls(dio);
 
     dio.interceptors.add(
       InterceptorsWrapper(

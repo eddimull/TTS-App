@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../data/models/user_stats.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Full-width 300 px map showing a marker for each geocoded performance location.
 /// Falls back to a placeholder on Linux where google_maps_flutter is unavailable.
@@ -92,7 +93,7 @@ class _MapUnsupportedPlaceholder extends StatelessWidget {
           child: Icon(
             CupertinoIcons.map_pin_ellipse,
             size: 36,
-            color: CupertinoColors.tertiaryLabel.resolveFrom(context),
+            color: context.tertiaryText,
           ),
         ),
       ),

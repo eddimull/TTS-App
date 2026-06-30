@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/bookings_repository.dart';
 import '../providers/bookings_provider.dart';
 import '../widgets/contract/contract_default_view.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class BookingContractScreen extends ConsumerStatefulWidget {
   const BookingContractScreen({
@@ -246,7 +247,7 @@ class _ExternalView extends StatelessWidget {
               Icon(
                 CupertinoIcons.doc,
                 size: 64,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                color: context.secondaryText,
               ),
               const SizedBox(height: 16),
               const Text(

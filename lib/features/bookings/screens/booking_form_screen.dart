@@ -567,9 +567,8 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
                               selected?.name ?? 'Select',
                               style: TextStyle(
                                 color: selected == null
-                                    ? CupertinoColors.placeholderText
-                                        .resolveFrom(context)
-                                    : CupertinoColors.label.resolveFrom(context),
+                                    ? context.placeholderText
+                                    : context.primaryText,
                               ),
                             ),
                             const SizedBox(width: 4),

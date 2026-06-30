@@ -236,7 +236,7 @@ class _RehearsalSubTile extends StatelessWidget {
               size: 20,
               color: rehearsal.isCancelled
                   ? CupertinoColors.systemRed
-                  : CupertinoColors.secondaryLabel,
+                  : context.secondaryText,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -251,7 +251,7 @@ class _RehearsalSubTile extends StatelessWidget {
                           ? TextDecoration.lineThrough
                           : null,
                       color: rehearsal.isCancelled
-                          ? CupertinoColors.secondaryLabel
+                          ? context.secondaryText
                           : null,
                     ),
                   ),

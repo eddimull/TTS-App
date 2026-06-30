@@ -31,6 +31,12 @@ void main() {
     onEvent = null;
     return ProviderContainer(overrides: [
       rehearsalPlannerRepositoryProvider.overrideWithValue(FakeRepo()),
+      // The real plannerStreamBinderProvider closure (the Pusher-facing one) is
+      // intentionally NOT exercised here — it's replaced by this fake. That
+      // closure's correctness is an AOT-only concern (see BANDMATE-APP-P:
+      // contravariant onEvent param type) that `flutter test` runs in JIT and
+      // therefore cannot catch; `flutter analyze` + a release build are the
+      // real guards. These tests cover the notifier's event-handling instead.
       plannerStreamBinderProvider
           .overrideWithValue((channel, cb) => onEvent = cb),
     ]);

@@ -4,6 +4,7 @@
 // repaint. Member/role pickers reuse the band's existing members/roles data.
 
 import 'package:flutter/cupertino.dart';
+import 'package:tts_bandmate/core/theme/context_colors.dart';
 import 'package:tts_bandmate/features/band_settings/data/models/band_member.dart';
 import 'package:tts_bandmate/features/personnel/data/models/band_role.dart';
 
@@ -413,8 +414,7 @@ class _RosterRoleFilterFieldState extends State<RosterRoleFilterField> {
                             fontSize: 14,
                             color: sel.contains(role.id)
                                 ? accent
-                                : CupertinoDynamicColor.resolve(
-                                    CupertinoColors.label, context))),
+                                : context.primaryText)),
                   ]),
                 ),
               ),
@@ -570,7 +570,7 @@ class _MiniEnum extends StatelessWidget {
       child: Text(value == 'percentage' ? '%' : (value == 'fixed' ? '\$' : value),
           style: TextStyle(
               fontSize: 13,
-              color: CupertinoDynamicColor.resolve(CupertinoColors.label, context))),
+              color: context.primaryText)),
     );
   }
 }

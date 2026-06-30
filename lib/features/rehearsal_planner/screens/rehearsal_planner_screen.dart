@@ -5,6 +5,7 @@ import '../../../core/theme/context_colors.dart';
 import '../../../shared/providers/selected_band_provider.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../data/models/planner_message.dart';
+import '../data/models/planner_plan.dart';
 import '../providers/rehearsal_planner_provider.dart';
 
 class RehearsalPlannerScreen extends ConsumerWidget {
@@ -98,7 +99,8 @@ class _PlannerViewState extends ConsumerState<_PlannerView> {
               controller: _controller,
               isBusy: state.isSending,
               onSend: () {
-                final text = _controller.text;
+                final text = _controller.text.trim();
+                if (text.isEmpty || state.sessionId == null) return;
                 _controller.clear();
                 notifier.send(text);
               },
@@ -178,7 +180,7 @@ class _Bubble extends StatelessWidget {
 
 class _PlanCard extends StatelessWidget {
   const _PlanCard({required this.plan});
-  final dynamic plan; // PlannerPlan
+  final PlannerPlan plan;
 
   @override
   Widget build(BuildContext context) {
@@ -194,11 +196,11 @@ class _PlanCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            plan.title as String,
+            plan.title,
             style: TextStyle(fontWeight: FontWeight.w600, color: context.primaryText),
           ),
           const SizedBox(height: 6),
-          for (final item in plan.items as Iterable)
+          for (final item in plan.items)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 3),
               child: Text(

@@ -89,6 +89,39 @@ void main() {
     expect(m.suggestions, ['Follow-up']);
   });
 
+  test('text_delta with message_id appends to that specific message, not the last one',
+      () async {
+    final c = makeContainer();
+    addTearDown(c.dispose);
+    final n = c.read(rehearsalPlannerProvider(7).notifier);
+
+    // Start creates streaming placeholder id=100.
+    await n.start();
+
+    // Mark the first placeholder as complete so it's no longer the "last streaming".
+    onEvent!('done', {
+      'message_id': 100,
+      'content': 'First reply',
+      'suggestions': [],
+      'plan': null,
+    });
+
+    // Send a message → adds user msg (id=200) + new streaming placeholder (id=201).
+    await n.send('follow-up');
+
+    // Now two messages: id=100 (complete) and id=201 (streaming).
+    // Fire a text_delta targeting the *first* message by id — it is not the last
+    // streaming message, so the fallback path would hit the wrong one.
+    onEvent!('text_delta', {'message_id': 100, 'delta': '-extra'});
+
+    final msgs = c.read(rehearsalPlannerProvider(7)).messages;
+    // id=100 should have grown; id=201 (streaming placeholder) should stay empty.
+    final first = msgs.firstWhere((m) => m.id == 100);
+    final second = msgs.firstWhere((m) => m.id == 201);
+    expect(first.text, 'First reply-extra');
+    expect(second.text, '');
+  });
+
   test('error marks message failed; retryLast re-sends prior user text', () async {
     final c = makeContainer();
     addTearDown(c.dispose);

@@ -46,7 +46,13 @@ final plannerStreamBinderProvider = Provider<PlannerStreamBinder>((ref) {
         if (e.eventName != 'planner.stream') return;
         final raw = e.data;
         if (raw == null) return;
-        final dynamic decoded = jsonDecode(raw as String);
+        if (raw is! String) return;
+        final dynamic decoded;
+        try {
+          decoded = jsonDecode(raw);
+        } catch (_) {
+          return;
+        }
         if (decoded is! Map<String, dynamic>) return;
         final type = decoded['type'] as String? ?? '';
         onEvent(type, decoded);
@@ -156,7 +162,18 @@ class RehearsalPlannerNotifier extends Notifier<RehearsalPlannerState> {
     switch (type) {
       case 'text_delta':
         final delta = data['delta'] as String? ?? '';
-        _updateStreaming((m) => m.copyWith(text: m.text + delta));
+        final deltaMessageId = (data['message_id'] as num?)?.toInt();
+        if (deltaMessageId != null) {
+          // Backend included message_id: apply delta to that specific message.
+          _updateById(
+            deltaMessageId,
+            (m) => m.copyWith(text: m.text + delta),
+          );
+        } else {
+          // No message_id (current backend behaviour): fall back to the
+          // most-recent streaming placeholder.
+          _updateStreaming((m) => m.copyWith(text: m.text + delta));
+        }
       case 'done':
         final id = (data['message_id'] as num?)?.toInt();
         final content = data['content'] as String? ?? '';

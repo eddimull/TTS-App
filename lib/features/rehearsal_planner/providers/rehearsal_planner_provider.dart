@@ -61,7 +61,14 @@ final plannerStreamBinderProvider = Provider<PlannerStreamBinder>((ref) {
     await pusher.connect();
     await pusher.subscribe(
       channelName: channel,
-      onEvent: (PusherEvent e) {
+      // The parameter must be typed `dynamic` (not `PusherEvent`). The plugin's
+      // `PusherChannel.onEvent` field is `Function(dynamic event)?`, and in AOT
+      // (release) builds assigning a `(PusherEvent) => …` literal to it throws
+      // `TypeError: '(PusherEvent) => Null' is not a subtype of '(dynamic) => dynamic'`
+      // (function params are contravariant). A tearoff is tolerated but a literal
+      // is not — see live_session_provider's `_onPusherEvent`. Cast inside instead.
+      onEvent: (dynamic event) {
+        final e = event as PusherEvent;
         if (e.eventName != 'planner.stream') return;
         final raw = e.data;
         if (raw == null) return;

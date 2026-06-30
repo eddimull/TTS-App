@@ -1,0 +1,221 @@
+import 'dart:convert';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
+
+import '../../../core/config/app_config.dart';
+import '../../../core/storage/secure_storage.dart';
+import '../data/models/planner_message.dart';
+import '../data/models/planner_plan.dart';
+import '../data/rehearsal_planner_repository.dart';
+
+typedef PlannerStreamBinder = void Function(
+  String channel,
+  void Function(String type, Map<String, dynamic> data) onEvent,
+);
+
+/// Production binder: subscribes to the private Pusher channel and forwards
+/// 'planner.stream' events (type + data) to [onEvent].
+///
+/// Verified against `lib/features/setlist/providers/live_session_provider.dart`:
+/// `secureStorageProvider.readToken()`, `AppConfig.pusherKey/.pusherCluster/
+/// .baseUrl`, and the `pusher_channels_flutter` ^2.6.0 API
+/// (`getInstance()`, `init`, `connect`, `subscribe`, `PusherEvent.eventName/.data`).
+final plannerStreamBinderProvider = Provider<PlannerStreamBinder>((ref) {
+  return (channel, onEvent) async {
+    final token = await ref.read(secureStorageProvider).readToken();
+    if (token == null || AppConfig.pusherKey.isEmpty) return;
+    final pusher = PusherChannelsFlutter.getInstance();
+    await pusher.init(
+      apiKey: AppConfig.pusherKey,
+      cluster: AppConfig.pusherCluster,
+      authEndpoint: '${AppConfig.baseUrl}/broadcasting/auth',
+      onAuthorizer: (String channelName, String socketId, dynamic options) {
+        return {
+          'headers': {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+        };
+      },
+    );
+    await pusher.connect();
+    await pusher.subscribe(
+      channelName: channel,
+      onEvent: (PusherEvent e) {
+        if (e.eventName != 'planner.stream') return;
+        final raw = e.data;
+        if (raw == null) return;
+        final dynamic decoded = jsonDecode(raw as String);
+        if (decoded is! Map<String, dynamic>) return;
+        final type = decoded['type'] as String? ?? '';
+        onEvent(type, decoded);
+      },
+    );
+    ref.onDispose(() async {
+      await pusher.unsubscribe(channelName: channel);
+    });
+  };
+});
+
+class RehearsalPlannerState {
+  const RehearsalPlannerState({
+    this.messages = const [],
+    this.isStarting = false,
+    this.isSending = false,
+    this.error,
+    this.sessionId,
+  });
+
+  final List<PlannerMessage> messages;
+  final bool isStarting;
+  final bool isSending;
+  final String? error;
+  final int? sessionId;
+
+  RehearsalPlannerState copyWith({
+    List<PlannerMessage>? messages,
+    bool? isStarting,
+    bool? isSending,
+    String? Function()? error,
+    int? sessionId,
+  }) =>
+      RehearsalPlannerState(
+        messages: messages ?? this.messages,
+        isStarting: isStarting ?? this.isStarting,
+        isSending: isSending ?? this.isSending,
+        error: error != null ? error() : this.error,
+        sessionId: sessionId ?? this.sessionId,
+      );
+}
+
+class RehearsalPlannerNotifier extends Notifier<RehearsalPlannerState> {
+  RehearsalPlannerNotifier(this._bandId);
+  final int _bandId;
+
+  RehearsalPlannerRepository get _repo =>
+      ref.read(rehearsalPlannerRepositoryProvider);
+
+  @override
+  RehearsalPlannerState build() => const RehearsalPlannerState();
+
+  Future<void> start() async {
+    if (state.sessionId != null) return;
+    state = state.copyWith(isStarting: true, error: () => null);
+    try {
+      final r = await _repo.startSession(_bandId);
+      // Insert a streaming placeholder for the assistant's opening turn.
+      final placeholder = PlannerMessage(
+        id: r.assistantMessageId,
+        role: 'assistant',
+        text: '',
+        status: 'streaming',
+      );
+      state = state.copyWith(
+        sessionId: r.sessionId,
+        messages: [placeholder],
+        isStarting: false,
+      );
+      _bind(r.channel);
+    } catch (e) {
+      state = state.copyWith(isStarting: false, error: () => e.toString());
+    }
+  }
+
+  Future<void> send(String text) async {
+    final sessionId = state.sessionId;
+    if (sessionId == null || text.trim().isEmpty) return;
+    state = state.copyWith(isSending: true, error: () => null);
+    try {
+      final r = await _repo.sendMessage(_bandId, sessionId, text.trim());
+      final placeholder = PlannerMessage(
+        id: r.assistantMessageId,
+        role: 'assistant',
+        text: '',
+        status: 'streaming',
+      );
+      state = state.copyWith(
+        messages: [...state.messages, r.userMessage, placeholder],
+        isSending: false,
+      );
+      // Channel is the same per session; binder is idempotent enough for v1.
+      _bind(r.channel);
+    } catch (e) {
+      state = state.copyWith(isSending: false, error: () => e.toString());
+    }
+  }
+
+  bool _bound = false;
+  void _bind(String channel) {
+    if (_bound) return;
+    _bound = true;
+    ref.read(plannerStreamBinderProvider)(channel, _onStreamEvent);
+  }
+
+  void _onStreamEvent(String type, Map<String, dynamic> data) {
+    switch (type) {
+      case 'text_delta':
+        final delta = data['delta'] as String? ?? '';
+        _updateStreaming((m) => m.copyWith(text: m.text + delta));
+      case 'done':
+        final id = (data['message_id'] as num?)?.toInt();
+        final content = data['content'] as String? ?? '';
+        final suggestions =
+            (data['suggestions'] as List?)?.cast<String>() ?? const <String>[];
+        final dynamic planRaw = data['plan'];
+        final plan =
+            planRaw is Map<String, dynamic> ? PlannerPlan.fromJson(planRaw) : null;
+        _updateById(
+          id,
+          (m) => m.copyWith(
+            text: content,
+            suggestions: suggestions,
+            plan: plan,
+            status: 'complete',
+          ),
+        );
+      case 'error':
+        final id = (data['message_id'] as num?)?.toInt();
+        _updateById(id, (m) => m.copyWith(status: 'failed'));
+    }
+  }
+
+  /// Apply [fn] to the most recent streaming assistant message.
+  void _updateStreaming(PlannerMessage Function(PlannerMessage) fn) {
+    final msgs = [...state.messages];
+    for (var i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role == 'assistant' && msgs[i].status == 'streaming') {
+        msgs[i] = fn(msgs[i]);
+        state = state.copyWith(messages: msgs);
+        return;
+      }
+    }
+  }
+
+  void _updateById(int? id, PlannerMessage Function(PlannerMessage) fn) {
+    if (id == null) return;
+    final msgs = [...state.messages];
+    final idx = msgs.indexWhere((m) => m.id == id);
+    if (idx < 0) return;
+    msgs[idx] = fn(msgs[idx]);
+    state = state.copyWith(messages: msgs);
+  }
+
+  Future<void> retryLast() async {
+    // Drop a trailing failed assistant message and re-send the preceding user text.
+    final msgs = [...state.messages];
+    if (msgs.isEmpty || msgs.last.status != 'failed') return;
+    msgs.removeLast();
+    final lastUser = msgs.lastWhere(
+      (m) => m.isUser,
+      orElse: () => const PlannerMessage(id: -1, role: 'user', text: ''),
+    );
+    state = state.copyWith(messages: msgs);
+    if (lastUser.id != -1) await send(lastUser.text);
+  }
+}
+
+final rehearsalPlannerProvider = NotifierProvider.family<
+    RehearsalPlannerNotifier, RehearsalPlannerState, int>(
+  RehearsalPlannerNotifier.new,
+);

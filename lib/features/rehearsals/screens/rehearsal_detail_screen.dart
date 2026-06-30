@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:tts_bandmate/shared/utils/time_format.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
@@ -141,6 +142,16 @@ class _RehearsalDetailViewState
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // "Plan this rehearsal" — upcoming, non-cancelled rehearsals only.
+            if (!_editingNotes && _canPlan(rehearsal))
+              CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () => context.push(
+                  '/rehearsals/${rehearsal.id}/planner',
+                  extra: {'rehearsalLabel': _formatDateShort(rehearsal.date)},
+                ),
+                child: const Icon(CupertinoIcons.sparkles),
+              ),
             if (!_editingNotes)
               CupertinoButton(
                 padding: EdgeInsets.zero,
@@ -291,6 +302,17 @@ class _RehearsalDetailViewState
         ],
       ),
     );
+  }
+
+  /// The AI planner is offered only for upcoming, non-cancelled rehearsals —
+  /// you plan ahead for what to work on at one that hasn't happened yet.
+  bool _canPlan(RehearsalDetail rehearsal) {
+    if (rehearsal.isCancelled) return false;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final d = rehearsal.parsedDate;
+    final rehearsalDay = DateTime(d.year, d.month, d.day);
+    return !rehearsalDay.isBefore(today);
   }
 
   String _formatDateShort(String? date) {

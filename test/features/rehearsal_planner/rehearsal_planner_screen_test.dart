@@ -12,7 +12,7 @@ import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 class FakeRepo implements RehearsalPlannerRepository {
   @override
   Future<({int sessionId, String channel, int assistantMessageId})>
-      startSession(int bandId) async =>
+      startSession(int bandId, {int? rehearsalId}) async =>
           (sessionId: 1, channel: 'c', assistantMessageId: 100);
 
   @override
@@ -52,7 +52,9 @@ void main() {
           rehearsalPlannerRepositoryProvider.overrideWithValue(FakeRepo()),
           plannerStreamBinderProvider.overrideWithValue((c, cb) => onEvent = cb),
         ],
-        child: const CupertinoApp(home: RehearsalPlannerScreen()),
+        child: const CupertinoApp(
+          home: RehearsalPlannerScreen(rehearsalId: 42, rehearsalLabel: 'July 15, 2026'),
+        ),
       ),
     );
     // Pump to allow selectedBandProvider to resolve and postFrameCallback to fire.

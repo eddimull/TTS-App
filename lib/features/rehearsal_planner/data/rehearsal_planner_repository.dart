@@ -10,9 +10,10 @@ class RehearsalPlannerRepository {
   final Dio _dio;
 
   Future<({int sessionId, String channel, int assistantMessageId})>
-      startSession(int bandId) async {
+      startSession(int bandId, {int? rehearsalId}) async {
     final res = await _dio.post<Map<String, dynamic>>(
       ApiEndpoints.mobileRehearsalPlannerSessions(bandId),
+      data: rehearsalId != null ? {'rehearsal_id': rehearsalId} : null,
     );
     final data = res.data!;
     return (

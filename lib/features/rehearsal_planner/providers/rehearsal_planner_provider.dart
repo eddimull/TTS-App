@@ -14,6 +14,25 @@ typedef PlannerStreamBinder = void Function(
   void Function(String type, Map<String, dynamic> data) onEvent,
 );
 
+/// Family key for [rehearsalPlannerProvider]. A planner session is scoped to a
+/// band and (always, in the current UI) a specific rehearsal. Value equality is
+/// required so the family caches one notifier per (band, rehearsal) pair.
+class PlannerArgs {
+  const PlannerArgs({required this.bandId, this.rehearsalId});
+
+  final int bandId;
+  final int? rehearsalId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PlannerArgs &&
+      other.bandId == bandId &&
+      other.rehearsalId == rehearsalId;
+
+  @override
+  int get hashCode => Object.hash(bandId, rehearsalId);
+}
+
 /// Production binder: subscribes to the private Pusher channel and forwards
 /// 'planner.stream' events (type + data) to [onEvent].
 ///
@@ -96,8 +115,8 @@ class RehearsalPlannerState {
 }
 
 class RehearsalPlannerNotifier extends Notifier<RehearsalPlannerState> {
-  RehearsalPlannerNotifier(this._bandId);
-  final int _bandId;
+  RehearsalPlannerNotifier(this._args);
+  final PlannerArgs _args;
 
   RehearsalPlannerRepository get _repo =>
       ref.read(rehearsalPlannerRepositoryProvider);
@@ -109,7 +128,10 @@ class RehearsalPlannerNotifier extends Notifier<RehearsalPlannerState> {
     if (state.sessionId != null) return;
     state = state.copyWith(isStarting: true, error: () => null);
     try {
-      final r = await _repo.startSession(_bandId);
+      final r = await _repo.startSession(
+        _args.bandId,
+        rehearsalId: _args.rehearsalId,
+      );
       // Insert a streaming placeholder for the assistant's opening turn.
       final placeholder = PlannerMessage(
         id: r.assistantMessageId,
@@ -133,7 +155,7 @@ class RehearsalPlannerNotifier extends Notifier<RehearsalPlannerState> {
     if (sessionId == null || text.trim().isEmpty) return;
     state = state.copyWith(isSending: true, error: () => null);
     try {
-      final r = await _repo.sendMessage(_bandId, sessionId, text.trim());
+      final r = await _repo.sendMessage(_args.bandId, sessionId, text.trim());
       final placeholder = PlannerMessage(
         id: r.assistantMessageId,
         role: 'assistant',
@@ -236,6 +258,6 @@ class RehearsalPlannerNotifier extends Notifier<RehearsalPlannerState> {
 }
 
 final rehearsalPlannerProvider = NotifierProvider.family<
-    RehearsalPlannerNotifier, RehearsalPlannerState, int>(
+    RehearsalPlannerNotifier, RehearsalPlannerState, PlannerArgs>(
   RehearsalPlannerNotifier.new,
 );

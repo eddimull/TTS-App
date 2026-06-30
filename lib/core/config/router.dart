@@ -393,14 +393,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const RehearsalsScreen(),
       ),
       GoRoute(
-        path: '/rehearsal-planner',
-        builder: (_, __) => const RehearsalPlannerScreen(),
-      ),
-      GoRoute(
         path: '/rehearsals/by-key/:key',
         builder: (_, state) => RehearsalDetailByKeyScreen(
           eventKey: state.pathParameters['key']!,
         ),
+      ),
+      GoRoute(
+        path: '/rehearsals/:id/planner',
+        builder: (_, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return RehearsalPlannerScreen(
+            rehearsalId: int.parse(state.pathParameters['id']!),
+            rehearsalLabel: extra?['rehearsalLabel'] as String?,
+          );
+        },
       ),
       GoRoute(
         path: '/rehearsals/:id',

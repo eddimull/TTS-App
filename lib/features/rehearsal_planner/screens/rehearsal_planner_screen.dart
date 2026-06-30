@@ -9,7 +9,17 @@ import '../data/models/planner_plan.dart';
 import '../providers/rehearsal_planner_provider.dart';
 
 class RehearsalPlannerScreen extends ConsumerWidget {
-  const RehearsalPlannerScreen({super.key});
+  const RehearsalPlannerScreen({
+    super.key,
+    required this.rehearsalId,
+    this.rehearsalLabel,
+  });
+
+  /// The rehearsal this planner session is scoped to.
+  final int rehearsalId;
+
+  /// Optional human label (e.g. the rehearsal date) shown in the nav bar.
+  final String? rehearsalLabel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -33,15 +43,25 @@ class RehearsalPlannerScreen extends ConsumerWidget {
             child: Center(child: Text('No band selected')),
           );
         }
-        return _PlannerView(bandId: bandId);
+        return _PlannerView(
+          bandId: bandId,
+          rehearsalId: rehearsalId,
+          rehearsalLabel: rehearsalLabel,
+        );
       },
     );
   }
 }
 
 class _PlannerView extends ConsumerStatefulWidget {
-  const _PlannerView({required this.bandId});
+  const _PlannerView({
+    required this.bandId,
+    required this.rehearsalId,
+    this.rehearsalLabel,
+  });
   final int bandId;
+  final int rehearsalId;
+  final String? rehearsalLabel;
 
   @override
   ConsumerState<_PlannerView> createState() => _PlannerViewState();
@@ -50,11 +70,14 @@ class _PlannerView extends ConsumerStatefulWidget {
 class _PlannerViewState extends ConsumerState<_PlannerView> {
   final _controller = TextEditingController();
 
+  PlannerArgs get _args =>
+      PlannerArgs(bandId: widget.bandId, rehearsalId: widget.rehearsalId);
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(rehearsalPlannerProvider(widget.bandId).notifier).start();
+      ref.read(rehearsalPlannerProvider(_args).notifier).start();
     });
   }
 
@@ -66,11 +89,15 @@ class _PlannerViewState extends ConsumerState<_PlannerView> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(rehearsalPlannerProvider(widget.bandId));
-    final notifier = ref.read(rehearsalPlannerProvider(widget.bandId).notifier);
+    final state = ref.watch(rehearsalPlannerProvider(_args));
+    final notifier = ref.read(rehearsalPlannerProvider(_args).notifier);
+
+    final title = widget.rehearsalLabel != null
+        ? 'Plan: ${widget.rehearsalLabel}'
+        : 'Rehearsal Planner';
 
     return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(middle: Text('Rehearsal Planner')),
+      navigationBar: CupertinoNavigationBar(middle: Text(title)),
       child: SafeArea(
         child: Column(
           children: [

@@ -7,7 +7,7 @@ import 'package:tts_bandmate/features/rehearsal_planner/providers/rehearsal_plan
 class FakeRepo implements RehearsalPlannerRepository {
   @override
   Future<({int sessionId, String channel, int assistantMessageId})> startSession(
-          int bandId) async =>
+          int bandId, {int? rehearsalId}) async =>
       (sessionId: 1, channel: 'private-rehearsal-planner.1', assistantMessageId: 100);
 
   @override
@@ -25,6 +25,7 @@ class FakeRepo implements RehearsalPlannerRepository {
 
 void main() {
   late void Function(String, Map<String, dynamic>)? onEvent;
+  const args = PlannerArgs(bandId: 7, rehearsalId: 1);
 
   ProviderContainer makeContainer() {
     onEvent = null;
@@ -38,9 +39,9 @@ void main() {
   test('start inserts streaming placeholder and binds channel', () async {
     final c = makeContainer();
     addTearDown(c.dispose);
-    await c.read(rehearsalPlannerProvider(7).notifier).start();
+    await c.read(rehearsalPlannerProvider(args).notifier).start();
 
-    final s = c.read(rehearsalPlannerProvider(7));
+    final s = c.read(rehearsalPlannerProvider(args));
     expect(s.sessionId, 1);
     expect(s.messages.single.status, 'streaming');
     expect(onEvent, isNotNull); // channel bound
@@ -49,11 +50,11 @@ void main() {
   test('text_delta appends to streaming message; done finalizes', () async {
     final c = makeContainer();
     addTearDown(c.dispose);
-    await c.read(rehearsalPlannerProvider(7).notifier).start();
+    await c.read(rehearsalPlannerProvider(args).notifier).start();
 
     onEvent!('text_delta', {'delta': 'Hel'});
     onEvent!('text_delta', {'delta': 'lo'});
-    expect(c.read(rehearsalPlannerProvider(7)).messages.single.text, 'Hello');
+    expect(c.read(rehearsalPlannerProvider(args)).messages.single.text, 'Hello');
 
     onEvent!('done', {
       'message_id': 100,
@@ -61,7 +62,7 @@ void main() {
       'suggestions': ['A', 'B'],
       'plan': null,
     });
-    final m = c.read(rehearsalPlannerProvider(7)).messages.single;
+    final m = c.read(rehearsalPlannerProvider(args)).messages.single;
     expect(m.status, 'complete');
     expect(m.text, 'Hello there');
     expect(m.suggestions, ['A', 'B']);
@@ -70,10 +71,10 @@ void main() {
   test('done with empty content keeps already-accumulated streamed text', () async {
     final c = makeContainer();
     addTearDown(c.dispose);
-    await c.read(rehearsalPlannerProvider(7).notifier).start();
+    await c.read(rehearsalPlannerProvider(args).notifier).start();
 
     onEvent!('text_delta', {'delta': 'Hello'});
-    expect(c.read(rehearsalPlannerProvider(7)).messages.single.text, 'Hello');
+    expect(c.read(rehearsalPlannerProvider(args)).messages.single.text, 'Hello');
 
     // Backend sends done with empty content (fenced blocks only → stripped to '').
     onEvent!('done', {
@@ -82,7 +83,7 @@ void main() {
       'suggestions': ['Follow-up'],
       'plan': null,
     });
-    final m = c.read(rehearsalPlannerProvider(7)).messages.single;
+    final m = c.read(rehearsalPlannerProvider(args)).messages.single;
     // Streamed text must NOT be wiped.
     expect(m.text, 'Hello');
     expect(m.status, 'complete');
@@ -93,7 +94,7 @@ void main() {
       () async {
     final c = makeContainer();
     addTearDown(c.dispose);
-    final n = c.read(rehearsalPlannerProvider(7).notifier);
+    final n = c.read(rehearsalPlannerProvider(args).notifier);
 
     // Start creates streaming placeholder id=100.
     await n.start();
@@ -114,7 +115,7 @@ void main() {
     // streaming message, so the fallback path would hit the wrong one.
     onEvent!('text_delta', {'message_id': 100, 'delta': '-extra'});
 
-    final msgs = c.read(rehearsalPlannerProvider(7)).messages;
+    final msgs = c.read(rehearsalPlannerProvider(args)).messages;
     // id=100 should have grown; id=201 (streaming placeholder) should stay empty.
     final first = msgs.firstWhere((m) => m.id == 100);
     final second = msgs.firstWhere((m) => m.id == 201);
@@ -125,17 +126,17 @@ void main() {
   test('error marks message failed; retryLast re-sends prior user text', () async {
     final c = makeContainer();
     addTearDown(c.dispose);
-    final n = c.read(rehearsalPlannerProvider(7).notifier);
+    final n = c.read(rehearsalPlannerProvider(args).notifier);
     await n.start();
     onEvent!('done',
         {'message_id': 100, 'content': 'opening', 'suggestions': [], 'plan': null});
 
     await n.send('plan please');
     onEvent!('error', {'message_id': 201});
-    expect(c.read(rehearsalPlannerProvider(7)).messages.last.status, 'failed');
+    expect(c.read(rehearsalPlannerProvider(args)).messages.last.status, 'failed');
 
     await n.retryLast();
     // After retry, a new streaming placeholder exists (id 201 again from fake).
-    expect(c.read(rehearsalPlannerProvider(7)).messages.last.status, 'streaming');
+    expect(c.read(rehearsalPlannerProvider(args)).messages.last.status, 'streaming');
   });
 }

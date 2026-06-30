@@ -69,7 +69,7 @@ class EventDetailScreen extends ConsumerWidget {
   }
 }
 
-class _EventDetailView extends StatelessWidget {
+class _EventDetailView extends ConsumerWidget {
   const _EventDetailView({
     required this.event,
     this.parentBookingName,
@@ -83,7 +83,21 @@ class _EventDetailView extends StatelessWidget {
   final int? parentBandId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Resolve the booking backlink. When opened from a booking, the parent
+    // params carry the name + ids. Otherwise, derive it from the event's own
+    // eventable fields (booking-backed events only) plus the active band.
+    final selectedBandId = ref.watch(selectedBandProvider).value;
+    final bool fromBooking =
+        parentBookingId != null && parentBandId != null;
+    final bool isBookingBacked = event.eventableType == 'Bookings' &&
+        event.eventableId != null &&
+        selectedBandId != null;
+
+    final int? bookingBandId = fromBooking ? parentBandId : selectedBandId;
+    final int? bookingId = fromBooking ? parentBookingId : event.eventableId;
+    final bool showBookingLink = fromBooking || isBookingBacked;
+
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
         middle: Text(event.title),
@@ -99,14 +113,14 @@ class _EventDetailView extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // "Part of: <booking>" backlink — shown only when opened from booking detail
-          if (parentBookingName != null &&
-              parentBookingId != null &&
-              parentBandId != null) ...[
+          // Booking backlink. Shows "Part of: <name>" when opened from the
+          // booking, or a generic "Go to booking" for booking-backed events
+          // opened any other way.
+          if (showBookingLink) ...[
             PartOfBookingRow(
-              bookingName: parentBookingName!,
+              bookingName: parentBookingName,
               onTap: () => context.push(
-                '/bookings/$parentBandId/$parentBookingId',
+                '/bookings/$bookingBandId/$bookingId',
               ),
             ),
             const SizedBox(height: 12),

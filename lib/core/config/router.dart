@@ -40,6 +40,7 @@ import '../../features/personnel/screens/personnel_screen.dart';
 import '../../features/account/screens/account_screen.dart';
 import '../../features/calendar_feed/screens/calendar_feed_screen.dart';
 import '../../features/stats/screens/user_stats_screen.dart';
+import '../../features/rehearsal_planner/screens/rehearsal_planner_screen.dart';
 import '../../features/setlist/screens/live_session_screen.dart';
 import '../../features/setlist_editor/screens/setlist_editor_screen.dart';
 import '../../shared/providers/selected_band_provider.dart';
@@ -396,6 +397,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => RehearsalDetailByKeyScreen(
           eventKey: state.pathParameters['key']!,
         ),
+      ),
+      GoRoute(
+        path: '/rehearsals/:id/planner',
+        builder: (_, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return RehearsalPlannerScreen(
+            rehearsalId: int.parse(state.pathParameters['id']!),
+            rehearsalLabel: extra?['rehearsalLabel'] as String?,
+          );
+        },
       ),
       GoRoute(
         path: '/rehearsals/:id',

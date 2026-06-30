@@ -227,4 +227,14 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/subs/invitations/$invitationId';
   static String mobileBandSubUser(int bandId, int userId) =>
       '/api/mobile/bands/$bandId/subs/$userId';
+
+  // Rehearsal Planner
+  static String mobileRehearsalPlannerSessions(int bandId) =>
+      '/api/mobile/bands/$bandId/rehearsal-planner/sessions';
+
+  static String mobileRehearsalPlannerMessages(int bandId, int sessionId) =>
+      '/api/mobile/bands/$bandId/rehearsal-planner/sessions/$sessionId/messages';
+
+  static String mobileRehearsalPlannerSession(int bandId, int sessionId) =>
+      '/api/mobile/bands/$bandId/rehearsal-planner/sessions/$sessionId';
 }

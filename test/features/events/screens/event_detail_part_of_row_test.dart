@@ -52,5 +52,25 @@ void main() {
 
       expect(find.byIcon(CupertinoIcons.bookmark), findsOneWidget);
     });
+
+    testWidgets(
+        'falls back to generic "Go to booking" label when name is null',
+        (tester) async {
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: PartOfBookingRow(
+              onTap: () {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Go to booking'), findsOneWidget);
+      expect(find.text('Part of: '), findsNothing);
+      // Still shows the bookmark plus a trailing chevron.
+      expect(find.byIcon(CupertinoIcons.bookmark), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.chevron_right), findsOneWidget);
+    });
   });
 }

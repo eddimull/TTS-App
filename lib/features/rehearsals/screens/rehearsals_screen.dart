@@ -57,8 +57,13 @@ class _RehearsalsBody extends ConsumerWidget {
         CupertinoSliverRefreshControl(
           onRefresh: () async => ref.invalidate(schedulesProvider(bandId)),
         ),
-        const CupertinoSliverNavigationBar(
-          largeTitle: Text('Rehearsals'),
+        CupertinoSliverNavigationBar(
+          largeTitle: const Text('Rehearsals'),
+          trailing: CupertinoButton(
+            padding: EdgeInsets.zero,
+            onPressed: () => context.push('/rehearsal-planner'),
+            child: const Icon(CupertinoIcons.sparkles),
+          ),
         ),
         schedulesAsync.when(
           loading: () => const SliverFillRemaining(

@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.1](https://github.com/eddimull/TTS-App/compare/v1.6.0...v1.6.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* **deploy:** wait for Android Build to finish before promoting (no concurrent Play edits) ([ce27a25](https://github.com/eddimull/TTS-App/commit/ce27a254c3daeed6c4abe27276cf7acbab3c731f))
+* **ui:** resolve dark-mode subtext contrast app-wide ([#75](https://github.com/eddimull/TTS-App/issues/75)) ([f7b015f](https://github.com/eddimull/TTS-App/commit/f7b015fa9e63d23469694621eda4ef784b9deadb))
+
 ## [1.6.0](https://github.com/eddimull/TTS-App/compare/v1.5.3...v1.6.0) (2026-06-27)
 
 

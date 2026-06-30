@@ -168,7 +168,10 @@ class RehearsalPlannerNotifier extends Notifier<RehearsalPlannerState> {
         _updateById(
           id,
           (m) => m.copyWith(
-            text: content,
+            // If the backend sends an empty content (e.g. all text was in
+            // fenced plan/suggestions blocks and got stripped), preserve the
+            // already-accumulated streamed text rather than blanking the bubble.
+            text: content.isNotEmpty ? content : m.text,
             suggestions: suggestions,
             plan: plan,
             status: 'complete',

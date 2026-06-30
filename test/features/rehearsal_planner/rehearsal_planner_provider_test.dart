@@ -67,6 +67,28 @@ void main() {
     expect(m.suggestions, ['A', 'B']);
   });
 
+  test('done with empty content keeps already-accumulated streamed text', () async {
+    final c = makeContainer();
+    addTearDown(c.dispose);
+    await c.read(rehearsalPlannerProvider(7).notifier).start();
+
+    onEvent!('text_delta', {'delta': 'Hello'});
+    expect(c.read(rehearsalPlannerProvider(7)).messages.single.text, 'Hello');
+
+    // Backend sends done with empty content (fenced blocks only → stripped to '').
+    onEvent!('done', {
+      'message_id': 100,
+      'content': '',
+      'suggestions': ['Follow-up'],
+      'plan': null,
+    });
+    final m = c.read(rehearsalPlannerProvider(7)).messages.single;
+    // Streamed text must NOT be wiped.
+    expect(m.text, 'Hello');
+    expect(m.status, 'complete');
+    expect(m.suggestions, ['Follow-up']);
+  });
+
   test('error marks message failed; retryLast re-sends prior user text', () async {
     final c = makeContainer();
     addTearDown(c.dispose);

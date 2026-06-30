@@ -12,14 +12,29 @@ class RehearsalPlannerScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bandId = ref.watch(selectedBandProvider).value;
-    if (bandId == null) {
-      return const CupertinoPageScaffold(
-        navigationBar: CupertinoNavigationBar(middle: Text('Rehearsal Planner')),
+    final bandAsync = ref.watch(selectedBandProvider);
+    return bandAsync.when(
+      loading: () => const CupertinoPageScaffold(
+        navigationBar:
+            CupertinoNavigationBar(middle: Text('Rehearsal Planner')),
+        child: Center(child: CupertinoActivityIndicator()),
+      ),
+      error: (e, _) => const CupertinoPageScaffold(
+        navigationBar:
+            CupertinoNavigationBar(middle: Text('Rehearsal Planner')),
         child: Center(child: Text('No band selected')),
-      );
-    }
-    return _PlannerView(bandId: bandId);
+      ),
+      data: (bandId) {
+        if (bandId == null) {
+          return const CupertinoPageScaffold(
+            navigationBar:
+                CupertinoNavigationBar(middle: Text('Rehearsal Planner')),
+            child: Center(child: Text('No band selected')),
+          );
+        }
+        return _PlannerView(bandId: bandId);
+      },
+    );
   }
 }
 

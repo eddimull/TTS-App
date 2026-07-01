@@ -69,6 +69,7 @@ class _PlannerView extends ConsumerStatefulWidget {
 
 class _PlannerViewState extends ConsumerState<_PlannerView> {
   final _controller = TextEditingController();
+  final _scrollController = ScrollController();
 
   PlannerArgs get _args =>
       PlannerArgs(bandId: widget.bandId, rehearsalId: widget.rehearsalId);
@@ -84,11 +85,35 @@ class _PlannerViewState extends ConsumerState<_PlannerView> {
   @override
   void dispose() {
     _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Auto-follow new messages and streaming text-delta growth, but skip
+    // scrolling on unrelated state changes (e.g. isSending/error toggles).
+    ref.listen(rehearsalPlannerProvider(_args), (previous, next) {
+      final shouldScroll = previous == null ||
+          next.messages.length != previous.messages.length ||
+          (next.messages.isNotEmpty &&
+              previous.messages.isNotEmpty &&
+              next.messages.last.text != previous.messages.last.text);
+      if (shouldScroll) _scrollToBottom();
+    });
+
     final state = ref.watch(rehearsalPlannerProvider(_args));
     final notifier = ref.read(rehearsalPlannerProvider(_args).notifier);
 
@@ -113,6 +138,7 @@ class _PlannerViewState extends ConsumerState<_PlannerView> {
               child: state.isStarting && state.messages.isEmpty
                   ? const Center(child: CupertinoActivityIndicator())
                   : ListView.builder(
+                      controller: _scrollController,
                       padding: const EdgeInsets.all(12),
                       itemCount: state.messages.length,
                       itemBuilder: (_, i) => _Bubble(
@@ -189,14 +215,34 @@ class _Bubble extends StatelessWidget {
         if (message.suggestions.isNotEmpty)
           Wrap(
             spacing: 8,
+            runSpacing: 4,
             children: [
               for (final s in message.suggestions)
                 CupertinoButton(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  color: CupertinoColors.systemGrey5.resolveFrom(context),
+                  padding: EdgeInsets.zero,
                   minimumSize: Size.zero,
                   onPressed: () => onSuggestionTap(s),
-                  child: Text(s, style: TextStyle(color: context.primaryText, fontSize: 13)),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: CupertinoColors.activeBlue
+                          .resolveFrom(context)
+                          .withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: CupertinoColors.activeBlue.resolveFrom(context),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      s,
+                      style: TextStyle(
+                        color: CupertinoColors.activeBlue.resolveFrom(context),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 ),
             ],
           ),

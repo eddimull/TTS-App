@@ -72,4 +72,77 @@ void main() {
     await tester.pump();
     expect(find.text('Hi there'), findsOneWidget);
   });
+
+  testWidgets('auto-scrolls to bottom as streamed content grows',
+      (tester) async {
+    void Function(String, Map<String, dynamic>)? onEvent;
+
+    // Constrain the viewport so a handful of long messages overflow it and
+    // maxScrollExtent becomes > 0.
+    tester.view.physicalSize = const Size(400, 500);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          selectedBandProvider.overrideWith(() => _FakeBandNotifier(7)),
+          rehearsalPlannerRepositoryProvider.overrideWithValue(FakeRepo()),
+          plannerStreamBinderProvider.overrideWithValue((c, cb) => onEvent = cb),
+        ],
+        child: const CupertinoApp(
+          home: RehearsalPlannerScreen(rehearsalId: 42, rehearsalLabel: 'July 15, 2026'),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+
+    // Stream a long opening message so the single bubble alone doesn't
+    // overflow; then send several more short-text turns (each producing a
+    // long streamed assistant reply) so the list becomes scrollable. Keep
+    // composer input short to avoid unrelated layout overflow.
+    onEvent!('text_delta', {
+      'delta': 'A ' * 200,
+    });
+    await tester.pump();
+
+    for (var i = 0; i < 5; i++) {
+      final controllerFinder = find.byType(CupertinoTextField);
+      await tester.enterText(controllerFinder, 'Turn $i');
+      await tester.pump();
+      await tester.tap(find.byIcon(CupertinoIcons.arrow_up_circle_fill));
+      // Allow sendMessage's fake future to resolve and rebuild.
+      await tester.pump();
+      await tester.pump();
+      onEvent!('text_delta', {'delta': 'Reply $i ' * 80});
+      await tester.pump();
+      // Let each auto-scroll animation fully settle before adding more
+      // content, so ListView.builder lays out far-off items and
+      // maxScrollExtent reflects the true content height.
+      await tester.pumpAndSettle();
+    }
+
+    final listView = tester.widget<ListView>(find.byType(ListView));
+    final controller = listView.controller!;
+    expect(controller.hasClients, isTrue);
+    expect(
+      controller.position.maxScrollExtent,
+      greaterThan(0),
+      reason: 'test content must overflow the viewport to exercise scrolling',
+    );
+
+    // Auto-scroll runs inside a post-frame callback with a 200ms animation;
+    // pump once to let the last callback schedule/start the animation, then
+    // settle it fully.
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(
+      controller.position.pixels,
+      closeTo(controller.position.maxScrollExtent, 1.0),
+    );
+  });
 }

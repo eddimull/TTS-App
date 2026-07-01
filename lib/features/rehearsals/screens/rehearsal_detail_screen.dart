@@ -129,6 +129,9 @@ class _RehearsalDetailViewState
       final repo = ref.read(rehearsalsRepositoryProvider);
       final fresh = await repo.getRehearsalDetail(rehearsalId);
       if (!mounted) return;
+      // Safe to overwrite the controller: the planner (the only caller) is
+      // launched from the nav bar only when `!_editingNotes`, and it sits on
+      // top of this screen, so a notes edit can't be in progress here.
       setState(() {
         _notes = (fresh.notes?.isEmpty ?? true) ? null : fresh.notes;
         _notesController.text = _notes ?? '';

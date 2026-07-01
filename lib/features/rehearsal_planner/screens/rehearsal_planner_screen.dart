@@ -7,6 +7,7 @@ import '../../../shared/providers/selected_band_provider.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../data/models/planner_message.dart';
 import '../data/models/planner_plan.dart';
+import '../data/models/planner_plan_formatter.dart';
 import '../providers/rehearsal_planner_provider.dart';
 
 class RehearsalPlannerScreen extends ConsumerWidget {
@@ -347,7 +348,7 @@ class _PlanCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 3),
               child: Text(
-                '• ${item.title} — ${item.reason}',
+                formatPlanItemBullet(item),
                 style: TextStyle(fontSize: 14, color: context.secondaryText),
               ),
             ),

@@ -32,4 +32,18 @@ void main() {
     final plan = const PlannerPlan(title: 'Empty plan', items: []);
     expect(formatPlanAsNotes(plan), 'Empty plan');
   });
+
+  group('formatPlanItemBullet', () {
+    test('renders title and reason with a dash', () {
+      const item = PlannerPlanItem(title: 'At Last', reason: 'On the setlist.');
+      expect(formatPlanItemBullet(item), '• At Last — On the setlist.');
+    });
+
+    test('drops the dash when the reason is empty or whitespace', () {
+      expect(formatPlanItemBullet(const PlannerPlanItem(title: 'Song A', reason: '')),
+          '• Song A');
+      expect(formatPlanItemBullet(const PlannerPlanItem(title: 'Song B', reason: '   ')),
+          '• Song B');
+    });
+  });
 }

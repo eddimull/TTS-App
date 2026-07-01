@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.7.0](https://github.com/eddimull/TTS-App/compare/v1.6.1...v1.7.0) (2026-07-01)
+
+
+### Features
+
+* **events:** link an event back to its parent booking ([#76](https://github.com/eddimull/TTS-App/issues/76)) ([c5aabd4](https://github.com/eddimull/TTS-App/commit/c5aabd4bfaeef1b6c31bc5b28e6c4547ec8c01b2))
+* **rehearsal-planner:** AI rehearsal planner chat ([#78](https://github.com/eddimull/TTS-App/issues/78)) ([8f7dd7e](https://github.com/eddimull/TTS-App/commit/8f7dd7e266a70f5b7ce73c159dc76dd7a1b428e0))
+* **rehearsal-planner:** auto-scroll chat + actionable suggestion chips ([#82](https://github.com/eddimull/TTS-App/issues/82)) ([2f0ec6b](https://github.com/eddimull/TTS-App/commit/2f0ec6b880aa6f4daac2f51cc1821781b342c9d0))
+* **rehearsal-planner:** save AI-generated plan to rehearsal notes ([#83](https://github.com/eddimull/TTS-App/issues/83)) ([3502148](https://github.com/eddimull/TTS-App/commit/3502148aa6f5dc281bb78ac5e4214fdd6cc7f558))
+
+
+### Bug Fixes
+
+* **realtime:** onAuthorizer must POST to /broadcasting/auth and return the auth signature ([#81](https://github.com/eddimull/TTS-App/issues/81)) ([36b5710](https://github.com/eddimull/TTS-App/commit/36b57108e786254a6d2c27b35afb10e16568f479))
+* **rehearsal-planner:** type Pusher onEvent param as dynamic for AOT ([#79](https://github.com/eddimull/TTS-App/issues/79)) ([349f4f7](https://github.com/eddimull/TTS-App/commit/349f4f7b4b38097bdaa8b5484188f01f913ba5ed))
+
 ## [1.6.1](https://github.com/eddimull/TTS-App/compare/v1.6.0...v1.6.1) (2026-06-30)
 
 

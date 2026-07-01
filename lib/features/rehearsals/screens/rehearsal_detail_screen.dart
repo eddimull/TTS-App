@@ -124,6 +124,20 @@ class _RehearsalDetailViewState
     }
   }
 
+  Future<void> _refreshNotes(int rehearsalId) async {
+    try {
+      final repo = ref.read(rehearsalsRepositoryProvider);
+      final fresh = await repo.getRehearsalDetail(rehearsalId);
+      if (!mounted) return;
+      setState(() {
+        _notes = (fresh.notes?.isEmpty ?? true) ? null : fresh.notes;
+        _notesController.text = _notes ?? '';
+      });
+    } catch (_) {
+      // Non-fatal: the plan was saved server-side; a manual refresh will show it.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final rehearsal = widget.rehearsal;
@@ -146,10 +160,18 @@ class _RehearsalDetailViewState
             if (!_editingNotes && _canPlan(rehearsal))
               CupertinoButton(
                 padding: EdgeInsets.zero,
-                onPressed: () => context.push(
-                  '/rehearsals/${rehearsal.id}/planner',
-                  extra: {'rehearsalLabel': _formatDateShort(rehearsal.date)},
-                ),
+                onPressed: () async {
+                  final saved = await context.push<bool>(
+                    '/rehearsals/${rehearsal.id}/planner',
+                    extra: {
+                      'rehearsalLabel': _formatDateShort(rehearsal.date),
+                      'existingNotes': _notes,
+                    },
+                  );
+                  if (saved == true) {
+                    await _refreshNotes(rehearsal.id);
+                  }
+                },
                 child: const Icon(CupertinoIcons.sparkles),
               ),
             if (!_editingNotes)

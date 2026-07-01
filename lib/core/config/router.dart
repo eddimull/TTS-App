@@ -405,6 +405,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           return RehearsalPlannerScreen(
             rehearsalId: int.parse(state.pathParameters['id']!),
             rehearsalLabel: extra?['rehearsalLabel'] as String?,
+            existingNotes: extra?['existingNotes'] as String?,
           );
         },
       ),

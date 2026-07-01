@@ -8,7 +8,9 @@ import '../../../core/network/pusher_authorizer.dart';
 import '../../../core/storage/secure_storage.dart';
 import '../data/models/planner_message.dart';
 import '../data/models/planner_plan.dart';
+import '../data/models/planner_plan_formatter.dart';
 import '../data/rehearsal_planner_repository.dart';
+import '../../rehearsals/data/rehearsals_repository.dart';
 
 typedef PlannerStreamBinder = void Function(
   String channel,
@@ -83,11 +85,15 @@ final plannerStreamBinderProvider = Provider<PlannerStreamBinder>((ref) {
   };
 });
 
+/// How a saved plan combines with the rehearsal's current notes.
+enum NotesSaveMode { replace, append }
+
 class RehearsalPlannerState {
   const RehearsalPlannerState({
     this.messages = const [],
     this.isStarting = false,
     this.isSending = false,
+    this.isSavingPlan = false,
     this.error,
     this.sessionId,
   });
@@ -95,6 +101,7 @@ class RehearsalPlannerState {
   final List<PlannerMessage> messages;
   final bool isStarting;
   final bool isSending;
+  final bool isSavingPlan;
   final String? error;
   final int? sessionId;
 
@@ -102,6 +109,7 @@ class RehearsalPlannerState {
     List<PlannerMessage>? messages,
     bool? isStarting,
     bool? isSending,
+    bool? isSavingPlan,
     String? Function()? error,
     int? sessionId,
   }) =>
@@ -109,6 +117,7 @@ class RehearsalPlannerState {
         messages: messages ?? this.messages,
         isStarting: isStarting ?? this.isStarting,
         isSending: isSending ?? this.isSending,
+        isSavingPlan: isSavingPlan ?? this.isSavingPlan,
         error: error != null ? error() : this.error,
         sessionId: sessionId ?? this.sessionId,
       );
@@ -170,6 +179,36 @@ class RehearsalPlannerNotifier extends Notifier<RehearsalPlannerState> {
       _bind(r.channel);
     } catch (e) {
       state = state.copyWith(isSending: false, error: () => e.toString());
+    }
+  }
+
+  /// Writes [plan] into the scoped rehearsal's notes. Returns true on success.
+  /// With [NotesSaveMode.append] and non-empty [existingNotes], the plan is
+  /// added below the current notes; otherwise the plan replaces them.
+  Future<bool> savePlanToNotes(
+    PlannerPlan plan, {
+    required NotesSaveMode mode,
+    String? existingNotes,
+  }) async {
+    final rehearsalId = _args.rehearsalId;
+    if (rehearsalId == null) return false;
+
+    final planText = formatPlanAsNotes(plan);
+    final existing = existingNotes?.trim() ?? '';
+    final text = (mode == NotesSaveMode.append && existing.isNotEmpty)
+        ? '$existing\n\n$planText'
+        : planText;
+
+    state = state.copyWith(isSavingPlan: true, error: () => null);
+    try {
+      await ref
+          .read(rehearsalsRepositoryProvider)
+          .updateNotes(rehearsalId, text);
+      state = state.copyWith(isSavingPlan: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(isSavingPlan: false, error: () => e.toString());
+      return false;
     }
   }
 

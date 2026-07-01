@@ -1,11 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/context_colors.dart';
 import '../../../shared/providers/selected_band_provider.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../data/models/planner_message.dart';
 import '../data/models/planner_plan.dart';
+import '../data/models/planner_plan_formatter.dart';
 import '../providers/rehearsal_planner_provider.dart';
 
 class RehearsalPlannerScreen extends ConsumerWidget {
@@ -13,6 +15,7 @@ class RehearsalPlannerScreen extends ConsumerWidget {
     super.key,
     required this.rehearsalId,
     this.rehearsalLabel,
+    this.existingNotes,
   });
 
   /// The rehearsal this planner session is scoped to.
@@ -20,6 +23,10 @@ class RehearsalPlannerScreen extends ConsumerWidget {
 
   /// Optional human label (e.g. the rehearsal date) shown in the nav bar.
   final String? rehearsalLabel;
+
+  /// The rehearsal's current notes, passed from the detail screen so the save
+  /// flow can offer Append vs Replace. Null/empty means "no existing notes".
+  final String? existingNotes;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -47,6 +54,7 @@ class RehearsalPlannerScreen extends ConsumerWidget {
           bandId: bandId,
           rehearsalId: rehearsalId,
           rehearsalLabel: rehearsalLabel,
+          existingNotes: existingNotes,
         );
       },
     );
@@ -58,10 +66,12 @@ class _PlannerView extends ConsumerStatefulWidget {
     required this.bandId,
     required this.rehearsalId,
     this.rehearsalLabel,
+    this.existingNotes,
   });
   final int bandId;
   final int rehearsalId;
   final String? rehearsalLabel;
+  final String? existingNotes;
 
   @override
   ConsumerState<_PlannerView> createState() => _PlannerViewState();
@@ -73,6 +83,50 @@ class _PlannerViewState extends ConsumerState<_PlannerView> {
 
   PlannerArgs get _args =>
       PlannerArgs(bandId: widget.bandId, rehearsalId: widget.rehearsalId);
+
+  Future<void> _onSavePlan(PlannerPlan plan) async {
+    final notifier = ref.read(rehearsalPlannerProvider(_args).notifier);
+    final existing = widget.existingNotes?.trim() ?? '';
+
+    NotesSaveMode? mode;
+    if (existing.isEmpty) {
+      mode = NotesSaveMode.replace; // nothing to preserve → just write it
+    } else {
+      mode = await showCupertinoModalPopup<NotesSaveMode>(
+        context: context,
+        builder: (sheetContext) => CupertinoActionSheet(
+          title: const Text('Save plan to notes'),
+          message: const Text('This rehearsal already has notes.'),
+          actions: [
+            CupertinoActionSheetAction(
+              onPressed: () => Navigator.pop(sheetContext, NotesSaveMode.append),
+              child: const Text('Append to notes'),
+            ),
+            CupertinoActionSheetAction(
+              isDestructiveAction: true,
+              onPressed: () => Navigator.pop(sheetContext, NotesSaveMode.replace),
+              child: const Text('Replace notes'),
+            ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.pop(sheetContext),
+            child: const Text('Cancel'),
+          ),
+        ),
+      );
+    }
+
+    if (mode == null) return; // user cancelled
+    if (!mounted) return;
+
+    final ok = await notifier.savePlanToNotes(
+      plan,
+      mode: mode,
+      existingNotes: widget.existingNotes,
+    );
+    if (ok && mounted) context.pop(true);
+    // On failure the provider set state.error; the existing error banner shows it.
+  }
 
   @override
   void initState() {
@@ -145,6 +199,8 @@ class _PlannerViewState extends ConsumerState<_PlannerView> {
                         message: state.messages[i],
                         onSuggestionTap: (s) => notifier.send(s),
                         onRetry: notifier.retryLast,
+                        isSavingPlan: state.isSavingPlan,
+                        onSavePlan: _onSavePlan,
                       ),
                     ),
             ),
@@ -170,11 +226,15 @@ class _Bubble extends StatelessWidget {
     required this.message,
     required this.onSuggestionTap,
     required this.onRetry,
+    required this.isSavingPlan,
+    required this.onSavePlan,
   });
 
   final PlannerMessage message;
   final void Function(String) onSuggestionTap;
   final VoidCallback onRetry;
+  final bool isSavingPlan;
+  final Future<void> Function(PlannerPlan) onSavePlan;
 
   @override
   Widget build(BuildContext context) {
@@ -211,7 +271,12 @@ class _Bubble extends StatelessWidget {
             onPressed: onRetry,
             child: const Text('Retry'),
           ),
-        if (message.plan != null) _PlanCard(plan: message.plan!),
+        if (message.plan != null)
+          _PlanCard(
+            plan: message.plan!,
+            isSaving: isSavingPlan,
+            onSave: () => onSavePlan(message.plan!),
+          ),
         if (message.suggestions.isNotEmpty)
           Wrap(
             spacing: 8,
@@ -252,8 +317,14 @@ class _Bubble extends StatelessWidget {
 }
 
 class _PlanCard extends StatelessWidget {
-  const _PlanCard({required this.plan});
+  const _PlanCard({
+    required this.plan,
+    required this.isSaving,
+    required this.onSave,
+  });
   final PlannerPlan plan;
+  final bool isSaving;
+  final VoidCallback onSave;
 
   @override
   Widget build(BuildContext context) {
@@ -277,10 +348,24 @@ class _PlanCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 3),
               child: Text(
-                '• ${item.title} — ${item.reason}',
+                formatPlanItemBullet(item),
                 style: TextStyle(fontSize: 14, color: context.secondaryText),
               ),
             ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: CupertinoButton(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              color: CupertinoColors.activeBlue.resolveFrom(context),
+              borderRadius: BorderRadius.circular(8),
+              onPressed: isSaving ? null : onSave,
+              child: isSaving
+                  ? const CupertinoActivityIndicator(color: CupertinoColors.white)
+                  : const Text('Save to rehearsal notes',
+                      style: TextStyle(color: CupertinoColors.white, fontSize: 15)),
+            ),
+          ),
         ],
       ),
     );

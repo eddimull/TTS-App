@@ -1,8 +1,27 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tts_bandmate/features/rehearsal_planner/data/models/planner_message.dart';
+import 'package:tts_bandmate/features/rehearsal_planner/data/models/planner_plan.dart';
 import 'package:tts_bandmate/features/rehearsal_planner/data/rehearsal_planner_repository.dart';
 import 'package:tts_bandmate/features/rehearsal_planner/providers/rehearsal_planner_provider.dart';
+import 'package:tts_bandmate/features/rehearsals/data/rehearsals_repository.dart';
+
+class FakeRehearsalsRepo extends RehearsalsRepository {
+  FakeRehearsalsRepo() : super(Dio());
+
+  int? lastRehearsalId;
+  String? lastNotes;
+  bool shouldThrow = false;
+
+  @override
+  Future<String?> updateNotes(int rehearsalId, String? notes) async {
+    if (shouldThrow) throw Exception('network');
+    lastRehearsalId = rehearsalId;
+    lastNotes = notes;
+    return notes;
+  }
+}
 
 class FakeRepo implements RehearsalPlannerRepository {
   @override
@@ -26,11 +45,14 @@ class FakeRepo implements RehearsalPlannerRepository {
 void main() {
   late void Function(String, Map<String, dynamic>)? onEvent;
   const args = PlannerArgs(bandId: 7, rehearsalId: 1);
+  late FakeRehearsalsRepo rehearsalsRepo;
 
   ProviderContainer makeContainer() {
     onEvent = null;
+    rehearsalsRepo = FakeRehearsalsRepo();
     return ProviderContainer(overrides: [
       rehearsalPlannerRepositoryProvider.overrideWithValue(FakeRepo()),
+      rehearsalsRepositoryProvider.overrideWithValue(rehearsalsRepo),
       // The real plannerStreamBinderProvider closure (the Pusher-facing one) is
       // intentionally NOT exercised here — it's replaced by this fake. That
       // closure's correctness is an AOT-only concern (see BANDMATE-APP-P:
@@ -144,5 +166,73 @@ void main() {
     await n.retryLast();
     // After retry, a new streaming placeholder exists (id 201 again from fake).
     expect(c.read(rehearsalPlannerProvider(args)).messages.last.status, 'streaming');
+  });
+
+  const samplePlan = PlannerPlan(
+    title: 'Plan',
+    items: [PlannerPlanItem(title: 'Song A', reason: 'because')],
+  );
+
+  test('savePlanToNotes(replace) writes formatted plan to the rehearsal id', () async {
+    final c = makeContainer();
+    addTearDown(c.dispose);
+    final n = c.read(rehearsalPlannerProvider(args).notifier);
+
+    final ok = await n.savePlanToNotes(samplePlan, mode: NotesSaveMode.replace);
+
+    expect(ok, isTrue);
+    expect(rehearsalsRepo.lastRehearsalId, 1); // args.rehearsalId
+    expect(rehearsalsRepo.lastNotes, 'Plan\n\n• Song A — because');
+    expect(c.read(rehearsalPlannerProvider(args)).isSavingPlan, isFalse);
+  });
+
+  test('savePlanToNotes(append) prepends existing notes with a blank line', () async {
+    final c = makeContainer();
+    addTearDown(c.dispose);
+    final n = c.read(rehearsalPlannerProvider(args).notifier);
+
+    final ok = await n.savePlanToNotes(
+      samplePlan,
+      mode: NotesSaveMode.append,
+      existingNotes: 'Old notes',
+    );
+
+    expect(ok, isTrue);
+    expect(rehearsalsRepo.lastNotes, 'Old notes\n\nPlan\n\n• Song A — because');
+  });
+
+  test('savePlanToNotes(append) with empty existing behaves like replace', () async {
+    final c = makeContainer();
+    addTearDown(c.dispose);
+    final n = c.read(rehearsalPlannerProvider(args).notifier);
+
+    await n.savePlanToNotes(samplePlan, mode: NotesSaveMode.append, existingNotes: '');
+
+    expect(rehearsalsRepo.lastNotes, 'Plan\n\n• Song A — because');
+  });
+
+  test('savePlanToNotes returns false and sets error when the repo throws', () async {
+    final c = makeContainer();
+    addTearDown(c.dispose);
+    rehearsalsRepo.shouldThrow = true;
+    final n = c.read(rehearsalPlannerProvider(args).notifier);
+
+    final ok = await n.savePlanToNotes(samplePlan, mode: NotesSaveMode.replace);
+
+    expect(ok, isFalse);
+    expect(c.read(rehearsalPlannerProvider(args)).error, isNotNull);
+    expect(c.read(rehearsalPlannerProvider(args)).isSavingPlan, isFalse);
+  });
+
+  test('savePlanToNotes returns false without calling repo when rehearsalId is null', () async {
+    const noRehearsalArgs = PlannerArgs(bandId: 7); // rehearsalId null
+    final c = makeContainer();
+    addTearDown(c.dispose);
+    final n = c.read(rehearsalPlannerProvider(noRehearsalArgs).notifier);
+
+    final ok = await n.savePlanToNotes(samplePlan, mode: NotesSaveMode.replace);
+
+    expect(ok, isFalse);
+    expect(rehearsalsRepo.lastRehearsalId, isNull); // never called
   });
 }

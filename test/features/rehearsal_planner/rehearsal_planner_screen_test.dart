@@ -145,4 +145,41 @@ void main() {
       closeTo(controller.position.maxScrollExtent, 1.0),
     );
   });
+
+  testWidgets('renders Save to rehearsal notes button when a plan is present',
+      (tester) async {
+    void Function(String, Map<String, dynamic>)? onEvent;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          selectedBandProvider.overrideWith(() => _FakeBandNotifier(7)),
+          rehearsalPlannerRepositoryProvider.overrideWithValue(FakeRepo()),
+          plannerStreamBinderProvider.overrideWithValue((c, cb) => onEvent = cb),
+        ],
+        child: const CupertinoApp(
+          home: RehearsalPlannerScreen(rehearsalId: 42, rehearsalLabel: 'July 15, 2026'),
+        ),
+      ),
+    );
+    await tester.pump(); // selectedBandProvider resolves + postFrame start()
+    await tester.pump(); // startSession future completes
+    await tester.pump(); // state rebuild flushes
+
+    // Finalize the streaming opening message with a plan payload.
+    onEvent!('done', {
+      'message_id': 100,
+      'content': 'Here is a plan.',
+      'suggestions': <String>[],
+      'plan': {
+        'title': 'Plan',
+        'items': [
+          {'title': 'Song', 'reason': 'r'},
+        ],
+      },
+    });
+    await tester.pump();
+
+    expect(find.text('Save to rehearsal notes'), findsOneWidget);
+  });
 }

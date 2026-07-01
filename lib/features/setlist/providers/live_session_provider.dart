@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/network/pusher_authorizer.dart';
 import '../../../core/providers/core_providers.dart';
 import '../data/models/band_song.dart';
 import '../data/models/live_session.dart';
@@ -217,15 +218,7 @@ class LiveSessionNotifier extends Notifier<LiveSessionState> {
     await _pusher!.init(
       apiKey: pusherKey,
       cluster: AppConfig.pusherCluster,
-      authEndpoint: '${AppConfig.baseUrl}/broadcasting/auth',
-      onAuthorizer: (String channelName, String socketId, dynamic options) {
-        return {
-          'headers': {
-            'Authorization': 'Bearer $_token',
-            'Accept': 'application/json',
-          },
-        };
-      },
+      onAuthorizer: pusherAuthorizer(_token!),
     );
 
     await _pusher!.connect();

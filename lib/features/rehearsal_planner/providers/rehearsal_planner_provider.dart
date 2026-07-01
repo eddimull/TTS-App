@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/network/pusher_authorizer.dart';
 import '../../../core/storage/secure_storage.dart';
 import '../data/models/planner_message.dart';
 import '../data/models/planner_plan.dart';
@@ -48,15 +49,7 @@ final plannerStreamBinderProvider = Provider<PlannerStreamBinder>((ref) {
     await pusher.init(
       apiKey: AppConfig.pusherKey,
       cluster: AppConfig.pusherCluster,
-      authEndpoint: '${AppConfig.baseUrl}/broadcasting/auth',
-      onAuthorizer: (String channelName, String socketId, dynamic options) {
-        return {
-          'headers': {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
-        };
-      },
+      onAuthorizer: pusherAuthorizer(token),
     );
     await pusher.connect();
     await pusher.subscribe(

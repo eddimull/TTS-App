@@ -91,6 +91,7 @@ class _PlannerViewState extends ConsumerState<_PlannerView> {
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       if (!_scrollController.hasClients) return;
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
@@ -102,9 +103,15 @@ class _PlannerViewState extends ConsumerState<_PlannerView> {
 
   @override
   Widget build(BuildContext context) {
-    // Auto-follow new messages and streaming text-delta growth.
+    // Auto-follow new messages and streaming text-delta growth, but skip
+    // scrolling on unrelated state changes (e.g. isSending/error toggles).
     ref.listen(rehearsalPlannerProvider(_args), (previous, next) {
-      _scrollToBottom();
+      final shouldScroll = previous == null ||
+          next.messages.length != previous.messages.length ||
+          (next.messages.isNotEmpty &&
+              previous.messages.isNotEmpty &&
+              next.messages.last.text != previous.messages.last.text);
+      if (shouldScroll) _scrollToBottom();
     });
 
     final state = ref.watch(rehearsalPlannerProvider(_args));

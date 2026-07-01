@@ -5,9 +5,9 @@ import 'package:tts_bandmate/features/rehearsal_planner/data/models/planner_plan
 
 void main() {
   test('formats title, blank line, then one bullet per item', () {
-    final plan = PlannerPlan(
+    final plan = const PlannerPlan(
       title: 'Rehearsal plan — Smith Wedding',
-      items: const [
+      items: [
         PlannerPlanItem(title: 'At Last', reason: 'On the setlist, not rehearsed recently.'),
         PlannerPlanItem(title: 'Fly Me to the Moon', reason: 'Requested for the reception.'),
       ],
@@ -21,15 +21,15 @@ void main() {
   });
 
   test('item with empty reason has no trailing dash', () {
-    final plan = PlannerPlan(
+    final plan = const PlannerPlan(
       title: 'Plan',
-      items: const [PlannerPlanItem(title: 'Song A', reason: '')],
+      items: [PlannerPlanItem(title: 'Song A', reason: '')],
     );
     expect(formatPlanAsNotes(plan), 'Plan\n\n• Song A');
   });
 
   test('empty items returns just the title line', () {
-    final plan = PlannerPlan(title: 'Empty plan', items: const []);
+    final plan = const PlannerPlan(title: 'Empty plan', items: []);
     expect(formatPlanAsNotes(plan), 'Empty plan');
   });
 }

@@ -168,9 +168,9 @@ void main() {
     expect(c.read(rehearsalPlannerProvider(args)).messages.last.status, 'streaming');
   });
 
-  final samplePlan = PlannerPlan(
+  const samplePlan = PlannerPlan(
     title: 'Plan',
-    items: const [PlannerPlanItem(title: 'Song A', reason: 'because')],
+    items: [PlannerPlanItem(title: 'Song A', reason: 'because')],
   );
 
   test('savePlanToNotes(replace) writes formatted plan to the rehearsal id', () async {

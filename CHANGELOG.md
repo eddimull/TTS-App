@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/eddimull/TTS-App/compare/v1.7.0...v1.8.0) (2026-07-03)
+
+
+### Features
+
+* invite QR deep-linking — camera scan opens the app ([#84](https://github.com/eddimull/TTS-App/issues/84)) ([efaa73c](https://github.com/eddimull/TTS-App/commit/efaa73cc43a5d1e9f5ec5fbaa219a23dff59154f))
+
 ## [1.7.0](https://github.com/eddimull/TTS-App/compare/v1.6.1...v1.7.0) (2026-07-01)
 
 

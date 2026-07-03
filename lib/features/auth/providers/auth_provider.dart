@@ -7,7 +7,9 @@ import '../../bookings/data/bookings_cache_storage.dart';
 import '../data/auth_repository.dart';
 import '../data/models/auth_user.dart';
 import '../data/models/band_summary.dart';
+import '../data/social_sign_in_service.dart';
 import '../../notifications/providers/notifications_provider.dart';
+import 'social_sign_in_provider.dart';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -87,6 +89,54 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     if (state.hasError) {
       state = AsyncValue.data(
         AuthUnauthenticated(errorMessage: _friendlyError(state.error)),
+      );
+    }
+
+    if (state.value is AuthAuthenticated) {
+      unawaited(_registerPushToken());
+    }
+  }
+
+  /// Sign in with a social provider. The native sheet runs first (no state
+  /// change); only after we hold a credential do we enter AuthLoading.
+  /// A cancelled sheet leaves the state exactly as it was.
+  Future<void> socialLogin(SocialProvider provider) async {
+    final storage = ref.read(secureStorageProvider);
+    _repo ??= AuthRepository(ref.read(apiClientProvider).dio);
+
+    final SocialCredential? credential;
+    try {
+      credential =
+          await ref.read(socialSignInServiceProvider).signIn(provider);
+    } catch (_) {
+      state = AsyncValue.data(AuthUnauthenticated(
+        errorMessage:
+            'Could not start ${provider.label} sign-in. Please try again.',
+      ));
+      return;
+    }
+
+    if (credential == null) return; // user cancelled
+    final nonNullCredential = credential;
+
+    state = const AsyncValue.data(AuthLoading());
+
+    state = await AsyncValue.guard(() async {
+      final result = await _repository.socialLogin(
+        nonNullCredential.provider.name,
+        nonNullCredential.token,
+        'tts_bandmate_app',
+      );
+      await storage.writeToken(result.token);
+      await storage.writeUser(result.user.toJsonString());
+      return AuthAuthenticated(user: result.user, bands: result.bands);
+    });
+
+    if (state.hasError) {
+      state = AsyncValue.data(
+        AuthUnauthenticated(
+          errorMessage: _friendlySocialError(state.error, provider),
+        ),
       );
     }
 
@@ -217,6 +267,19 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       return 'Could not reach the server. Check your connection.';
     }
     return 'Registration failed. Please try again.';
+  }
+
+  String _friendlySocialError(Object? error, SocialProvider provider) {
+    final msg = error?.toString() ?? '';
+    if (msg.contains('422')) {
+      return 'Could not verify your ${provider.label} sign-in. Please try again.';
+    }
+    if (msg.contains('SocketException') ||
+        msg.contains('connection') ||
+        msg.contains('timeout')) {
+      return 'Could not reach the server. Check your connection.';
+    }
+    return '${provider.label} sign-in failed. Please try again.';
   }
 }
 

@@ -58,33 +58,18 @@ class FakeSecureStorage extends SecureStorage {
 /// No-op mock for [DeepLinkService] — skips all platform channel calls that
 /// would fail in the test environment.
 class FakeDeepLinkService extends DeepLinkService {
-  FakeDeepLinkService() : super(_FakeAppLinks(), (_) {});
+  FakeDeepLinkService()
+      : super(
+          // Real AppLinks singleton is passed only to satisfy the constructor;
+          // it is never invoked because start() is a no-op below.
+          AppLinks(),
+          (_) {},
+        );
 
   @override
   Future<void> start() async {
     // No-op in tests; platform channels not available.
   }
-}
-
-/// Fake [AppLinks] that doesn't try to talk to platform channels.
-class _FakeAppLinks implements AppLinks {
-  @override
-  Future<Uri?> getInitialLink() async => null;
-
-  @override
-  Future<String?> getInitialLinkString() async => null;
-
-  @override
-  Future<Uri?> getLatestLink() async => null;
-
-  @override
-  Future<String?> getLatestLinkString() async => null;
-
-  @override
-  Stream<Uri> get uriLinkStream => const Stream.empty();
-
-  @override
-  Stream<String> get stringLinkStream => const Stream.empty();
 }
 
 /// A Dio [HttpClientAdapter] that delegates every request to a user-supplied

@@ -16,4 +16,12 @@ class AppConfig {
     'GOOGLE_PLACES_API_KEY',
     defaultValue: '',
   );
+
+  /// Public web host that serves invite links. The QR/share flow encodes
+  /// `$inviteBaseUrl/invite/<key>`; the OS routes that to the app (App Links /
+  /// Universal Links) when installed, else to the website.
+  static const String inviteBaseUrl = String.fromEnvironment(
+    'INVITE_BASE_URL',
+    defaultValue: 'https://tts.band',
+  );
 }

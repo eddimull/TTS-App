@@ -9,6 +9,9 @@ import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/screens/path_selection_screen.dart';
 import '../../features/bands/screens/create_band_screen.dart';
 import '../../features/bands/screens/join_band_screen.dart';
+import '../../features/bands/screens/invite_landing_screen.dart';
+import '../../features/bands/providers/bands_provider.dart';
+import '../../features/bands/providers/pending_invite_provider.dart';
 import '../../features/bookings/data/models/booking_detail.dart';
 import '../../features/bookings/screens/booking_contacts_screen.dart';
 import '../../features/bookings/screens/booking_contract_screen.dart';
@@ -134,8 +137,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       // (rather than straight to a login form) is what keeps the app's
       // non-account features visible without registration — App Review 5.1.1(v).
       if (authState == null || authState is AuthUnauthenticated) {
-        final dest =
-            (isWelcomeRoute || isLoginRoute || isSignupRoute) ? null : '/welcome';
+        final isInviteRoute = state.matchedLocation.startsWith('/invite/');
+        final dest = (isWelcomeRoute ||
+                isLoginRoute ||
+                isSignupRoute ||
+                isInviteRoute)
+            ? null
+            : '/welcome';
         debugPrint('[Router] unauthenticated → $dest');
         return dest;
       }
@@ -253,6 +261,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             },
           );
         },
+      ),
+      GoRoute(
+        path: '/invite/:key',
+        builder: (_, state) => InviteLandingScreen(
+          inviteKey: state.pathParameters['key']!,
+        ),
       ),
       ShellRoute(
         builder: (context, state, child) => AppScaffold(child: child),
@@ -469,6 +483,28 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   router.routerDelegate.addListener(onRouteChanged);
   ref.onDispose(() => router.routerDelegate.removeListener(onRouteChanged));
+
+  // When a user authenticates with a pending invite (captured while logged
+  // out), join that band. Done via a listener — never inside redirect — so a
+  // provider write can't be echoed back as a navigation.
+  void consumePendingInvite() {
+    final authState = ref.read(authProvider).value;
+    if (authState is! AuthAuthenticated) return;
+    final key = ref.read(pendingInviteKeyProvider.notifier).consume();
+    if (key == null) return;
+    // Fire-and-forget: joinBand refreshes auth bands; the router guard then
+    // routes the freshly-joined user to their dashboard.
+    ref.read(bandsProvider.notifier).joinBand(key).then((_) {
+      router.go('/dashboard');
+    }).catchError((_) {
+      // Invalid/expired key after login — drop it; user lands wherever the
+      // normal guard sends them (bands/dashboard). No hard failure.
+    });
+  }
+
+  // Not captured/closed — a Provider's ref.listen is auto-disposed with the
+  // provider, same as the _RouterRefreshNotifier listens above.
+  ref.listen(authProvider, (_, __) => consumePendingInvite());
 
   return router;
 });

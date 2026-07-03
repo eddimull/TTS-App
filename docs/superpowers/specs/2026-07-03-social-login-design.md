@@ -55,6 +55,8 @@ resolveUser(string $provider, Socialite\Contracts\User $providerUser): User
 2. Else look up `users` by the provider-supplied email → create the `social_accounts` row (auto-link) and return that user.
 3. Else create a new user (`name`, `email` from the provider; `password = null`), create the link row, and run the shared pending-invitation acceptance logic.
 
+In cases 2 and 3, also set `email_verified_at` if null — providers verify email ownership, and the web dashboard sits behind the `verified` middleware, so a social user with a NULL `email_verified_at` would be bounced to the verify-email page.
+
 The invitation logic currently lives inline in `OnboardingController@register` (auto-accepts `EventSubs` and band `Invitations` matching the email, assigning roles). **Extract it** into a shared method (e.g., on a service or the User model) so email register and social register call the same code and cannot drift.
 
 Apple caveat: Apple only supplies the user's name on the *first* authorization. If name is empty, fall back to the email local-part.

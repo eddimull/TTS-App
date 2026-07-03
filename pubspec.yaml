@@ -49,6 +49,9 @@ dependencies:
   webview_flutter: ^4.13.0
   flutter_timezone: ^5.1.0
   vyuh_node_flow: 0.27.3 # node-based payout flow editor (pinned: pre-1.0, breaking changes across minors)
+  google_sign_in: ^7.2.0
+  sign_in_with_apple: ^8.1.0
+  flutter_facebook_auth: ^7.2.0
 
 dev_dependencies:
   flutter_test:

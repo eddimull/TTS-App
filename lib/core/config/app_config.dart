@@ -17,6 +17,13 @@ class AppConfig {
     defaultValue: '',
   );
 
+  /// Google OAuth *web* client ID, passed to google_sign_in as serverClientId
+  /// so the returned idToken's `aud` is the web client the backend whitelists.
+  static const String googleServerClientId = String.fromEnvironment(
+    'GOOGLE_SERVER_CLIENT_ID',
+    defaultValue: '',
+  );
+
   /// Public web host that serves invite links. The QR/share flow encodes
   /// `$inviteBaseUrl/invite/<key>`; the OS routes that to the app (App Links /
   /// Universal Links) when installed, else to the website.

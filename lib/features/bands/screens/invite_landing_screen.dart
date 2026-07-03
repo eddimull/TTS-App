@@ -32,7 +32,22 @@ class _InviteLandingScreenState extends ConsumerState<InviteLandingScreen> {
   }
 
   Future<void> _handle() async {
-    final authState = ref.read(authProvider).value;
+    // Wait for auth to resolve — a cold-start deep link arrives while
+    // AuthNotifier.build is still reading the stored token, and classifying
+    // that in-flight state as "unauthenticated" would bounce an already
+    // signed-in user through /welcome.
+    final AuthState authState;
+    try {
+      authState = await ref.read(authProvider.future);
+    } catch (_) {
+      // Auth resolution failed (e.g. server unreachable): fall back to the
+      // stash-and-sign-in path rather than dropping the invite.
+      if (!mounted) return;
+      ref.read(pendingInviteKeyProvider.notifier).set(widget.inviteKey);
+      context.go('/welcome');
+      return;
+    }
+    if (!mounted) return;
     final isAuthed = authState is AuthAuthenticated;
 
     if (!isAuthed) {

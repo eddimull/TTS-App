@@ -39,7 +39,7 @@ void main() {
       expect(extractInviteKey('https://tts.band/invite/'), isNull);
     });
 
-    test('returns a non-invite URL as-is (treated as a raw key)', () {
+    test('returns a plain non-URL string as-is (treated as a raw key)', () {
       // A pasted non-URL string that happens to contain no scheme is a raw key.
       expect(extractInviteKey('not-a-url-code'), 'not-a-url-code');
     });

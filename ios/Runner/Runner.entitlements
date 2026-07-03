@@ -8,6 +8,8 @@
 	<array>
 		<string>webcredentials:tts.band</string>
 		<string>webcredentials:www.tts.band</string>
+		<string>applinks:tts.band</string>
+		<string>applinks:www.tts.band</string>
 	</array>
 </dict>
 </plist>

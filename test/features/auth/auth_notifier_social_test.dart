@@ -84,6 +84,10 @@ void main() {
         );
 
     expect(container.read(authProvider).value, isA<AuthAuthenticated>());
+    expect(
+        await container.read(secureStorageProvider).readToken(), equals('t-1'));
+    expect(
+        await container.read(secureStorageProvider).readUser(), isNotNull);
   });
 
   test('cancelled native sheet leaves state untouched', () async {

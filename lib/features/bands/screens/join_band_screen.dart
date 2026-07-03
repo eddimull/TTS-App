@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../data/invite_key.dart';
 import '../providers/bands_provider.dart';
 
 class JoinBandScreen extends ConsumerStatefulWidget {
@@ -23,8 +24,9 @@ class _JoinBandScreenState extends ConsumerState<JoinBandScreen> {
     super.dispose();
   }
 
-  Future<void> _joinWithKey(String key) async {
-    if (key.trim().isEmpty) {
+  Future<void> _joinWithKey(String rawInput) async {
+    final key = extractInviteKey(rawInput);
+    if (key == null) {
       setState(() => _codeError = 'Please enter an invite code.');
       return;
     }
@@ -34,10 +36,13 @@ class _JoinBandScreenState extends ConsumerState<JoinBandScreen> {
       _submitError = null;
     });
     try {
-      await ref.read(bandsProvider.notifier).joinBand(key.trim());
+      await ref.read(bandsProvider.notifier).joinBand(key);
       // Router guard detects band and navigates to dashboard.
     } catch (e) {
-      if (mounted) setState(() => _submitError = 'Invalid or expired code. Please try again.');
+      if (mounted) {
+        setState(() =>
+            _submitError = 'Invalid or expired code. Please try again.');
+      }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }

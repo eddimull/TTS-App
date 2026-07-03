@@ -4,6 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../providers/band_settings_provider.dart';
 import '../../../bands/providers/bands_provider.dart';
+import '../../../bands/data/invite_key.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class InviteSection extends ConsumerStatefulWidget {
@@ -187,7 +188,7 @@ class _QrFullScreen extends StatelessWidget {
         middle: const Text('Invite QR Code'),
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
-          onPressed: () => Share.share(inviteKey),
+          onPressed: () => Share.share(buildInviteUrl(inviteKey)),
           child: const Icon(CupertinoIcons.share),
         ),
       ),
@@ -205,7 +206,7 @@ class _QrFullScreen extends StatelessWidget {
                         padding: const EdgeInsets.all(16),
                         color: CupertinoColors.white,
                         child: QrImageView(
-                          data: inviteKey,
+                          data: buildInviteUrl(inviteKey),
                           size: size - 32,
                           backgroundColor: CupertinoColors.white,
                         ),
@@ -216,7 +217,7 @@ class _QrFullScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Anyone with this code can join your band.',
+                'Anyone who scans this can join your band.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,

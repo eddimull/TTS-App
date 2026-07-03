@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:app_links/app_links.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/rendering.dart';
@@ -16,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:tts_bandmate/app.dart';
 import 'package:tts_bandmate/core/config/router.dart';
+import 'package:tts_bandmate/core/deeplink/deep_link_service.dart';
 import 'package:tts_bandmate/core/network/api_client.dart';
 import 'package:tts_bandmate/core/storage/route_storage.dart';
 import 'package:tts_bandmate/core/storage/secure_storage.dart';
@@ -51,6 +53,23 @@ class FakeSecureStorage extends SecureStorage {
 
   @override
   Future<void> clear() async => _map.clear();
+}
+
+/// No-op mock for [DeepLinkService] — skips all platform channel calls that
+/// would fail in the test environment.
+class FakeDeepLinkService extends DeepLinkService {
+  FakeDeepLinkService()
+      : super(
+          // Real AppLinks singleton is passed only to satisfy the constructor;
+          // it is never invoked because start() is a no-op below.
+          AppLinks(),
+          (_) {},
+        );
+
+  @override
+  Future<void> start() async {
+    // No-op in tests; platform channels not available.
+  }
 }
 
 /// A Dio [HttpClientAdapter] that delegates every request to a user-supplied
@@ -252,6 +271,7 @@ Future<Harness> bootstrapApp({
       apiClientProvider.overrideWithValue(apiClient),
       routeStorageProvider.overrideWith((_) async => routeStorage),
       initialLocationProvider.overrideWithValue(initialLocation),
+      deepLinkServiceProvider.overrideWithValue(FakeDeepLinkService()),
     ],
     child: const BandmateApp(),
   );

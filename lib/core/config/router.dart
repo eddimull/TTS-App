@@ -131,13 +131,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       // including one with zero bands — Apple App Review requires the account
       // deletion path to be accessible to a brand-new (band-less) account.
       final isAccountRoute = state.matchedLocation == '/account';
+      final isInviteRoute = state.matchedLocation.startsWith('/invite/');
 
       // Not authenticated → land on the welcome/showcase screen. Login and
       // signup are reachable from there. Sending logged-out users to /welcome
       // (rather than straight to a login form) is what keeps the app's
       // non-account features visible without registration — App Review 5.1.1(v).
       if (authState == null || authState is AuthUnauthenticated) {
-        final isInviteRoute = state.matchedLocation.startsWith('/invite/');
         final dest = (isWelcomeRoute ||
                 isLoginRoute ||
                 isSignupRoute ||
@@ -160,6 +160,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         // of band-selection state, so a band-less user can still reach the
         // account-deletion flow (Apple App Review requirement).
         if (isAccountRoute) {
+          return null;
+        }
+
+        // An invite deep link must reach its landing screen even before a
+        // band is selected — joining is what gives a zero-band user their
+        // band. The landing screen navigates onward after the join.
+        if (isInviteRoute) {
           return null;
         }
 

@@ -86,17 +86,63 @@ social logins work with it unchanged.
 ### 9. Web
 - The same `/invite/:key` GoRouter route handles the PWA/browser case. No extra work.
 
-## Out of scope — backend/hosting (user handles separately)
+## Backend / hosting — TTS Laravel repo (in scope, drafted via backend agent)
 
-End-to-end deep-linking requires the `tts.band` site to host:
-- `/.well-known/assetlinks.json` — Android App Links verification (SHA-256 signing cert
-  fingerprints + package name).
-- `/.well-known/apple-app-site-association` — iOS Universal Links (app ID + `/invite/*` path).
-- A web `/invite/<key>` landing/fallback page (get-the-app and/or web join).
+End-to-end scan-to-app requires the `tts.band` site (the TTS Laravel monolith) to serve three
+things. These are drafted as a **separate coordinated effort** via the `laravel-mobile-api-dev`
+agent; PRs target `staging`. They are what make the OS trust the app and what catches users who
+don't have the app installed.
 
-**Until these are hosted, the OS will not hand the link to the app.** The Flutter changes are
-complete and correct independently; they are simply gated on this hosting for full end-to-end
-behavior. The in-app scanner (which reads the URL directly) works regardless.
+### B1. Android App Links verification — `/.well-known/assetlinks.json`
+Served (uncached or short-cache, `application/json`, HTTP 200, no redirects) at
+`https://tts.band/.well-known/assetlinks.json`:
+
+```json
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "tts.band",
+    "sha256_cert_fingerprints": ["<PLAY_APP_SIGNING_SHA256>"]
+  }
+}]
+```
+
+- `package_name` = `tts.band` (confirmed from `android/app/build.gradle.kts` applicationId).
+- `<PLAY_APP_SIGNING_SHA256>` = the **app-signing** cert fingerprint from Play Console →
+  App integrity → App signing. If sideloaded/debug builds must also verify, add the **upload**
+  cert fingerprint as a second array entry.
+
+### B2. iOS Universal Links — `/.well-known/apple-app-site-association`
+Served at `https://tts.band/.well-known/apple-app-site-association` as `application/json`,
+**no `.json` extension**, HTTP 200, no redirects:
+
+```json
+{
+  "applinks": {
+    "apps": [],
+    "details": [{
+      "appID": "<TEAM_ID>.band.tts.mate",
+      "paths": ["/invite/*"]
+    }]
+  }
+}
+```
+
+- Bundle ID = `band.tts.mate` (confirmed from `ios/Runner.xcodeproj/project.pbxproj`).
+- `<TEAM_ID>` supplied by the user.
+
+### B3. Web fallback page — `GET /invite/{key}`
+The not-installed case. When the OS opens the URL in a browser (app absent), this page:
+- Offers store links (App Store / Play Store) so the user can **get the app**, ideally
+  preserving the key so the freshly-installed app can join (deferred deep link is a possible
+  enhancement, not required for v1).
+- Optionally offers a direct web-join for users who prefer the browser.
+
+**Why hosting is load-bearing:** if these files are missing or mis-served (wrong content-type,
+redirects, caching, extension on the AASA file), the OS silently falls back to the browser even
+when the app IS installed. The Flutter changes are complete and correct independently, but
+end-to-end scan-to-app is gated on B1–B3 being served correctly.
 
 ## Testing
 
@@ -112,4 +158,5 @@ Following the existing `ProviderContainer` + fake pattern (no widget/golden test
 
 - **Social logins** — orthogonal feature; the pending-invite flow already supports it since the
   key is consumed after any successful auth. Ship as its own spec/branch afterward.
-- **Backend hosting** — the `.well-known` files and web fallback page (above).
+- **Deferred deep link** — passing the invite key through app-store install so a freshly
+  installed app auto-joins. Enhancement to B3, not required for v1.

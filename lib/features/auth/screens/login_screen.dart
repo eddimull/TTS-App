@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/social_login_buttons.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -212,6 +213,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ],
+                const SocialLoginButtons(),
                 const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,

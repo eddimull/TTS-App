@@ -29,16 +29,20 @@ class DeepLinkService {
   final AppLinks _appLinks;
   final void Function(String route) _onRoute;
   StreamSubscription<Uri>? _sub;
+  bool _started = false;
 
-  /// Handle the link the app was cold-started with (if any), then subscribe to
-  /// links that arrive while the app is running.
+  /// Subscribe to incoming deep links while the app is running. A cold-start
+  /// link (the one the app was launched with, if any) arrives via this
+  /// stream's initial replay — app_links' `uriLinkStream` replays the initial
+  /// link to the first listener on `onListen`, so there is no need to also
+  /// call `getInitialLink()` (doing so would deliver the same cold-start link
+  /// twice).
+  ///
+  /// Safe to call more than once; subsequent calls are no-ops so we never
+  /// double-subscribe.
   Future<void> start() async {
-    try {
-      final initial = await _appLinks.getInitialLink();
-      if (initial != null) _handle(initial);
-    } catch (e) {
-      debugPrint('[DeepLink] getInitialLink failed: $e');
-    }
+    if (_started) return;
+    _started = true;
     _sub = _appLinks.uriLinkStream.listen(
       _handle,
       onError: (Object e) => debugPrint('[DeepLink] stream error: $e'),

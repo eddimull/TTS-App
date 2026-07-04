@@ -11,9 +11,9 @@
 	<key>GIDClientID</key>
 	<string>349794202722-37p5vicejcup5rs1e9dugjt86m47et3b.apps.googleusercontent.com</string>
 	<key>FacebookAppID</key>
-	<string>FACEBOOK_APP_ID_PLACEHOLDER</string>
+	<string>1026903830192780</string>
 	<key>FacebookClientToken</key>
-	<string>FACEBOOK_CLIENT_TOKEN_PLACEHOLDER</string>
+	<string>b5b4945d80fb7bdb278cc851a53930d1</string>
 	<key>FacebookDisplayName</key>
 	<string>TTS Bandmate</string>
 	<key>CFBundleURLTypes</key>
@@ -22,7 +22,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.googleusercontent.apps.349794202722-37p5vicejcup5rs1e9dugjt86m47et3b</string>
-				<string>fbFACEBOOK_APP_ID_PLACEHOLDER</string>
+				<string>fb1026903830192780</string>
 			</array>
 		</dict>
 	</array>

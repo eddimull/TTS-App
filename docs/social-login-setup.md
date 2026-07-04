@@ -24,8 +24,10 @@ App identifiers (verified in the repo, not `com.tts.bandmate`):
       - `GIDClientID` string value
       - the reversed-client-id URL scheme inside `CFBundleURLTypes` →
         `CFBundleURLSchemes` (`com.googleusercontent.apps.<client id>`)
-- [ ] `GOOGLE_SIGNIN_ALLOWED_CLIENT_IDS` (TTS `.env`) = web client id
-      (Android/iOS sign-ins carry the web id as `aud` via `serverClientId`)
+- [ ] `GOOGLE_SIGNIN_ALLOWED_CLIENT_IDS` (TTS `.env`) = web client id AND iOS
+      client id, comma-separated. Android id_tokens carry the web id as `aud`
+      (via `serverClientId`); iOS id_tokens are typically minted for the iOS
+      client id instead — the backend whitelist needs both.
 - [ ] Authorized redirect URI on the web client: `https://tts.band/auth/google/callback`
       (+ staging URL)
 

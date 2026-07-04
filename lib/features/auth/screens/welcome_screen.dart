@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 
-import '../widgets/social_login_buttons.dart';
 
 /// Pre-auth landing screen shown on a fresh launch before the user signs in.
 ///
@@ -130,7 +129,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     onPressed: () => context.push('/signup'),
                     child: const Text('Create Account'),
                   ),
-                  const SocialLoginButtons(),
                 ],
               ),
             ),
@@ -163,11 +161,9 @@ class _DemoPanel extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // The preview mocks are fixed-size content inside a Column that
-          // wants its natural height. On shorter viewports (e.g. once
-          // SocialLoginButtons adds height to the button column below,
-          // shrinking this Expanded area) that natural height may exceed
-          // what's available — let this area scroll internally rather than
-          // overflow. No-op when there's enough room.
+          // wants its natural height. On shorter viewports that natural
+          // height may exceed what's available — let this area scroll
+          // internally rather than overflow. No-op when there's enough room.
           Expanded(
             child: SingleChildScrollView(
               physics: const ClampingScrollPhysics(),

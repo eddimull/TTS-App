@@ -270,7 +270,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   }
 
   String _friendlySocialError(Object? error, SocialProvider provider) {
-    final msg = error?.toString() ?? '';
+    if (error == null) return 'An unknown error occurred.';
+    final msg = error.toString();
     if (msg.contains('422')) {
       return 'Could not verify your ${provider.label} sign-in. Please try again.';
     }

@@ -21,6 +21,12 @@ class NativeSocialSignInService implements SocialSignInService {
   Future<SocialCredential?> _google() async {
     try {
       if (!_googleInitialized) {
+        if (AppConfig.googleServerClientId.isEmpty) {
+          throw StateError(
+            'GOOGLE_SERVER_CLIENT_ID dart-define is not set — Google sign-in cannot '
+            'return a usable idToken without it.',
+          );
+        }
         await GoogleSignIn.instance.initialize(
           serverClientId: AppConfig.googleServerClientId,
         );

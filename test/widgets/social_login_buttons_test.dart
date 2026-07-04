@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/auth/data/models/auth_user.dart';
 import 'package:tts_bandmate/features/auth/data/social_sign_in_service.dart';
 import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
+import 'package:tts_bandmate/features/auth/providers/social_sign_in_provider.dart';
 import 'package:tts_bandmate/features/auth/widgets/social_login_buttons.dart';
 
 // ── Fake AuthNotifier ─────────────────────────────────────────────────────────
@@ -79,9 +80,15 @@ Widget _wrap(ProviderContainer container) {
   );
 }
 
-ProviderContainer _containerFor(FakeAuthNotifier notifier) {
+ProviderContainer _containerFor(
+  FakeAuthNotifier notifier, {
+  bool facebookLoginEnabled = false,
+}) {
   return ProviderContainer(
-    overrides: [authProvider.overrideWith(() => notifier)],
+    overrides: [
+      authProvider.overrideWith(() => notifier),
+      facebookLoginEnabledProvider.overrideWithValue(facebookLoginEnabled),
+    ],
   );
 }
 
@@ -145,7 +152,7 @@ void main() {
       });
     });
 
-    testWidgets('shows Google and Facebook but not Apple on Android',
+    testWidgets('shows only Google (no Apple, no Facebook) on Android',
         (tester) async {
       await _withPlatform(TargetPlatform.android, () async {
         final container = _containerFor(FakeAuthNotifier());
@@ -154,12 +161,13 @@ void main() {
         await tester.pump();
 
         expect(find.text('Continue with Google'), findsOneWidget);
-        expect(find.text('Continue with Facebook'), findsOneWidget);
+        expect(find.text('Continue with Facebook'), findsNothing);
         expect(find.text('Continue with Apple'), findsNothing);
       });
     });
 
-    testWidgets('shows Google, Apple, and Facebook on iOS', (tester) async {
+    testWidgets('shows Google and Apple but not Facebook on iOS by default',
+        (tester) async {
       await _withPlatform(TargetPlatform.iOS, () async {
         final container = _containerFor(FakeAuthNotifier());
         addTearDown(container.dispose);
@@ -168,7 +176,55 @@ void main() {
 
         expect(find.text('Continue with Google'), findsOneWidget);
         expect(find.text('Continue with Apple'), findsOneWidget);
+        expect(find.text('Continue with Facebook'), findsNothing);
+      });
+    });
+  });
+
+  group('SocialLoginButtons facebookLoginEnabledProvider flag', () {
+    testWidgets('Facebook button absent by default (flag off)',
+        (tester) async {
+      await _withPlatform(TargetPlatform.iOS, () async {
+        final container = _containerFor(FakeAuthNotifier());
+        addTearDown(container.dispose);
+        await tester.pumpWidget(_wrap(container));
+        await tester.pump();
+
+        expect(find.text('Continue with Facebook'), findsNothing);
+      });
+    });
+
+    testWidgets('Facebook button renders on iOS when flag overridden true',
+        (tester) async {
+      await _withPlatform(TargetPlatform.iOS, () async {
+        final container = _containerFor(
+          FakeAuthNotifier(),
+          facebookLoginEnabled: true,
+        );
+        addTearDown(container.dispose);
+        await tester.pumpWidget(_wrap(container));
+        await tester.pump();
+
+        expect(find.text('Continue with Google'), findsOneWidget);
+        expect(find.text('Continue with Apple'), findsOneWidget);
         expect(find.text('Continue with Facebook'), findsOneWidget);
+      });
+    });
+
+    testWidgets('Facebook button renders on Android when flag overridden true',
+        (tester) async {
+      await _withPlatform(TargetPlatform.android, () async {
+        final container = _containerFor(
+          FakeAuthNotifier(),
+          facebookLoginEnabled: true,
+        );
+        addTearDown(container.dispose);
+        await tester.pumpWidget(_wrap(container));
+        await tester.pump();
+
+        expect(find.text('Continue with Google'), findsOneWidget);
+        expect(find.text('Continue with Facebook'), findsOneWidget);
+        expect(find.text('Continue with Apple'), findsNothing);
       });
     });
   });

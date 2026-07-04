@@ -5,6 +5,7 @@ import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 import '../data/social_sign_in_service.dart';
 import '../providers/auth_provider.dart';
+import '../providers/social_sign_in_provider.dart';
 
 /// "or continue with" divider + provider buttons. Native mobile only:
 /// renders nothing on web/desktop. Apple shows only on iOS (App Store
@@ -56,10 +57,12 @@ class _SocialLoginButtonsState extends ConsumerState<SocialLoginButtons> {
   Widget build(BuildContext context) {
     if (!_supported) return const SizedBox.shrink();
 
+    final facebookLoginEnabled = ref.watch(facebookLoginEnabledProvider);
+
     final providers = [
       SocialProvider.google,
       if (defaultTargetPlatform == TargetPlatform.iOS) SocialProvider.apple,
-      SocialProvider.facebook,
+      if (facebookLoginEnabled) SocialProvider.facebook,
     ];
 
     return Column(

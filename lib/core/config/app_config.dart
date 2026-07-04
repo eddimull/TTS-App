@@ -31,4 +31,11 @@ class AppConfig {
     'INVITE_BASE_URL',
     defaultValue: 'https://tts.band',
   );
+
+  /// Facebook login requires Meta business verification, which we don't have
+  /// yet. Off by default; flip via --dart-define=FACEBOOK_LOGIN_ENABLED=true
+  /// once the Meta app has Advanced Access.
+  static const bool facebookLoginEnabled = bool.fromEnvironment(
+    'FACEBOOK_LOGIN_ENABLED',
+  );
 }

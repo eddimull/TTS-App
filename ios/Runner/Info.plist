@@ -8,6 +8,24 @@
 	</array>
 	<key>GMSApiKey</key>
 	<string>$(GOOGLE_MAPS_API_KEY)</string>
+	<key>GIDClientID</key>
+	<string>IOS_GOOGLE_CLIENT_ID_PLACEHOLDER.apps.googleusercontent.com</string>
+	<key>FacebookAppID</key>
+	<string>FACEBOOK_APP_ID_PLACEHOLDER</string>
+	<key>FacebookClientToken</key>
+	<string>FACEBOOK_CLIENT_TOKEN_PLACEHOLDER</string>
+	<key>FacebookDisplayName</key>
+	<string>TTS Bandmate</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.IOS_GOOGLE_CLIENT_ID_PLACEHOLDER</string>
+				<string>fbFACEBOOK_APP_ID_PLACEHOLDER</string>
+			</array>
+		</dict>
+	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -107,6 +125,8 @@
 		<string>mailto</string>
 		<string>tel</string>
 		<string>sms</string>
+		<string>fbapi</string>
+		<string>fb-messenger-share-api</string>
 	</array>
 </dict>
 </plist>

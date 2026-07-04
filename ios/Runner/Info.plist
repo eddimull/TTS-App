@@ -9,7 +9,7 @@
 	<key>GMSApiKey</key>
 	<string>$(GOOGLE_MAPS_API_KEY)</string>
 	<key>GIDClientID</key>
-	<string>IOS_GOOGLE_CLIENT_ID_PLACEHOLDER.apps.googleusercontent.com</string>
+	<string>349794202722-37p5vicejcup5rs1e9dugjt86m47et3b.apps.googleusercontent.com</string>
 	<key>FacebookAppID</key>
 	<string>FACEBOOK_APP_ID_PLACEHOLDER</string>
 	<key>FacebookClientToken</key>
@@ -21,7 +21,7 @@
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.IOS_GOOGLE_CLIENT_ID_PLACEHOLDER</string>
+				<string>com.googleusercontent.apps.349794202722-37p5vicejcup5rs1e9dugjt86m47et3b</string>
 				<string>fbFACEBOOK_APP_ID_PLACEHOLDER</string>
 			</array>
 		</dict>

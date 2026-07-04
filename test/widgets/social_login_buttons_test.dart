@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,6 +35,27 @@ class FakeAuthNotifier extends AuthNotifier {
         : const AsyncValue.data(
             AuthAuthenticated(user: _fakeUser, bands: []),
           );
+  }
+}
+
+/// A notifier whose socialLogin call can be held open (busy state) or scripted
+/// to run a different outcome on each successive call — used for the busy
+/// and fail-then-cancel regression tests, where FakeAuthNotifier's single
+/// fixed `errorToReturn` isn't expressive enough.
+class ScriptedAuthNotifier extends AuthNotifier {
+  final List<Future<void> Function(ScriptedAuthNotifier self)> _script = [];
+  int _callIndex = 0;
+
+  @override
+  Future<AuthState> build() async => const AuthUnauthenticated();
+
+  @override
+  Future<void> socialLogin(SocialProvider provider) async {
+    final action = _callIndex < _script.length
+        ? _script[_callIndex]
+        : _script.last;
+    _callIndex++;
+    await action(this);
   }
 }
 
@@ -190,6 +213,85 @@ void main() {
           find.text('Google sign-in failed. Please try again.'),
           findsOneWidget,
         );
+      });
+    });
+
+    testWidgets(
+        'busy state shows a spinner and disables the other provider buttons',
+        (tester) async {
+      await _withPlatform(TargetPlatform.iOS, () async {
+        final completer = Completer<void>();
+        final notifier = ScriptedAuthNotifier()
+          .._script.add((self) => completer.future);
+        final container = ProviderContainer(
+          overrides: [authProvider.overrideWith(() => notifier)],
+        );
+        addTearDown(container.dispose);
+        await container.read(authProvider.future); // settle initial build()
+
+        await tester.pumpWidget(_wrap(container));
+        await tester.pump();
+
+        await tester.tap(find.text('Continue with Google'));
+        await tester.pump();
+
+        // Spinner visible while the sign-in is pending.
+        expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
+
+        // Every other visible provider button must be disabled.
+        final buttons =
+            tester.widgetList<CupertinoButton>(find.byType(CupertinoButton));
+        expect(buttons.length, greaterThanOrEqualTo(2));
+        for (final button in buttons) {
+          if (button.child is CupertinoActivityIndicator) {
+            continue; // the busy button itself
+          }
+          expect(button.onPressed, isNull,
+              reason: 'non-busy provider buttons must be disabled while busy');
+        }
+
+        // Resolve so no pending future/timer leaks into the next test.
+        completer.complete();
+        await tester.pumpAndSettle();
+      });
+    });
+
+    testWidgets(
+        'cancelling after a prior failed attempt clears the stale error',
+        (tester) async {
+      await _withPlatform(TargetPlatform.iOS, () async {
+        const errorMessage = 'Google sign-in failed. Please try again.';
+        final notifier = ScriptedAuthNotifier()
+          .._script.add((self) async {
+            self.state = const AsyncValue.data(
+              AuthUnauthenticated(errorMessage: errorMessage),
+            );
+          })
+          .._script.add((self) async {
+            // User cancels the native sheet: state is left exactly as-is,
+            // per AuthNotifier.socialLogin's documented cancel behavior.
+          });
+        final container = ProviderContainer(
+          overrides: [authProvider.overrideWith(() => notifier)],
+        );
+        addTearDown(container.dispose);
+        await container.read(authProvider.future); // settle initial build()
+
+        await tester.pumpWidget(_wrap(container));
+        await tester.pump();
+
+        // First attempt fails -> error text visible.
+        await tester.tap(find.text('Continue with Google'));
+        await tester.pump();
+        await tester.pump();
+        expect(find.text(errorMessage), findsOneWidget);
+
+        // Second attempt cancels -> the stale error must be gone.
+        await tester.tap(find.text('Continue with Google'));
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text(errorMessage), findsNothing);
       });
     });
   });

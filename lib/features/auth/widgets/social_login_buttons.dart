@@ -32,14 +32,22 @@ class _SocialLoginButtonsState extends ConsumerState<SocialLoginButtons> {
       _error = null;
     });
 
+    final before = ref.read(authProvider).value;
     await ref.read(authProvider.notifier).socialLogin(provider);
-
     if (!mounted) return;
-    final state = ref.read(authProvider).value;
+
+    // socialLogin leaves state as the exact same instance on user-cancel
+    // (`if (credential == null) return;`), so identical() cleanly
+    // distinguishes "this attempt produced a new state" from "nothing
+    // happened" — otherwise a cancel after a prior failure would
+    // re-display that prior attempt's stale error.
+    final after = ref.read(authProvider).value;
     setState(() {
       _busy = null;
-      if (state is AuthUnauthenticated && state.errorMessage != null) {
-        _error = state.errorMessage;
+      if (!identical(before, after) &&
+          after is AuthUnauthenticated &&
+          after.errorMessage != null) {
+        _error = after.errorMessage;
       }
     });
   }

@@ -38,9 +38,13 @@ App identifiers (verified in the repo, not `com.tts.bandmate`):
       capability enabled on the App ID in the portal to match.
 - [ ] Create a Services ID (web) with return URL
       `https://tts.band/auth/apple/callback` → `APPLE_SERVICES_CLIENT_ID`
-- [ ] Create a Sign in with Apple key (.p8), generate the client-secret JWT →
-      `APPLE_CLIENT_SECRET`
-      ⚠ expires ≤ 6 months — diarize regeneration
+- [ ] Create a Sign in with Apple key (.p8). The backend mints the client
+      secret automatically from the key material — set these once and forget:
+      - `APPLE_PRIVATE_KEY_BASE64` = `base64 -w0 AuthKey_XXXX.p8`
+      - `APPLE_KEY_ID` (from the Keys page)
+      - `APPLE_TEAM_ID` (top-right of the developer portal)
+      (A static `APPLE_CLIENT_SECRET` JWT still works as a fallback when the
+      trio is unset, but it expires ≤ 6 months — prefer the trio.)
 - [ ] `APPLE_SIGNIN_ALLOWED_CLIENT_IDS` = app bundle id (`band.tts.mate`) +
       Services ID (comma-separated)
 

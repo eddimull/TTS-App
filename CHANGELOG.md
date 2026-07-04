@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.9.0](https://github.com/eddimull/TTS-App/compare/v1.8.0...v1.9.0) (2026-07-04)
+
+
+### Features
+
+* **social-login:** Android/iOS platform config for provider SDKs ([eb4cfa3](https://github.com/eddimull/TTS-App/commit/eb4cfa37426527b5aa148e884fd7692f3decaef3))
+* **social-login:** drop social buttons from welcome screen, keep on login/signup ([139af79](https://github.com/eddimull/TTS-App/commit/139af79f0217e0930ed674f6baa0e4c8995d8702))
+* **social-login:** gate Facebook button behind FACEBOOK_LOGIN_ENABLED flag ([50fc9ea](https://github.com/eddimull/TTS-App/commit/50fc9ea2ac9a3081cab9ad4739bd3638e4001918))
+* **social-login:** real Facebook app id + client token ([076b155](https://github.com/eddimull/TTS-App/commit/076b15595a8d5d99d03e7b5e6c427b8cab9687d4))
+* **social-login:** real iOS Google OAuth client id in Info.plist ([854dcf6](https://github.com/eddimull/TTS-App/commit/854dcf692b92689bcee201dbfcc7feaae5e14324))
+* **social-login:** social buttons on welcome/login/signup screens ([8ff487a](https://github.com/eddimull/TTS-App/commit/8ff487a237152821209c9a3e43a614e20e21fad6))
+
+
+### Bug Fixes
+
+* **social-login:** cancel after failed attempt no longer resurfaces stale error ([d9b506a](https://github.com/eddimull/TTS-App/commit/d9b506ae98d34f926ef3a564d5cf5d068e6e913e))
+* **social-login:** guard missing GOOGLE_SERVER_CLIENT_ID; align null-error handling ([5cc9a31](https://github.com/eddimull/TTS-App/commit/5cc9a3161ff21bd4314f095126b933a9ae3d9346))
+
 ## [1.8.0](https://github.com/eddimull/TTS-App/compare/v1.7.0...v1.8.0) (2026-07-03)
 
 

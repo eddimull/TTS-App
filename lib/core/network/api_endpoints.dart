@@ -2,6 +2,7 @@ class ApiEndpoints {
   ApiEndpoints._();
 
   static const String mobileToken = '/api/mobile/auth/token';
+  static const String mobileSocial = '/api/mobile/auth/social';
   static const String mobileTokenRefresh = '/api/mobile/token/refresh';
   static const String mobileMe = '/api/mobile/auth/me';
   static const String mobileMeBookings = '/api/mobile/me/bookings';

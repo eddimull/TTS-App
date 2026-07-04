@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 
+
 /// Pre-auth landing screen shown on a fresh launch before the user signs in.
 ///
 /// It exists so the app does not open on a bare login form: a swipeable
@@ -159,7 +160,16 @@ class _DemoPanel extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Expanded(child: Center(child: preview)),
+          // The preview mocks are fixed-size content inside a Column that
+          // wants its natural height. On shorter viewports that natural
+          // height may exceed what's available — let this area scroll
+          // internally rather than overflow. No-op when there's enough room.
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: Center(child: preview),
+            ),
+          ),
           const SizedBox(height: 24),
           Text(
             title,

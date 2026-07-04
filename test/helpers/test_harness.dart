@@ -304,6 +304,13 @@ Future<void> signUpAs(
   String email = 'eddie@example.com',
   String password = 'password123',
 }) async {
+  // The login screen's body scrolls (SingleChildScrollView), and the
+  // Sign up link can sit below the fold once SocialLoginButtons adds height
+  // to the button column — ensureVisible scrolls it into the viewport
+  // before tapping so this doesn't depend on the tester's fixed test
+  // surface size matching the content's natural height.
+  await tester.ensureVisible(find.text('Sign up'));
+  await tester.pumpAndSettle();
   await tester.tap(find.text('Sign up'));
   await tester.pumpAndSettle();
 

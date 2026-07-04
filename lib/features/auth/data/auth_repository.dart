@@ -64,6 +64,32 @@ class AuthRepository {
     return (token: token, user: user, bands: bandList);
   }
 
+  /// Exchange a verified social-provider token (Google/Apple id_token or
+  /// Facebook access token) for a Sanctum token. Same envelope as [login].
+  Future<({String token, AuthUser user, List<BandSummary> bands})> socialLogin(
+    String provider,
+    String token,
+    String deviceName,
+  ) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileSocial,
+      data: {
+        'provider': provider,
+        'token': token,
+        'device_name': deviceName,
+      },
+    );
+
+    final data = response.data!;
+    final newToken = data['token'] as String;
+    final user = AuthUser.fromJson(data['user'] as Map<String, dynamic>);
+    final bandList = (data['bands'] as List<dynamic>)
+        .map((b) => BandSummary.fromJson(b as Map<String, dynamic>))
+        .toList();
+
+    return (token: newToken, user: user, bands: bandList);
+  }
+
   /// Fetch the current authenticated user and their bands.
   ///
   /// Requires a valid Bearer token already attached by the [ApiClient] interceptor.

@@ -7,12 +7,17 @@ class BookingDateInfo {
   const BookingDateInfo({
     required this.status,
     required this.bookingTitle,
+    this.bookingId,
   });
 
   final BookingDateStatus status;
 
   /// Human-readable name of the booking, e.g. "The Grand Wedding".
   final String bookingTitle;
+
+  /// Id of the booking, so the form can exclude the booking currently being
+  /// edited from its own reserved-dates calendar.
+  final int? bookingId;
 }
 
 /// The booking occupancy status for a single calendar day.

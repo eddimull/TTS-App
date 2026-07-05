@@ -1,0 +1,191 @@
+import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:tts_bandmate/features/auth/data/models/band_summary.dart';
+import 'package:tts_bandmate/features/bookings/data/bookings_repository.dart';
+import 'package:tts_bandmate/features/bookings/data/models/booking_detail.dart';
+import 'package:tts_bandmate/features/bookings/data/models/event_draft.dart';
+import 'package:tts_bandmate/features/bookings/data/models/event_type.dart';
+import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
+import 'package:tts_bandmate/features/bookings/screens/booking_form_screen.dart';
+import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
+
+// The contract section previously exposed the raw enum ('Default' | 'None' |
+// 'External') with no explanation, and 'None' duplicated the toggle. Now:
+//   toggle "Send a contract?" — OFF maps to contract_option 'none';
+//   when ON, a two-way choice between the Bandmate-generated contract and an
+//   externally uploaded one, each with a caption spelling out the status
+//   consequence (pending-until-signed vs confirmed-on-upload/immediately).
+
+class _NoopInvalidator extends CacheInvalidator {
+  _NoopInvalidator(super.ref);
+
+  @override
+  void onBookingChanged({required int bandId, int? bookingId}) {}
+}
+
+class _CapturingRepo extends BookingsRepository {
+  _CapturingRepo() : super(Dio());
+
+  String? capturedContractOption;
+
+  @override
+  Future<BookingDetail> createBooking(
+    int bandId, {
+    required String name,
+    required int eventTypeId,
+    String? price,
+    String? status,
+    String? contractOption,
+    String? notes,
+    String? depositType,
+    String? depositValue,
+    required List<EventDraft> events,
+  }) async {
+    capturedContractOption = contractOption;
+    return BookingDetail(
+      id: 42,
+      name: name,
+      startDate: '2026-08-01',
+      endDate: '2026-08-01',
+      eventCount: 1,
+      isMultiEvent: false,
+      isPaid: false,
+      status: 'draft',
+      contractOption: contractOption,
+      contacts: const [],
+      events: const [],
+      band: const BandSummary(id: 1, name: 'Band', isOwner: true),
+    );
+  }
+}
+
+Future<_CapturingRepo> _pumpCreateForm(WidgetTester tester) async {
+  final repo = _CapturingRepo();
+
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        eventTypesProvider.overrideWith(
+          (_) async => [const EventType(id: 1, name: 'Concert')],
+        ),
+        bookingsRepositoryProvider.overrideWithValue(repo),
+        cacheInvalidatorProvider.overrideWith(_NoopInvalidator.new),
+      ],
+      child: CupertinoApp(
+        home: Builder(
+          builder: (context) => CupertinoPageScaffold(
+            child: Center(
+              child: CupertinoButton(
+                child: const Text('Open form'),
+                onPressed: () => Navigator.of(context).push(
+                  CupertinoPageRoute<void>(
+                    builder: (_) =>
+                        const BookingFormScreen(bandId: 1, existing: null),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  await tester.tap(find.text('Open form'));
+  await tester.pumpAndSettle();
+  return repo;
+}
+
+Future<void> _revealContractSection(WidgetTester tester) async {
+  // Scroll until the section is built (it starts beyond the cache extent),
+  // then make sure it is actually within the viewport.
+  await tester.scrollUntilVisible(
+    find.text('Send a contract?'),
+    300,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.ensureVisible(find.text('Send a contract?'));
+  await tester.pumpAndSettle();
+}
+
+/// Fills the minimum valid form top-down. Must run before scrolling to the
+/// contract section — the ListView unbuilds off-screen rows.
+Future<void> _fillForm(WidgetTester tester) async {
+  await tester.enterText(find.byType(EditableText).first, 'Summer Festival');
+  await tester.pumpAndSettle();
+
+  await tester.tap(find.text('Select'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Done'));
+  await tester.pumpAndSettle();
+
+  await tester.ensureVisible(find.text('Start time'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Start time'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Done'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _save(WidgetTester tester) async {
+  await tester.tap(find.text('Save Booking'));
+  await tester.pumpAndSettle();
+}
+
+void main() {
+  testWidgets(
+      'contract section shows a "Send a contract?" toggle and no None segment',
+      (tester) async {
+    await _pumpCreateForm(tester);
+    await _revealContractSection(tester);
+
+    expect(find.text('Send a contract?'), findsOneWidget);
+    expect(find.text('None'), findsNothing);
+    expect(find.text('Generated by Bandmate'), findsOneWidget);
+    expect(find.text('Upload my own'), findsOneWidget);
+  });
+
+  testWidgets('Bandmate option explains the pending-until-signed consequence',
+      (tester) async {
+    await _pumpCreateForm(tester);
+    await _revealContractSection(tester);
+
+    expect(find.textContaining('stays pending until'), findsOneWidget);
+  });
+
+  testWidgets(
+      'external option explains confirmed-on-upload and submits external',
+      (tester) async {
+    final repo = await _pumpCreateForm(tester);
+    await _fillForm(tester);
+    await _revealContractSection(tester);
+
+    await tester.tap(find.text('Upload my own'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('confirmed once'), findsOneWidget);
+
+    await _save(tester);
+    expect(repo.capturedContractOption, 'external');
+  });
+
+  testWidgets(
+      'toggle OFF hides the choice, warns about immediate confirmation, '
+      'and submits none', (tester) async {
+    final repo = await _pumpCreateForm(tester);
+    await _fillForm(tester);
+    await _revealContractSection(tester);
+
+    // The contract switch is the last switch on the form (deposit is first).
+    await tester.tap(find.byType(CupertinoSwitch).last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Generated by Bandmate'), findsNothing);
+    expect(find.textContaining('confirmed immediately'), findsOneWidget);
+
+    await _save(tester);
+    expect(repo.capturedContractOption, 'none');
+  });
+}

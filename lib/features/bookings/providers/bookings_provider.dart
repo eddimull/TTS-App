@@ -128,6 +128,7 @@ final bookingDateInfoProvider =
       map[b.startDate] = BookingDateInfo(
         status: dateStatus,
         bookingTitle: b.name,
+        bookingId: b.id,
       );
     }
   }

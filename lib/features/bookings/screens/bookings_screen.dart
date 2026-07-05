@@ -14,6 +14,7 @@ import '../providers/bookings_filter_provider.dart';
 import '../providers/bookings_window_provider.dart';
 import '../providers/clock_provider.dart';
 import '../utils/booking_month_strip.dart';
+import '../utils/new_booking_navigation.dart';
 import '../utils/booking_search.dart';
 import '../widgets/booking_list_card.dart';
 import 'bookings_initial_position.dart';
@@ -105,7 +106,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
         return CreateBookingSheet(
           onBandSelected: (bandId) {
             Navigator.of(sheetContext).pop();
-            context.push('/bookings/$bandId/new');
+            pushNewBookingForm(context, bandId);
           },
         );
       },

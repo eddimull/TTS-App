@@ -135,6 +135,18 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
     return p <= 0;
   }
 
+  String _contractCaption() {
+    if (!_contractEnabled) {
+      return 'No contract will be tracked — this booking will be '
+          'confirmed immediately.';
+    }
+    return _contractOption == 'external'
+        ? "You'll upload a signed PDF yourself. The booking is marked "
+            "confirmed once it's uploaded."
+        : "We'll generate a contract and collect an e-signature. The booking "
+            "stays pending until it's signed.";
+  }
+
   String _depositCaption() {
     if (_isContractSigned) return 'Locked — contract is signed.';
     if (_depositType == DepositType.percent && _priceIsZeroOrEmpty) {
@@ -376,7 +388,21 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
       _createError = null;
     });
 
-    final drafts = _eventRows.map((r) => r.draft).toList();
+    // Blank event titles inherit the booking name so a single-event booking
+    // doesn't require typing the same name twice.
+    final drafts = _eventRows.map((r) {
+      final d = r.draft;
+      if (d.title.trim().isNotEmpty) return d;
+      return EventDraft(
+        title: nameVal,
+        date: d.date,
+        startTime: d.startTime,
+        endTime: d.endTime,
+        venueName: d.venueName,
+        venueAddress: d.venueAddress,
+        price: d.price,
+      );
+    }).toList();
     final priceDecimal = _CurrencyInputFormatter.toDecimal(_price.text.trim());
 
     // Resolve deposit fields: OFF → explicit $0 amount; ON → user's input.
@@ -397,8 +423,12 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
     final String createContractOption =
         _contractEnabled ? _contractOption : 'none';
 
+    // Only the API call itself belongs in the try: once the booking exists
+    // server-side, a failure in cache invalidation or navigation must not
+    // surface as "Could not save booking".
+    final BookingDetail created;
     try {
-      await ref.read(bookingsRepositoryProvider).createBooking(
+      created = await ref.read(bookingsRepositoryProvider).createBooking(
         widget.bandId,
         name: nameVal,
         eventTypeId: _eventTypeId!,
@@ -409,11 +439,6 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
         depositValue: createDepositValue,
         events: drafts,
       );
-      ref.read(cacheInvalidatorProvider).onBookingChanged(
-            bandId: widget.bandId,
-            bookingId: null,
-          );
-      if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
         final message = _extractErrorMessage(e);
@@ -435,7 +460,16 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
           ),
         );
       }
+      return;
     }
+
+    ref.read(cacheInvalidatorProvider).onBookingChanged(
+          bandId: widget.bandId,
+          bookingId: created.id,
+        );
+    // Pop with the created booking so the caller can forward to its
+    // detail screen (see pushNewBookingForm).
+    if (mounted) Navigator.of(context).pop(created);
   }
 
   // ── Diff / snapshot ───────────────────────────────────────────────────────
@@ -504,13 +538,15 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
 
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, _) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         final navigator = Navigator.of(context);
         final allow = await BookingFormNavigationGuard.shouldAllowLeave(
             context, _lastSaveResult);
         if (allow) {
-          navigator.pop();
+          // Forward the blocked pop's result (e.g. the created BookingDetail)
+          // so callers awaiting this route still receive it.
+          navigator.pop(result);
         }
       },
       child: CupertinoPageScaffold(
@@ -740,6 +776,8 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
                     }
                     return EventSubFormCard(
                       key: ValueKey(row.id ?? row.localKey),
+                      bandId: widget.bandId,
+                      excludeBookingId: widget.existing?.id,
                       draft: row.draft,
                       canDelete: _eventRows.length > 1,
                       saveError: err,
@@ -783,40 +821,52 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
               CupertinoFormSection.insetGrouped(
                 header: const Text('CONTRACT'),
                 children: [
-                  // Toggle row: controls whether a contract is attached at all.
+                  // Toggle row: OFF maps to contract_option 'none' at save.
                   CupertinoFormRow(
-                    prefix: const Text('Contract'),
+                    prefix: const Text('Send a contract?'),
                     child: CupertinoSwitch(
                       value: _contractEnabled,
                       onChanged: (v) => setState(() => _contractEnabled = v),
                     ),
                   ),
-                  // Segmented control only shown when contract is enabled.
+                  // Two-way choice only shown when a contract is wanted —
+                  // 'none' is expressed by the toggle, not a third segment.
                   if (_contractEnabled)
                     Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 12),
                       child: CupertinoSlidingSegmentedControl<String>(
-                        groupValue: _contractOption,
+                        groupValue:
+                            _contractOption == 'none' ? 'default' : _contractOption,
                         onValueChanged: (v) {
                           if (v != null) setState(() => _contractOption = v);
                         },
                         children: const {
                           'default': Padding(
                             padding: EdgeInsets.symmetric(horizontal: 8),
-                            child: Text('Default'),
-                          ),
-                          'none': Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8),
-                            child: Text('None'),
+                            child: Text('Generated by Bandmate',
+                                style: TextStyle(fontSize: 13)),
                           ),
                           'external': Padding(
                             padding: EdgeInsets.symmetric(horizontal: 8),
-                            child: Text('External'),
+                            child: Text('Upload my own',
+                                style: TextStyle(fontSize: 13)),
                           ),
                         },
                       ),
                     ),
+                  // The contract choice drives the booking's initial status —
+                  // spell out the consequence so it isn't a surprise later.
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                    child: Text(
+                      _contractCaption(),
+                      style: TextStyle(
+                        color: context.secondaryText,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
                 ],
               ),
 

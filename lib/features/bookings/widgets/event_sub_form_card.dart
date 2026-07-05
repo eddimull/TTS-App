@@ -6,8 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../data/models/booking_date_status.dart';
 import '../data/models/event_draft.dart';
 import '../data/venue_search_service.dart';
+import '../providers/bookings_provider.dart';
+import 'booking_calendar_picker.dart';
 import 'venue_picker.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 
@@ -68,15 +71,23 @@ bool get _mapsSupported => kIsWeb || Platform.isAndroid || Platform.isIOS;
 /// Mirrors the `_PickerSheet` used in `booking_form_screen.dart` but lives
 /// here so `EventSubFormCard` can open pickers without depending on the parent.
 class _PickerSheet extends StatelessWidget {
-  const _PickerSheet({required this.child, required this.onDone});
+  const _PickerSheet({
+    required this.child,
+    required this.onDone,
+    this.height = 300,
+  });
 
   final Widget child;
   final VoidCallback onDone;
 
+  /// Sheet height — wheels fit in the 300 default; the reserved-dates
+  /// calendar needs more room for its grid, legend and subtitle.
+  final double height;
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 300,
+      height: height,
       // Use a safe-area-aware background so the sheet looks correct on
       // devices with a home indicator (iPhone X+) and on web/Linux too.
       color: CupertinoColors.systemBackground.resolveFrom(context),
@@ -218,6 +229,8 @@ class _PickerRow extends StatelessWidget {
 class EventSubFormCard extends ConsumerStatefulWidget {
   const EventSubFormCard({
     super.key,
+    required this.bandId,
+    this.excludeBookingId,
     required this.draft,
     required this.canDelete,
     this.saveError,
@@ -225,6 +238,13 @@ class EventSubFormCard extends ConsumerStatefulWidget {
     required this.onDelete,
     this.onRetryRow,
   });
+
+  /// Band whose existing bookings mark reserved dates in the date picker.
+  final int bandId;
+
+  /// When editing an existing booking, its id — so the calendar doesn't
+  /// flag the booking's own date as taken.
+  final int? excludeBookingId;
 
   final EventDraft draft;
   final bool canDelete;
@@ -317,17 +337,44 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
     final initial = _parseIsoDate(widget.draft.date) ?? DateTime.now();
     DateTime selected = initial;
 
+    // The popup route has a fresh widget tree; re-attach the current provider
+    // container so the calendar's Consumer reads the same scope (and any
+    // overrides) as this card. Same pattern as refine_sheet.dart.
+    final container = ProviderScope.containerOf(context);
+
     showCupertinoModalPopup<void>(
       context: context,
-      builder: (_) => _PickerSheet(
-        onDone: () => widget.onChange(_copyWith(date: _formatIsoDate(selected))),
-        child: CupertinoDatePicker(
-          mode: CupertinoDatePickerMode.date,
-          initialDateTime: initial,
-          // Reasonable booking window: 5 years back to 5 years forward.
-          minimumYear: DateTime.now().year - 5,
-          maximumYear: DateTime.now().year + 5,
-          onDateTimeChanged: (dt) => selected = dt,
+      builder: (_) => UncontrolledProviderScope(
+        container: container,
+        child: _PickerSheet(
+          height: 480,
+          onDone: () =>
+              widget.onChange(_copyWith(date: _formatIsoDate(selected))),
+          child: StatefulBuilder(
+            builder: (context, setSheetState) => Consumer(
+              builder: (context, ref, _) {
+                // Reserved dates load in the background; the calendar is fully
+                // usable with an empty map while they arrive (or on error).
+                final infoAsync =
+                    ref.watch(bookingDateInfoProvider(widget.bandId));
+                final raw = infoAsync.asData?.value ??
+                    const <String, BookingDateInfo>{};
+                // Don't flag the booking being edited on its own date.
+                final statuses = widget.excludeBookingId == null
+                    ? raw
+                    : <String, BookingDateInfo>{
+                        for (final e in raw.entries)
+                          if (e.value.bookingId != widget.excludeBookingId)
+                            e.key: e.value,
+                      };
+                return BookingCalendarPicker(
+                  selectedDate: selected,
+                  dateStatuses: statuses,
+                  onDateSelected: (d) => setSheetState(() => selected = d),
+                );
+              },
+            ),
+          ),
         ),
       ),
     );
@@ -533,9 +580,11 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
       startTime:
           startTime == _sentinel ? draft.startTime : startTime as String?,
       endTime: endTime == _sentinel ? draft.endTime : endTime as String?,
-      venueName: venueName == _sentinel ? draft.venueName : venueName as String?,
-      venueAddress:
-          venueAddress == _sentinel ? draft.venueAddress : venueAddress as String?,
+      venueName:
+          venueName == _sentinel ? draft.venueName : venueName as String?,
+      venueAddress: venueAddress == _sentinel
+          ? draft.venueAddress
+          : venueAddress as String?,
       price: price ?? draft.price,
     );
   }
@@ -711,8 +760,7 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
                     'End time is before start time',
                     style: TextStyle(
                       fontSize: 12,
-                      color:
-                          CupertinoColors.systemOrange.resolveFrom(context),
+                      color: CupertinoColors.systemOrange.resolveFrom(context),
                     ),
                   ),
                 ],

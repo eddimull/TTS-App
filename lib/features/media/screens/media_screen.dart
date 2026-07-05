@@ -553,17 +553,19 @@ class _MediaTile extends ConsumerWidget {
             // otherwise — an iOS-style translucent play glyph signals
             // "this is a video, tap to play" at a glance.
             if (file.isVideo && file.thumbnailUrl != null)
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: const BoxDecoration(
+              const Center(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
                     color: Color(0x66000000),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    CupertinoIcons.play_fill,
-                    size: 18,
-                    color: CupertinoColors.white,
+                  child: Padding(
+                    padding: EdgeInsets.all(6),
+                    child: Icon(
+                      CupertinoIcons.play_fill,
+                      size: 18,
+                      color: CupertinoColors.white,
+                    ),
                   ),
                 ),
               ),

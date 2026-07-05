@@ -36,10 +36,11 @@ same API-key auth. Non-404 failure → abort with the API's message, **no DB cha
 
 ### Amend action
 
-`amendContract(Bands $band, Bookings $booking)` on the web `BookingsController` and
-`Api\Mobile\BookingsController`, both delegating to a shared
-`BookingService::amendContract(Bookings $booking)` method (the mobile controller
-already injects `BookingService`; guards and the transaction live there once).
+Web `ContractsController::amendBookingContract` (web contract actions live there,
+see `routes/booking.php`) and `Api\Mobile\BookingsController::amendContract`, both
+delegating to a shared `App\Services\ContractAmendmentService::amend(Bookings
+$booking)` — mirroring the existing `ContractCompletionService` precedent; guards
+and the transaction live there once.
 
 - **Guards** (422 with a human-readable message): `contract_option === 'default'`;
   contract exists with status `sent`; booking status `pending`.

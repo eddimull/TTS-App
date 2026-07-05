@@ -111,10 +111,11 @@ class PushService implements LocalScheduler {
   }
 
   Future<void> _show(RemoteMessage message) async {
-    // Messages that carry a `notification` block are rendered by the OS itself
-    // while foregrounded (notably on Android). Only manually render data-only
-    // messages, otherwise the user sees the same reminder twice. The backend
-    // contract for this feature is therefore: send DATA-ONLY messages.
+    // Messages carrying a `notification` block are OS-rendered when the app is
+    // backgrounded/terminated, so we skip them here to avoid a double
+    // notification; band-update pushes are sent this way (hybrid
+    // notification+data). Data-only messages (leave-by reminders) have no
+    // `notification` block and are rendered locally below.
     if (message.notification != null) return;
     final payload = PushPayload.fromData(message.data);
     if (payload.type == PushType.departure) {

@@ -5,6 +5,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../data/notification_text.dart';
 import '../data/push_payload.dart';
+import '../data/push_route.dart';
 import 'enrichment_service.dart' show LocalScheduler;
 
 /// True only on platforms where FCM is supported.
@@ -87,6 +88,26 @@ class PushService implements LocalScheduler {
     if (!_pushSupported || _listening) return;
     _listening = true;
     FirebaseMessaging.onMessage.listen(_show);
+  }
+
+  bool _tapsListening = false;
+
+  /// Wire tap-to-open for OS-rendered (hybrid) pushes: background taps arrive
+  /// via onMessageOpenedApp, terminated-state taps via getInitialMessage.
+  /// Idempotent like [listenForeground].
+  void listenTaps(void Function(String route) onRoute) {
+    if (!_pushSupported || _tapsListening) return;
+    _tapsListening = true;
+
+    void handle(RemoteMessage message) {
+      final route = routeForPushData(message.data);
+      if (route != null) onRoute(route);
+    }
+
+    FirebaseMessaging.onMessageOpenedApp.listen(handle);
+    FirebaseMessaging.instance.getInitialMessage().then((message) {
+      if (message != null) handle(message);
+    });
   }
 
   Future<void> _show(RemoteMessage message) async {

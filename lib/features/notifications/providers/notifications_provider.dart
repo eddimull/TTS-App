@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:tts_bandmate/core/network/geocoding.dart';
 
+import '../../../core/config/router.dart';
 import '../../../core/network/api_client.dart';
 import '../data/device_repository.dart';
 import '../data/event_first_item.dart' show resolveFirstItem;
@@ -47,6 +48,7 @@ class PushRegistrar {
     await push.init();
     await push.requestPermission();
     push.listenForeground();
+    push.listenTaps((route) => _ref.read(routerProvider).go(route));
     push.onDeparturePush = (payload) async {
       final firstTime = payload.firstItemTime;
       if (firstTime == null) return;

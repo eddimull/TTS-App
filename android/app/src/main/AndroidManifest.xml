@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
         tools:node="remove" />
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID"
+        tools:node="remove" />
     <!-- Exact alarms back AndroidScheduleMode.exactAllowWhileIdle for the
          precise "leave in 15 min" local notification. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
@@ -52,6 +54,7 @@
         <!-- Facebook Login SDK: app ID / client token pulled from strings.xml
              (placeholders until B6 console-setup checklist lands real IDs). -->
         <meta-data android:name="com.facebook.sdk.ApplicationId" android:value="@string/facebook_app_id"/>
+        <meta-data android:name="com.facebook.sdk.AdvertiserIDCollectionEnabled" android:value="false"/>
         <meta-data android:name="com.facebook.sdk.ClientToken" android:value="@string/facebook_client_token"/>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

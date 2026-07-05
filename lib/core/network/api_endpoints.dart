@@ -89,6 +89,8 @@ class ApiEndpoints {
       '/api/mobile/rehearsals/by-key/$key';
   static String mobileRehearsalUpdateNotes(int rehearsalId) =>
       '/api/mobile/rehearsals/$rehearsalId/notes';
+  static String mobileRehearsalSetCancelled(int rehearsalId) =>
+      '/api/mobile/rehearsals/$rehearsalId/cancelled';
 
   static const String mobileSearch = '/api/mobile/search';
 

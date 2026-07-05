@@ -61,6 +61,18 @@ class RehearsalsRepository {
     final value = body?['notes'];
     return (value is String && value.isNotEmpty) ? value : null;
   }
+
+  /// Sets (not toggles) the cancelled flag on a rehearsal. Returns the
+  /// refreshed [RehearsalDetail].
+  Future<RehearsalDetail> setCancelled(int rehearsalId, bool isCancelled) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      ApiEndpoints.mobileRehearsalSetCancelled(rehearsalId),
+      data: {'is_cancelled': isCancelled},
+    );
+
+    final data = response.data!;
+    return RehearsalDetail.fromJson(data['rehearsal'] as Map<String, dynamic>);
+  }
 }
 
 final rehearsalsRepositoryProvider = Provider<RehearsalsRepository>((ref) {

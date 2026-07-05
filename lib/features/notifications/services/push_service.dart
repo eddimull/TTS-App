@@ -5,6 +5,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../data/notification_text.dart';
 import '../data/push_payload.dart';
+import '../data/push_route.dart';
 import 'enrichment_service.dart' show LocalScheduler;
 
 /// True only on platforms where FCM is supported.
@@ -37,6 +38,13 @@ class PushService implements LocalScheduler {
     importance: Importance.high,
   );
 
+  static const _bandUpdatesChannel = AndroidNotificationChannel(
+    'band_updates',
+    'Band Updates',
+    description: 'Changes to your band\'s schedule and activity',
+    importance: Importance.high,
+  );
+
   /// Initialize local-notification plugin + Android channel. Safe to call on
   /// unsupported platforms (no-op).
   Future<void> init() async {
@@ -50,6 +58,10 @@ class PushService implements LocalScheduler {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_channel);
+    await _local
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(_bandUpdatesChannel);
   }
 
   /// Request notification permission from the OS. No-op on unsupported.
@@ -78,11 +90,32 @@ class PushService implements LocalScheduler {
     FirebaseMessaging.onMessage.listen(_show);
   }
 
+  bool _tapsListening = false;
+
+  /// Wire tap-to-open for OS-rendered (hybrid) pushes: background taps arrive
+  /// via onMessageOpenedApp, terminated-state taps via getInitialMessage.
+  /// Idempotent like [listenForeground].
+  void listenTaps(void Function(String route) onRoute) {
+    if (!_pushSupported || _tapsListening) return;
+    _tapsListening = true;
+
+    void handle(RemoteMessage message) {
+      final route = routeForPushData(message.data);
+      if (route != null) onRoute(route);
+    }
+
+    FirebaseMessaging.onMessageOpenedApp.listen(handle);
+    FirebaseMessaging.instance.getInitialMessage().then((message) {
+      if (message != null) handle(message);
+    });
+  }
+
   Future<void> _show(RemoteMessage message) async {
-    // Messages that carry a `notification` block are rendered by the OS itself
-    // while foregrounded (notably on Android). Only manually render data-only
-    // messages, otherwise the user sees the same reminder twice. The backend
-    // contract for this feature is therefore: send DATA-ONLY messages.
+    // Messages carrying a `notification` block are OS-rendered when the app is
+    // backgrounded/terminated, so we skip them here to avoid a double
+    // notification; band-update pushes are sent this way (hybrid
+    // notification+data). Data-only messages (leave-by reminders) have no
+    // `notification` block and are rendered locally below.
     if (message.notification != null) return;
     final payload = PushPayload.fromData(message.data);
     if (payload.type == PushType.departure) {
@@ -92,19 +125,33 @@ class PushService implements LocalScheduler {
         return;
       }
     }
-    final title = message.data['title']?.toString() ?? 'Event today';
+    final isReminder =
+        payload.type == PushType.reminder8h || payload.type == PushType.departure;
+    final title = payload.title ??
+        (isReminder ? 'Event today' : 'TTS Bandmate');
+    final body = isReminder
+        ? renderBody(payload)
+        : (payload.body ?? renderBody(payload));
+    final android = isReminder
+        ? const AndroidNotificationDetails(
+            'event_reminders',
+            'Event Reminders',
+            importance: Importance.high,
+            priority: Priority.high,
+          )
+        : const AndroidNotificationDetails(
+            'band_updates',
+            'Band Updates',
+            importance: Importance.high,
+            priority: Priority.high,
+          );
     await _local.show(
       payload.notificationId,
       title,
-      renderBody(payload),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'event_reminders',
-          'Event Reminders',
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-        iOS: DarwinNotificationDetails(),
+      body,
+      NotificationDetails(
+        android: android,
+        iOS: const DarwinNotificationDetails(),
       ),
     );
   }

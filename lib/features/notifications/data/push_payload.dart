@@ -1,5 +1,5 @@
 /// The kind of push the backend sent.
-enum PushType { reminder8h, departure, unknown }
+enum PushType { reminder8h, departure, rehearsalCancelled, rehearsalRestored, unknown }
 
 /// Stable notification id for an event's "departure" slot. The push-rendered
 /// notification and the locally-scheduled enriched one MUST use this same id so
@@ -13,6 +13,10 @@ PushType _typeFromString(String? raw) {
       return PushType.reminder8h;
     case 'event_departure':
       return PushType.departure;
+    case 'rehearsal_cancelled':
+      return PushType.rehearsalCancelled;
+    case 'rehearsal_restored':
+      return PushType.rehearsalRestored;
     default:
       return PushType.unknown;
   }
@@ -28,6 +32,8 @@ class PushPayload {
     this.firstItemTitle,
     this.firstItemTime,
     this.showTime,
+    this.body,
+    this.rehearsalId,
   });
 
   final PushType type;
@@ -40,6 +46,8 @@ class PushPayload {
   final String? firstItemTitle;
   final String? firstItemTime;
   final String? showTime;
+  final String? body;
+  final String? rehearsalId;
 
   factory PushPayload.fromData(Map<String, dynamic> data) {
     String? str(String key) {
@@ -57,13 +65,17 @@ class PushPayload {
       firstItemTitle: str('firstItemTitle'),
       firstItemTime: str('firstItemTime'),
       showTime: str('showTime'),
+      body: str('body'),
+      rehearsalId: str('rehearsalId'),
     );
   }
 
-  /// Stable id for deduping notifications: one slot per event+type. For
-  /// departure pushes this is [departureNotificationId]; other types hash on
-  /// their own [type] value.
-  int get notificationId => type == PushType.departure
-      ? departureNotificationId(eventKey)
-      : Object.hash(eventKey, type).toUnsigned(31);
+  /// Stable id for deduping notifications: one slot per entity+type. Departure
+  /// keeps its shared-slot contract with the enrichment scheduler; everything
+  /// else hashes its best entity key (eventKey, else rehearsalId) with its type.
+  int get notificationId {
+    if (type == PushType.departure) return departureNotificationId(eventKey);
+    final entity = eventKey.isNotEmpty ? eventKey : (rehearsalId ?? '');
+    return Object.hash(entity, type).toUnsigned(31);
+  }
 }

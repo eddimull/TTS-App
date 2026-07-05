@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../../shared/cache/cache_invalidator.dart';
@@ -325,11 +326,22 @@ class _ContractEditorState extends ConsumerState<ContractEditor> {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
-                      child: Text(
-                        'Add contacts to this booking before sending the contract.',
-                        style: CupertinoTheme.of(context).textTheme.textStyle.copyWith(
-                              color: CupertinoColors.systemYellow,
-                            ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Add contacts to this booking before sending the contract.',
+                            style: CupertinoTheme.of(context).textTheme.textStyle.copyWith(
+                                  color: CupertinoColors.systemYellow,
+                                ),
+                          ),
+                          CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            onPressed: () => context.push(
+                                '/bookings/${_key.bandId}/${_key.bookingId}/contacts'),
+                            child: const Text('Add contacts'),
+                          ),
+                        ],
                       ),
                     ),
                   ),

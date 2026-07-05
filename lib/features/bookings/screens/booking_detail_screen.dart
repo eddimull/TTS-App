@@ -11,6 +11,7 @@ import '../data/bookings_repository.dart';
 import '../data/models/booking_contact.dart';
 import '../data/models/booking_detail.dart';
 import '../providers/bookings_provider.dart';
+import '../widgets/booking_contract_nudge.dart';
 import '../widgets/booking_engagement_summary.dart';
 import '../widgets/booking_section_tile.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
@@ -429,6 +430,15 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
                     child: StatusChip(status: b.status!),
                   ),
                 ],
+
+                // ── Contract next-step nudge ──────────────────────────────
+                BookingContractNudge(
+                  booking: b,
+                  onAddContact: () => context.push(
+                      '/bookings/${widget.bandId}/${widget.bookingId}/contacts'),
+                  onSendContract: () => context.push(
+                      '/bookings/${widget.bandId}/${widget.bookingId}/contract'),
+                ),
 
                 // ── Financial summary ─────────────────────────────────────
                 const SizedBox(height: 16),

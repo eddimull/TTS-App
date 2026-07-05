@@ -74,6 +74,22 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
   }
 
   @override
+  void didUpdateWidget(covariant _RehearsalDetailView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.rehearsal, widget.rehearsal)) {
+      _rehearsal = widget.rehearsal;
+      // Keep notes in sync with the fresh data, but never clobber an edit
+      // in progress (same invariant _setCancelled and _refreshNotes protect).
+      if (!_editingNotes) {
+        _notes = (widget.rehearsal.notes?.isEmpty ?? true)
+            ? null
+            : widget.rehearsal.notes;
+        _notesController.text = _notes ?? '';
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _notesController.dispose();
     super.dispose();

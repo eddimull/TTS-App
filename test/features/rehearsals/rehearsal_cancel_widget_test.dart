@@ -98,4 +98,25 @@ void main() {
 
     expect(find.text('Cancel Rehearsal'), findsNothing);
   });
+
+  testWidgets('parent rebuild with fresh detail updates the displayed state',
+      (tester) async {
+    final repo = _FakeRehearsalsRepository();
+    await tester.pumpWidget(_app(repo, _detail(notes: 'original notes')));
+
+    expect(find.text('original notes'), findsOneWidget);
+    expect(find.text('This rehearsal has been cancelled.'), findsNothing);
+
+    // Same widget tree position, new RehearsalDetail instance (e.g. provider
+    // refreshed) — the State object is reused, so this exercises
+    // didUpdateWidget rather than initState.
+    await tester.pumpWidget(
+      _app(repo, _detail(isCancelled: true, notes: 'refreshed notes')),
+    );
+    await tester.pump();
+
+    expect(find.text('refreshed notes'), findsOneWidget);
+    expect(find.text('original notes'), findsNothing);
+    expect(find.text('This rehearsal has been cancelled.'), findsOneWidget);
+  });
 }

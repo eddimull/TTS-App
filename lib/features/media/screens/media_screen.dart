@@ -536,7 +536,7 @@ class _MediaTile extends ConsumerWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (file.isImage && file.thumbnailUrl != null)
+            if ((file.isImage || file.isVideo) && file.thumbnailUrl != null)
               AuthThumbnail(url: file.thumbnailUrl!)
             else
               Container(
@@ -546,6 +546,26 @@ class _MediaTile extends ConsumerWidget {
                     _iconForType(file.mediaType),
                     size: 32,
                     color: context.secondaryText,
+                  ),
+                ),
+              ),
+            // Video tiles with a thumbnail look identical to image tiles
+            // otherwise — an iOS-style translucent play glyph signals
+            // "this is a video, tap to play" at a glance.
+            if (file.isVideo && file.thumbnailUrl != null)
+              const Center(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Color(0x66000000),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(6),
+                    child: Icon(
+                      CupertinoIcons.play_fill,
+                      size: 18,
+                      color: CupertinoColors.white,
+                    ),
                   ),
                 ),
               ),

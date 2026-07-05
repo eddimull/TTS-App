@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tts_bandmate/core/network/api_endpoints.dart';
 import 'package:tts_bandmate/core/providers/core_providers.dart';
 import 'models/rehearsal_detail.dart';
 import 'models/rehearsal_schedule.dart';
@@ -60,6 +61,18 @@ class RehearsalsRepository {
 
     final value = body?['notes'];
     return (value is String && value.isNotEmpty) ? value : null;
+  }
+
+  /// Sets (not toggles) the cancelled flag on a rehearsal. Returns the
+  /// refreshed [RehearsalDetail].
+  Future<RehearsalDetail> setCancelled(int rehearsalId, bool isCancelled) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      ApiEndpoints.mobileRehearsalSetCancelled(rehearsalId),
+      data: {'is_cancelled': isCancelled},
+    );
+
+    final data = response.data!;
+    return RehearsalDetail.fromJson(data['rehearsal'] as Map<String, dynamic>);
   }
 }
 

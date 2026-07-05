@@ -85,7 +85,14 @@ reminders. Refactor:
   after a restore still notifies but retries don't double-send.
 - Recipients: band members (`$band->everyone()`) who have device tokens, minus actor.
 
-### Push payload contract (data-only FCM)
+### Push payload contract
+
+**Delivery amendment (from implementation planning):** rehearsal pushes are sent as
+**notification+data hybrid** FCM messages, not data-only. The mobile app's background
+FCM handler is a Phase-1 no-op, so a data-only message never displays when the app is
+backgrounded or terminated — the common case for a cancellation. A hybrid message is
+OS-rendered in those states on both platforms. Leave-by reminders remain data-only
+(unchanged). The `data` map contract below applies to both kinds.
 
 Every push the backend sends carries:
 

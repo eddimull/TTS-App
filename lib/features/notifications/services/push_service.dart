@@ -37,6 +37,13 @@ class PushService implements LocalScheduler {
     importance: Importance.high,
   );
 
+  static const _bandUpdatesChannel = AndroidNotificationChannel(
+    'band_updates',
+    'Band Updates',
+    description: 'Changes to your band\'s schedule and activity',
+    importance: Importance.high,
+  );
+
   /// Initialize local-notification plugin + Android channel. Safe to call on
   /// unsupported platforms (no-op).
   Future<void> init() async {
@@ -50,6 +57,10 @@ class PushService implements LocalScheduler {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_channel);
+    await _local
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(_bandUpdatesChannel);
   }
 
   /// Request notification permission from the OS. No-op on unsupported.
@@ -92,19 +103,33 @@ class PushService implements LocalScheduler {
         return;
       }
     }
-    final title = message.data['title']?.toString() ?? 'Event today';
+    final isReminder =
+        payload.type == PushType.reminder8h || payload.type == PushType.departure;
+    final title = payload.title ??
+        (isReminder ? 'Event today' : 'TTS Bandmate');
+    final body = isReminder
+        ? renderBody(payload)
+        : (payload.body ?? renderBody(payload));
+    final android = isReminder
+        ? const AndroidNotificationDetails(
+            'event_reminders',
+            'Event Reminders',
+            importance: Importance.high,
+            priority: Priority.high,
+          )
+        : const AndroidNotificationDetails(
+            'band_updates',
+            'Band Updates',
+            importance: Importance.high,
+            priority: Priority.high,
+          );
     await _local.show(
       payload.notificationId,
       title,
-      renderBody(payload),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'event_reminders',
-          'Event Reminders',
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-        iOS: DarwinNotificationDetails(),
+      body,
+      NotificationDetails(
+        android: android,
+        iOS: const DarwinNotificationDetails(),
       ),
     );
   }

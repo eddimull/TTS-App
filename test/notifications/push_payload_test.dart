@@ -84,4 +84,36 @@ void main() {
       );
     });
   });
+
+  group('rehearsal and generic type rendering', () {
+    test('rehearsal_cancelled parses type, body and rehearsalId', () {
+      final p = PushPayload.fromData({
+        'type': 'rehearsal_cancelled',
+        'title': 'Rehearsal cancelled',
+        'body': 'Tuesday Practice · Tue, Jul 7',
+        'rehearsalId': '42',
+      });
+      expect(p.type, PushType.rehearsalCancelled);
+      expect(p.body, 'Tuesday Practice · Tue, Jul 7');
+      expect(p.rehearsalId, '42');
+    });
+
+    test('rehearsal_restored parses', () {
+      final p = PushPayload.fromData({'type': 'rehearsal_restored', 'title': 't', 'body': 'b'});
+      expect(p.type, PushType.rehearsalRestored);
+    });
+
+    test('unknown type keeps title and body for generic rendering', () {
+      final p = PushPayload.fromData({'type': 'event_chat_message', 'title': 'New message', 'body': 'hi'});
+      expect(p.type, PushType.unknown);
+      expect(p.title, 'New message');
+      expect(p.body, 'hi');
+    });
+
+    test('notification ids differ per type for the same rehearsal', () {
+      final a = PushPayload.fromData({'type': 'rehearsal_cancelled', 'rehearsalId': '42'});
+      final b = PushPayload.fromData({'type': 'rehearsal_restored', 'rehearsalId': '42'});
+      expect(a.notificationId, isNot(b.notificationId));
+    });
+  });
 }

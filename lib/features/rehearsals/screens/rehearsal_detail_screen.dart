@@ -159,7 +159,15 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
       final repo = ref.read(rehearsalsRepositoryProvider);
       final updated = await repo.setCancelled(_rehearsal.id, cancel);
       if (!mounted) return;
-      setState(() => _rehearsal = updated);
+      setState(() {
+        _rehearsal = updated;
+        // Keep the notes state in sync with the fresh server copy, but never
+        // clobber an edit in progress (same invariant _refreshNotes protects).
+        if (!_editingNotes) {
+          _notes = (updated.notes?.isEmpty ?? true) ? null : updated.notes;
+          _notesController.text = _notes ?? '';
+        }
+      });
       _invalidateCaches();
     } catch (e) {
       if (mounted) {

@@ -14,11 +14,11 @@ class _FakeRehearsalsRepository extends RehearsalsRepository {
   @override
   Future<RehearsalDetail> setCancelled(int rehearsalId, bool isCancelled) async {
     calls.add((rehearsalId, isCancelled));
-    return _detail(isCancelled: isCancelled);
+    return _detail(isCancelled: isCancelled, notes: 'updated from server');
   }
 }
 
-RehearsalDetail _detail({bool isCancelled = false}) {
+RehearsalDetail _detail({bool isCancelled = false, String? notes}) {
   final future = DateTime.now().add(const Duration(days: 7));
   final date =
       '${future.year}-${future.month.toString().padLeft(2, '0')}-${future.day.toString().padLeft(2, '0')}';
@@ -28,7 +28,7 @@ RehearsalDetail _detail({bool isCancelled = false}) {
     'time': '19:00',
     'venue_name': 'The Shed',
     'is_cancelled': isCancelled,
-    'notes': null,
+    'notes': notes,
     'event_key': 'k-1',
     'schedule': {'id': 7, 'name': 'Tuesday Practice', 'location_name': 'The Shed'},
     'associated_bookings': [],
@@ -61,6 +61,8 @@ void main() {
     // UI flipped to cancelled state.
     expect(find.text('This rehearsal has been cancelled.'), findsOneWidget);
     expect(find.text('Restore'), findsOneWidget);
+    // Notes synced from server response.
+    expect(find.text('updated from server'), findsOneWidget);
   });
 
   testWidgets('cancelled rehearsal shows restore; confirming calls repo', (tester) async {

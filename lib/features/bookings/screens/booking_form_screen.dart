@@ -411,8 +411,12 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
     final String createContractOption =
         _contractEnabled ? _contractOption : 'none';
 
+    // Only the API call itself belongs in the try: once the booking exists
+    // server-side, a failure in cache invalidation or navigation must not
+    // surface as "Could not save booking".
+    final BookingDetail created;
     try {
-      await ref.read(bookingsRepositoryProvider).createBooking(
+      created = await ref.read(bookingsRepositoryProvider).createBooking(
         widget.bandId,
         name: nameVal,
         eventTypeId: _eventTypeId!,
@@ -423,11 +427,6 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
         depositValue: createDepositValue,
         events: drafts,
       );
-      ref.read(cacheInvalidatorProvider).onBookingChanged(
-            bandId: widget.bandId,
-            bookingId: null,
-          );
-      if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
         final message = _extractErrorMessage(e);
@@ -449,7 +448,16 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
           ),
         );
       }
+      return;
     }
+
+    ref.read(cacheInvalidatorProvider).onBookingChanged(
+          bandId: widget.bandId,
+          bookingId: created.id,
+        );
+    // Pop with the created booking so the caller can forward to its
+    // detail screen (see pushNewBookingForm).
+    if (mounted) Navigator.of(context).pop(created);
   }
 
   // ── Diff / snapshot ───────────────────────────────────────────────────────
@@ -518,13 +526,15 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
 
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, _) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         final navigator = Navigator.of(context);
         final allow = await BookingFormNavigationGuard.shouldAllowLeave(
             context, _lastSaveResult);
         if (allow) {
-          navigator.pop();
+          // Forward the blocked pop's result (e.g. the created BookingDetail)
+          // so callers awaiting this route still receive it.
+          navigator.pop(result);
         }
       },
       child: CupertinoPageScaffold(

@@ -11,6 +11,7 @@ import '../../../shared/providers/selected_band_provider.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../auth/data/models/band_summary.dart';
+import '../../bookings/utils/new_booking_navigation.dart';
 import '../../bookings/widgets/create_booking_sheet.dart';
 import '../../events/data/models/event_summary.dart';
 import '../dashboard_list_filter.dart';
@@ -75,7 +76,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           builder: (sheetContext) => CreateBookingSheet(
                             onBandSelected: (bandId) {
                               Navigator.of(sheetContext).pop();
-                              context.push('/bookings/$bandId/new');
+                              pushNewBookingForm(context, bandId);
                             },
                           ),
                         );

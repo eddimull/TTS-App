@@ -9,10 +9,20 @@ import 'package:tts_bandmate/features/bookings/data/models/event_draft.dart';
 import 'package:tts_bandmate/features/bookings/data/models/event_type.dart';
 import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
 import 'package:tts_bandmate/features/bookings/screens/booking_form_screen.dart';
+import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 
 // Create-mode: an event whose title was left blank inherits the booking name
 // at save time, so single-event bookings don't require typing the same name
 // twice (and don't end up as "Untitled event").
+
+/// No-op: the real invalidator reads storage/dashboard providers that have
+/// no test overrides here, and invalidation behavior is not under test.
+class _NoopInvalidator extends CacheInvalidator {
+  _NoopInvalidator(super.ref);
+
+  @override
+  void onBookingChanged({required int bandId, int? bookingId}) {}
+}
 
 class _CapturingRepo extends BookingsRepository {
   _CapturingRepo() : super(Dio());
@@ -63,6 +73,7 @@ Future<_CapturingRepo> _pumpAndFillForm(
           (_) async => [const EventType(id: 1, name: 'Concert')],
         ),
         bookingsRepositoryProvider.overrideWithValue(repo),
+        cacheInvalidatorProvider.overrideWith(_NoopInvalidator.new),
       ],
       child: CupertinoApp(
         home: Builder(

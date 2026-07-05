@@ -33,6 +33,7 @@ void main() {
   testWidgets('renders inline error when saveError non-null', (tester) async {
     await tester.pumpWidget(_wrap(
       EventSubFormCard(
+        bandId: 1,
         draft: const EventDraft(title: 'X', date: '2026-06-13'),
         canDelete: true,
         saveError: 'Server error',
@@ -46,6 +47,7 @@ void main() {
   testWidgets('does not render error when saveError null', (tester) async {
     await tester.pumpWidget(_wrap(
       EventSubFormCard(
+        bandId: 1,
         draft: const EventDraft(title: 'X', date: '2026-06-13'),
         canDelete: true,
         onChange: (_) {},
@@ -60,6 +62,7 @@ void main() {
     var deleteCalled = false;
     await tester.pumpWidget(_wrap(
       EventSubFormCard(
+        bandId: 1,
         draft: const EventDraft(title: 'X', date: '2026-06-13'),
         canDelete: false,
         onChange: (_) {},
@@ -78,6 +81,7 @@ void main() {
     var retryCalled = false;
     await tester.pumpWidget(_wrap(
       EventSubFormCard(
+        bandId: 1,
         draft: const EventDraft(title: 'X', date: '2026-06-13'),
         canDelete: true,
         saveError: 'Server error',
@@ -109,6 +113,7 @@ void main() {
           builder: (context, setState) => CupertinoApp(
             home: Center(
               child: EventSubFormCard(
+        bandId: 1,
                 draft: draft,
                 canDelete: true,
                 onChange: (newDraft) => setState(() => draft = newDraft),
@@ -138,6 +143,7 @@ void main() {
   testWidgets('shows Search venue row when no venue set', (tester) async {
     await tester.pumpWidget(_wrap(
       EventSubFormCard(
+        bandId: 1,
         draft: const EventDraft(title: 'X', date: '2026-06-13'),
         canDelete: true,
         onChange: (_) {},
@@ -150,6 +156,7 @@ void main() {
   testWidgets('shows venue name when venueName is set', (tester) async {
     await tester.pumpWidget(_wrap(
       EventSubFormCard(
+        bandId: 1,
         draft: const EventDraft(
           title: 'X',
           date: '2026-06-13',
@@ -174,6 +181,7 @@ void main() {
     // displaying the address where the name normally goes.
     await tester.pumpWidget(_wrap(
       EventSubFormCard(
+        bandId: 1,
         draft: const EventDraft(
           title: 'X',
           date: '2026-06-13',
@@ -207,6 +215,7 @@ void main() {
           builder: (context, setState) => CupertinoApp(
             home: SingleChildScrollView(
               child: EventSubFormCard(
+        bandId: 1,
                 draft: draft,
                 canDelete: true,
                 onChange: (d) => setState(() => draft = d),
@@ -250,6 +259,7 @@ void main() {
           builder: (context, setState) => CupertinoApp(
             home: SingleChildScrollView(
               child: EventSubFormCard(
+        bandId: 1,
                 draft: draft,
                 canDelete: true,
                 onChange: (d) => setState(() => draft = d),

@@ -776,6 +776,8 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
                     }
                     return EventSubFormCard(
                       key: ValueKey(row.id ?? row.localKey),
+                      bandId: widget.bandId,
+                      excludeBookingId: widget.existing?.id,
                       draft: row.draft,
                       canDelete: _eventRows.length > 1,
                       saveError: err,

@@ -376,7 +376,21 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
       _createError = null;
     });
 
-    final drafts = _eventRows.map((r) => r.draft).toList();
+    // Blank event titles inherit the booking name so a single-event booking
+    // doesn't require typing the same name twice.
+    final drafts = _eventRows.map((r) {
+      final d = r.draft;
+      if (d.title.trim().isNotEmpty) return d;
+      return EventDraft(
+        title: nameVal,
+        date: d.date,
+        startTime: d.startTime,
+        endTime: d.endTime,
+        venueName: d.venueName,
+        venueAddress: d.venueAddress,
+        price: d.price,
+      );
+    }).toList();
     final priceDecimal = _CurrencyInputFormatter.toDecimal(_price.text.trim());
 
     // Resolve deposit fields: OFF → explicit $0 amount; ON → user's input.

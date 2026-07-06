@@ -76,6 +76,8 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/bookings/$bookingId/contract/view-url';
   static String mobileBookingContractDownload(int bandId, int bookingId) =>
       '/api/mobile/bands/$bandId/bookings/$bookingId/contract/download';
+  static String mobileBookingContractAmend(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/contract/amend';
   static String mobileContractHistory(String envelopeId) =>
       '/api/mobile/contracts/$envelopeId/history';
   static String mobileBookingHistory(int bandId, int bookingId) =>

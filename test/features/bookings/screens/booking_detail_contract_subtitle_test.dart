@@ -6,6 +6,7 @@ import 'package:tts_bandmate/features/bookings/data/models/booking_contract.dart
 import 'package:tts_bandmate/features/bookings/data/models/booking_detail.dart';
 import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
 import 'package:tts_bandmate/features/bookings/screens/booking_detail_screen.dart';
+import 'package:tts_bandmate/features/bookings/widgets/booking_section_tile.dart';
 
 // The contracts table's initial status is 'pending' ("not sent yet"), but
 // for bookings 'pending' means "out for signature". Showing the raw contract
@@ -42,6 +43,9 @@ Future<void> _pump(WidgetTester tester, BookingDetail detail) async {
       ),
     ),
   );
+  // Two pumps: one for the provider's future to resolve, one for the
+  // data frame to render, so assertions never race the loading state.
+  await tester.pump();
   await tester.pump();
 }
 
@@ -56,7 +60,16 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Not sent yet'), findsOneWidget);
-    expect(find.text('Pending'), findsNothing);
+    // Scope the negative assertion to the Contract tile so a legitimate
+    // "Pending" elsewhere on the screen can't invalidate this test.
+    final contractTile = find.ancestor(
+      of: find.text('Contract'),
+      matching: find.byType(BookingSectionTile),
+    );
+    expect(
+      find.descendant(of: contractTile, matching: find.text('Pending')),
+      findsNothing,
+    );
   });
 
   testWidgets('sent contract still reads "Sent"', (tester) async {

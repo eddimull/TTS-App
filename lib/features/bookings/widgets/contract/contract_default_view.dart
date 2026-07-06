@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../shared/cache/cache_invalidator.dart';
+import '../../data/bookings_repository.dart';
 import '../../data/models/booking_detail.dart';
 import '../../services/contract_download.dart';
 import 'contract_editor.dart';
@@ -23,6 +25,7 @@ enum _LockedTab { preview, history }
 class _ContractDefaultViewState extends ConsumerState<ContractDefaultView> {
   _LockedTab _tab = _LockedTab.preview;
   bool _downloading = false;
+  bool _amending = false;
 
   bool get _isLocked {
     final s = widget.booking.status;
@@ -60,6 +63,60 @@ class _ContractDefaultViewState extends ConsumerState<ContractDefaultView> {
     }
   }
 
+  /// Recall the sent contract so it can be edited and resent. Confirms
+  /// first — this voids the document the client already received.
+  Future<void> _amendContract() async {
+    final confirmed = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Amend contract?'),
+        content: const Text(
+            'This voids the contract that is out for signature. '
+            "You'll be able to edit the terms and resend it."),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Amend'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _amending = true);
+    try {
+      await ref.read(bookingsRepositoryProvider).amendContract(
+          widget.booking.band!.id, widget.booking.id);
+      // Refetch flips booking to draft, which rebuilds this view into the
+      // unlocked ContractEditor.
+      ref.read(cacheInvalidatorProvider).onBookingDetailChanged(
+          bandId: widget.booking.band!.id, bookingId: widget.booking.id);
+    } catch (e) {
+      if (mounted) {
+        showCupertinoDialog<void>(
+          context: context,
+          builder: (dialogContext) => CupertinoAlertDialog(
+            title: const Text('Amend Failed'),
+            content: Text(e.toString()),
+            actions: [
+              CupertinoDialogAction(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _amending = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_isLocked) {
@@ -89,6 +146,20 @@ class _ContractDefaultViewState extends ConsumerState<ContractDefaultView> {
                 contractOption: widget.booking.contractOption ?? 'default',
               ),
             ),
+            if (widget.booking.status == 'pending' &&
+                (widget.booking.contractOption ?? 'default') == 'default')
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: CupertinoButton.filled(
+                    onPressed: _amending ? null : _amendContract,
+                    child: _amending
+                        ? const CupertinoActivityIndicator()
+                        : const Text('Amend contract'),
+                  ),
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: CupertinoSlidingSegmentedControl<_LockedTab>(

@@ -307,6 +307,16 @@ class BookingsRepository {
     return BookingDetail.fromJson(response.data['booking']);
   }
 
+  /// Recall a contract that is out for signature so it can be edited and
+  /// resent. The backend voids the PandaDoc document and puts the booking
+  /// back in draft; the returned detail reflects the unlocked state.
+  Future<BookingDetail> amendContract(int bandId, int bookingId) async {
+    final response = await _dio.post(
+      ApiEndpoints.mobileBookingContractAmend(bandId, bookingId),
+    );
+    return BookingDetail.fromJson(response.data['booking']);
+  }
+
   Future<List<BookingHistoryEntry>> getHistory(
       int bandId, int bookingId) async {
     final response = await _dio

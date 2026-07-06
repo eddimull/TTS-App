@@ -219,6 +219,9 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
     final option = b.contractOption;
     if (option == 'none') return 'No contract required';
     if (b.contract != null && b.contract!.status != null) {
+      // The contracts table's initial status is 'pending' (= not sent yet);
+      // showing it raw reads like the booking is pending signature.
+      if (b.contract!.status == 'pending') return 'Not sent yet';
       return _capitalise(b.contract!.status!);
     }
     return option != null ? _capitalise(option) : 'Not configured';

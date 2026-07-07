@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.10.0](https://github.com/eddimull/TTS-App/compare/v1.9.0...v1.10.0) (2026-07-06)
+
+
+### Features
+
+* **bookings:** Amend contract action on the locked contract view ([4ac9e56](https://github.com/eddimull/TTS-App/commit/4ac9e56155c147bac0454d3cf5ab22fa940bba3b))
+* **bookings:** clarify contract options on the create form ([635f445](https://github.com/eddimull/TTS-App/commit/635f44529e1cc7bdf11a0f0c8694c3791d277e01))
+* **bookings:** default blank event titles to the booking name on create ([887ee86](https://github.com/eddimull/TTS-App/commit/887ee8687a53d9cdd2b6aa59ed5c38d8840e504c))
+* **bookings:** functional contract-type picker replaces coming-soon stub ([2ae76e8](https://github.com/eddimull/TTS-App/commit/2ae76e82e26a01f929dd2efed0508096d66d3c39))
+* **bookings:** guide the contract send flow after saving a booking ([bf0167b](https://github.com/eddimull/TTS-App/commit/bf0167b362620e7e34dfc0f6f63a66ff729e2042))
+* **bookings:** land on the new booking's detail screen after create ([9c14cd8](https://github.com/eddimull/TTS-App/commit/9c14cd8bfc05a23779205b477d1d098c8d849a96))
+* **bookings:** repository support for contract amendment ([6544168](https://github.com/eddimull/TTS-App/commit/65441686fdee20d5274d6292118f760e134e78d8))
+* **bookings:** reserved-dates calendar for the event date picker ([58ef417](https://github.com/eddimull/TTS-App/commit/58ef417834668537c4a6a3813f36ce28de587fd5))
+* **push:** rehearsal push types, generic title/body fallback, band_updates channel ([3471d70](https://github.com/eddimull/TTS-App/commit/3471d70cccecb2b28b88b3a7282dfb1e64042eb7))
+* **push:** tap-to-open deep-linking for rehearsal pushes ([2bd6ea4](https://github.com/eddimull/TTS-App/commit/2bd6ea43a7ef38b71bd25e47dffb81b83ef65a64))
+* **rehearsals:** cancel/restore actions on rehearsal detail screen ([21a3dfa](https://github.com/eddimull/TTS-App/commit/21a3dfa6ecd45ad450e5300f63eaaf5b4cf21b56))
+* **rehearsals:** repository setCancelled + endpoint constant ([78fe885](https://github.com/eddimull/TTS-App/commit/78fe885f7fad87198b0a5b7f188fffd305f5a0df))
+
+
+### Bug Fixes
+
+* **bookings:** re-attach provider container inside the date picker popup ([4b4ee94](https://github.com/eddimull/TTS-App/commit/4b4ee94516ab5f3e0cb3327ed4e08845ca323b80))
+* **bookings:** unsent contract tile reads 'Not sent yet' instead of 'Pending' ([74ec65b](https://github.com/eddimull/TTS-App/commit/74ec65bad80b48fa89c246115b8083d1c4095567))
+* **media:** show thumbnails for video tiles in the media grid ([dcc3c62](https://github.com/eddimull/TTS-App/commit/dcc3c6222fab17a5bf9671d97e40668076834454))
+* **media:** show thumbnails for video tiles in the media grid ([78cfdbe](https://github.com/eddimull/TTS-App/commit/78cfdbe996f3465c7198f80e1bdb2f2013fe62f2))
+* **rehearsals:** sync detail state on parent rebuild (didUpdateWidget) ([5d5f7e4](https://github.com/eddimull/TTS-App/commit/5d5f7e4f233d4a518a18a815de179ed8d1d6c78e))
+* **rehearsals:** sync notes from setCancelled response unless editing ([e350242](https://github.com/eddimull/TTS-App/commit/e350242d4dfdb336ab35d11b56fff53ddbaf04e9))
+
 ## [1.9.0](https://github.com/eddimull/TTS-App/compare/v1.8.0...v1.9.0) (2026-07-04)
 
 

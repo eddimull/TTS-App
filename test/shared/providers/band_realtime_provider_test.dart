@@ -222,4 +222,27 @@ void main() {
     // the provider is gone.
     expect(unsubscribed, contains('private-band.7'));
   });
+
+  test('throwing binder is swallowed (fire-and-forget resubscribe), state stays null',
+      () async {
+    final band = FakeSelectedBand(7);
+    final container = ProviderContainer(overrides: [
+      selectedBandProvider.overrideWith(() => band),
+      bandRealtimeDebounceProvider.overrideWithValue(Duration.zero),
+      providerInvalidatorProvider.overrideWithValue((p) {}),
+      bandChannelBinderProvider.overrideWithValue(
+        (channel, onEvent) async => throw StateError('socket init failed'),
+      ),
+    ]);
+    addTearDown(container.dispose);
+
+    container.read(bandRealtimeProvider);
+    await container.read(selectedBandProvider.future);
+    // Let the failed subscribe settle: the error must be caught inside
+    // _resubscribe (fire-and-forget call site), not become an unhandled
+    // zone error that fails this test.
+    await Future<void>.delayed(Duration.zero);
+
+    expect(container.read(bandRealtimeProvider), isNull);
+  });
 }

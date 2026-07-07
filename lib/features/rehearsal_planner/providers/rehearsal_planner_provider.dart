@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/pusher_connection.dart';
@@ -44,8 +45,12 @@ final plannerStreamBinderProvider = Provider<PlannerStreamBinder>((ref) {
       onEvent(data['type'] as String? ?? '', data);
     });
     if (unsubscribe != null) {
-      ref.onDispose(() async {
-        await unsubscribe();
+      // ref.onDispose takes a sync callback; fire the unsubscribe and log
+      // failures instead of leaking an ignored Future's error at disposal.
+      ref.onDispose(() {
+        unsubscribe().catchError((Object e) {
+          debugPrint('planner: unsubscribe failed: $e');
+        });
       });
     }
   };

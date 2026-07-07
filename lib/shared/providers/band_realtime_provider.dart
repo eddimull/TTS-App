@@ -127,19 +127,36 @@ class BandRealtimeNotifier extends Notifier<int?> {
 
     final old = _unsubscribe;
     _unsubscribe = null;
-    await old?.call();
+    try {
+      await old?.call();
+    } catch (e) {
+      debugPrint('bandRealtime: unsubscribe failed: $e');
+    }
     if (_disposed || gen != _generation) return;
 
     state = null;
     if (bandId == null) return;
 
     final binder = ref.read(bandChannelBinderProvider);
-    final unsubscribe = await binder('private-band.$bandId', _onSignal);
+    final Future<void> Function()? unsubscribe;
+    try {
+      unsubscribe = await binder('private-band.$bandId', _onSignal);
+    } catch (e) {
+      // Realtime is best-effort and _resubscribe is fire-and-forget (band
+      // listener + resume): a failed subscribe must log, not surface as an
+      // unhandled zone error. The next band switch or resume retries.
+      debugPrint('bandRealtime: subscribe to band $bandId failed: $e');
+      return;
+    }
     if (_disposed || gen != _generation) {
       // A newer call has already taken over (or the provider was disposed)
       // while we were awaiting the binder — tear down our own subscription
       // immediately instead of storing it or touching state.
-      await unsubscribe?.call();
+      try {
+        await unsubscribe?.call();
+      } catch (e) {
+        debugPrint('bandRealtime: stale unsubscribe failed: $e');
+      }
       return;
     }
 
@@ -183,7 +200,15 @@ class BandRealtimeNotifier extends Notifier<int?> {
     _generation++;
     _lifecycle?.dispose();
     _flushTimer?.cancel();
-    _unsubscribe?.call();
+    final unsubscribe = _unsubscribe;
+    _unsubscribe = null;
+    try {
+      unsubscribe?.call().catchError((Object e) {
+        debugPrint('bandRealtime: teardown unsubscribe failed: $e');
+      });
+    } catch (e) {
+      debugPrint('bandRealtime: teardown unsubscribe failed: $e');
+    }
   }
 }
 

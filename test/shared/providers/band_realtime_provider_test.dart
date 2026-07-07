@@ -8,7 +8,9 @@ import 'package:tts_bandmate/features/bookings/providers/booking_payout_provider
 import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
 import 'package:tts_bandmate/features/events/providers/events_provider.dart';
+import 'package:tts_bandmate/features/library/providers/library_provider.dart';
 import 'package:tts_bandmate/features/media/providers/media_provider.dart';
+import 'package:tts_bandmate/features/search/providers/music_provider.dart';
 import 'package:tts_bandmate/features/personnel/providers/rosters_provider.dart';
 import 'package:tts_bandmate/shared/providers/band_realtime_provider.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
@@ -129,6 +131,9 @@ void main() {
     expect(invalidationTargetsFor('payments'), contains(bookingPayoutProvider));
     expect(invalidationTargetsFor('payout_adjustment'), isNotEmpty);
     expect(invalidationTargetsFor('media_file'), contains(mediaListProvider));
+    expect(invalidationTargetsFor('song'), contains(songsProvider));
+    expect(invalidationTargetsFor('charts'), contains(chartDetailProvider));
+    expect(invalidationTargetsFor('chart_uploads'), isNotEmpty);
   });
 
   test('roster signals invalidate personnel providers in addition to events',

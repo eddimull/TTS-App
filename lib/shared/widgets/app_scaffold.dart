@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/connectivity_provider.dart';
+import '../providers/band_realtime_provider.dart';
 import '../../features/notifications/services/lifecycle_observer.dart';
 
 class _NavDestination {
@@ -89,7 +90,8 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   Widget build(BuildContext context) {
     final selectedIndex = _selectedIndex(context);
     final connectivityAsync = ref.watch(connectivityProvider);
-
+    // Keeps the band realtime subscription alive for the whole shell.
+    ref.watch(bandRealtimeProvider);
 
     ref.listen(connectivityProvider, (previous, next) {
       final wasOnline = previous?.value ?? true;

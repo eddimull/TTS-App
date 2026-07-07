@@ -1,8 +1,5 @@
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
-import '../../../core/config/app_config.dart';
-import '../../../core/network/pusher_authorizer.dart';
+import '../../../core/network/pusher_connection.dart';
 import '../../../core/providers/core_providers.dart';
 import '../data/models/band_song.dart';
 import '../data/models/live_session.dart';
@@ -60,8 +57,6 @@ class LiveSessionNotifier extends Notifier<LiveSessionState> {
   LiveSessionNotifier(this._eventKey);
   final String _eventKey;
   SetlistRepository? _repo;
-  PusherChannelsFlutter? _pusher;
-  String? _token;
 
   @override
   LiveSessionState build() {
@@ -123,7 +118,7 @@ class LiveSessionNotifier extends Notifier<LiveSessionState> {
   Future<void> endSession() async {
     try {
       await _repository.endSession(_eventKey);
-      _disconnectChannel();
+      await _disconnect();
       state = state.copyWith(
         session: () => state.session?.copyWith(status: 'completed'),
       );
@@ -206,41 +201,16 @@ class LiveSessionNotifier extends Notifier<LiveSessionState> {
 
   // ── Pusher ─────────────────────────────────────────────────────────────────
 
+  Future<void> Function()? _unsubscribe;
+
   Future<void> _connectPusher(int sessionId) async {
-    _token = await ref.read(secureStorageProvider).readToken();
-    if (_token == null) return;
-
-    const pusherKey = AppConfig.pusherKey;
-    if (pusherKey.isEmpty) return; // Pusher not configured yet
-
-    _pusher = PusherChannelsFlutter.getInstance();
-
-    await _pusher!.init(
-      apiKey: pusherKey,
-      cluster: AppConfig.pusherCluster,
-      onAuthorizer: pusherAuthorizer(_token!),
-    );
-
-    await _pusher!.connect();
-
-    await _pusher!.subscribe(
-      channelName: 'private-setlist.$sessionId',
-      onEvent: _onPusherEvent,
-    );
+    _unsubscribe = await ref
+        .read(pusherConnectionProvider)
+        .subscribe('private-setlist.$sessionId', _onPusherEvent);
   }
 
-  void _onPusherEvent(PusherEvent event) {
-    final rawData = event.data;
-    if (rawData == null) return;
-
-    Map<String, dynamic> data;
-    try {
-      data = jsonDecode(rawData) as Map<String, dynamic>;
-    } catch (_) {
-      return;
-    }
-
-    switch (event.eventName) {
+  void _onPusherEvent(String eventName, Map<String, dynamic> data) {
+    switch (eventName) {
       case 'SetlistQueueAdvanced':
         _handleQueueAdvanced(data);
       case 'SetlistQueueUpdated':
@@ -342,19 +312,11 @@ class LiveSessionNotifier extends Notifier<LiveSessionState> {
     }
   }
 
-  void _disconnectChannel() {
-    if (state.session != null) {
-      _pusher?.unsubscribe(
-          channelName: 'private-setlist.${state.session!.id}');
-    }
-  }
-
   Future<void> _disconnect() async {
-    _disconnectChannel();
     try {
-      await _pusher?.disconnect();
+      await _unsubscribe?.call();
     } catch (_) {}
-    _pusher = null;
+    _unsubscribe = null;
   }
 }
 

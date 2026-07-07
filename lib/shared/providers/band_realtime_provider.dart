@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderOrFamily;
 
 import '../../core/network/pusher_connection.dart';
+import '../../features/bookings/providers/booking_payout_provider.dart';
 import '../../features/bookings/providers/bookings_provider.dart';
 import '../../features/bookings/providers/bookings_window_provider.dart';
 import '../../features/dashboard/providers/dashboard_provider.dart';
@@ -78,6 +79,14 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
         rehearsalDetailByKeyProvider,
         dashboardProvider,
       ];
+    case 'payments':
+    case 'payout':
+    case 'payout_adjustment':
+    case 'band_payout_config':
+      return [
+        bookingDetailProvider,
+        bookingPayoutProvider,
+      ];
     default:
       return const [];
   }
@@ -90,6 +99,10 @@ const List<String> _allRegisteredModels = [
   'events',
   'rehearsal',
   'roster',
+  'payments',
+  'payout',
+  'payout_adjustment',
+  'band_payout_config',
 ];
 
 /// Subscribes to the selected band's realtime channel and turns thin

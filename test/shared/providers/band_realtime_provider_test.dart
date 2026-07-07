@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderOrFamily;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/core/network/pusher_connection.dart';
+import 'package:tts_bandmate/features/bookings/providers/booking_payout_provider.dart';
 import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
 import 'package:tts_bandmate/features/events/providers/events_provider.dart';
@@ -120,6 +121,12 @@ void main() {
     expect(invalidationTargetsFor('event_member'), contains(eventDetailProvider));
     expect(invalidationTargetsFor('rehearsal'), isNotEmpty);
     expect(invalidationTargetsFor('unknown'), isEmpty);
+  });
+
+  test('registry maps payments/payout signals to booking payout providers',
+      () {
+    expect(invalidationTargetsFor('payments'), contains(bookingPayoutProvider));
+    expect(invalidationTargetsFor('payout_adjustment'), isNotEmpty);
   });
 
   test('roster signals invalidate personnel providers in addition to events',

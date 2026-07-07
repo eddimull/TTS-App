@@ -12,6 +12,7 @@ import '../../features/bookings/providers/bookings_provider.dart';
 import '../../features/bookings/providers/bookings_window_provider.dart';
 import '../../features/dashboard/providers/dashboard_provider.dart';
 import '../../features/events/providers/events_provider.dart';
+import '../../features/personnel/providers/rosters_provider.dart';
 import '../../features/rehearsals/providers/rehearsals_provider.dart';
 import 'selected_band_provider.dart';
 
@@ -55,12 +56,20 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
       ];
     case 'events':
     case 'event_member':
+      return [
+        bandEventsProvider,
+        eventDetailProvider,
+        eventSubsProvider,
+        dashboardProvider,
+      ];
     case 'roster':
       return [
         bandEventsProvider,
         eventDetailProvider,
         eventSubsProvider,
         dashboardProvider,
+        rostersProvider,
+        rosterDetailProvider,
       ];
     case 'rehearsal':
       return [
@@ -80,6 +89,7 @@ const List<String> _allRegisteredModels = [
   'bookings',
   'events',
   'rehearsal',
+  'roster',
 ];
 
 /// Subscribes to the selected band's realtime channel and turns thin

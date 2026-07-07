@@ -7,6 +7,7 @@ import 'package:tts_bandmate/core/network/pusher_connection.dart';
 import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
 import 'package:tts_bandmate/features/events/providers/events_provider.dart';
+import 'package:tts_bandmate/features/personnel/providers/rosters_provider.dart';
 import 'package:tts_bandmate/shared/providers/band_realtime_provider.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 
@@ -119,6 +120,14 @@ void main() {
     expect(invalidationTargetsFor('event_member'), contains(eventDetailProvider));
     expect(invalidationTargetsFor('rehearsal'), isNotEmpty);
     expect(invalidationTargetsFor('unknown'), isEmpty);
+  });
+
+  test('roster signals invalidate personnel providers in addition to events',
+      () {
+    final targets = invalidationTargetsFor('roster');
+    expect(targets, contains(bandEventsProvider));
+    expect(targets, contains(rostersProvider));
+    expect(targets, contains(rosterDetailProvider));
   });
 
   test('rapid band switch during in-flight subscribe does not leak', () async {

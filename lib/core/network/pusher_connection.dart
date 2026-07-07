@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
 
@@ -28,10 +29,28 @@ Map<String, dynamic>? decodePusherData(dynamic raw) {
 /// resets or disconnects the socket underneath another (the pre-existing
 /// live-setlist provider used to call `disconnect()` on dispose, which
 /// would have killed all other subscriptions).
+///
+/// Init/connect happen AT MOST ONCE per `PusherConnection` lifetime, memoized
+/// via [_ready]. This matters because the plugin's native `init` is NOT
+/// idempotent — on both Android and iOS it disconnects and news up the
+/// underlying Pusher client, and the Dart side never replays previously
+/// subscribed channels afterwards. Calling `init` again while other features
+/// are subscribed (e.g. the always-on band channel and the live-setlist/
+/// planner channel both subscribing independently) silently kills every
+/// other channel's subscription. Memoizing init/connect behind one shared
+/// Future means every caller piggybacks on the same connection instead of
+/// re-initializing it.
 class PusherConnection {
-  PusherConnection(this._readToken);
+  PusherConnection(this._readToken,
+      {PusherChannelsFlutter Function()? getInstance, String? pusherKey})
+      : _getInstance = getInstance ?? PusherChannelsFlutter.getInstance,
+        _pusherKey = pusherKey ?? AppConfig.pusherKey;
 
   final Future<String?> Function() _readToken;
+  final PusherChannelsFlutter Function() _getInstance;
+  final String _pusherKey;
+
+  Future<void>? _ready;
 
   /// Subscribes to [channelName], delivering decoded JSON events to
   /// [onEvent]. Returns an unsubscribe callback, or null when Pusher is
@@ -40,17 +59,19 @@ class PusherConnection {
   Future<Future<void> Function()?> subscribe(
       String channelName, PusherJsonHandler onEvent) async {
     final token = await _readToken();
-    if (token == null || AppConfig.pusherKey.isEmpty) return null;
+    if (token == null || _pusherKey.isEmpty) return null;
 
-    final pusher = PusherChannelsFlutter.getInstance();
-    // init/connect are idempotent enough for repeated calls — this mirrors
-    // the previous per-feature behavior (both call sites did exactly this).
-    await pusher.init(
-      apiKey: AppConfig.pusherKey,
-      cluster: AppConfig.pusherCluster,
-      onAuthorizer: pusherAuthorizer(token),
-    );
-    await pusher.connect();
+    final pusher = _getInstance();
+
+    try {
+      _ready ??= _initAndConnect(pusher);
+      await _ready;
+    } catch (_) {
+      // Allow a later subscribe() to retry init/connect instead of being
+      // stuck forever on a failed attempt.
+      _ready = null;
+      rethrow;
+    }
 
     await pusher.subscribe(
       channelName: channelName,
@@ -67,6 +88,33 @@ class PusherConnection {
     );
 
     return () => pusher.unsubscribe(channelName: channelName);
+  }
+
+  /// One-time init/connect. The `onAuthorizer` passed to `init` must NOT
+  /// close over the token from the first `subscribe()` call — that token can
+  /// go stale (e.g. after a re-login) while the plugin instance is never
+  /// re-initialized. Instead it re-reads the token from storage on every
+  /// auth request, so a fresh token is used every time Pusher needs to
+  /// authorize a channel, without needing another `init`.
+  Future<void> _initAndConnect(PusherChannelsFlutter pusher) async {
+    await pusher.init(
+      apiKey: _pusherKey,
+      cluster: AppConfig.pusherCluster,
+      onAuthorizer: (channelName, socketId, options) async {
+        final token = await _readToken();
+        if (token == null) {
+          throw StateError('No auth token for Pusher auth');
+        }
+        return pusherAuthorizer(token)(channelName, socketId, options);
+      },
+      onSubscriptionError: (message, error) {
+        debugPrint('PusherConnection: subscription error — $message: $error');
+      },
+      onError: (message, code, error) {
+        debugPrint('PusherConnection: error ($code) — $message: $error');
+      },
+    );
+    await pusher.connect();
   }
 }
 

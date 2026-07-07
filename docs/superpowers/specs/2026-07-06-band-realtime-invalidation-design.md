@@ -11,6 +11,12 @@ mobile screens until they manually refresh. We want every band-scoped model's
 create/update/delete pushed to band members' devices in real time, with one
 generic mechanism rather than per-model one-offs.
 
+**Driving use case:** an upcoming comments/discussion feature (no comments
+model exists in either repo yet). This realtime layer is its foundation; the
+comments feature itself (data model, API, UI) is a separate spec. A future
+`Comment` model joins the mechanism with one `use` line plus a
+`broadcastParent()` override pointing at its commentable.
+
 ## Decisions made
 
 - **Scope:** all band-scoped models, one generic mechanism (not per-feature).
@@ -33,6 +39,10 @@ write).
 - Payload: `{ "model": "booking", "id": 123, "action": "created" }`
   - `model` is a stable short name (snake-case class basename), `action` is one
     of `created` / `updated` / `deleted`.
+  - Optional `parent: { "model": "...", "id": ... }` for child models whose
+    client-side providers are keyed by their parent (a comment's thread is
+    fetched by booking id, an event member by event id). Supplied by an
+    overridable trait method (e.g. `broadcastParent()`), omitted by default.
 
 ### Trait
 
@@ -81,7 +91,9 @@ This is the only refactor in scope.
   the existing `pusherAuthorizer`; unsubscribes on band switch / logout.
 - Incoming `band.data-changed` events go through a registry mapping model name
   → providers to invalidate (e.g. `booking` → bookings list +
-  `bookingDetail(id)` family member).
+  `bookingDetail(id)` family member). When the signal carries `parent`, the
+  registry keys family invalidation off `parent.id` (e.g. `comment` →
+  `commentsFor(parent.id)`).
 - Per-model debounce (~300 ms) so a burst (roster sync touching 20 events)
   causes one refetch, not 20.
 

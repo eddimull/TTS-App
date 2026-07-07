@@ -92,6 +92,8 @@ class BandRealtimeNotifier extends Notifier<int?> {
   Timer? _flushTimer;
   final Set<String> _pendingModels = {};
   AppLifecycleListener? _lifecycle;
+  int _generation = 0;
+  bool _disposed = false;
 
   @override
   int? build() {
@@ -103,14 +105,35 @@ class BandRealtimeNotifier extends Notifier<int?> {
     return null;
   }
 
+  /// Serializes concurrent calls (band-change listener + resume) with a
+  /// generation counter: only the newest in-flight call is allowed to write
+  /// `_unsubscribe`/`state`. A stale call that resolves late immediately
+  /// tears down whatever it just subscribed instead of leaking or clobbering
+  /// the winner. Also bails out (without writing `state`) if the provider
+  /// has been disposed in the meantime, since a post-dispose `state =`
+  /// write throws.
   Future<void> _resubscribe(int? bandId) async {
-    await _unsubscribe?.call();
+    final gen = ++_generation;
+
+    final old = _unsubscribe;
     _unsubscribe = null;
+    await old?.call();
+    if (_disposed || gen != _generation) return;
+
     state = null;
     if (bandId == null) return;
 
     final binder = ref.read(bandChannelBinderProvider);
-    _unsubscribe = await binder('private-band.$bandId', _onSignal);
+    final unsubscribe = await binder('private-band.$bandId', _onSignal);
+    if (_disposed || gen != _generation) {
+      // A newer call has already taken over (or the provider was disposed)
+      // while we were awaiting the binder — tear down our own subscription
+      // immediately instead of storing it or touching state.
+      await unsubscribe?.call();
+      return;
+    }
+
+    _unsubscribe = unsubscribe;
     if (_unsubscribe != null) state = bandId;
   }
 
@@ -137,6 +160,7 @@ class BandRealtimeNotifier extends Notifier<int?> {
   /// instead of replaying we refetch everything band-scoped once and
   /// resubscribe (spec: Resilience).
   void _onResume() {
+    if (_disposed) return;
     final bandId = state;
     if (bandId == null) return;
     _pendingModels.addAll(_allRegisteredModels);
@@ -145,6 +169,8 @@ class BandRealtimeNotifier extends Notifier<int?> {
   }
 
   void _teardown() {
+    _disposed = true;
+    _generation++;
     _lifecycle?.dispose();
     _flushTimer?.cancel();
     _unsubscribe?.call();

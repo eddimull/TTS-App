@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderOrFamily;
 import 'package:flutter_test/flutter_test.dart';
@@ -117,5 +119,98 @@ void main() {
     expect(invalidationTargetsFor('event_member'), contains(eventDetailProvider));
     expect(invalidationTargetsFor('rehearsal'), isNotEmpty);
     expect(invalidationTargetsFor('unknown'), isEmpty);
+  });
+
+  test('rapid band switch during in-flight subscribe does not leak', () async {
+    // A binder whose future we control by hand, per call, so the race
+    // window inside _resubscribe (the await between "null out the old
+    // unsubscribe" and "store the new one") is genuinely exercised rather
+    // than settled-before-the-next-action.
+    final calls = <String>[];
+    final completers = <String, Completer<Future<void> Function()?>>{};
+    final unsubscribed = <String>[];
+
+    fakeBand = FakeSelectedBand(7);
+    final container = ProviderContainer(overrides: [
+      selectedBandProvider.overrideWith(() => fakeBand),
+      bandRealtimeDebounceProvider.overrideWithValue(Duration.zero),
+      providerInvalidatorProvider.overrideWithValue((p) {}),
+      bandChannelBinderProvider.overrideWithValue((channel, onEvent) {
+        calls.add(channel);
+        final completer = Completer<Future<void> Function()?>();
+        completers[channel] = completer;
+        return completer.future;
+      }),
+    ]);
+    addTearDown(container.dispose);
+
+    container.read(bandRealtimeProvider);
+    await container.read(selectedBandProvider.future);
+    // First _resubscribe (band 7) is now awaiting the binder future.
+    expect(calls, ['private-band.7']);
+
+    // Switch bands before call 1 (band 7) resolves — this fires a second,
+    // concurrent _resubscribe(9) from the ref.listen callback.
+    fakeBand.set(9);
+    await Future<void>.delayed(Duration.zero);
+    expect(calls, ['private-band.7', 'private-band.9']);
+
+    // Resolve call 2 (band 9) FIRST, then call 1 (band 7) — the classic
+    // "loser resolves last" interleaving that used to overwrite the
+    // winner's state and leak the loser's subscription.
+    completers['private-band.9']!
+        .complete(() async => unsubscribed.add('private-band.9'));
+    await Future<void>.delayed(Duration.zero);
+
+    completers['private-band.7']!
+        .complete(() async => unsubscribed.add('private-band.7'));
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    // The stale band-7 subscription must have been torn down immediately
+    // (no leak) instead of being stored or left dangling.
+    expect(unsubscribed, contains('private-band.7'));
+    // The winner (band 9, the newest generation) owns state.
+    expect(container.read(bandRealtimeProvider), 9);
+    // Both calls were genuinely made (order recorded), confirming the
+    // interleaving happened rather than being short-circuited.
+    expect(calls, ['private-band.7', 'private-band.9']);
+  });
+
+  test('dispose during in-flight subscribe does not throw', () async {
+    final completers = <String, Completer<Future<void> Function()?>>{};
+    final unsubscribed = <String>[];
+
+    fakeBand = FakeSelectedBand(7);
+    final container = ProviderContainer(overrides: [
+      selectedBandProvider.overrideWith(() => fakeBand),
+      bandRealtimeDebounceProvider.overrideWithValue(Duration.zero),
+      providerInvalidatorProvider.overrideWithValue((p) {}),
+      bandChannelBinderProvider.overrideWithValue((channel, onEvent) {
+        final completer = Completer<Future<void> Function()?>();
+        completers[channel] = completer;
+        return completer.future;
+      }),
+    ]);
+
+    container.read(bandRealtimeProvider);
+    await container.read(selectedBandProvider.future);
+
+    // Dispose the container while _resubscribe is still awaiting the
+    // binder future — the in-flight continuation must not write `state`
+    // after disposal (that throws in Riverpod).
+    container.dispose();
+
+    // Now let the stale subscribe resolve — this must not surface an
+    // exception (a post-dispose `state =` write would throw synchronously
+    // inside the continuation, which `flutter test` reports as a failure).
+    completers['private-band.7']!
+        .complete(() async => unsubscribed.add('private-band.7'));
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    // The late subscription must still be torn down (no leak) even though
+    // the provider is gone.
+    expect(unsubscribed, contains('private-band.7'));
   });
 }

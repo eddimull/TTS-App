@@ -12,6 +12,7 @@ import '../../features/bookings/providers/booking_payout_provider.dart';
 import '../../features/bookings/providers/bookings_provider.dart';
 import '../../features/bookings/providers/bookings_window_provider.dart';
 import '../../features/dashboard/providers/dashboard_provider.dart';
+import '../../features/media/providers/media_provider.dart';
 import '../../features/events/providers/events_provider.dart';
 import '../../features/personnel/providers/rosters_provider.dart';
 import '../../features/rehearsals/providers/rehearsals_provider.dart';
@@ -87,6 +88,8 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
         bookingDetailProvider,
         bookingPayoutProvider,
       ];
+    case 'media_file':
+      return [mediaListProvider];
     default:
       return const [];
   }
@@ -103,6 +106,7 @@ const List<String> _allRegisteredModels = [
   'payout',
   'payout_adjustment',
   'band_payout_config',
+  'media_file',
 ];
 
 /// Subscribes to the selected band's realtime channel and turns thin

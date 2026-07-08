@@ -1,11 +1,7 @@
-import 'dart:convert';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
 
-import '../../../core/config/app_config.dart';
-import '../../../core/network/pusher_authorizer.dart';
-import '../../../core/storage/secure_storage.dart';
+import '../../../core/network/pusher_connection.dart';
 import '../data/models/planner_message.dart';
 import '../data/models/planner_plan.dart';
 import '../data/models/planner_plan_formatter.dart';
@@ -39,49 +35,24 @@ class PlannerArgs {
 /// Production binder: subscribes to the private Pusher channel and forwards
 /// 'planner.stream' events (type + data) to [onEvent].
 ///
-/// Verified against `lib/features/setlist/providers/live_session_provider.dart`:
-/// `secureStorageProvider.readToken()`, `AppConfig.pusherKey/.pusherCluster/
-/// .baseUrl`, and the `pusher_channels_flutter` ^2.6.0 API
-/// (`getInstance()`, `init`, `connect`, `subscribe`, `PusherEvent.eventName/.data`).
+/// Event plumbing lives in core/network/pusher_connection.dart.
 final plannerStreamBinderProvider = Provider<PlannerStreamBinder>((ref) {
   return (channel, onEvent) async {
-    final token = await ref.read(secureStorageProvider).readToken();
-    if (token == null || AppConfig.pusherKey.isEmpty) return;
-    final pusher = PusherChannelsFlutter.getInstance();
-    await pusher.init(
-      apiKey: AppConfig.pusherKey,
-      cluster: AppConfig.pusherCluster,
-      onAuthorizer: pusherAuthorizer(token),
-    );
-    await pusher.connect();
-    await pusher.subscribe(
-      channelName: channel,
-      // The parameter must be typed `dynamic` (not `PusherEvent`). The plugin's
-      // `PusherChannel.onEvent` field is `Function(dynamic event)?`, and in AOT
-      // (release) builds assigning a `(PusherEvent) => …` literal to it throws
-      // `TypeError: '(PusherEvent) => Null' is not a subtype of '(dynamic) => dynamic'`
-      // (function params are contravariant). A tearoff is tolerated but a literal
-      // is not — see live_session_provider's `_onPusherEvent`. Cast inside instead.
-      onEvent: (dynamic event) {
-        final e = event as PusherEvent;
-        if (e.eventName != 'planner.stream') return;
-        final raw = e.data;
-        if (raw == null) return;
-        if (raw is! String) return;
-        final dynamic decoded;
-        try {
-          decoded = jsonDecode(raw);
-        } catch (_) {
-          return;
-        }
-        if (decoded is! Map<String, dynamic>) return;
-        final type = decoded['type'] as String? ?? '';
-        onEvent(type, decoded);
-      },
-    );
-    ref.onDispose(() async {
-      await pusher.unsubscribe(channelName: channel);
+    final unsubscribe = await ref
+        .read(pusherConnectionProvider)
+        .subscribe(channel, (eventName, data) {
+      if (eventName != 'planner.stream') return;
+      onEvent(data['type'] as String? ?? '', data);
     });
+    if (unsubscribe != null) {
+      // ref.onDispose takes a sync callback; fire the unsubscribe and log
+      // failures instead of leaking an ignored Future's error at disposal.
+      ref.onDispose(() {
+        unsubscribe().catchError((Object e) {
+          debugPrint('planner: unsubscribe failed: $e');
+        });
+      });
+    }
   };
 });
 

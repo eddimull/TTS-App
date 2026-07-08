@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderOrFamily;
 
 import '../../core/network/pusher_connection.dart';
+import '../../features/bookings/data/bookings_cache_storage.dart';
 import '../../features/bookings/providers/booking_payout_provider.dart';
 import '../../features/bookings/providers/bookings_provider.dart';
 import '../../features/bookings/providers/bookings_window_provider.dart';
@@ -97,6 +98,26 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
     case 'charts':
     case 'chart_uploads':
       return [chartsProvider, libraryProvider, chartDetailProvider];
+    default:
+      return const [];
+  }
+}
+
+/// Wire model name → disk caches to drop *before* the model's providers are
+/// invalidated. A plain invalidation re-runs a provider's `build()`, but a
+/// provider that warm-paints from a disk cache (currently only
+/// [bookingsWindowProvider]) would repaint the now-stale pre-signal snapshot
+/// and only correct it on its background revalidate — a visible flash of old
+/// data. Clearing the cache first forces the cold path (fresh fetch), matching
+/// what [CacheInvalidator] does on local mutations.
+///
+/// Each clearer receives the notifier's [Ref] so it can resolve the cache
+/// provider. Keep in sync with [invalidationTargetsFor]: a model that gains a
+/// disk-backed target gains a clearer here.
+List<void Function(Ref)> cacheClearersFor(String model) {
+  switch (model) {
+    case 'bookings':
+      return [(ref) => ref.read(bookingsCacheStorageProvider).clear()];
     default:
       return const [];
   }
@@ -206,6 +227,20 @@ class BandRealtimeNotifier extends Notifier<int?> {
     final targets = <ProviderOrFamily>{
       for (final model in _pendingModels) ...invalidationTargetsFor(model),
     };
+    // Drop any disk caches whose providers warm-paint stale data, before the
+    // invalidation re-runs their build() — otherwise the cached provider
+    // repaints pre-signal data and only corrects on background revalidate.
+    // Clearing is a best-effort optimization: a failure here must never
+    // suppress the invalidation, which is what actually refreshes the UI.
+    for (final model in _pendingModels) {
+      for (final clear in cacheClearersFor(model)) {
+        try {
+          clear(ref);
+        } catch (e) {
+          debugPrint('bandRealtime: cache clear for "$model" failed: $e');
+        }
+      }
+    }
     _pendingModels.clear();
     targets.forEach(invalidate);
   }

@@ -3,9 +3,12 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderOrFamily;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tts_bandmate/core/network/pusher_connection.dart';
+import 'package:tts_bandmate/features/bookings/data/bookings_cache_storage.dart';
 import 'package:tts_bandmate/features/bookings/providers/booking_payout_provider.dart';
 import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
+import 'package:tts_bandmate/features/bookings/providers/bookings_window_provider.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
 import 'package:tts_bandmate/features/events/providers/events_provider.dart';
 import 'package:tts_bandmate/features/library/providers/library_provider.dart';
@@ -33,6 +36,12 @@ void main() {
   late PusherJsonHandler? capturedHandler;
   late List<ProviderOrFamily> invalidated;
   late FakeSelectedBand fakeBand;
+  late BookingsCacheStorage cacheStorage;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    cacheStorage = BookingsCacheStorage(await SharedPreferences.getInstance());
+  });
 
   ProviderContainer makeContainer({int? bandId = 7}) {
     subscribedChannels = [];
@@ -44,6 +53,7 @@ void main() {
       selectedBandProvider.overrideWith(() => fakeBand),
       bandRealtimeDebounceProvider.overrideWithValue(Duration.zero),
       providerInvalidatorProvider.overrideWithValue((p) => invalidated.add(p)),
+      bookingsCacheStorageProvider.overrideWithValue(cacheStorage),
       bandChannelBinderProvider.overrideWithValue((channel, onEvent) async {
         subscribedChannels.add(channel);
         capturedHandler = onEvent;
@@ -106,6 +116,41 @@ void main() {
     ]));
     expect(invalidated.length, invalidated.toSet().length,
         reason: 'burst must be debounced into one invalidation per target');
+  });
+
+  test('a bookings signal clears the bookings disk cache before invalidating',
+      () async {
+    final c = makeContainer();
+    // Seed a cached window so we can prove the signal drops it.
+    final now = DateTime(2026, 7, 7);
+    cacheStorage.write(BookingsWindowCache(
+      from: now,
+      to: now,
+      cachedAt: now,
+      rawBookings: const [
+        {'id': 621, 'name': 'stale name'},
+      ],
+    ));
+    expect(cacheStorage.read(), isNotNull, reason: 'precondition: cache seeded');
+
+    await activate(c);
+
+    capturedHandler!('band.data-changed',
+        {'model': 'bookings', 'id': 621, 'action': 'updated'});
+    await Future<void>.delayed(Duration.zero);
+
+    expect(cacheStorage.read(), isNull,
+        reason: 'bookings signal must drop the disk cache so the window '
+            'provider takes the cold path instead of flashing stale data');
+    // The invalidation still happens alongside the cache clear.
+    expect(invalidated, contains(bookingsWindowProvider));
+  });
+
+  test('cacheClearersFor maps only the disk-backed models', () {
+    expect(cacheClearersFor('bookings'), hasLength(1));
+    expect(cacheClearersFor('events'), isEmpty);
+    expect(cacheClearersFor('payout'), isEmpty);
+    expect(cacheClearersFor('unknown'), isEmpty);
   });
 
   test('unknown models and foreign event names are ignored', () async {

@@ -2,6 +2,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
+import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
+import 'package:tts_bandmate/features/chat/data/models/conversation.dart';
+import 'package:tts_bandmate/features/chat/widgets/comments_section.dart';
 import 'package:tts_bandmate/features/rehearsals/data/models/rehearsal_detail.dart';
 import 'package:tts_bandmate/features/rehearsals/data/rehearsals_repository.dart';
 import 'package:tts_bandmate/features/rehearsals/screens/rehearsal_detail_screen.dart';
@@ -35,9 +38,22 @@ RehearsalDetail _detail({bool isCancelled = false, String? notes}) {
   });
 }
 
+// The embedded CommentsSection resolves its topic thread via a provider; stub
+// it so the section renders instantly without a network call in these tests.
+ThreadPage _emptyThread() => (
+      conversation: const Conversation(id: 999, type: 'topic', title: ''),
+      messages: const [],
+      participants: const [],
+      channel: '',
+      hasMore: false,
+    );
+
 Widget _app(_FakeRehearsalsRepository repo, RehearsalDetail preloaded) {
   return ProviderScope(
-    overrides: [rehearsalsRepositoryProvider.overrideWithValue(repo)],
+    overrides: [
+      rehearsalsRepositoryProvider.overrideWithValue(repo),
+      topicThreadProvider.overrideWith((ref, topic) => _emptyThread()),
+    ],
     child: CupertinoApp(home: RehearsalDetailScreen(preloaded: preloaded)),
   );
 }

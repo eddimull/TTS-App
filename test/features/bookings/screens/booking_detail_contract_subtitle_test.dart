@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/auth/data/models/band_summary.dart';
 import 'package:tts_bandmate/features/bookings/data/models/booking_contract.dart';
+import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
+import 'package:tts_bandmate/features/chat/data/models/conversation.dart';
+import 'package:tts_bandmate/features/chat/widgets/comments_section.dart';
 import 'package:tts_bandmate/features/bookings/data/models/booking_detail.dart';
 import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
 import 'package:tts_bandmate/features/bookings/screens/booking_detail_screen.dart';
@@ -32,11 +35,22 @@ BookingDetail _detail({String? contractStatus}) => BookingDetail(
       band: const BandSummary(id: 1, name: 'Band', isOwner: true),
     );
 
+// The embedded CommentsSection resolves its topic thread via a provider; stub
+// it so the section renders instantly without a network call in these tests.
+ThreadPage _emptyThread() => (
+      conversation: const Conversation(id: 999, type: 'topic', title: ''),
+      messages: const [],
+      participants: const [],
+      channel: '',
+      hasMore: false,
+    );
+
 Future<void> _pump(WidgetTester tester, BookingDetail detail) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         bookingDetailProvider.overrideWith((ref, args) async => detail),
+        topicThreadProvider.overrideWith((ref, topic) => _emptyThread()),
       ],
       child: const CupertinoApp(
         home: BookingDetailScreen(bandId: 1, bookingId: 1),

@@ -109,7 +109,13 @@ class ChatRepository {
       if (body != null && body.isNotEmpty) 'body': body,
       'images[]': [
         for (final img in images)
-          MultipartFile.fromBytes(img.bytes, filename: img.filename),
+          MultipartFile.fromBytes(
+            img.bytes,
+            filename: img.filename,
+            // Composer re-encodes picks to JPEG via image_picker (the server
+            // rejects heic/heif), so the upload mime is always image/jpeg.
+            contentType: DioMediaType('image', 'jpeg'),
+          ),
       ],
     });
     final res = await _dio.post<Map<String, dynamic>>(

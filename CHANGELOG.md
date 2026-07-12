@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.11.0](https://github.com/eddimull/TTS-App/compare/v1.10.0...v1.11.0) (2026-07-08)
+
+
+### Features
+
+* **realtime:** activate band realtime subscription from the app shell ([b1ede94](https://github.com/eddimull/TTS-App/commit/b1ede94cafe27e14601984de0b240afa40c70cc2))
+* **realtime:** bandRealtimeProvider — band channel signals invalidate feature providers ([3a4bd36](https://github.com/eddimull/TTS-App/commit/3a4bd36cec74dc66c83795bc68948ef61b75afe2))
+* **realtime:** media_file signals refresh media lists ([b073352](https://github.com/eddimull/TTS-App/commit/b073352650113d8f646b9bcabe3ea2f13a9d47df))
+* **realtime:** payments/payout signals refresh booking detail and payout screens ([edb95c1](https://github.com/eddimull/TTS-App/commit/edb95c1845b5efb62055aaf0d6522024975f0012))
+* **realtime:** song and chart signals refresh library, search, and chart screens ([8064381](https://github.com/eddimull/TTS-App/commit/8064381120cd4b88554bd006d20ee76ade13fbf3))
+
+
+### Bug Fixes
+
+* **realtime:** clear bookings disk cache before invalidating on signal ([9ff37f6](https://github.com/eddimull/TTS-App/commit/9ff37f6adbebcbca43de4644b9613c7095c00be3))
+* **realtime:** contain best-effort realtime errors at fire-and-forget boundaries ([f833e83](https://github.com/eddimull/TTS-App/commit/f833e83126a1c24d12dd0e83e50141fda6cefd30))
+* **realtime:** init Pusher once per connection; roster signals refresh personnel providers ([d9d3130](https://github.com/eddimull/TTS-App/commit/d9d313019764d78427388892f0a0cad8af0c3289))
+* **realtime:** serialize resubscribe with generation guard; no state writes after dispose ([fe48d16](https://github.com/eddimull/TTS-App/commit/fe48d16fac2376f87c2adceddb88011430bb9813))
+
 ## [1.10.0](https://github.com/eddimull/TTS-App/compare/v1.9.0...v1.10.0) (2026-07-06)
 
 

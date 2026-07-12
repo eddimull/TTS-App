@@ -42,6 +42,8 @@ import '../../features/band_settings/screens/band_settings_screen.dart';
 import '../../features/personnel/screens/personnel_screen.dart';
 import '../../features/account/screens/account_screen.dart';
 import '../../features/calendar_feed/screens/calendar_feed_screen.dart';
+import '../../features/chat/screens/messages_screen.dart';
+import '../../features/chat/screens/new_message_screen.dart';
 import '../../features/stats/screens/user_stats_screen.dart';
 import '../../features/rehearsal_planner/screens/rehearsal_planner_screen.dart';
 import '../../features/setlist/screens/live_session_screen.dart';
@@ -455,6 +457,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/stats',
         builder: (_, __) => const UserStatsScreen(),
+      ),
+      // Messages — no bottom nav, pushed from More screen
+      GoRoute(
+        path: '/messages',
+        builder: (_, __) => const MessagesScreen(),
+      ),
+      GoRoute(
+        path: '/messages/new',
+        builder: (_, __) => const NewMessageScreen(),
       ),
       // Library — literal segment 'new' must precede the :chartId parameter
       // to prevent GoRouter from treating "new" as a chart ID.

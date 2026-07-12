@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../features/auth/data/models/band_summary.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../features/chat/providers/conversations_provider.dart';
 import '../../../shared/providers/selected_band_provider.dart';
 import '../../../shared/widgets/nav_row.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
@@ -21,6 +22,7 @@ class MoreScreen extends ConsumerWidget {
     final currentBand =
         bandId == null ? null : bands.where((b) => b.id == bandId).firstOrNull;
     final isOwner = currentBand?.isOwner ?? false;
+    final unread = ref.watch(chatUnreadTotalProvider);
 
     return CupertinoPageScaffold(
       navigationBar: const CupertinoNavigationBar(middle: Text('More')),
@@ -38,6 +40,18 @@ class MoreScreen extends ConsumerWidget {
               ),
               onTap: () => _showBandSwitcher(context, ref, bands, bandId),
             ),
+          NavRow(
+            title: 'Messages',
+            subtitle: unread > 0 ? '$unread unread' : null,
+            leading: Icon(
+              CupertinoIcons.chat_bubble_2,
+              size: 22,
+              color: unread > 0
+                  ? CupertinoColors.activeBlue.resolveFrom(context)
+                  : context.secondaryText,
+            ),
+            onTap: () => context.push('/messages'),
+          ),
           NavRow(
             title: 'Finances',
             leading: Icon(

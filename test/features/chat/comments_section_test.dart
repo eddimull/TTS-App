@@ -43,7 +43,9 @@ void main() {
       child: CupertinoApp(
         home: CupertinoPageScaffold(
           child: ListView(
-            children: [CommentsSection(kind: 'events', idOrKey: 'abc123')],
+            children: const [
+              CommentsSection(kind: 'events', idOrKey: 'abc123'),
+            ],
           ),
         ),
       ),

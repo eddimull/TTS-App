@@ -1,3 +1,5 @@
+import 'notification_channels.dart';
+
 /// The kind of push the backend sent.
 enum PushType { reminder8h, departure, rehearsalCancelled, rehearsalRestored, chatMessage, unknown }
 
@@ -85,4 +87,48 @@ class PushPayload {
         : (conversationId ?? rehearsalId ?? '');
     return Object.hash(entity, type).toUnsigned(31);
   }
+}
+
+/// Pure description of a notification to render: no platform channel types,
+/// so it can be built and unit-tested without flutter_local_notifications.
+class BackgroundNotificationSpec {
+  const BackgroundNotificationSpec({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.channelId,
+    required this.channelName,
+    required this.channelDescription,
+  });
+
+  final int id;
+  final String title;
+  final String body;
+  final String channelId;
+  final String channelName;
+  final String channelDescription;
+}
+
+/// Pure mapper: an incoming FCM background-isolate data payload → what to
+/// render, or null when this type has no background rendering (e.g. reminder
+/// pushes, which arrive hybrid/OS-rendered, or unknown types).
+///
+/// Scope: `chat_message` only for now — the backend sends chat pushes
+/// data-only, so without this the background isolate shows nothing on
+/// Android. Kept free of Riverpod/plugin imports so it runs safely in the
+/// separate background isolate FCM spins up for `onBackgroundMessage`.
+BackgroundNotificationSpec? buildBackgroundNotification(
+  Map<String, dynamic> data,
+) {
+  final payload = PushPayload.fromData(data);
+  if (payload.type != PushType.chatMessage) return null;
+
+  return BackgroundNotificationSpec(
+    id: payload.notificationId,
+    title: payload.title ?? 'TTS Bandmate',
+    body: payload.body ?? '',
+    channelId: BandUpdatesChannel.id,
+    channelName: BandUpdatesChannel.name,
+    channelDescription: BandUpdatesChannel.description,
+  );
 }

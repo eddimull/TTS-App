@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 
+import '../data/notification_channels.dart';
 import '../data/notification_text.dart';
 import '../data/push_payload.dart';
 import '../data/push_route.dart';
@@ -44,9 +45,9 @@ class PushService implements LocalScheduler {
   );
 
   static const _bandUpdatesChannel = AndroidNotificationChannel(
-    'band_updates',
-    'Band Updates',
-    description: 'Changes to your band\'s schedule and activity',
+    BandUpdatesChannel.id,
+    BandUpdatesChannel.name,
+    description: BandUpdatesChannel.description,
     importance: Importance.high,
   );
 
@@ -150,8 +151,8 @@ class PushService implements LocalScheduler {
             priority: Priority.high,
           )
         : const AndroidNotificationDetails(
-            'band_updates',
-            'Band Updates',
+            BandUpdatesChannel.id,
+            BandUpdatesChannel.name,
             importance: Importance.high,
             priority: Priority.high,
           );

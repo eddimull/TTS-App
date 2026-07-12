@@ -116,4 +116,52 @@ void main() {
       expect(a.notificationId, isNot(b.notificationId));
     });
   });
+
+  group('buildBackgroundNotification', () {
+    test('chat_message builds a spec with title, body, id, and channel', () {
+      final spec = buildBackgroundNotification({
+        'type': 'chat_message',
+        'conversationId': '5',
+        'title': 'Sam',
+        'body': 'you around?',
+      });
+      expect(spec, isNotNull);
+      expect(spec!.title, 'Sam');
+      expect(spec.body, 'you around?');
+      expect(spec.channelId, 'band_updates');
+      expect(
+        spec.id,
+        PushPayload.fromData(
+                {'type': 'chat_message', 'conversationId': '5'})
+            .notificationId,
+      );
+    });
+
+    test('chat_message with no title falls back to a generic app name', () {
+      final spec = buildBackgroundNotification({
+        'type': 'chat_message',
+        'conversationId': '5',
+        'body': 'hi',
+      });
+      expect(spec!.title, 'TTS Bandmate');
+    });
+
+    test('non-chat types return null (out of scope for background render)', () {
+      expect(
+        buildBackgroundNotification({
+          'type': 'event_reminder_8h',
+          'eventKey': 'evt_1',
+        }),
+        isNull,
+      );
+      expect(
+        buildBackgroundNotification({
+          'type': 'rehearsal_cancelled',
+          'rehearsalId': '1',
+        }),
+        isNull,
+      );
+      expect(buildBackgroundNotification({'type': 'unknown'}), isNull);
+    });
+  });
 }

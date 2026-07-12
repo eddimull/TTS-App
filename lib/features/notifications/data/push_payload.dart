@@ -1,5 +1,5 @@
 /// The kind of push the backend sent.
-enum PushType { reminder8h, departure, rehearsalCancelled, rehearsalRestored, unknown }
+enum PushType { reminder8h, departure, rehearsalCancelled, rehearsalRestored, chatMessage, unknown }
 
 /// Stable notification id for an event's "departure" slot. The push-rendered
 /// notification and the locally-scheduled enriched one MUST use this same id so
@@ -17,6 +17,8 @@ PushType _typeFromString(String? raw) {
       return PushType.rehearsalCancelled;
     case 'rehearsal_restored':
       return PushType.rehearsalRestored;
+    case 'chat_message':
+      return PushType.chatMessage;
     default:
       return PushType.unknown;
   }
@@ -34,6 +36,7 @@ class PushPayload {
     this.showTime,
     this.body,
     this.rehearsalId,
+    this.conversationId,
   });
 
   final PushType type;
@@ -48,6 +51,7 @@ class PushPayload {
   final String? showTime;
   final String? body;
   final String? rehearsalId;
+  final String? conversationId;
 
   factory PushPayload.fromData(Map<String, dynamic> data) {
     String? str(String key) {
@@ -67,15 +71,18 @@ class PushPayload {
       showTime: str('showTime'),
       body: str('body'),
       rehearsalId: str('rehearsalId'),
+      conversationId: str('conversationId'),
     );
   }
 
   /// Stable id for deduping notifications: one slot per entity+type. Departure
   /// keeps its shared-slot contract with the enrichment scheduler; everything
-  /// else hashes its best entity key (eventKey, else rehearsalId) with its type.
+  /// else hashes its best entity key (eventKey, else rehearsalId, else conversationId) with its type.
   int get notificationId {
     if (type == PushType.departure) return departureNotificationId(eventKey);
-    final entity = eventKey.isNotEmpty ? eventKey : (rehearsalId ?? '');
+    final entity = eventKey.isNotEmpty
+        ? eventKey
+        : (conversationId ?? rehearsalId ?? '');
     return Object.hash(entity, type).toUnsigned(31);
   }
 }

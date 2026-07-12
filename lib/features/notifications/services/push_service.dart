@@ -31,6 +31,11 @@ class PushService implements LocalScheduler {
   /// provider layer can run location enrichment. Set during app init.
   Future<void> Function(PushPayload payload)? onDeparturePush;
 
+  /// Returns the app's current route path, or null when unknown. Set by the
+  /// provider layer; used to suppress a chat notification when its thread is
+  /// already on screen.
+  String? Function()? currentLocation;
+
   static const _channel = AndroidNotificationChannel(
     'event_reminders',
     'Event Reminders',
@@ -118,6 +123,11 @@ class PushService implements LocalScheduler {
     // `notification` block and are rendered locally below.
     if (message.notification != null) return;
     final payload = PushPayload.fromData(message.data);
+    if (payload.type == PushType.chatMessage &&
+        payload.conversationId != null &&
+        currentLocation?.call() == '/conversations/${payload.conversationId}') {
+      return; // thread is open — the live channel already shows the message
+    }
     if (payload.type == PushType.departure) {
       final cb = onDeparturePush;
       if (cb != null) {

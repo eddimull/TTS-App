@@ -49,6 +49,12 @@ class PushRegistrar {
     await push.requestPermission();
     push.listenForeground();
     push.listenTaps((route) => _ref.read(routerProvider).go(route));
+    push.currentLocation = () => _ref
+        .read(routerProvider)
+        .routerDelegate
+        .currentConfiguration
+        .uri
+        .path;
     push.onDeparturePush = (payload) async {
       final firstTime = payload.firstItemTime;
       if (firstTime == null) return;

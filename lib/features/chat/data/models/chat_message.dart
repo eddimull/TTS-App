@@ -51,8 +51,10 @@ class ChatMessage {
             ? DateTime.tryParse(json['edited_at'] as String)
             : null,
         isDeleted: json['is_deleted'] as bool? ?? false,
-        createdAt:
-            DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+        // Stable fallback for an unparseable timestamp: epoch sorts a
+        // malformed message as oldest instead of non-deterministically "new".
+        createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0),
       );
 
   ChatMessage copyWith({

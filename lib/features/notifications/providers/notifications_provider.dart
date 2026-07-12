@@ -51,12 +51,14 @@ class PushRegistrar {
     // within that same call, so setting it after would silently drop a
     // terminated-state tap's route.
     push.onLocalTap = (route) => _ref.read(routerProvider).go(route);
+    // Set the suppression callback before attaching the foreground listener
+    // so a message arriving in that window can't render for an open thread.
+    push.currentOpenConversation =
+        () => _ref.read(activeChatConversationProvider);
     await push.init();
     await push.requestPermission();
     push.listenForeground();
     push.listenTaps((route) => _ref.read(routerProvider).go(route));
-    push.currentOpenConversation =
-        () => _ref.read(activeChatConversationProvider);
     push.onDeparturePush = (payload) async {
       final firstTime = payload.firstItemTime;
       if (firstTime == null) return;

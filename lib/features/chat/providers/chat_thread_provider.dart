@@ -11,26 +11,29 @@ import '../data/models/chat_participant.dart';
 import '../data/models/conversation.dart';
 import 'conversations_provider.dart';
 
-typedef ChatChannelBinder = void Function(
+/// Tears down a live channel subscription previously set up by a
+/// [ChatChannelBinder].
+typedef ChatChannelUnbind = Future<void> Function();
+
+/// Binds [onEvent] to [channel]. Returns a future resolving to an unsubscribe
+/// callback (or null when realtime is unavailable), or null outright (test
+/// seams that never subscribe). The CALLER owns the returned callback and
+/// must invoke it on dispose — the binder registers no cleanup of its own, so
+/// the short-lived autoDispose thread notifier doesn't leak subscriptions
+/// into the binder provider's app-long lifetime.
+typedef ChatChannelBinder = Future<ChatChannelUnbind?>? Function(
   String channel,
   void Function(String eventName, Map<String, dynamic> data) onEvent,
 );
 
 /// Production binder: subscribes to the per-conversation private channel via
-/// the shared PusherConnection (same pattern as plannerStreamBinderProvider).
+/// the shared PusherConnection (same pattern as plannerStreamBinderProvider,
+/// except the unsubscribe callback is handed back to the calling notifier
+/// instead of being tied to this provider's own — app-long — dispose).
 final chatChannelBinderProvider = Provider<ChatChannelBinder>((ref) {
-  return (channel, onEvent) async {
-    final unsubscribe = await ref
-        .read(pusherConnectionProvider)
-        .subscribe(channel, (eventName, data) => onEvent(eventName, data));
-    if (unsubscribe != null) {
-      ref.onDispose(() {
-        unsubscribe().catchError((Object e) {
-          debugPrint('chatThread: unsubscribe failed: $e');
-        });
-      });
-    }
-  };
+  return (channel, onEvent) => ref
+      .read(pusherConnectionProvider)
+      .subscribe(channel, (eventName, data) => onEvent(eventName, data));
 });
 
 /// How long a peer's typing indicator stays visible after their last typing
@@ -113,22 +116,42 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
   final Map<int, Timer> _typingTimers = {};
   DateTime _lastTypingSent = DateTime.fromMillisecondsSinceEpoch(0);
   bool _bound = false;
+  ChatChannelUnbind? _unbind;
 
   @override
   ChatThreadState build() {
-    ref.onDispose(() {
-      for (final t in _typingTimers.values) {
-        t.cancel();
-      }
-    });
+    ref.onDispose(_teardown);
     return const ChatThreadState();
+  }
+
+  /// Runs on dispose AND on rebuild-after-invalidate: cancels every live
+  /// typing timer and releases the Pusher channel subscription owned by this
+  /// notifier. Resets [_bound] so a rebuilt notifier can re-bind on its next
+  /// load().
+  void _teardown() {
+    for (final t in _typingTimers.values) {
+      t.cancel();
+    }
+    _typingTimers.clear();
+    _bound = false;
+    final unbind = _unbind;
+    _unbind = null;
+    unbind?.call().catchError((Object e) {
+      debugPrint('chatThread: unsubscribe failed: $e');
+    });
   }
 
   Future<void> load() async {
     if (state.isLoading) return;
+    // Hold the (autoDispose) element alive while the initial fetch is in
+    // flight: a bare read(...).notifier.load() with no listener registered
+    // yet must not be torn down mid-request by the autoDispose scheduler.
+    // Closing the link after a dispose is a no-op, so no guard is needed.
+    final keepAlive = ref.keepAlive();
     state = state.copyWith(isLoading: true, error: () => null);
     try {
       final page = await _repo.messages(_conversationId);
+      if (!ref.mounted) return;
       state = state.copyWith(
         messages: page.messages,
         participants: page.participants,
@@ -139,7 +162,10 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
       _bind(page.channel);
       await markRead();
     } catch (e) {
+      if (!ref.mounted) return;
       state = state.copyWith(isLoading: false, error: () => e.toString());
+    } finally {
+      keepAlive.close();
     }
   }
 
@@ -149,12 +175,14 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
     try {
       final page = await _repo.messages(_conversationId,
           beforeId: state.messages.first.id);
+      if (!ref.mounted) return;
       state = state.copyWith(
         messages: [...page.messages, ...state.messages],
         hasMore: page.hasMore,
         isLoadingMore: false,
       );
     } catch (e) {
+      if (!ref.mounted) return;
       state = state.copyWith(isLoadingMore: false, error: () => e.toString());
     }
   }
@@ -166,10 +194,12 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
     try {
       final message =
           await _repo.sendMessage(_conversationId, body: body, images: images);
+      if (!ref.mounted) return;
       _appendIfNew(message);
       state = state.copyWith(isSending: false);
       await markRead();
     } catch (e) {
+      if (!ref.mounted) return;
       state = state.copyWith(isSending: false, error: () => e.toString());
     }
   }
@@ -177,8 +207,10 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
   Future<void> editMsg(int messageId, String body) async {
     try {
       final updated = await _repo.editMessage(messageId, body);
+      if (!ref.mounted) return;
       _replace(updated);
     } catch (e) {
+      if (!ref.mounted) return;
       state = state.copyWith(error: () => e.toString());
     }
   }
@@ -186,8 +218,10 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
   Future<void> deleteMsg(int messageId) async {
     try {
       await _repo.deleteMessage(messageId);
+      if (!ref.mounted) return;
       _tombstone(messageId);
     } catch (e) {
+      if (!ref.mounted) return;
       state = state.copyWith(error: () => e.toString());
     }
   }
@@ -219,10 +253,28 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
   void _bind(String channel) {
     if (_bound || channel.isEmpty) return;
     _bound = true;
-    ref.read(chatChannelBinderProvider)(channel, _onChannelEvent);
+    final pending =
+        ref.read(chatChannelBinderProvider)(channel, _onChannelEvent);
+    pending?.then((unbind) {
+      if (unbind == null) return;
+      if (!ref.mounted) {
+        // Disposed while the subscribe round-trip was in flight: release the
+        // channel immediately instead of leaking it.
+        unbind().catchError((Object e) {
+          debugPrint('chatThread: unsubscribe failed: $e');
+        });
+        return;
+      }
+      _unbind = unbind;
+    }).catchError((Object e) {
+      debugPrint('chatThread: bind failed: $e');
+    });
   }
 
   void _onChannelEvent(String eventName, Map<String, dynamic> data) {
+    // A live event can still arrive between dispose and the async channel
+    // unsubscribe completing — drop it rather than touch disposed state.
+    if (!ref.mounted) return;
     switch (eventName) {
       case 'message.created':
         final raw = data['message'];
@@ -278,7 +330,12 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
   }
 }
 
+/// autoDispose: the thread screen's `watch` keeps a conversation's notifier
+/// alive while it's on screen; navigating away (or switching conversations)
+/// drops the last listener, which tears down the Pusher subscription and
+/// typing timers via [ChatThreadNotifier._teardown]. Thread state is refetched
+/// on reopen.
 final chatThreadProvider =
-    NotifierProvider.family<ChatThreadNotifier, ChatThreadState, int>(
+    NotifierProvider.autoDispose.family<ChatThreadNotifier, ChatThreadState, int>(
   ChatThreadNotifier.new,
 );

@@ -23,7 +23,6 @@ class ChatMessage {
     this.attachments = const [],
     this.editedAt,
     this.isDeleted = false,
-    this.status = 'complete', // 'sending' | 'complete' | 'failed' (client-side)
   });
 
   final int id;
@@ -36,7 +35,6 @@ class ChatMessage {
   final DateTime? editedAt;
   final bool isDeleted;
   final DateTime createdAt;
-  final String status;
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
         id: (json['id'] as num).toInt(),
@@ -63,7 +61,6 @@ class ChatMessage {
     List<ChatAttachment>? attachments,
     DateTime? editedAt,
     bool? isDeleted,
-    String? status,
   }) =>
       ChatMessage(
         id: id ?? this.id,
@@ -76,6 +73,5 @@ class ChatMessage {
         editedAt: editedAt ?? this.editedAt,
         isDeleted: isDeleted ?? this.isDeleted,
         createdAt: createdAt,
-        status: status ?? this.status,
       );
 }

@@ -79,7 +79,7 @@ class PushPayload {
 
   /// Stable id for deduping notifications: one slot per entity+type. Departure
   /// keeps its shared-slot contract with the enrichment scheduler; everything
-  /// else hashes its best entity key (eventKey, else rehearsalId, else conversationId) with its type.
+  /// else hashes its best entity key (eventKey, else conversationId, else rehearsalId) with its type.
   int get notificationId {
     if (type == PushType.departure) return departureNotificationId(eventKey);
     final entity = eventKey.isNotEmpty

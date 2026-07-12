@@ -255,4 +255,46 @@ void main() {
         reason: 'a near-bottom reader must see a new append immediately, '
             'with no explicit scroll-to-bottom needed');
   });
+
+  testWidgets('a failed send restores the typed text so it is not lost',
+      (tester) async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((options) async {
+        if (options.method == 'POST' && options.path.endsWith('/messages')) {
+          throw DioException(
+            requestOptions: options,
+            response: Response(requestOptions: options, statusCode: 500),
+            type: DioExceptionType.badResponse,
+          );
+        }
+        return json(200, {
+          'conversation': {'id': 5, 'type': 'dm', 'title': 'Sam'},
+          'messages': <dynamic>[],
+          'participants': <dynamic>[],
+          'channel': 'private-conversation.5',
+          'has_more': false,
+        });
+      });
+
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatChannelBinderProvider.overrideWithValue((channel, onEvent) => null),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const CupertinoApp(
+        home: ConversationThreadScreen(conversationId: 5, title: 'Sam'),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(CupertinoTextField), 'this will fail');
+    await tester.tap(find.byIcon(CupertinoIcons.arrow_up_circle_fill));
+    await tester.pumpAndSettle();
+
+    expect(find.text('this will fail'), findsOneWidget,
+        reason: 'a failed send must restore the typed text, not lose it');
+  });
 }

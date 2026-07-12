@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,6 +11,15 @@ import '../../auth/providers/auth_provider.dart';
 import '../data/chat_repository.dart';
 import '../data/models/chat_message.dart';
 import '../providers/chat_thread_provider.dart';
+
+/// A picked-but-not-yet-sent image. Bytes are read once at pick time (not
+/// re-read from disk on every rebuild via a FutureBuilder) so the thumbnail
+/// strip and the eventual upload share the same in-memory copy.
+class _PendingImage {
+  const _PendingImage({required this.file, required this.bytes});
+  final XFile file;
+  final Uint8List bytes;
+}
 
 class ConversationThreadScreen extends ConsumerStatefulWidget {
   const ConversationThreadScreen({
@@ -29,7 +40,7 @@ class _ConversationThreadScreenState
     extends ConsumerState<ConversationThreadScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  final List<XFile> _pendingImages = [];
+  final List<_PendingImage> _pendingImages = [];
 
   // The list is built with `reverse: true` (see build()): rendered item 0 is
   // the newest message and sits at the bottom of the viewport, with scroll
@@ -88,25 +99,43 @@ class _ConversationThreadScreenState
       limit: 4,
     );
     if (picked.isEmpty || !mounted) return;
+    // Read each file's bytes once, up front, instead of leaving it to a
+    // FutureBuilder in the thumbnail strip that would otherwise re-read from
+    // disk on every rebuild (typing, send-button state changes, etc.).
+    final pending = <_PendingImage>[
+      for (final x in picked.take(4))
+        _PendingImage(file: x, bytes: await x.readAsBytes()),
+    ];
+    if (!mounted) return;
     setState(() {
       _pendingImages
         ..clear()
-        ..addAll(picked.take(4));
+        ..addAll(pending);
     });
   }
 
   Future<void> _send() async {
     final text = _controller.text.trim();
-    if (text.isEmpty && _pendingImages.isEmpty) return;
+    final images = List<_PendingImage>.of(_pendingImages);
+    if (text.isEmpty && images.isEmpty) return;
     final uploads = <ChatImageUpload>[
-      for (final x in _pendingImages)
-        ChatImageUpload(bytes: await x.readAsBytes(), filename: x.name),
+      for (final img in images)
+        ChatImageUpload(bytes: img.bytes, filename: img.file.name),
     ];
     _controller.clear();
     setState(() => _pendingImages.clear());
     await ref
         .read(chatThreadProvider(widget.conversationId).notifier)
         .send(text: text, images: uploads);
+    if (!mounted) return;
+    final error = ref.read(chatThreadProvider(widget.conversationId)).error;
+    if (error != null) {
+      // Send failed — restore what the user typed/picked so nothing is lost.
+      setState(() {
+        if (_controller.text.isEmpty) _controller.text = text;
+        if (_pendingImages.isEmpty) _pendingImages.addAll(images);
+      });
+    }
   }
 
   Future<void> _showMessageActions(ChatMessage message) async {
@@ -285,13 +314,8 @@ class _ConversationThreadScreenState
                               child: SizedBox(
                                 width: 56,
                                 height: 56,
-                                child: FutureBuilder(
-                                  future: img.readAsBytes(),
-                                  builder: (_, snap) => snap.hasData
-                                      ? Image.memory(snap.data!,
-                                          fit: BoxFit.cover)
-                                      : const CupertinoActivityIndicator(),
-                                ),
+                                child: Image.memory(img.bytes,
+                                    fit: BoxFit.cover),
                               ),
                             ),
                             Positioned(

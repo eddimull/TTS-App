@@ -49,7 +49,6 @@ void main() {
     expect(m.attachments.single.width, 800);
     expect(m.isDeleted, isFalse);
     expect(m.editedAt, isNull);
-    expect(m.status, 'complete');
     final edited = m.copyWith(body: 'hi', editedAt: DateTime.utc(2026, 7, 12, 15));
     expect(edited.body, 'hi');
     expect(edited.id, 10);

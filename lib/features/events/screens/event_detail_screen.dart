@@ -15,6 +15,7 @@ import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/status_chip.dart';
+import '../../chat/widgets/comments_section.dart';
 import '../../bookings/widgets/venue_picker.dart' show geocodeAddress, VenuePreviewCard;
 import '../../contacts/contact_detail_screen.dart';
 import '../../contacts/contact_ref.dart';
@@ -256,6 +257,8 @@ class _EventDetailView extends ConsumerWidget {
             const SizedBox(height: 20),
             _RosterSection(event: event),
           ],
+
+          CommentsSection(kind: 'events', idOrKey: event.key),
 
           const SizedBox(height: 32),
         ],

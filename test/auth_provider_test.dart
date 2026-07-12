@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +10,11 @@ import 'package:tts_bandmate/features/auth/data/models/band_summary.dart';
 import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
 import 'package:tts_bandmate/core/network/api_client.dart';
 import 'package:tts_bandmate/features/bookings/data/bookings_cache_storage.dart';
+import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
+import 'package:tts_bandmate/features/chat/providers/conversations_provider.dart';
+import 'package:tts_bandmate/features/chat/providers/topic_thread_provider.dart';
+
+import 'helpers/test_harness.dart' show StubAdapter, json;
 
 // ── In-memory fake storage ────────────────────────────────────────────────────
 
@@ -170,6 +176,96 @@ void main() {
             reason: 'Last route must be cleared on logout');
         expect(fakeBookingsCache.read(), isNull,
             reason: 'Bookings disk cache must be cleared on logout');
+      },
+    );
+
+    test(
+      'test_logout_invalidates_chat_caches_so_a_new_user_does_not_see_the_'
+      'previous_users_conversations',
+      () async {
+        // A repository whose responses are keyed on how many times each
+        // endpoint has been hit — simulates "user A's data" the first time,
+        // then a distinct payload on any refetch after logout invalidates
+        // the providers (a real re-login would hit the server as a different
+        // user; here we just need to prove the stale value isn't reused).
+        var conversationsCalls = 0;
+        var topicCalls = 0;
+        final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+          ..httpClientAdapter = StubAdapter((options) async {
+            if (options.path == '/api/mobile/conversations') {
+              conversationsCalls++;
+              return json(200, {
+                'conversations': [
+                  {
+                    'id': 1,
+                    'type': 'dm',
+                    'title': conversationsCalls == 1 ? 'User A\'s DM' : 'refetched',
+                    'unread_count': 0,
+                  },
+                ],
+              });
+            }
+            // topicThread (events/rehearsals/bookings conversation) path.
+            topicCalls++;
+            return json(200, {
+              'conversation': {
+                'id': 2,
+                'type': 'topic',
+                'title': 'topic',
+                'unread_count': 0,
+              },
+              'messages': <dynamic>[],
+              'participants': <dynamic>[],
+              'channel': '',
+              'has_more': false,
+            });
+          });
+
+        final storage = FakeSecureStorage();
+        await storage.writeToken('some-valid-token');
+
+        final container = ProviderContainer(overrides: [
+          secureStorageProvider.overrideWithValue(storage),
+          apiClientProvider.overrideWith((ref) => ApiClient(storage: storage)),
+          routeStorageProvider.overrideWith((ref) async => fakeRouteStorage),
+          bookingsCacheStorageProvider.overrideWithValue(fakeBookingsCache),
+          chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+        ]);
+        addTearDown(container.dispose);
+
+        container.read(authProvider.notifier).state = AsyncValue.data(
+          AuthAuthenticated(user: _fakeUser, bands: _fakeBands),
+        );
+
+        const topic = TopicRef(kind: 'events', idOrKey: 'abc123');
+
+        // Seed both chat caches with "user A"'s data, keeping them alive with
+        // listeners the way a live Messages screen / CommentsSection would.
+        final convSub = container.listen(chatConversationsProvider, (_, __) {});
+        final topicSub = container.listen(topicThreadProvider(topic), (_, __) {});
+        addTearDown(convSub.close);
+        addTearDown(topicSub.close);
+
+        final seededConversations =
+            await container.read(chatConversationsProvider.future);
+        expect(seededConversations.single.title, 'User A\'s DM');
+        await container.read(topicThreadProvider(topic).future);
+        expect(conversationsCalls, 1);
+        expect(topicCalls, 1);
+
+        await container.read(authProvider.notifier).logout();
+
+        // Both providers must have been invalidated by logout — reading their
+        // futures again must refetch (never warm-paint the disposed-user
+        // cached value) rather than resolve instantly from stale state.
+        final afterLogoutConversations =
+            await container.read(chatConversationsProvider.future);
+        await container.read(topicThreadProvider(topic).future);
+        expect(conversationsCalls, 2,
+            reason: 'chatConversationsProvider must refetch after logout');
+        expect(topicCalls, 2,
+            reason: 'topicThreadProvider must refetch after logout');
+        expect(afterLogoutConversations.single.title, 'refetched');
       },
     );
   });

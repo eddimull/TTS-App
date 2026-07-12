@@ -42,6 +42,14 @@ final chatChannelBinderProvider = Provider<ChatChannelBinder>((ref) {
 final chatTypingTtlProvider =
     Provider<Duration>((_) => const Duration(seconds: 5));
 
+/// Debounce window for the markRead() triggered by an incoming realtime
+/// message from someone else: a burst of messages arriving in quick
+/// succession should collapse into a single read POST (plus the two
+/// provider invalidations it drives) instead of one per message. Overridden
+/// to zero in tests.
+final chatMarkReadDebounceProvider =
+    Provider<Duration>((_) => const Duration(milliseconds: 1500));
+
 /// Other participants (excluding [currentUserId]) whose lastReadAt is at or
 /// past the message's createdAt — i.e. they've seen it.
 int seenByOthersCount(
@@ -118,6 +126,7 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
   DateTime _lastTypingSent = DateTime.fromMillisecondsSinceEpoch(0);
   bool _bound = false;
   ChatChannelUnbind? _unbind;
+  Timer? _markReadDebounce;
 
   @override
   ChatThreadState build() {
@@ -134,6 +143,8 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
       t.cancel();
     }
     _typingTimers.clear();
+    _markReadDebounce?.cancel();
+    _markReadDebounce = null;
     _bound = false;
     final unbind = _unbind;
     _unbind = null;
@@ -283,9 +294,14 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
       case 'message.created':
         final raw = data['message'];
         if (raw is! Map<String, dynamic>) return;
-        _appendIfNew(ChatMessage.fromJson(raw));
-        // Someone else wrote while we're looking at the thread: mark it read.
-        markRead();
+        final message = ChatMessage.fromJson(raw);
+        final appended = _appendIfNew(message);
+        // Only mark read when we actually appended a message authored by
+        // someone else — our own echo (from a send() we already handled)
+        // must not re-trigger a read POST, and a duplicate must not either.
+        if (appended && message.userId != _currentUserId) {
+          _debouncedMarkRead();
+        }
       case 'message.updated':
         final raw = data['message'];
         if (raw is! Map<String, dynamic>) return;
@@ -315,9 +331,24 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
     }
   }
 
-  void _appendIfNew(ChatMessage message) {
-    if (state.messages.any((m) => m.id == message.id)) return;
+  /// Appends [message] unless it's already present (dedupes our own send()
+  /// echo and duplicate realtime deliveries). Returns whether it appended.
+  bool _appendIfNew(ChatMessage message) {
+    if (state.messages.any((m) => m.id == message.id)) return false;
     state = state.copyWith(messages: [...state.messages, message]);
+    return true;
+  }
+
+  /// Debounced markRead() for realtime-appended messages from other users:
+  /// a burst of incoming messages collapses into a single read POST (and its
+  /// two provider invalidations) fired [chatMarkReadDebounceProvider] after
+  /// the last one, instead of one per message.
+  void _debouncedMarkRead() {
+    _markReadDebounce?.cancel();
+    _markReadDebounce = Timer(ref.read(chatMarkReadDebounceProvider), () {
+      _markReadDebounce = null;
+      markRead();
+    });
   }
 
   void _replace(ChatMessage message) {

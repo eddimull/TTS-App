@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tts_bandmate/features/auth/data/models/auth_user.dart';
+import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
 import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
 import 'package:tts_bandmate/features/chat/data/models/chat_message.dart';
 import 'package:tts_bandmate/features/chat/data/models/chat_participant.dart';
@@ -12,6 +14,14 @@ import 'package:tts_bandmate/features/chat/providers/conversations_provider.dart
 import 'package:tts_bandmate/features/chat/providers/topic_thread_provider.dart';
 
 import '../../helpers/test_harness.dart';
+
+class _FakeAuth extends AuthNotifier {
+  _FakeAuth(this._state);
+  final AuthState _state;
+
+  @override
+  Future<AuthState> build() async => _state;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -38,15 +48,27 @@ void main() {
 
   late List<String> boundChannels;
   late void Function(String, Map<String, dynamic>)? capturedHandler;
+  late int readPostCount;
 
-  ProviderContainer makeContainer() {
+  ProviderContainer makeContainer({
+    AuthState? authState,
+    Duration markReadDebounce = Duration.zero,
+  }) {
     boundChannels = [];
     capturedHandler = null;
+    readPostCount = 0;
     final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
-      ..httpClientAdapter = StubAdapter((_) async => json(200, threadJson));
+      ..httpClientAdapter = StubAdapter((options) async {
+        if (options.method == 'POST' && options.path.endsWith('/read')) {
+          readPostCount++;
+        }
+        return json(200, threadJson);
+      });
     final container = ProviderContainer(overrides: [
       chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
       chatTypingTtlProvider.overrideWithValue(Duration.zero),
+      chatMarkReadDebounceProvider.overrideWithValue(markReadDebounce),
+      if (authState != null) authProvider.overrideWith(() => _FakeAuth(authState)),
       chatChannelBinderProvider.overrideWithValue((channel, onEvent) {
         boundChannels.add(channel);
         capturedHandler = onEvent;
@@ -103,6 +125,105 @@ void main() {
     };
     capturedHandler!('message.created', echo);
     expect(c.read(chatThreadProvider(5)).messages.length, 1);
+  });
+
+  test('duplicate message.created (own send echo) does not POST a read',
+      () async {
+    final c = makeContainer(
+      authState: const AuthAuthenticated(
+        user: AuthUser(id: 2, name: 'Eddie', email: 'e@x.com'),
+        bands: [],
+      ),
+    );
+    // Hold a listener: the delayed awaits below yield to the event loop, and
+    // chatThreadProvider is autoDispose — without a listener it would tear
+    // down (and its state reset) as soon as load()'s keepAlive is released.
+    final sub = c.listen(chatThreadProvider(5), (_, __) {});
+    addTearDown(sub.close);
+    // load() itself calls markRead() once for the initial page.
+    await c.read(chatThreadProvider(5).notifier).load();
+    expect(readPostCount, 1);
+
+    final echo = {
+      'message': {
+        'id': 1,
+        'conversation_id': 5,
+        'user_id': 2,
+        'user_name': 'Eddie',
+        'body': 'hey',
+        'created_at': '2026-07-12T14:00:00Z',
+      },
+    };
+    capturedHandler!('message.created', echo);
+    await Future<void>.delayed(Duration.zero);
+    // Duplicate id → not appended at all, so no debounce timer is armed and
+    // no extra read POST fires.
+    expect(readPostCount, 1);
+  });
+
+  test('an appended message authored by the current user does not POST a '
+      'read (only messages from others should)', () async {
+    final c = makeContainer(
+      authState: const AuthAuthenticated(
+        user: AuthUser(id: 2, name: 'Eddie', email: 'e@x.com'),
+        bands: [],
+      ),
+    );
+    final sub = c.listen(chatThreadProvider(5), (_, __) {});
+    addTearDown(sub.close);
+    await c.read(chatThreadProvider(5).notifier).load();
+    expect(readPostCount, 1);
+
+    capturedHandler!('message.created', {
+      'message': {
+        'id': 99,
+        'conversation_id': 5,
+        'user_id': 2,
+        'user_name': 'Eddie',
+        'body': 'from another device',
+        'created_at': '2026-07-12T14:02:00Z',
+      },
+    });
+    await Future<void>.delayed(Duration.zero);
+    expect(c.read(chatThreadProvider(5)).messages.length, 2);
+    expect(readPostCount, 1, reason: 'own-authored append must not mark read');
+  });
+
+  test('a burst of messages from someone else debounces to a single read '
+      'POST', () async {
+    fakeAsync((async) {
+      final c = makeContainer(
+        authState: const AuthAuthenticated(
+          user: AuthUser(id: 2, name: 'Eddie', email: 'e@x.com'),
+          bands: [],
+        ),
+        markReadDebounce: const Duration(milliseconds: 1500),
+      );
+      final sub = c.listen(chatThreadProvider(5), (_, __) {});
+      addTearDown(sub.close);
+      c.read(chatThreadProvider(5).notifier).load();
+      async.elapse(Duration.zero);
+      expect(readPostCount, 1, reason: 'initial load marks read once');
+
+      for (var i = 0; i < 3; i++) {
+        capturedHandler!('message.created', {
+          'message': {
+            'id': 100 + i,
+            'conversation_id': 5,
+            'user_id': 3,
+            'user_name': 'Sam',
+            'body': 'msg $i',
+            'created_at': '2026-07-12T14:0${3 + i}:00Z',
+          },
+        });
+        async.elapse(const Duration(milliseconds: 200));
+      }
+      expect(readPostCount, 1, reason: 'debounce window has not elapsed yet');
+
+      async.elapse(const Duration(seconds: 2));
+      expect(readPostCount, 2,
+          reason: 'the burst collapses into a single trailing read POST');
+    });
   });
 
   test('markRead invalidates both chatConversationsProvider and '

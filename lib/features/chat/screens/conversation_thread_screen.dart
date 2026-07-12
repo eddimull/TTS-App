@@ -31,6 +31,24 @@ class _ConversationThreadScreenState
   final _scrollController = ScrollController();
   final List<XFile> _pendingImages = [];
 
+  // The list is built with `reverse: true` (see build()): rendered item 0 is
+  // the newest message and sits at the bottom of the viewport, with scroll
+  // offset 0 meaning "pinned to the newest message". This gives two things
+  // for free that the old forward-ordered ListView had to hand-roll (badly):
+  //   - Appending a new message at the end of `state.messages` (reversed ->
+  //     item 0) is a no-op for the viewport's pixel position, so an
+  //     already-at-bottom reader stays pinned to the new message without any
+  //     animateTo call.
+  //   - Prepending older messages (loadMore) appends them at the *end* of the
+  //     reversed list, i.e. off the bottom of what's currently rendered —
+  //     existing on-screen items don't shift, so history loads without
+  //     yanking the viewport.
+  // The one thing reverse:true does NOT give for free is the very first
+  // frame: a ListView starts at scroll offset 0 by construction, which here
+  // already *is* "pinned to the newest message" — no jumpTo/animateTo is
+  // needed at all for the initial open.
+  bool _loadMoreArmed = false;
+
   @override
   void initState() {
     super.initState();
@@ -47,22 +65,19 @@ class _ConversationThreadScreenState
     super.dispose();
   }
 
+  /// In a reversed list, scrolling toward older history moves the offset
+  /// *up* toward maxScrollExtent (the opposite edge from a normal list).
+  /// [_loadMoreArmed] is only set true once the initial page has rendered
+  /// (see build()), so the transient settle of the first frame — which starts
+  /// at offset 0 by construction, not via any animation that could pass
+  /// through the trigger threshold — can never itself fire a chain of
+  /// loadMore() calls.
   void _maybeLoadMore() {
-    if (!_scrollController.hasClients) return;
-    if (_scrollController.position.pixels <= 40) {
+    if (!_loadMoreArmed || !_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.maxScrollExtent - position.pixels <= 40) {
       ref.read(chatThreadProvider(widget.conversationId).notifier).loadMore();
     }
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scrollController.hasClients) return;
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-      );
-    });
   }
 
   Future<void> _pickImages() async {
@@ -170,9 +185,17 @@ class _ConversationThreadScreenState
   @override
   Widget build(BuildContext context) {
     ref.listen(chatThreadProvider(widget.conversationId), (previous, next) {
-      final grew = previous == null ||
-          next.messages.length != previous.messages.length;
-      if (grew) _scrollToBottom();
+      // Arm the top-of-history (loadMore) trigger only once the thread has
+      // rendered its first page — never while messages is still empty, so
+      // the initial frame can't itself chain-fetch. A programmatic loadMore
+      // prepend changes hasMore/isLoadingMore but never the newest message,
+      // so gating on the last message id changing here would work equally
+      // well; arming once on first non-empty state is simpler and just as
+      // safe since _maybeLoadMore's own threshold check does the real work
+      // on every subsequent scroll notification.
+      if (!_loadMoreArmed && next.messages.isNotEmpty) {
+        _loadMoreArmed = true;
+      }
     });
 
     final state = ref.watch(chatThreadProvider(widget.conversationId));
@@ -199,17 +222,23 @@ class _ConversationThreadScreenState
                   ? const Center(child: CupertinoActivityIndicator())
                   : ListView.builder(
                       controller: _scrollController,
+                      reverse: true,
                       padding: const EdgeInsets.all(12),
                       itemCount:
                           state.messages.length + (state.isLoadingMore ? 1 : 0),
                       itemBuilder: (_, i) {
-                        if (state.isLoadingMore && i == 0) {
+                        // Reversed rendering: item 0 is the newest message
+                        // (bottom of the viewport); the loading-more spinner
+                        // for older history sits at the opposite end (the
+                        // highest index), not index 0.
+                        if (state.isLoadingMore &&
+                            i == state.messages.length) {
                           return const Padding(
                             padding: EdgeInsets.all(8),
                             child: Center(child: CupertinoActivityIndicator()),
                           );
                         }
-                        final idx = state.isLoadingMore ? i - 1 : i;
+                        final idx = state.messages.length - 1 - i;
                         final message = state.messages[idx];
                         final isLast = idx == state.messages.length - 1;
                         return _MessageBubble(

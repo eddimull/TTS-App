@@ -258,8 +258,8 @@ class ApiEndpoints {
       '/api/mobile/events/$key/conversation';
   static String mobileRehearsalConversation(int rehearsalId) =>
       '/api/mobile/rehearsals/$rehearsalId/conversation';
-  static String mobileBookingConversation(int bookingId) =>
-      '/api/mobile/bookings/$bookingId/conversation';
+  static String mobileBookingConversation(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/conversation';
   static String mobileMessageAttachment(int messageId, int attachmentId) =>
       '/api/mobile/messages/$messageId/attachments/$attachmentId';
 }

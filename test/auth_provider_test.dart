@@ -13,6 +13,7 @@ import 'package:tts_bandmate/features/bookings/data/bookings_cache_storage.dart'
 import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
 import 'package:tts_bandmate/features/chat/providers/conversations_provider.dart';
 import 'package:tts_bandmate/features/chat/providers/topic_thread_provider.dart';
+import 'package:tts_bandmate/features/notifications/providers/notifications_provider.dart';
 
 import 'helpers/test_harness.dart' show StubAdapter, json;
 
@@ -51,6 +52,28 @@ class FakeSecureStorage extends SecureStorage {
 
   @override
   Future<void> clear() async => _map.clear();
+}
+
+// ── Fakes ─────────────────────────────────────────────────────────────────────
+
+/// Records calls instead of touching FCM/plugins — swaps in for
+/// [pushRegistrarProvider] to prove a call site invokes push registration
+/// without needing the real platform-channel-backed [PushRegistrar].
+class RecordingPushRegistrar extends PushRegistrar {
+  RecordingPushRegistrar(super.ref);
+
+  int registerCalls = 0;
+  int deregisterCalls = 0;
+
+  @override
+  Future<void> registerCurrentToken() async {
+    registerCalls++;
+  }
+
+  @override
+  Future<void> deregisterCurrentToken() async {
+    deregisterCalls++;
+  }
 }
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -108,6 +131,53 @@ void main() {
 
         expect(state, isA<AuthUnauthenticated>());
         expect((state as AuthUnauthenticated).errorMessage, isNull);
+      },
+    );
+
+    test(
+      'test_build_registers_push_token_when_session_restore_succeeds',
+      () async {
+        // Regression test for the bug where checkAuth's success path (the
+        // build() branch a restarted app takes when a valid token is already
+        // in storage) never called _registerPushToken — so a restored
+        // session had no foreground onMessage listener, no token-refresh
+        // watch, and no tap routing, unlike the login/social/register paths.
+        final storage = FakeSecureStorage();
+        await storage.writeToken('valid-token');
+
+        final apiClient = ApiClient(storage: storage);
+        apiClient.dio.httpClientAdapter = StubAdapter((options) async {
+          expect(options.path, '/api/mobile/auth/me');
+          return json(200, {
+            'user': {'id': 1, 'name': 'Eddie', 'email': 'eddie@example.com'},
+            'bands': <dynamic>[],
+          });
+        });
+
+        late final RecordingPushRegistrar recordingRegistrar;
+
+        final container = ProviderContainer(
+          overrides: [
+            secureStorageProvider.overrideWithValue(storage),
+            apiClientProvider.overrideWithValue(apiClient),
+            routeStorageProvider.overrideWith((ref) async => fakeRouteStorage),
+            bookingsCacheStorageProvider.overrideWithValue(fakeBookingsCache),
+            pushRegistrarProvider.overrideWith(
+              (ref) => recordingRegistrar = RecordingPushRegistrar(ref),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final state = await container.read(authProvider.future);
+
+        expect(state, isA<AuthAuthenticated>());
+        // _registerPushToken() is fired via `unawaited`, so give the
+        // microtask queue a turn to run it before asserting.
+        await Future<void>.delayed(Duration.zero);
+        expect(recordingRegistrar.registerCalls, 1,
+            reason: 'session restore (checkAuth success path) must register '
+                'push exactly like login/social/register do');
       },
     );
 

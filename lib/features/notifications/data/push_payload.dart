@@ -1,4 +1,5 @@
 import 'notification_channels.dart';
+import 'push_route.dart';
 
 /// The kind of push the backend sent.
 enum PushType { reminder8h, departure, rehearsalCancelled, rehearsalRestored, chatMessage, unknown }
@@ -99,6 +100,7 @@ class BackgroundNotificationSpec {
     required this.channelId,
     required this.channelName,
     required this.channelDescription,
+    this.route,
   });
 
   final int id;
@@ -107,6 +109,12 @@ class BackgroundNotificationSpec {
   final String channelId;
   final String channelName;
   final String channelDescription;
+
+  /// In-app route to open when the user taps this notification, or null when
+  /// the type has no destination (see [routeForPushData]). Passed through as
+  /// the flutter_local_notifications payload so a tap can deep-link even
+  /// though this spec was built inside FCM's isolated background handler.
+  final String? route;
 }
 
 /// Pure mapper: an incoming FCM background-isolate data payload → what to
@@ -130,5 +138,6 @@ BackgroundNotificationSpec? buildBackgroundNotification(
     channelId: BandUpdatesChannel.id,
     channelName: BandUpdatesChannel.name,
     channelDescription: BandUpdatesChannel.description,
+    route: routeForPushData(data),
   );
 }

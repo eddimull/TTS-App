@@ -63,6 +63,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     try {
       final result = await _repository.getMe();
       await storage.writeUser(result.user.toJsonString());
+      unawaited(_registerPushToken());
       return AuthAuthenticated(user: result.user, bands: result.bands);
     } catch (_) {
       // Token may be expired or server unavailable — clear local token and

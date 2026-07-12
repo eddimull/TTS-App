@@ -9,6 +9,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'app.dart';
 import 'core/config/router.dart';
+import 'core/network/dev_http_overrides.dart';
 import 'core/storage/route_storage.dart';
 import 'features/bookings/data/bookings_cache_storage.dart';
 import 'features/media/data/upload_queue_storage.dart';
@@ -102,6 +103,7 @@ Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
         ),
         iOS: const DarwinNotificationDetails(),
       ),
+      payload: spec.route,
     );
   } catch (e, _) {
     debugPrint('backgroundPush: failed to show chat notification: $e');
@@ -110,6 +112,11 @@ Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Debug-only, loopback-only: lets CachedNetworkImage's own HttpClient (used
+  // by AuthThumbnail/BandAvatar) accept the local mkcert dev server's
+  // self-signed cert, matching the bypass dev_tls_io.dart already gives Dio.
+  // See core/network/dev_http_overrides.dart.
+  installDevHttpOverrides();
   tzdata.initializeTimeZones();
   // Set tz.local to the device's real zone so zoned notification scheduling
   // computes correct fire times. Without this, tz.local stays UTC. Best-effort:

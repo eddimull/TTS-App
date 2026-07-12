@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 
+import 'loopback_host.dart';
+
 /// Native (non-web) impl. In DEBUG builds only, accept self-signed /
 /// untrusted certs **for loopback hosts only**, so the app can talk to a
 /// local HTTPS dev server (e.g. an mkcert cert the device doesn't trust)
@@ -14,14 +16,9 @@ void configureDevTls(Dio dio) {
   dio.httpClientAdapter = IOHttpClientAdapter(
     createHttpClient: () {
       final client = HttpClient();
-      client.badCertificateCallback = (cert, host, port) => _isLoopback(host);
+      client.badCertificateCallback =
+          (cert, host, port) => isLoopbackHost(host);
       return client;
     },
   );
-}
-
-bool _isLoopback(String host) {
-  if (host == 'localhost') return true;
-  final addr = InternetAddress.tryParse(host);
-  return addr != null && addr.isLoopback;
 }

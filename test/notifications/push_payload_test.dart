@@ -146,6 +146,26 @@ void main() {
       expect(spec!.title, 'TTS Bandmate');
     });
 
+    test(
+        'chat_message spec carries the conversation route so a tap on the '
+        'background-rendered notification can deep-link', () {
+      final spec = buildBackgroundNotification({
+        'type': 'chat_message',
+        'conversationId': '5',
+        'body': 'hi',
+      });
+      expect(spec!.route, '/conversations/5');
+    });
+
+    test('a chat_message with no parseable conversationId has a null route',
+        () {
+      final spec = buildBackgroundNotification({
+        'type': 'chat_message',
+        'body': 'hi',
+      });
+      expect(spec!.route, isNull);
+    });
+
     test('non-chat types return null (out of scope for background render)', () {
       expect(
         buildBackgroundNotification({

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
+import 'package:tts_bandmate/features/chat/providers/active_chat_conversation_provider.dart';
 import 'package:tts_bandmate/features/chat/providers/chat_thread_provider.dart';
 import 'package:tts_bandmate/features/chat/screens/conversation_thread_screen.dart';
 import 'package:dio/dio.dart';
@@ -254,6 +255,58 @@ void main() {
     expect(find.text('brand new message'), findsOneWidget,
         reason: 'a near-bottom reader must see a new append immediately, '
             'with no explicit scroll-to-bottom needed');
+  });
+
+  testWidgets(
+      'opening the thread marks it active, and closing it clears the marker',
+      (tester) async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((_) async => json(200, {
+            'conversation': {'id': 5, 'type': 'dm', 'title': 'Sam'},
+            'messages': <dynamic>[],
+            'participants': <dynamic>[],
+            'channel': 'private-conversation.5',
+            'has_more': false,
+          }));
+
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatChannelBinderProvider.overrideWithValue((channel, onEvent) => null),
+    ]);
+    addTearDown(container.dispose);
+
+    expect(container.read(activeChatConversationProvider), isNull);
+
+    // A ValueKey keyed on conversationId forces the framework to treat a
+    // change of conversation as a brand new widget (new State, fresh
+    // initState/dispose) rather than reusing the existing State object —
+    // matching how go_router pushes a distinct route per conversation id.
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const CupertinoApp(
+        home: ConversationThreadScreen(
+          key: ValueKey('thread-5'),
+          conversationId: 5,
+          title: 'Sam',
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(container.read(activeChatConversationProvider), 5,
+        reason: 'opening the thread must mark it as the active conversation');
+
+    // Swap in an unrelated widget so the thread screen's State is disposed
+    // (its dispose() reads/clears the provider before super.dispose()).
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const CupertinoApp(home: CupertinoPageScaffold(child: SizedBox())),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(container.read(activeChatConversationProvider), isNull,
+        reason: 'closing the thread must clear the active-conversation '
+            'marker so a background push for it is no longer suppressed');
   });
 
   testWidgets('a failed send restores the typed text so it is not lost',

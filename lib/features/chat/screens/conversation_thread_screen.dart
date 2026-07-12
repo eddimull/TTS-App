@@ -10,6 +10,7 @@ import '../../../shared/widgets/error_view.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../data/chat_repository.dart';
 import '../data/models/chat_message.dart';
+import '../providers/active_chat_conversation_provider.dart';
 import '../providers/chat_thread_provider.dart';
 
 /// A picked-but-not-yet-sent image. Bytes are read once at pick time (not
@@ -60,17 +61,39 @@ class _ConversationThreadScreenState
   // needed at all for the initial open.
   bool _loadMoreArmed = false;
 
+  // Captured in initState (while `ref` is still safe to read) so dispose()
+  // can clear the marker without touching `ref` after the widget has been
+  // unmounted — Riverpod disallows `ref.read` inside State.dispose() because
+  // BuildContext (which Ref relies on) is unsafe once deactivated.
+  late final ActiveChatConversationNotifier _activeConversationNotifier;
+
   @override
   void initState() {
     super.initState();
+    _activeConversationNotifier =
+        ref.read(activeChatConversationProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       ref.read(chatThreadProvider(widget.conversationId).notifier).load();
+      // Mark this thread as the one on screen so PushService can suppress a
+      // local notification for messages that arrive in it while it's open.
+      // Deferred to post-frame to avoid modifying a provider during build.
+      _activeConversationNotifier.open(widget.conversationId);
     });
     _scrollController.addListener(_maybeLoadMore);
   }
 
   @override
   void dispose() {
+    // Only clears the "active thread" marker if it still points at this
+    // screen's own id — if another thread was pushed on top and became
+    // active first, this dispose (running as we're popped from underneath)
+    // must not clobber the newer screen's value. Deferred to a microtask:
+    // Riverpod disallows modifying a provider synchronously while the widget
+    // tree is still finalizing (which includes the dispose pass itself).
+    final notifier = _activeConversationNotifier;
+    final conversationId = widget.conversationId;
+    Future.microtask(() => notifier.closeIfCurrent(conversationId));
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();

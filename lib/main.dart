@@ -71,34 +71,41 @@ Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
   final spec = buildBackgroundNotification(message.data);
   if (spec == null) return;
 
-  final local = FlutterLocalNotificationsPlugin();
-  await local.initialize(const InitializationSettings(
-    android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-    iOS: DarwinInitializationSettings(),
-  ));
-  await local
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(AndroidNotificationChannel(
-        spec.channelId,
-        spec.channelName,
-        description: spec.channelDescription,
-        importance: Importance.high,
-      ));
-  await local.show(
-    spec.id,
-    spec.title,
-    spec.body,
-    NotificationDetails(
-      android: AndroidNotificationDetails(
-        spec.channelId,
-        spec.channelName,
-        importance: Importance.high,
-        priority: Priority.high,
+  // Best-effort, like the timezone setup below: a plugin failure here must
+  // log and drop the notification, never propagate out of the FCM background
+  // isolate's entry point.
+  try {
+    final local = FlutterLocalNotificationsPlugin();
+    await local.initialize(const InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      iOS: DarwinInitializationSettings(),
+    ));
+    await local
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(AndroidNotificationChannel(
+          spec.channelId,
+          spec.channelName,
+          description: spec.channelDescription,
+          importance: Importance.high,
+        ));
+    await local.show(
+      spec.id,
+      spec.title,
+      spec.body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          spec.channelId,
+          spec.channelName,
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: const DarwinNotificationDetails(),
       ),
-      iOS: const DarwinNotificationDetails(),
-    ),
-  );
+    );
+  } catch (e, _) {
+    debugPrint('backgroundPush: failed to show chat notification: $e');
+  }
 }
 
 Future<void> main() async {

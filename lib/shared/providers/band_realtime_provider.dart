@@ -12,6 +12,8 @@ import '../../features/bookings/data/bookings_cache_storage.dart';
 import '../../features/bookings/providers/booking_payout_provider.dart';
 import '../../features/bookings/providers/bookings_provider.dart';
 import '../../features/bookings/providers/bookings_window_provider.dart';
+import '../../features/chat/providers/conversations_provider.dart';
+import '../../features/chat/widgets/comments_section.dart';
 import '../../features/dashboard/providers/dashboard_provider.dart';
 import '../../features/library/providers/library_provider.dart';
 import '../../features/media/providers/media_provider.dart';
@@ -98,6 +100,8 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
     case 'charts':
     case 'chart_uploads':
       return [chartsProvider, libraryProvider, chartDetailProvider];
+    case 'message':
+      return [chatConversationsProvider, topicThreadProvider];
     default:
       return const [];
   }
@@ -138,6 +142,7 @@ const List<String> _allRegisteredModels = [
   'song',
   'charts',
   'chart_uploads',
+  'message',
 ];
 
 /// Subscribes to the selected band's realtime channel and turns thin

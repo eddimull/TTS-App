@@ -8,6 +8,8 @@ import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
 import 'package:tts_bandmate/features/chat/data/models/chat_message.dart';
 import 'package:tts_bandmate/features/chat/data/models/chat_participant.dart';
 import 'package:tts_bandmate/features/chat/providers/chat_thread_provider.dart';
+import 'package:tts_bandmate/features/chat/providers/conversations_provider.dart';
+import 'package:tts_bandmate/features/chat/providers/topic_thread_provider.dart';
 
 import '../../helpers/test_harness.dart';
 
@@ -101,6 +103,59 @@ void main() {
     };
     capturedHandler!('message.created', echo);
     expect(c.read(chatThreadProvider(5)).messages.length, 1);
+  });
+
+  test('markRead invalidates both chatConversationsProvider and '
+      'topicThreadProvider so a CommentsSection badge on a detail screen '
+      'clears once the thread has been read', () async {
+    var conversationsCalls = 0;
+    var topicCalls = 0;
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((options) async {
+        if (options.path == '/api/mobile/conversations') {
+          conversationsCalls++;
+          return json(200, {'conversations': <dynamic>[]});
+        }
+        if (options.path.endsWith('/conversation')) {
+          topicCalls++;
+          return json(200, threadJson);
+        }
+        return json(200, threadJson);
+      });
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatTypingTtlProvider.overrideWithValue(Duration.zero),
+      chatChannelBinderProvider.overrideWithValue((channel, onEvent) {
+        capturedHandler = onEvent;
+        return null; // test seam: no live subscription, nothing to unbind
+      }),
+    ]);
+    addTearDown(container.dispose);
+
+    const topic = TopicRef(kind: 'events', idOrKey: 'abc123');
+    // Seed the topicThreadProvider family member and keep it alive with a
+    // listener, mirroring how a CommentsSection on a detail screen watches it.
+    final topicSub = container.listen(topicThreadProvider(topic), (_, __) {});
+    await container.read(topicThreadProvider(topic).future);
+    expect(topicCalls, 1);
+
+    final convSub =
+        container.listen(chatConversationsProvider, (_, __) {});
+    await container.read(chatConversationsProvider.future);
+    expect(conversationsCalls, 1);
+
+    await container.read(chatThreadProvider(5).notifier).load();
+
+    // load() calls markRead() internally once messages are loaded, which
+    // should invalidate both families — proven by each refetching once their
+    // futures are awaited again.
+    await container.read(chatConversationsProvider.future);
+    await container.read(topicThreadProvider(topic).future);
+    expect(conversationsCalls, 2);
+    expect(topicCalls, 2);
+
+    topicSub.close();
+    convSub.close();
   });
 
   test('conversation.read updates participant lastReadAt', () async {

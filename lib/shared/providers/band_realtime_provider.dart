@@ -13,7 +13,7 @@ import '../../features/bookings/providers/booking_payout_provider.dart';
 import '../../features/bookings/providers/bookings_provider.dart';
 import '../../features/bookings/providers/bookings_window_provider.dart';
 import '../../features/chat/providers/conversations_provider.dart';
-import '../../features/chat/widgets/comments_section.dart';
+import '../../features/chat/providers/topic_thread_provider.dart';
 import '../../features/dashboard/providers/dashboard_provider.dart';
 import '../../features/library/providers/library_provider.dart';
 import '../../features/media/providers/media_provider.dart';

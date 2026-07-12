@@ -10,6 +10,7 @@ import '../data/models/chat_message.dart';
 import '../data/models/chat_participant.dart';
 import '../data/models/conversation.dart';
 import 'conversations_provider.dart';
+import 'topic_thread_provider.dart';
 
 /// Tears down a live channel subscription previously set up by a
 /// [ChatChannelBinder].
@@ -227,7 +228,9 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
   }
 
   /// Marks the newest message read and refreshes the conversation list so
-  /// unread badges drop. Best-effort.
+  /// unread badges drop, plus every topicThreadProvider family member so a
+  /// CommentsSection embedded on a detail screen (event/rehearsal/booking)
+  /// clears its stale unread badge for this conversation too. Best-effort.
   Future<void> markRead() async {
     final last = state.messages.isNotEmpty ? state.messages.last : null;
     if (last == null) return;
@@ -235,6 +238,7 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
       await _repo.markRead(_conversationId, last.id);
       if (!ref.mounted) return;
       ref.invalidate(chatConversationsProvider);
+      ref.invalidate(topicThreadProvider);
     } catch (e) {
       debugPrint('chatThread: markRead failed: $e');
     }

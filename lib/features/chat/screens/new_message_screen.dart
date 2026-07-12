@@ -6,11 +6,7 @@ import 'package:tts_bandmate/core/theme/context_colors.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../data/chat_repository.dart';
 import '../data/models/chat_contact.dart';
-
-/// Contacts you can DM (fetched fresh each open; small list).
-final chatContactsProvider = FutureProvider.autoDispose<List<ChatContact>>(
-  (ref) => ref.watch(chatRepositoryProvider).contacts(),
-);
+import '../providers/chat_contacts_provider.dart';
 
 class NewMessageScreen extends ConsumerStatefulWidget {
   const NewMessageScreen({super.key});

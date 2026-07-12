@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/core_providers.dart';
 import '../../../core/storage/route_storage.dart';
 import '../../bookings/data/bookings_cache_storage.dart';
+import '../../chat/providers/conversations_provider.dart';
+import '../../chat/providers/topic_thread_provider.dart';
 import '../data/auth_repository.dart';
 import '../data/models/auth_user.dart';
 import '../data/models/band_summary.dart';
@@ -61,6 +63,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     try {
       final result = await _repository.getMe();
       await storage.writeUser(result.user.toJsonString());
+      unawaited(_registerPushToken());
       return AuthAuthenticated(user: result.user, bands: result.bands);
     } catch (_) {
       // Token may be expired or server unavailable — clear local token and
@@ -211,6 +214,17 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     // device never sees the previous user's bookings.
     try {
       ref.read(bookingsCacheStorageProvider).clear();
+    } catch (_) {}
+
+    // Drop the in-memory chat caches too — chatConversationsProvider and
+    // every topicThreadProvider family member are keyed independently of the
+    // authed user, so without this a different user signing in on this
+    // device would see the previous user's DM list / comment threads
+    // warm-painted from the still-cached provider state until the next
+    // realtime signal happened to invalidate it.
+    try {
+      ref.invalidate(chatConversationsProvider);
+      ref.invalidate(topicThreadProvider);
     } catch (_) {}
 
     state = const AsyncValue.data(AuthUnauthenticated());

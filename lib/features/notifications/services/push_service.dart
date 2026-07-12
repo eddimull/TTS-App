@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 
+import '../data/notification_channels.dart';
 import '../data/notification_text.dart';
 import '../data/push_payload.dart';
 import '../data/push_route.dart';
@@ -21,6 +22,18 @@ String renderBody(PushPayload p) => buildReminderBody(
       showTime: p.showTime,
     );
 
+/// True when a chat-message push should be suppressed because its thread is
+/// already open on screen (the live channel already shows the message, so a
+/// local notification would be redundant). Pure and side-effect free so the
+/// suppression rule can be unit-tested without a real FCM/plugin stack.
+bool shouldSuppressChatPush(
+  PushPayload payload,
+  int? Function()? currentOpenConversation,
+) =>
+    payload.type == PushType.chatMessage &&
+    payload.conversationId != null &&
+    currentOpenConversation?.call()?.toString() == payload.conversationId;
+
 /// Thin wrapper over FCM + local notifications. Logic-free where possible.
 class PushService implements LocalScheduler {
   PushService(this._local);
@@ -31,6 +44,22 @@ class PushService implements LocalScheduler {
   /// provider layer can run location enrichment. Set during app init.
   Future<void> Function(PushPayload payload)? onDeparturePush;
 
+  /// Returns the conversation id of the chat thread currently on screen, or
+  /// null when none is open. Set by the provider layer (backed by
+  /// `activeChatConversationProvider`); used to suppress a chat notification
+  /// when its thread is already open. Route-string matching does not work
+  /// here because the thread screen is reached via an imperative
+  /// `context.push`, which is not reflected in the router's
+  /// `currentConfiguration`.
+  int? Function()? currentOpenConversation;
+
+  /// Invoked when the user taps a locally-rendered notification (foreground
+  /// tap callback, or a cold-start launch resolved in [init] via
+  /// `getNotificationAppLaunchDetails`) that carries a route payload. Set by
+  /// the provider layer to the same router.go used by [listenTaps] for
+  /// OS-rendered (hybrid) pushes.
+  void Function(String route)? onLocalTap;
+
   static const _channel = AndroidNotificationChannel(
     'event_reminders',
     'Event Reminders',
@@ -39,21 +68,30 @@ class PushService implements LocalScheduler {
   );
 
   static const _bandUpdatesChannel = AndroidNotificationChannel(
-    'band_updates',
-    'Band Updates',
-    description: 'Changes to your band\'s schedule and activity',
+    BandUpdatesChannel.id,
+    BandUpdatesChannel.name,
+    description: BandUpdatesChannel.description,
     importance: Importance.high,
   );
 
   /// Initialize local-notification plugin + Android channel. Safe to call on
   /// unsupported platforms (no-op).
+  ///
+  /// Also wires tap handling for locally-rendered (data-only chat) pushes:
+  /// - Foreground/running-app taps arrive via `onDidReceiveNotificationResponse`.
+  /// - Terminated/cold-start taps are resolved here via
+  ///   `getNotificationAppLaunchDetails`, mirroring the `getInitialMessage`
+  ///   idiom [listenTaps] uses for OS-rendered pushes.
   Future<void> init() async {
     if (!_pushSupported) return;
     const initSettings = InitializationSettings(
       android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       iOS: DarwinInitializationSettings(),
     );
-    await _local.initialize(initSettings);
+    await _local.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: handleLocalNotificationResponse,
+    );
     await _local
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
@@ -62,6 +100,25 @@ class PushService implements LocalScheduler {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_bandUpdatesChannel);
+
+    final launchDetails = await _local.getNotificationAppLaunchDetails();
+    final launchPayload = launchDetails?.notificationResponse?.payload;
+    if (launchDetails?.didNotificationLaunchApp == true &&
+        launchPayload != null &&
+        launchPayload.isNotEmpty) {
+      onLocalTap?.call(launchPayload);
+    }
+  }
+
+  /// Tap callback for locally-rendered notifications while the app process is
+  /// alive (foreground or backgrounded-but-not-terminated). Public + static
+  /// signature so it can be unit-tested by constructing a
+  /// [NotificationResponse] directly, without going through the plugin.
+  void handleLocalNotificationResponse(NotificationResponse response) {
+    final route = response.payload;
+    if (route != null && route.isNotEmpty) {
+      onLocalTap?.call(route);
+    }
   }
 
   /// Request notification permission from the OS. No-op on unsupported.
@@ -118,6 +175,9 @@ class PushService implements LocalScheduler {
     // `notification` block and are rendered locally below.
     if (message.notification != null) return;
     final payload = PushPayload.fromData(message.data);
+    if (shouldSuppressChatPush(payload, currentOpenConversation)) {
+      return; // thread is open — the live channel already shows the message
+    }
     if (payload.type == PushType.departure) {
       final cb = onDeparturePush;
       if (cb != null) {
@@ -140,8 +200,8 @@ class PushService implements LocalScheduler {
             priority: Priority.high,
           )
         : const AndroidNotificationDetails(
-            'band_updates',
-            'Band Updates',
+            BandUpdatesChannel.id,
+            BandUpdatesChannel.name,
             importance: Importance.high,
             priority: Priority.high,
           );
@@ -153,6 +213,7 @@ class PushService implements LocalScheduler {
         android: android,
         iOS: const DarwinNotificationDetails(),
       ),
+      payload: routeForPushData(message.data),
     );
   }
 

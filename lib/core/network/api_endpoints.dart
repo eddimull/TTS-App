@@ -242,4 +242,24 @@ class ApiEndpoints {
 
   static String mobileRehearsalPlannerSession(int bandId, int sessionId) =>
       '/api/mobile/bands/$bandId/rehearsal-planner/sessions/$sessionId';
+
+  // Chat & comments
+  static const String mobileConversations = '/api/mobile/conversations';
+  static const String mobileConversationsDm = '/api/mobile/conversations/dm';
+  static const String mobileChatContacts = '/api/mobile/chat/contacts';
+  static String mobileConversationMessages(int conversationId) =>
+      '/api/mobile/conversations/$conversationId/messages';
+  static String mobileMessage(int messageId) => '/api/mobile/messages/$messageId';
+  static String mobileConversationRead(int conversationId) =>
+      '/api/mobile/conversations/$conversationId/read';
+  static String mobileConversationTyping(int conversationId) =>
+      '/api/mobile/conversations/$conversationId/typing';
+  static String mobileEventConversation(String key) =>
+      '/api/mobile/events/$key/conversation';
+  static String mobileRehearsalConversation(int rehearsalId) =>
+      '/api/mobile/rehearsals/$rehearsalId/conversation';
+  static String mobileBookingConversation(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/conversation';
+  static String mobileMessageAttachment(int messageId, int attachmentId) =>
+      '/api/mobile/messages/$messageId/attachments/$attachmentId';
 }

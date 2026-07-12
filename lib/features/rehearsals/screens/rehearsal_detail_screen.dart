@@ -10,6 +10,7 @@ import '../providers/rehearsals_provider.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
+import '../../chat/widgets/comments_section.dart';
 
 class RehearsalDetailScreen extends ConsumerWidget {
   const RehearsalDetailScreen({
@@ -482,6 +483,7 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
                       ),
               ),
             ],
+            CommentsSection(kind: 'rehearsals', idOrKey: '${rehearsal.id}'),
             const SizedBox(height: 32),
           ],
         ),

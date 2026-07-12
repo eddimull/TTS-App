@@ -13,6 +13,7 @@ import '../data/routes_client.dart';
 import '../services/enrichment_service.dart';
 import '../services/location_service.dart';
 import '../services/push_service.dart';
+import '../../chat/providers/active_chat_conversation_provider.dart';
 import '../../events/providers/events_provider.dart';
 import '../../events/data/events_repository.dart';
 import '../../../shared/providers/selected_band_provider.dart';
@@ -45,6 +46,15 @@ class PushRegistrar {
     final platform = _platformName();
     if (platform == null) return; // unsupported platform: no-op
     final push = _ref.read(pushServiceProvider);
+    // onLocalTap must be set BEFORE init(): init() resolves a cold-start tap
+    // via getNotificationAppLaunchDetails() and calls onLocalTap synchronously
+    // within that same call, so setting it after would silently drop a
+    // terminated-state tap's route.
+    push.onLocalTap = (route) => _ref.read(routerProvider).go(route);
+    // Set the suppression callback before attaching the foreground listener
+    // so a message arriving in that window can't render for an open thread.
+    push.currentOpenConversation =
+        () => _ref.read(activeChatConversationProvider);
     await push.init();
     await push.requestPermission();
     push.listenForeground();

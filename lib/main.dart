@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,9 +9,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'app.dart';
 import 'core/config/router.dart';
+import 'core/network/dev_http_overrides.dart';
 import 'core/storage/route_storage.dart';
 import 'features/bookings/data/bookings_cache_storage.dart';
 import 'features/media/data/upload_queue_storage.dart';
+import 'features/notifications/data/push_payload.dart';
 import 'firebase_options.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -51,16 +54,69 @@ String _resolveInitialLocation(RouteStorage rs) {
   return last;
 }
 
-/// Background/terminated push handler. Must be a top-level function.
-/// The OS renders the notification half automatically; this exists so data
-/// messages are processed and to satisfy the FCM registration requirement.
+/// Background/terminated push handler. Must be a top-level function — FCM
+/// runs it in a separate background isolate, so it cannot touch app state,
+/// Riverpod, or [PushService]'s instance state (no suppression check is
+/// needed here either: the app is backgrounded, so there's no open thread to
+/// suppress against).
+///
+/// Hybrid pushes (event reminders, band updates) carry a `notification`
+/// block and are rendered by the OS automatically. Chat pushes are
+/// data-only (see `PushPayload`/backend contract), so without this handler a
+/// backgrounded/terminated Android device shows nothing for an incoming chat
+/// message. [buildBackgroundNotification] is the isolate-safe pure mapper;
+/// this function does the minimal plugin init + show.
 @pragma('vm:entry-point')
 Future<void> _firebaseBackgroundHandler(RemoteMessage message) async {
-  // No work needed in Phase 1: the notification payload is OS-rendered.
+  if (message.notification != null) return; // OS already rendered it
+  final spec = buildBackgroundNotification(message.data);
+  if (spec == null) return;
+
+  // Best-effort, like the timezone setup below: a plugin failure here must
+  // log and drop the notification, never propagate out of the FCM background
+  // isolate's entry point.
+  try {
+    final local = FlutterLocalNotificationsPlugin();
+    await local.initialize(const InitializationSettings(
+      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      iOS: DarwinInitializationSettings(),
+    ));
+    await local
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(AndroidNotificationChannel(
+          spec.channelId,
+          spec.channelName,
+          description: spec.channelDescription,
+          importance: Importance.high,
+        ));
+    await local.show(
+      spec.id,
+      spec.title,
+      spec.body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          spec.channelId,
+          spec.channelName,
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: const DarwinNotificationDetails(),
+      ),
+      payload: spec.route,
+    );
+  } catch (e, _) {
+    debugPrint('backgroundPush: failed to show chat notification: $e');
+  }
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Debug-only, loopback-only: lets CachedNetworkImage's own HttpClient (used
+  // by AuthThumbnail/BandAvatar) accept the local mkcert dev server's
+  // self-signed cert, matching the bypass dev_tls_io.dart already gives Dio.
+  // See core/network/dev_http_overrides.dart.
+  installDevHttpOverrides();
   tzdata.initializeTimeZones();
   // Set tz.local to the device's real zone so zoned notification scheduling
   // computes correct fire times. Without this, tz.local stays UTC. Best-effort:

@@ -116,4 +116,72 @@ void main() {
       expect(a.notificationId, isNot(b.notificationId));
     });
   });
+
+  group('buildBackgroundNotification', () {
+    test('chat_message builds a spec with title, body, id, and channel', () {
+      final spec = buildBackgroundNotification({
+        'type': 'chat_message',
+        'conversationId': '5',
+        'title': 'Sam',
+        'body': 'you around?',
+      });
+      expect(spec, isNotNull);
+      expect(spec!.title, 'Sam');
+      expect(spec.body, 'you around?');
+      expect(spec.channelId, 'band_updates');
+      expect(
+        spec.id,
+        PushPayload.fromData(
+                {'type': 'chat_message', 'conversationId': '5'})
+            .notificationId,
+      );
+    });
+
+    test('chat_message with no title falls back to a generic app name', () {
+      final spec = buildBackgroundNotification({
+        'type': 'chat_message',
+        'conversationId': '5',
+        'body': 'hi',
+      });
+      expect(spec!.title, 'TTS Bandmate');
+    });
+
+    test(
+        'chat_message spec carries the conversation route so a tap on the '
+        'background-rendered notification can deep-link', () {
+      final spec = buildBackgroundNotification({
+        'type': 'chat_message',
+        'conversationId': '5',
+        'body': 'hi',
+      });
+      expect(spec!.route, '/conversations/5');
+    });
+
+    test('a chat_message with no parseable conversationId has a null route',
+        () {
+      final spec = buildBackgroundNotification({
+        'type': 'chat_message',
+        'body': 'hi',
+      });
+      expect(spec!.route, isNull);
+    });
+
+    test('non-chat types return null (out of scope for background render)', () {
+      expect(
+        buildBackgroundNotification({
+          'type': 'event_reminder_8h',
+          'eventKey': 'evt_1',
+        }),
+        isNull,
+      );
+      expect(
+        buildBackgroundNotification({
+          'type': 'rehearsal_cancelled',
+          'rehearsalId': '1',
+        }),
+        isNull,
+      );
+      expect(buildBackgroundNotification({'type': 'unknown'}), isNull);
+    });
+  });
 }

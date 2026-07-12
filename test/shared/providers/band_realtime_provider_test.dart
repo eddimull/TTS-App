@@ -9,6 +9,8 @@ import 'package:tts_bandmate/features/bookings/data/bookings_cache_storage.dart'
 import 'package:tts_bandmate/features/bookings/providers/booking_payout_provider.dart';
 import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
 import 'package:tts_bandmate/features/bookings/providers/bookings_window_provider.dart';
+import 'package:tts_bandmate/features/chat/providers/conversations_provider.dart';
+import 'package:tts_bandmate/features/chat/widgets/comments_section.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
 import 'package:tts_bandmate/features/events/providers/events_provider.dart';
 import 'package:tts_bandmate/features/library/providers/library_provider.dart';
@@ -303,5 +305,19 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(container.read(bandRealtimeProvider), isNull);
+  });
+
+  test('message signal invalidates chat conversation + topic providers', () async {
+    final c = makeContainer();
+    await activate(c);
+
+    capturedHandler!('band.data-changed',
+        {'model': 'message', 'id': 1, 'action': 'created'});
+    await Future<void>.delayed(Duration.zero);
+
+    expect(invalidated, containsAll(<ProviderOrFamily>[
+      chatConversationsProvider,
+      topicThreadProvider,
+    ]));
   });
 }

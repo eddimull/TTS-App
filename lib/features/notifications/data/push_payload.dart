@@ -1,5 +1,8 @@
+import 'notification_channels.dart';
+import 'push_route.dart';
+
 /// The kind of push the backend sent.
-enum PushType { reminder8h, departure, rehearsalCancelled, rehearsalRestored, unknown }
+enum PushType { reminder8h, departure, rehearsalCancelled, rehearsalRestored, chatMessage, unknown }
 
 /// Stable notification id for an event's "departure" slot. The push-rendered
 /// notification and the locally-scheduled enriched one MUST use this same id so
@@ -17,6 +20,8 @@ PushType _typeFromString(String? raw) {
       return PushType.rehearsalCancelled;
     case 'rehearsal_restored':
       return PushType.rehearsalRestored;
+    case 'chat_message':
+      return PushType.chatMessage;
     default:
       return PushType.unknown;
   }
@@ -34,6 +39,7 @@ class PushPayload {
     this.showTime,
     this.body,
     this.rehearsalId,
+    this.conversationId,
   });
 
   final PushType type;
@@ -48,6 +54,7 @@ class PushPayload {
   final String? showTime;
   final String? body;
   final String? rehearsalId;
+  final String? conversationId;
 
   factory PushPayload.fromData(Map<String, dynamic> data) {
     String? str(String key) {
@@ -67,15 +74,70 @@ class PushPayload {
       showTime: str('showTime'),
       body: str('body'),
       rehearsalId: str('rehearsalId'),
+      conversationId: str('conversationId'),
     );
   }
 
   /// Stable id for deduping notifications: one slot per entity+type. Departure
   /// keeps its shared-slot contract with the enrichment scheduler; everything
-  /// else hashes its best entity key (eventKey, else rehearsalId) with its type.
+  /// else hashes its best entity key (eventKey, else conversationId, else rehearsalId) with its type.
   int get notificationId {
     if (type == PushType.departure) return departureNotificationId(eventKey);
-    final entity = eventKey.isNotEmpty ? eventKey : (rehearsalId ?? '');
+    final entity = eventKey.isNotEmpty
+        ? eventKey
+        : (conversationId ?? rehearsalId ?? '');
     return Object.hash(entity, type).toUnsigned(31);
   }
+}
+
+/// Pure description of a notification to render: no platform channel types,
+/// so it can be built and unit-tested without flutter_local_notifications.
+class BackgroundNotificationSpec {
+  const BackgroundNotificationSpec({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.channelId,
+    required this.channelName,
+    required this.channelDescription,
+    this.route,
+  });
+
+  final int id;
+  final String title;
+  final String body;
+  final String channelId;
+  final String channelName;
+  final String channelDescription;
+
+  /// In-app route to open when the user taps this notification, or null when
+  /// the type has no destination (see [routeForPushData]). Passed through as
+  /// the flutter_local_notifications payload so a tap can deep-link even
+  /// though this spec was built inside FCM's isolated background handler.
+  final String? route;
+}
+
+/// Pure mapper: an incoming FCM background-isolate data payload → what to
+/// render, or null when this type has no background rendering (e.g. reminder
+/// pushes, which arrive hybrid/OS-rendered, or unknown types).
+///
+/// Scope: `chat_message` only for now — the backend sends chat pushes
+/// data-only, so without this the background isolate shows nothing on
+/// Android. Kept free of Riverpod/plugin imports so it runs safely in the
+/// separate background isolate FCM spins up for `onBackgroundMessage`.
+BackgroundNotificationSpec? buildBackgroundNotification(
+  Map<String, dynamic> data,
+) {
+  final payload = PushPayload.fromData(data);
+  if (payload.type != PushType.chatMessage) return null;
+
+  return BackgroundNotificationSpec(
+    id: payload.notificationId,
+    title: payload.title ?? 'TTS Bandmate',
+    body: payload.body ?? '',
+    channelId: BandUpdatesChannel.id,
+    channelName: BandUpdatesChannel.name,
+    channelDescription: BandUpdatesChannel.description,
+    route: routeForPushData(data),
+  );
 }

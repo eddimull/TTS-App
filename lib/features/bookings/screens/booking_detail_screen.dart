@@ -15,6 +15,7 @@ import '../widgets/booking_contract_nudge.dart';
 import '../widgets/booking_engagement_summary.dart';
 import '../widgets/booking_section_tile.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
+import '../../chat/widgets/comments_section.dart';
 
 class BookingDetailScreen extends ConsumerWidget {
   const BookingDetailScreen({
@@ -534,6 +535,12 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
                   title: 'History',
                   onTap: () => context.push(
                       '/bookings/${widget.bandId}/${widget.bookingId}/history'),
+                ),
+
+                CommentsSection(
+                  kind: 'bookings',
+                  idOrKey: '${widget.bookingId}',
+                  bandId: widget.bandId,
                 ),
 
                 const SizedBox(height: 32),

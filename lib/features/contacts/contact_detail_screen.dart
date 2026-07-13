@@ -1,9 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'contact_ref.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
+import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
 
 /// A reusable, read-only detail view for a single person.
 ///
@@ -41,7 +44,7 @@ class ContactDetailScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             // ── Contact methods ─────────────────────────────────────────────
-            if (contact.hasEmail || contact.hasPhone)
+            if (contact.hasEmail || contact.hasPhone || contact.userId != null)
               CupertinoListSection.insetGrouped(
                 header: const Text('Contact'),
                 children: [
@@ -82,6 +85,11 @@ class ContactDetailScreen extends StatelessWidget {
                       ),
                     ),
                   ],
+                  if (contact.userId != null)
+                    _BandmateMessageRow(
+                      userId: contact.userId!,
+                      title: contact.name,
+                    ),
                 ],
               ),
 
@@ -295,6 +303,66 @@ class _ActionRow extends StatelessWidget {
             )
           : const CupertinoListTileChevron(),
       onTap: onTap,
+    );
+  }
+}
+
+/// Opens (or creates) the in-app DM with this contact. Distinct copy from the
+/// "Send Message" row above it, which launches the system SMS app.
+class _BandmateMessageRow extends ConsumerStatefulWidget {
+  const _BandmateMessageRow({required this.userId, required this.title});
+  final int userId;
+  final String title;
+
+  @override
+  ConsumerState<_BandmateMessageRow> createState() =>
+      _BandmateMessageRowState();
+}
+
+class _BandmateMessageRowState extends ConsumerState<_BandmateMessageRow> {
+  bool _opening = false;
+
+  Future<void> _open() async {
+    if (_opening) return;
+    setState(() => _opening = true);
+    try {
+      final conversation =
+          await ref.read(chatRepositoryProvider).openDm(widget.userId);
+      if (!mounted) return;
+      context.push(
+        '/conversations/${conversation.id}',
+        extra: {'title': widget.title},
+      );
+    } catch (_) {
+      if (!mounted) return;
+      showCupertinoDialog<void>(
+        context: context,
+        builder: (dialogContext) => CupertinoAlertDialog(
+          title: const Text('Couldn\'t open chat'),
+          content: const Text('Check your connection and try again.'),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _opening = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = CupertinoColors.activeBlue.resolveFrom(context);
+    return CupertinoListTile(
+      leading: _opening
+          ? const CupertinoActivityIndicator(radius: 9)
+          : Icon(CupertinoIcons.chat_bubble_text, color: accent),
+      title: Text('Message in Bandmate', style: TextStyle(color: accent)),
+      trailing: const CupertinoListTileChevron(),
+      onTap: _opening ? null : _open,
     );
   }
 }

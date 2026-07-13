@@ -30,7 +30,6 @@ class _FixedDashboardNotifier extends DashboardNotifier {
 void main() {
   const bandA = BandSummary(id: 1, name: 'Alpha', isOwner: true);
 
-
   Widget host({
     required List<EventSummary> events,
     required SharedPreferences prefs,

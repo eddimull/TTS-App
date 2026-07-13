@@ -97,6 +97,12 @@ class ApiEndpoints {
   static const String mobileSearch = '/api/mobile/search';
 
   static String mobileBandSongs(int bandId) => '/api/mobile/bands/$bandId/songs';
+  static String mobileBandSong(int bandId, int songId) =>
+      '/api/mobile/bands/$bandId/songs/$songId';
+
+  /// BPM lookup passthrough (band-independent, like the web /songs/lookup).
+  static const String mobileSongsLookup = '/api/mobile/songs/lookup';
+
   static const String mobileChartsAll = '/api/mobile/charts';
   static String mobileBandCharts(int bandId) => '/api/mobile/bands/$bandId/charts';
   static String mobileBandChart(int bandId, int chartId) =>

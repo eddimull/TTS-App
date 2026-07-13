@@ -171,7 +171,7 @@ Future<void> main() async {
         retry: _retryPolicy,
         overrides: [
           routeStorageProvider.overrideWith((_) async => routeStorage),
-          hintStorageProvider.overrideWith((_) async => hintStorage),
+          hintStorageProvider.overrideWithValue(AsyncValue.data(hintStorage)),
           bookingsCacheStorageProvider.overrideWithValue(bookingsCacheStorage),
           uploadQueueStorageProvider.overrideWithValue(uploadQueueStorage),
           initialLocationProvider.overrideWithValue(initialLocation),

@@ -9,7 +9,6 @@ import 'package:tts_bandmate/features/auth/data/models/band_summary.dart';
 import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
 import 'package:tts_bandmate/features/dashboard/screens/dashboard_screen.dart';
-import 'package:tts_bandmate/features/events/data/models/event_summary.dart';
 
 class _FixedAuthNotifier extends AuthNotifier {
   _FixedAuthNotifier(this._fixed);
@@ -31,7 +30,6 @@ void main() {
   const bandA = BandSummary(id: 1, name: 'Alpha', isOwner: true);
 
   Widget host({
-    required List<EventSummary> events,
     required SharedPreferences prefs,
   }) {
     final router = GoRouter(
@@ -89,7 +87,6 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
 
     await tester.pumpWidget(host(
-      events: [],
       prefs: prefs,
     ));
     await tester.pumpAndSettle();
@@ -111,7 +108,6 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
 
     await tester.pumpWidget(host(
-      events: [],
       prefs: prefs,
     ));
     await tester.pumpAndSettle();
@@ -124,7 +120,6 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
 
     await tester.pumpWidget(host(
-      events: [],
       prefs: prefs,
     ));
     await tester.pumpAndSettle();
@@ -145,7 +140,6 @@ void main() {
     // Rebuild with a fresh provider scope but same prefs instance
     // to verify the dismissal was persisted
     await tester.pumpWidget(host(
-      events: [],
       prefs: prefs,
     ));
     await tester.pumpAndSettle();

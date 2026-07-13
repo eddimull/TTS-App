@@ -27,7 +27,7 @@ void main() {
 
   test('/more redirects to /settings and MoreScreen is gone', () {
     expect(router, contains("path: '/more'"));
-    expect(router, contains("'/settings'"));
+    expect(router, contains("redirect: (_, __) => '/settings'"));
     expect(router, isNot(contains('MoreScreen')));
     expect(File('lib/features/more/screens/more_screen.dart').existsSync(), isFalse);
   });

@@ -37,6 +37,11 @@ GoRouter _makeRouter(String initialLocation, RouteStorage rs) {
 
   void onRouteChanged() {
     final path = router.routerDelegate.currentConfiguration.uri.path;
+    // Mirrors the explicit skip in core/config/router.dart: '/messages/new'
+    // matches the '/messages' prefix but must never be persisted as a
+    // restorable route — a cold-start restore into it is a dead end (no
+    // bottom nav, no escape).
+    if (path == '/messages/new') return;
     if (!_shellPrefixes.any((p) => path.startsWith(p))) return;
     rs.writeLastRoute(path);
   }
@@ -72,6 +77,12 @@ List<RouteBase> _shellRoutes() {
           builder: (_, __) => const _Placeholder('Settings'),
         ),
       ],
+    ),
+    // Pushed over the Messages tab, outside the shell — not part of
+    // AppScaffold's tabs but still matches the '/messages' prefix.
+    GoRoute(
+      path: '/messages/new',
+      builder: (_, __) => const _Placeholder('New Message'),
     ),
   ];
 }
@@ -205,6 +216,55 @@ void main() {
           reason: 'Tapping $label must reach $expectedPath',
         );
       }
+    },
+  );
+
+  testWidgets(
+    'navigating to /messages/new does not overwrite the saved route '
+    '(regression: cold-start restore into New Message composer with no escape)',
+    (tester) async {
+      // Reproduces the trap at its actual trigger point: if '/messages/new'
+      // is ever the persisted last-route, main.dart's restore makes it the
+      // router's *initial* location on the next cold start. At that moment
+      // currentConfiguration.uri.path genuinely is '/messages/new' (unlike a
+      // live push on top of the shell, which leaves .uri.path at the
+      // underlying shell branch). Without the explicit skip in
+      // onRouteChanged, that first configuration event re-persists
+      // '/messages/new', making the trap self-reinforcing with no escape.
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final spy = SpyRouteStorage(prefs);
+
+      final router = _makeRouter('/messages/new', spy);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            routeStorageProvider.overrideWithValue(AsyncValue.data(spy)),
+          ],
+          child: CupertinoApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        router.routerDelegate.currentConfiguration.uri.path,
+        '/messages/new',
+        reason: 'Sanity check: the router really did land on the composer',
+      );
+      expect(
+        spy.savedRoutes,
+        isEmpty,
+        reason: '/messages/new must never be written to RouteStorage, even '
+            'as the initial cold-start location',
+      );
+
+      // Now navigate to a real shell tab: normal saving must still work,
+      // proving the skip is scoped to '/messages/new' only.
+      router.go('/dashboard');
+      await tester.pumpAndSettle();
+
+      expect(spy.savedRoutes.last, '/dashboard');
     },
   );
 }

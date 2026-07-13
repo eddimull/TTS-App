@@ -460,17 +460,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/account',
         builder: (_, __) => const AccountScreen(),
       ),
-      // Media — no bottom nav, pushed from More screen
+      // Media — no bottom nav, pushed from Operations screen
       GoRoute(
         path: '/media',
         builder: (_, __) => const MediaScreen(),
       ),
-      // Calendar subscription — no bottom nav, pushed from More screen
+      // Calendar subscription — no bottom nav, pushed from Settings screen
       GoRoute(
         path: '/calendar-feed',
         builder: (_, __) => const CalendarFeedScreen(),
       ),
-      // Personal stats — no bottom nav, pushed from More screen
+      // Personal stats — no bottom nav, pushed from Settings screen
       GoRoute(
         path: '/stats',
         builder: (_, __) => const UserStatsScreen(),
@@ -518,6 +518,10 @@ final routerProvider = Provider<GoRouter>((ref) {
   // initialLocationProvider — the redirect never reads RouteStorage.
   void onRouteChanged() {
     final path = router.routerDelegate.currentConfiguration.uri.path;
+    // Excluded even though it matches the '/messages' prefix: cold-start
+    // restore would otherwise boot straight into the New Message composer
+    // with no escape (see _kRestorableShellPrefixes in main.dart).
+    if (path == '/messages/new') return;
     if (!_kShellPrefixes.any((p) => path.startsWith(p))) return;
     ref.read(routeStorageProvider).value?.writeLastRoute(path);
   }

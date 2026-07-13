@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'contact_ref.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
+import 'package:tts_bandmate/shared/widgets/error_view.dart';
 
 /// A reusable, read-only detail view for a single person.
 ///
@@ -333,13 +334,13 @@ class _BandmateMessageRowState extends ConsumerState<_BandmateMessageRow> {
         '/conversations/${conversation.id}',
         extra: {'title': widget.title},
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       showCupertinoDialog<void>(
         context: context,
         builder: (dialogContext) => CupertinoAlertDialog(
           title: const Text('Couldn\'t open chat'),
-          content: const Text('Check your connection and try again.'),
+          content: Text(ErrorView.friendlyMessage(e)),
           actions: [
             CupertinoDialogAction(
               onPressed: () => Navigator.pop(dialogContext),

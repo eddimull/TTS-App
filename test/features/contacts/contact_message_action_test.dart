@@ -295,9 +295,10 @@ void main() {
         await tester.tap(find.text('Message in Bandmate'));
         await tester.pumpAndSettle();
 
-        // Error dialog is shown.
+        // Error dialog is shown, with the server's message as the body.
         expect(find.byType(CupertinoAlertDialog), findsOneWidget);
         expect(find.text('Couldn\'t open chat'), findsOneWidget);
+        expect(find.text('server error'), findsOneWidget);
 
         // No navigation happened — still on the contact route.
         expect(

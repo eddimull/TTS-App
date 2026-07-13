@@ -22,7 +22,7 @@ class SpyRouteStorage extends RouteStorage {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-const _shellPrefixes = ['/dashboard', '/search', '/bookings', '/library', '/settings'];
+const _shellPrefixes = ['/dashboard', '/search', '/messages', '/library', '/settings'];
 
 /// Build a GoRouter that mirrors production: the only side-effect on
 /// navigation is a `routerDelegate` listener that persists the active shell
@@ -48,13 +48,6 @@ GoRouter _makeRouter(String initialLocation, RouteStorage rs) {
 
 List<RouteBase> _shellRoutes() {
   return [
-    // Mirrors production: AppScaffold's tab still points at '/more' until the
-    // tab-bar itself is repointed (separate task), and '/more' redirects to
-    // '/settings' at the top level, same as the real router.
-    GoRoute(
-      path: '/more',
-      redirect: (_, __) => '/settings',
-    ),
     ShellRoute(
       builder: (context, state, child) => AppScaffold(child: child),
       routes: [
@@ -63,12 +56,12 @@ List<RouteBase> _shellRoutes() {
           builder: (_, __) => const _Placeholder('Dashboard'),
         ),
         GoRoute(
-          path: '/bookings',
-          builder: (_, __) => const _Placeholder('Bookings'),
-        ),
-        GoRoute(
           path: '/search',
           builder: (_, __) => const _Placeholder('Search'),
+        ),
+        GoRoute(
+          path: '/messages',
+          builder: (_, __) => const _Placeholder('Messages'),
         ),
         GoRoute(
           path: '/library',
@@ -103,8 +96,8 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       final spy = SpyRouteStorage(prefs);
 
-      // Start on /bookings so the initial navigation is captured.
-      final router = _makeRouter('/bookings', spy);
+      // Start on /messages so the initial navigation is captured.
+      final router = _makeRouter('/messages', spy);
 
       await tester.pumpWidget(
         ProviderScope(
@@ -116,7 +109,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(spy.savedRoutes.last, '/bookings',
+      expect(spy.savedRoutes.last, '/messages',
           reason: 'Initial shell location must be persisted');
 
       // Tap the Dashboard tab.
@@ -155,18 +148,18 @@ void main() {
       expect(router.routerDelegate.currentConfiguration.last.matchedLocation,
           '/dashboard');
 
-      // Tap the Bookings tab.
+      // Tap the Messages tab.
       final tabBar = find.byType(CupertinoTabBar);
       await tester.tap(find.descendant(
         of: tabBar,
-        matching: find.byIcon(CupertinoIcons.book),
+        matching: find.byIcon(CupertinoIcons.chat_bubble_2),
       ));
       await tester.pumpAndSettle();
 
       expect(
         router.routerDelegate.currentConfiguration.last.matchedLocation,
-        '/bookings',
-        reason: 'Tapping Bookings must navigate to /bookings on the FIRST tap',
+        '/messages',
+        reason: 'Tapping Messages must navigate to /messages on the FIRST tap',
       );
     },
   );
@@ -178,9 +171,9 @@ void main() {
       // tap because the redirect was bouncing back to the just-saved route.
       final cases = <(IconData, String, String)>[
         (CupertinoIcons.search, '/search', 'Search'),
-        (CupertinoIcons.book, '/bookings', 'Bookings'),
+        (CupertinoIcons.chat_bubble_2, '/messages', 'Messages'),
         (CupertinoIcons.music_note_list, '/library', 'Library'),
-        (CupertinoIcons.ellipsis, '/settings', 'More'),
+        (CupertinoIcons.ellipsis, '/settings', 'Settings'),
       ];
 
       for (final (icon, expectedPath, label) in cases) {

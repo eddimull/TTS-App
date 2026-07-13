@@ -522,9 +522,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/songs/:songId/edit',
-        builder: (_, state) => SongFormScreen(
-          existing: state.extra as Song,
-        ),
+        builder: (_, state) {
+          final extra = state.extra;
+          if (extra is Song) {
+            return SongFormScreen(existing: extra);
+          }
+          // Deep link / restored navigation has no Song payload — fall back
+          // to the detail screen, which loads from state and offers Edit.
+          return SongDetailScreen(
+            songId: int.parse(state.pathParameters['songId']!),
+          );
+        },
       ),
       GoRoute(
         path: '/songs/:songId',

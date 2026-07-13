@@ -202,6 +202,37 @@ void main() {
     expect(find.text('No BPM found for "Unknown Song".'), findsOneWidget);
   });
 
+  testWidgets(
+      'Lead Singer tap shows the error banner when the roster fetch fails',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          selectedBandProvider.overrideWith(_StubBand.new),
+          songsRepositoryProvider.overrideWithValue(_FakeRepo()),
+          leadSingerOptionsProvider.overrideWith(
+            (ref) => Future<List<RosterMember>>.delayed(
+              const Duration(milliseconds: 10),
+              () => throw Exception('boom'),
+            ),
+          ),
+        ],
+        child: const CupertinoApp(
+          home: SongFormScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Lead singer'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('boom'), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.exclamationmark_circle), findsOneWidget);
+    // The picker sheet never opened — the app is still on the form screen.
+    expect(find.text('New Song'), findsOneWidget);
+  });
+
   testWidgets('BPM field caps input at 3 digits', (tester) async {
     await _openForm(tester, _FakeRepo());
 

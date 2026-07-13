@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -87,6 +89,28 @@ void main() {
 
     expect(find.text('Retired Tune'), findsOneWidget);
     expect(find.text('Inactive'), findsOneWidget);
+  });
+
+  testWidgets('inactive toggle semantics label and toggled state flip',
+      (tester) async {
+    final handle = tester.ensureSemantics();
+
+    await tester.pumpWidget(_harness(_FakeRepo(_songs)));
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel('Show inactive songs'), findsOneWidget);
+    var semantics = tester.getSemantics(find.bySemanticsLabel('Show inactive songs'));
+    expect(semantics.flagsCollection.isToggled, Tristate.isFalse);
+
+    await tester.tap(find.bySemanticsLabel('Show inactive songs'));
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel('Hide inactive songs'), findsOneWidget);
+    expect(find.bySemanticsLabel('Show inactive songs'), findsNothing);
+    semantics = tester.getSemantics(find.bySemanticsLabel('Hide inactive songs'));
+    expect(semantics.flagsCollection.isToggled, Tristate.isTrue);
+
+    handle.dispose();
   });
 
   testWidgets('search filters by title and artist', (tester) async {

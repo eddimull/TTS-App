@@ -165,7 +165,14 @@ class _SongFormScreenState extends ConsumerState<SongFormScreen> {
   }
 
   Future<void> _pickLeadSinger() async {
-    final members = await ref.read(leadSingerOptionsProvider.future);
+    final List<RosterMember> members;
+    try {
+      members = await ref.read(leadSingerOptionsProvider.future);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = ErrorView.friendlyMessage(e));
+      return;
+    }
     if (!mounted) return;
     final result = await _showListPicker<RosterMember>(
       context,

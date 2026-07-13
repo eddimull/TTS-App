@@ -224,7 +224,8 @@ class _SongListScreenState extends ConsumerState<SongListScreen> {
       largeTitle: const Text('Song list'),
       trailing: Semantics(
         button: true,
-        label: 'Show inactive songs',
+        toggled: showInactive,
+        label: showInactive ? 'Hide inactive songs' : 'Show inactive songs',
         child: CupertinoButton(
           padding: EdgeInsets.zero,
           onPressed: () =>

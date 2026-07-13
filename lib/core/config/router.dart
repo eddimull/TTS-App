@@ -37,7 +37,8 @@ import '../../features/media/screens/media_screen.dart';
 import '../../features/finances/screens/finances_screen.dart';
 import '../../features/finances/payout_editor/screens/payout_configs_screen.dart';
 import '../../features/finances/payout_editor/screens/payout_flow_editor_screen.dart';
-import '../../features/more/screens/more_screen.dart';
+import '../../features/more/screens/operations_screen.dart';
+import '../../features/more/screens/settings_screen.dart';
 import '../../features/band_settings/screens/band_settings_screen.dart';
 import '../../features/personnel/screens/personnel_screen.dart';
 import '../../features/account/screens/account_screen.dart';
@@ -84,7 +85,9 @@ const _kShellPrefixes = [
   '/search',
   '/bookings',
   '/library',
-  '/more',
+  '/messages',
+  '/operations',
+  '/settings',
   '/band-settings',
   '/finances',
   '/personnel',
@@ -278,6 +281,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           inviteKey: state.pathParameters['key']!,
         ),
       ),
+      // Legacy location from pre-1.13 saved routes and muscle memory.
+      GoRoute(
+        path: '/more',
+        redirect: (_, __) => '/settings',
+      ),
       ShellRoute(
         builder: (context, state, child) => AppScaffold(child: child),
         routes: [
@@ -298,8 +306,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, __) => const LibraryScreen(),
           ),
           GoRoute(
-            path: '/more',
-            builder: (_, __) => const MoreScreen(),
+            path: '/settings',
+            builder: (_, __) => const SettingsScreen(),
+          ),
+          GoRoute(
+            path: '/operations',
+            builder: (_, __) => const OperationsScreen(),
+          ),
+          GoRoute(
+            path: '/messages',
+            builder: (_, __) => const MessagesScreen(),
           ),
           GoRoute(
             path: '/band-settings',
@@ -459,11 +475,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/stats',
         builder: (_, __) => const UserStatsScreen(),
       ),
-      // Messages — no bottom nav, pushed from More screen
-      GoRoute(
-        path: '/messages',
-        builder: (_, __) => const MessagesScreen(),
-      ),
+      // Chat threads & new-DM picker — pushed over the Messages tab
       GoRoute(
         path: '/messages/new',
         builder: (_, __) => const NewMessageScreen(),

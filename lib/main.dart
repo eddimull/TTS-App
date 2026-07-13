@@ -34,7 +34,9 @@ const _kRestorableShellPrefixes = [
   '/search',
   '/bookings',
   '/library',
-  '/more',
+  '/messages',
+  '/operations',
+  '/settings',
   '/band-settings',
   '/finances',
 ];

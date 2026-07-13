@@ -22,7 +22,7 @@ class SpyRouteStorage extends RouteStorage {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-const _shellPrefixes = ['/dashboard', '/search', '/bookings', '/library', '/more'];
+const _shellPrefixes = ['/dashboard', '/search', '/bookings', '/library', '/settings'];
 
 /// Build a GoRouter that mirrors production: the only side-effect on
 /// navigation is a `routerDelegate` listener that persists the active shell
@@ -48,6 +48,13 @@ GoRouter _makeRouter(String initialLocation, RouteStorage rs) {
 
 List<RouteBase> _shellRoutes() {
   return [
+    // Mirrors production: AppScaffold's tab still points at '/more' until the
+    // tab-bar itself is repointed (separate task), and '/more' redirects to
+    // '/settings' at the top level, same as the real router.
+    GoRoute(
+      path: '/more',
+      redirect: (_, __) => '/settings',
+    ),
     ShellRoute(
       builder: (context, state, child) => AppScaffold(child: child),
       routes: [
@@ -68,8 +75,8 @@ List<RouteBase> _shellRoutes() {
           builder: (_, __) => const _Placeholder('Library'),
         ),
         GoRoute(
-          path: '/more',
-          builder: (_, __) => const _Placeholder('More'),
+          path: '/settings',
+          builder: (_, __) => const _Placeholder('Settings'),
         ),
       ],
     ),
@@ -173,7 +180,7 @@ void main() {
         (CupertinoIcons.search, '/search', 'Search'),
         (CupertinoIcons.book, '/bookings', 'Bookings'),
         (CupertinoIcons.music_note_list, '/library', 'Library'),
-        (CupertinoIcons.ellipsis, '/more', 'More'),
+        (CupertinoIcons.ellipsis, '/settings', 'More'),
       ];
 
       for (final (icon, expectedPath, label) in cases) {

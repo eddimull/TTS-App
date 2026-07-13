@@ -105,8 +105,10 @@ class _SongFormScreenState extends ConsumerState<SongFormScreen> {
       final saved = _isEdit
           ? await ref.read(songsProvider.notifier).updateSong(draft)
           : await ref.read(songsProvider.notifier).createSong(draft);
-      if (mounted) Navigator.of(context).pop(saved);
+      if (!mounted) return;
+      Navigator.of(context).pop(saved);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isSaving = false;
         _error = ErrorView.friendlyMessage(e);
@@ -131,6 +133,7 @@ class _SongFormScreenState extends ConsumerState<SongFormScreen> {
           );
       final bpm = (result['bpm'] as num?)?.toInt();
       final key = result['song_key'] as String?;
+      if (!mounted) return;
       setState(() {
         if (bpm != null) _bpmController.text = bpm.toString();
         if (key != null &&
@@ -141,6 +144,7 @@ class _SongFormScreenState extends ConsumerState<SongFormScreen> {
         if (bpm == null) _error = 'No BPM found for "$title".';
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = ErrorView.friendlyMessage(e));
     } finally {
       if (mounted) setState(() => _isLookingUp = false);
@@ -311,6 +315,7 @@ class _SongFormScreenState extends ConsumerState<SongFormScreen> {
                                   keyboardType: TextInputType.number,
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(3),
                                   ],
                                   decoration: const BoxDecoration(),
                                 ),

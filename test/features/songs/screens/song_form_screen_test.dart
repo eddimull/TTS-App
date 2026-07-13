@@ -165,4 +165,54 @@ void main() {
 
     expect(find.text('1 / 10'), findsOneWidget);
   });
+
+  testWidgets('Look up does not overwrite an already-filled key field',
+      (tester) async {
+    final repo = _FakeRepo()
+      ..lookupResult = const {'bpm': 100, 'song_key': 'E♭m'};
+    await _openForm(tester, repo);
+
+    await tester.enterText(
+        find.widgetWithText(CupertinoTextField, 'Required'), 'Superstition');
+    await tester.enterText(
+        find.widgetWithText(CupertinoTextField, 'e.g. E♭m'), 'Cm');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Look up'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('100'), findsOneWidget);
+    expect(find.text('Cm'), findsOneWidget);
+    expect(find.text('E♭m'), findsNothing);
+  });
+
+  testWidgets('Look up failure (no BPM found) shows the error banner',
+      (tester) async {
+    final repo = _FakeRepo()
+      ..lookupResult = const {'bpm': null, 'song_key': null};
+    await _openForm(tester, repo);
+
+    await tester.enterText(
+        find.widgetWithText(CupertinoTextField, 'Required'), 'Unknown Song');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Look up'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No BPM found for "Unknown Song".'), findsOneWidget);
+  });
+
+  testWidgets('BPM field caps input at 3 digits', (tester) async {
+    await _openForm(tester, _FakeRepo());
+
+    final bpmFieldFinder = find.byWidgetPredicate((w) =>
+        w is CupertinoTextField &&
+        w.keyboardType == TextInputType.number);
+
+    await tester.enterText(bpmFieldFinder, '1234');
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<CupertinoTextField>(bpmFieldFinder);
+    expect(field.controller!.text, '123');
+  });
 }

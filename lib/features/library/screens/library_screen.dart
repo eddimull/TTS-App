@@ -100,7 +100,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final confirmed = await showCupertinoDialog<bool>(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
-        title: const Text('Delete Chart'),
+        title: const Text('Delete Sheet Music'),
         content: Text(
             'Are you sure you want to delete "${chart.title}"? This cannot be undone.'),
         actions: [
@@ -232,7 +232,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             await showCupertinoDialog<void>(
               context: context,
               builder: (ctx) => CupertinoAlertDialog(
-                title: const Text('Could not create chart'),
+                title: const Text('Could not create sheet music'),
                 content: const Text("Couldn't set up personal library."),
                 actions: [
                   CupertinoDialogAction(
@@ -317,9 +317,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                               const SliverFillRemaining(
                                 child: EmptyStateView(
                                   icon: CupertinoIcons.music_note_list,
-                                  title: 'No charts in your library',
+                                  title: 'No sheet music in your library',
                                   subtitle:
-                                      'Charts added to any of your bands will appear here.',
+                                      'Sheet music added to any of your bands will appear here.',
                                 ),
                               ),
                             ],
@@ -393,7 +393,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                                 if (filtered.isEmpty)
                                   SliverFillRemaining(
                                     child: Center(
-                                      child: Text('No matching charts',
+                                      child: Text('No matching sheet music',
                                           style: TextStyle(
                                               color: context.secondaryText)),
                                     ),
@@ -808,7 +808,7 @@ class _BottomSearchBar extends StatelessWidget {
           Semantics(
             button: true,
             enabled: onAdd != null,
-            label: 'Add chart',
+            label: 'Add sheet music',
             child: CupertinoButton(
               padding: EdgeInsets.zero,
               onPressed: onAdd,

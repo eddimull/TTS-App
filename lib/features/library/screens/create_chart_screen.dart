@@ -83,7 +83,7 @@ class _CreateChartScreenState extends ConsumerState<CreateChartScreen> {
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
-        middle: const Text('New Chart'),
+        middle: const Text('New Sheet Music'),
         leading: CupertinoButton(
           padding: EdgeInsets.zero,
           onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
@@ -456,12 +456,11 @@ Future<_LinkedSongSelection?> _showLinkedSongPicker(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Text(
                 'Linked song',
-                style:
-                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
               ),
             ),
             Expanded(
@@ -541,12 +540,11 @@ class _LinkedSongRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              SizedBox(
+              const SizedBox(
                 width: 100,
                 child: Text(
                   'Linked song',
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w400),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
                 ),
               ),
               Expanded(

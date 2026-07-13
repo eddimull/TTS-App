@@ -41,11 +41,11 @@ class ChartDetailScreen extends ConsumerWidget {
 
     return chartAsync.when(
       loading: () => const CupertinoPageScaffold(
-        navigationBar: CupertinoNavigationBar(middle: Text('Chart')),
+        navigationBar: CupertinoNavigationBar(middle: Text('Sheet Music')),
         child: Center(child: CupertinoActivityIndicator()),
       ),
       error: (e, _) => CupertinoPageScaffold(
-        navigationBar: const CupertinoNavigationBar(middle: Text('Chart')),
+        navigationBar: const CupertinoNavigationBar(middle: Text('Sheet Music')),
         child: ErrorView(
           message: ErrorView.friendlyMessage(e),
           onRetry: () => ref.invalidate(

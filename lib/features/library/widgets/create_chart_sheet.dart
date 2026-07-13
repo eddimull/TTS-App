@@ -75,7 +75,7 @@ class _CreateChartSheetState extends ConsumerState<CreateChartSheet> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                 child: Text(
-                  'Add chart to',
+                  'Add sheet music to',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,

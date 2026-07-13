@@ -49,7 +49,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                       child: CupertinoSearchTextField(
                         controller: _controller,
-                        placeholder: 'Search songs, charts, bookings...',
+                        placeholder: 'Search songs, sheet music, bookings...',
                         onChanged: (value) =>
                             ref.read(searchProvider.notifier).search(value),
                         onSuffixTap: () {
@@ -83,7 +83,7 @@ class _BrowseBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return const _CenteredHint(
       icon: CupertinoIcons.search,
-      message: 'Search songs, charts, bookings, and contacts',
+      message: 'Search songs, sheet music, bookings, and contacts',
     );
   }
 }
@@ -141,7 +141,7 @@ class _ResultsList extends StatelessWidget {
     }
 
     if (results.charts.isNotEmpty) {
-      items.add(const _SectionHeader('Charts'));
+      items.add(const _SectionHeader('Sheet music'));
       for (final ch in results.charts) {
         items.add(_ChartItem(ch));
       }

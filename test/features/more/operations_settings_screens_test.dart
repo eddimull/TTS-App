@@ -53,6 +53,7 @@ void main() {
       'Bookings',
       'Finances',
       'Rehearsals',
+      'Song list',
       'Personnel',
       'Media',
     ]) {

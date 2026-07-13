@@ -35,6 +35,7 @@ import '../../features/library/screens/create_chart_screen.dart';
 import '../../features/library/screens/library_tab_screen.dart';
 import '../../features/media/screens/media_screen.dart';
 import '../../features/songs/data/models/song.dart';
+import '../../features/songs/screens/song_detail_screen.dart';
 import '../../features/songs/screens/song_form_screen.dart';
 import '../../features/songs/screens/song_list_screen.dart';
 import '../../features/finances/screens/finances_screen.dart';
@@ -523,6 +524,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/songs/:songId/edit',
         builder: (_, state) => SongFormScreen(
           existing: state.extra as Song,
+        ),
+      ),
+      GoRoute(
+        path: '/songs/:songId',
+        builder: (_, state) => SongDetailScreen(
+          songId: int.parse(state.pathParameters['songId']!),
         ),
       ),
     ],

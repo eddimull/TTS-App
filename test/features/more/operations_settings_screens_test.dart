@@ -40,8 +40,12 @@ Widget _wrap(Widget child, {required bool owner, int bands = 2}) =>
       child: CupertinoApp(home: child),
     );
 
+// Repo idiom: one scenario per testWidgets, each with its own fresh
+// ProviderScope + overrides. Re-pumping a second tree with changed
+// overrides inside one test reuses cached provider state, so gating
+// changes never take effect.
 void main() {
-  testWidgets('Operations lists run-the-band rows; Personnel owner-gated',
+  testWidgets('Operations lists run-the-band rows for an owner',
       (tester) async {
     await tester.pumpWidget(_wrap(const OperationsScreen(), owner: true));
     await tester.pumpAndSettle();
@@ -50,19 +54,21 @@ void main() {
       'Finances',
       'Rehearsals',
       'Personnel',
-      'Media'
+      'Media',
     ]) {
       expect(find.text(label), findsOneWidget, reason: label);
     }
     expect(find.text('Messages'), findsNothing);
+  });
 
+  testWidgets('Operations hides Personnel for a non-owner', (tester) async {
     await tester.pumpWidget(_wrap(const OperationsScreen(), owner: false));
     await tester.pumpAndSettle();
     expect(find.text('Personnel'), findsNothing);
     expect(find.text('Bookings'), findsOneWidget);
   });
 
-  testWidgets('Settings lists config rows; gating for owner and band count',
+  testWidgets('Settings lists config rows for an owner with multiple bands',
       (tester) async {
     await tester.pumpWidget(_wrap(const SettingsScreen(), owner: true));
     await tester.pumpAndSettle();
@@ -75,7 +81,11 @@ void main() {
     ]) {
       expect(find.text(label), findsOneWidget, reason: label);
     }
+  });
 
+  testWidgets(
+      'Settings hides Switch Band and Band Settings for single-band non-owner',
+      (tester) async {
     await tester
         .pumpWidget(_wrap(const SettingsScreen(), owner: false, bands: 1));
     await tester.pumpAndSettle();

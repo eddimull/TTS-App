@@ -10,7 +10,7 @@ final chatConversationsProvider = FutureProvider<List<Conversation>>(
 );
 
 /// Total unread across all conversations; 0 while loading or on error.
-/// Drives the badge on the More-tab Messages tile.
+/// Drives the unread badge on the Messages tab in the bottom nav.
 final chatUnreadTotalProvider = Provider<int>((ref) {
   final list = ref.watch(chatConversationsProvider).value;
   if (list == null) return 0;

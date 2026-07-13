@@ -49,4 +49,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('3'), findsNothing);
   });
+
+  testWidgets('unread badge caps at 99+', (tester) async {
+    await tester.pumpWidget(_app(150));
+    await tester.pumpAndSettle();
+    expect(find.text('99+'), findsOneWidget);
+    expect(find.text('150'), findsNothing);
+  });
 }

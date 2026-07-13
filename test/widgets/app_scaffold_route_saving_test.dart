@@ -76,6 +76,17 @@ List<RouteBase> _shellRoutes() {
           path: '/settings',
           builder: (_, __) => const _Placeholder('Settings'),
         ),
+        // Shell children that are NOT tab destinations — mirrors production
+        // (lib/core/config/router.dart keeps these inside the ShellRoute so
+        // they render with the tab bar and stay restorable).
+        GoRoute(
+          path: '/bookings',
+          builder: (_, __) => const _Placeholder('Bookings'),
+        ),
+        GoRoute(
+          path: '/operations',
+          builder: (_, __) => const _Placeholder('Operations'),
+        ),
       ],
     ),
     // Pushed over the Messages tab, outside the shell — not part of

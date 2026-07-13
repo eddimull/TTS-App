@@ -551,15 +551,16 @@ class _BookingsMovedHintState extends ConsumerState<_BookingsMovedHint> {
                 style: TextStyle(fontSize: 13, color: context.primaryText),
               ),
             ),
-            GestureDetector(
-              onTap: () {
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(34, 34),
+              onPressed: () {
                 setState(() => _dismissedNow = true);
                 storage.dismissBookingsMoved();
               },
-              behavior: HitTestBehavior.opaque,
-              child: SizedBox(
-                width: 34,
-                height: 34,
+              child: Semantics(
+                label: 'Dismiss',
+                button: true,
                 child: Icon(CupertinoIcons.xmark,
                     size: 16, color: context.secondaryText),
               ),

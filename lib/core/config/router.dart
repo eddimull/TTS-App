@@ -514,7 +514,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // parameter to prevent GoRouter from treating "new" as a song ID.
       GoRoute(
         path: '/songs',
-        builder: (_, __) => const SongListScreen(),
+        builder: (_, __) => const SongListScreen(standalone: true),
       ),
       GoRoute(
         path: '/songs/new',

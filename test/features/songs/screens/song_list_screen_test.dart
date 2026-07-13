@@ -45,9 +45,10 @@ class _FakeRepo implements SongsRepository {
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }
 
-Widget _harness(_FakeRepo repo, {bool owner = true}) {
+Widget _harness(_FakeRepo repo, {bool owner = true, bool standalone = false}) {
   final router = GoRouter(routes: [
-    GoRoute(path: '/', builder: (_, __) => const SongListScreen()),
+    GoRoute(
+        path: '/', builder: (_, __) => SongListScreen(standalone: standalone)),
   ]);
   return ProviderScope(
     overrides: [
@@ -131,5 +132,41 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('No songs yet'), findsOneWidget);
+  });
+
+  group('bottom bar safe area', () {
+    testWidgets(
+        'standalone route wraps the bottom bar in a SafeArea absorbing the '
+        'home-indicator inset', (tester) async {
+      tester.view.padding = const FakeViewPadding(bottom: 34);
+      addTearDown(tester.view.resetPadding);
+
+      await tester.pumpWidget(_harness(_FakeRepo(_songs), standalone: true));
+      await tester.pumpAndSettle();
+
+      final searchField = find.byType(CupertinoSearchTextField);
+      expect(searchField, findsOneWidget);
+      expect(
+        find.ancestor(of: searchField, matching: find.byType(SafeArea)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+        'embedded (default) usage renders the bottom bar unwrapped so the '
+        "tab bar's inset isn't duplicated", (tester) async {
+      tester.view.padding = const FakeViewPadding(bottom: 34);
+      addTearDown(tester.view.resetPadding);
+
+      await tester.pumpWidget(_harness(_FakeRepo(_songs)));
+      await tester.pumpAndSettle();
+
+      final searchField = find.byType(CupertinoSearchTextField);
+      expect(searchField, findsOneWidget);
+      expect(
+        find.ancestor(of: searchField, matching: find.byType(SafeArea)),
+        findsNothing,
+      );
+    });
   });
 }

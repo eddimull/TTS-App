@@ -14,7 +14,14 @@ import '../providers/songs_provider.dart';
 /// (owner-only) delete. Rendered inside the segmented Library tab and pushed
 /// standalone from the Operations screen ('/songs').
 class SongListScreen extends ConsumerStatefulWidget {
-  const SongListScreen({super.key});
+  /// Whether this screen is pushed as its own route with no tab bar below
+  /// (e.g. `/songs`), so the bottom bar must absorb the home-indicator inset
+  /// itself. When embedded in [LibraryTabScreen], the `CupertinoTabBar`
+  /// already consumes that inset, so leave this false to avoid double
+  /// padding.
+  const SongListScreen({super.key, this.standalone = false});
+
+  final bool standalone;
 
   @override
   ConsumerState<SongListScreen> createState() => _SongListScreenState();
@@ -188,14 +195,21 @@ class _SongListScreenState extends ConsumerState<SongListScreen> {
                       },
                     ),
                   ),
-                  SafeArea(
-                    top: false,
-                    child: _BottomSearchBar(
+                  if (widget.standalone)
+                    SafeArea(
+                      top: false,
+                      child: _BottomSearchBar(
+                        controller: _searchController,
+                        onChanged: (v) => setState(() => _query = v.trim()),
+                        onAdd: _openCreateAndMaybeOpenDetail,
+                      ),
+                    )
+                  else
+                    _BottomSearchBar(
                       controller: _searchController,
                       onChanged: (v) => setState(() => _query = v.trim()),
                       onAdd: _openCreateAndMaybeOpenDetail,
                     ),
-                  ),
                 ],
               ),
             ),

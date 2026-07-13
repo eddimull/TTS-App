@@ -83,4 +83,42 @@ void main() {
       expect(chart.band, isNull);
     });
   });
+
+  group('Chart.fromJson — song block', () {
+    test('parses the linked song', () {
+      final chart = Chart.fromJson({
+        'id': 1,
+        'band_id': 7,
+        'title': 'Horn Chart',
+        'composer': '',
+        'description': '',
+        'price': 0,
+        'public': false,
+        'uploads_count': 0,
+        'song': {'id': 5, 'title': 'September', 'artist': 'EWF'},
+      });
+
+      expect(chart.song, isNotNull);
+      expect(chart.song!.id, 5);
+      expect(chart.song!.title, 'September');
+      expect(chart.song!.artist, 'EWF');
+    });
+
+    test('null and missing song both parse as null', () {
+      final withNull = Chart.fromJson({
+        'id': 1,
+        'band_id': 7,
+        'title': 'A',
+        'song': null,
+      });
+      final missing = Chart.fromJson({
+        'id': 2,
+        'band_id': 7,
+        'title': 'B',
+      });
+
+      expect(withNull.song, isNull);
+      expect(missing.song, isNull);
+    });
+  });
 }

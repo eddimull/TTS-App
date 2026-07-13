@@ -52,7 +52,8 @@ class LibraryRepository {
     return Chart.fromJson(data['chart'] as Map<String, dynamic>);
   }
 
-  /// Creates a new chart for [bandId].
+  /// Creates a new chart for [bandId]. [songId] optionally links the chart
+  /// to a song in the same band.
   Future<Chart> createChart(
     int bandId, {
     required String title,
@@ -60,6 +61,7 @@ class LibraryRepository {
     String? description,
     double? price,
     bool isPublic = false,
+    int? songId,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       ApiEndpoints.mobileBandCharts(bandId),
@@ -70,6 +72,7 @@ class LibraryRepository {
           'description': description,
         if (price != null) 'price': price,
         'public': isPublic,
+        if (songId != null) 'song_id': songId,
       },
     );
 
@@ -80,6 +83,20 @@ class LibraryRepository {
   /// Deletes the chart identified by [chartId].
   Future<void> deleteChart(int bandId, int chartId) async {
     await _dio.delete(ApiEndpoints.mobileBandChart(bandId, chartId));
+  }
+
+  /// Links ([songId] set) or unlinks ([songId] null) a song on a chart via
+  /// PATCH /api/mobile/bands/{band}/charts/{chart}.
+  Future<Chart> updateChartSong(
+    int bandId,
+    int chartId, {
+    required int? songId,
+  }) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandChart(bandId, chartId),
+      data: {'song_id': songId},
+    );
+    return Chart.fromJson(response.data!['chart'] as Map<String, dynamic>);
   }
 
   /// Uploads a file to the given chart.

@@ -52,6 +52,21 @@ class ChartBand {
       );
 }
 
+/// Linked-song block carried on a [Chart] (`"song": {id, title, artist}|null`).
+class ChartSongRef {
+  const ChartSongRef({required this.id, required this.title, this.artist = ''});
+
+  final int id;
+  final String title;
+  final String artist;
+
+  factory ChartSongRef.fromJson(Map<String, dynamic> json) => ChartSongRef(
+        id: (json['id'] as num).toInt(),
+        title: json['title'] as String? ?? '',
+        artist: json['artist'] as String? ?? '',
+      );
+}
+
 class Chart {
   final int id;
   final int bandId;
@@ -63,6 +78,7 @@ class Chart {
   final int uploadsCount;
   final List<ChartUpload> uploads;
   final ChartBand? band;
+  final ChartSongRef? song;
 
   const Chart({
     required this.id,
@@ -75,6 +91,7 @@ class Chart {
     required this.uploadsCount,
     required this.uploads,
     this.band,
+    this.song,
   });
 
   factory Chart.fromJson(Map<String, dynamic> json) => Chart(
@@ -92,6 +109,9 @@ class Chart {
             [],
         band: json['band'] is Map<String, dynamic>
             ? ChartBand.fromJson(json['band'] as Map<String, dynamic>)
+            : null,
+        song: json['song'] is Map<String, dynamic>
+            ? ChartSongRef.fromJson(json['song'] as Map<String, dynamic>)
             : null,
       );
 }

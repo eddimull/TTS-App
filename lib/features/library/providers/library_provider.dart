@@ -60,6 +60,7 @@ class LibraryNotifier extends AsyncNotifier<LibraryState> {
     String? description,
     double? price,
     bool isPublic = false,
+    int? songId,
   }) async {
     final repo = ref.read(libraryRepositoryProvider);
     final created = await repo.createChart(
@@ -69,6 +70,7 @@ class LibraryNotifier extends AsyncNotifier<LibraryState> {
       description: description,
       price: price,
       isPublic: isPublic,
+      songId: songId,
     );
 
     final stamped = Chart(
@@ -87,6 +89,7 @@ class LibraryNotifier extends AsyncNotifier<LibraryState> {
         isPersonal: band.isPersonal,
         logoUrl: band.logoUrl,
       ),
+      song: created.song,
     );
 
     final current = state.value ?? const LibraryState();

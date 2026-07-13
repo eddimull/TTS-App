@@ -23,6 +23,7 @@ class _FakeRepo implements LibraryRepository {
     String? description,
     double? price,
     bool isPublic = false,
+    int? songId,
   }) async {
     final newChart = Chart(
       id: 999,
@@ -36,6 +37,9 @@ class _FakeRepo implements LibraryRepository {
       uploads: const [],
       // Repo does NOT stamp band — that is the notifier's job.
       band: null,
+      song: songId != null
+          ? ChartSongRef(id: songId, title: 'Linked Song')
+          : null,
     );
     lastCreated = newChart;
     return newChart;

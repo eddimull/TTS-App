@@ -1029,6 +1029,9 @@ class _LinkedSongEditor extends ConsumerWidget {
           );
       ref.invalidate(
           chartDetailProvider((bandId: bandId, chartId: chartId)));
+      // The song detail screen renders song.charts from songsProvider's list
+      // state, which does not know about this chart-side link change.
+      ref.invalidate(songsProvider);
     } catch (e) {
       if (context.mounted) _showError(context, e);
     }

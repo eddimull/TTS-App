@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/data/models/band_summary.dart';
+import '../../songs/providers/songs_provider.dart';
 import '../data/library_repository.dart';
 import '../data/models/chart.dart';
 
@@ -98,6 +99,11 @@ class LibraryNotifier extends AsyncNotifier<LibraryState> {
           (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
     state = AsyncData(current.copyWith(charts: updated));
+
+    // A chart created with a linked song changes that song's charts list,
+    // which songsProvider's cached list state doesn't know about.
+    if (songId != null) ref.invalidate(songsProvider);
+
     return stamped;
   }
 

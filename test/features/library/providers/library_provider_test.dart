@@ -4,6 +4,10 @@ import 'package:tts_bandmate/features/auth/data/models/band_summary.dart';
 import 'package:tts_bandmate/features/library/data/library_repository.dart';
 import 'package:tts_bandmate/features/library/data/models/chart.dart';
 import 'package:tts_bandmate/features/library/providers/library_provider.dart';
+import 'package:tts_bandmate/features/songs/data/models/song.dart';
+import 'package:tts_bandmate/features/songs/data/songs_repository.dart';
+import 'package:tts_bandmate/features/songs/providers/songs_provider.dart';
+import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 
 class _FakeRepo implements LibraryRepository {
   _FakeRepo({this.charts = const []});
@@ -57,9 +61,34 @@ class _FakeRepo implements LibraryRepository {
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }
 
-ProviderContainer _container(_FakeRepo repo) {
+/// Spies on getSongs() calls so tests can assert songsProvider was
+/// invalidated (and thus rebuilt) after a chart-song link change.
+class _FakeSongsRepo implements SongsRepository {
+  int getSongsCallCount = 0;
+
+  @override
+  Future<({List<Song> songs, List<String> genres})> getSongs(
+    int bandId, {
+    bool includeInactive = false,
+  }) async {
+    getSongsCallCount++;
+    return (songs: const <Song>[], genres: const <String>[]);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
+}
+
+class _StubBand extends SelectedBandNotifier {
+  @override
+  Future<int?> build() async => 1;
+}
+
+ProviderContainer _container(_FakeRepo repo, {_FakeSongsRepo? songsRepo}) {
   final container = ProviderContainer(overrides: [
     libraryRepositoryProvider.overrideWithValue(repo),
+    songsRepositoryProvider.overrideWithValue(songsRepo ?? _FakeSongsRepo()),
+    selectedBandProvider.overrideWith(_StubBand.new),
   ]);
   addTearDown(container.dispose);
   return container;
@@ -113,6 +142,44 @@ void main() {
       final state = container.read(libraryProvider).value!;
       expect(state.charts.any((c) => c.id == chart.id), true);
       expect(state.charts.firstWhere((c) => c.id == chart.id).band!.id, 1);
+    });
+
+    test('creating a chart with a linked song invalidates songsProvider',
+        () async {
+      final repo = _FakeRepo(charts: const []);
+      final songsRepo = _FakeSongsRepo();
+      final container = _container(repo, songsRepo: songsRepo);
+
+      await container.read(libraryProvider.future);
+      // Resolve songsProvider once so a later rebuild is observable.
+      await container.read(songsProvider.future);
+      expect(songsRepo.getSongsCallCount, 1);
+
+      await container
+          .read(libraryProvider.notifier)
+          .createChart(_bandA, title: 'Stardust', songId: 42);
+
+      // Invalidation alone doesn't rebuild until the provider is read again.
+      await container.read(songsProvider.future);
+      expect(songsRepo.getSongsCallCount, 2);
+    });
+
+    test('creating a chart without a linked song does not invalidate songsProvider',
+        () async {
+      final repo = _FakeRepo(charts: const []);
+      final songsRepo = _FakeSongsRepo();
+      final container = _container(repo, songsRepo: songsRepo);
+
+      await container.read(libraryProvider.future);
+      await container.read(songsProvider.future);
+      expect(songsRepo.getSongsCallCount, 1);
+
+      await container
+          .read(libraryProvider.notifier)
+          .createChart(_bandA, title: 'Stardust');
+
+      await container.read(songsProvider.future);
+      expect(songsRepo.getSongsCallCount, 1);
     });
   });
 

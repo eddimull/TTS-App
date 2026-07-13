@@ -32,8 +32,9 @@ import '../../features/rehearsals/screens/rehearsals_screen.dart';
 import '../../features/auth/data/models/band_summary.dart';
 import '../../features/library/screens/chart_detail_screen.dart';
 import '../../features/library/screens/create_chart_screen.dart';
-import '../../features/library/screens/library_screen.dart';
+import '../../features/library/screens/library_tab_screen.dart';
 import '../../features/media/screens/media_screen.dart';
+import '../../features/songs/screens/song_list_screen.dart';
 import '../../features/finances/screens/finances_screen.dart';
 import '../../features/finances/payout_editor/screens/payout_configs_screen.dart';
 import '../../features/finances/payout_editor/screens/payout_flow_editor_screen.dart';
@@ -303,7 +304,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/library',
-            builder: (_, __) => const LibraryScreen(),
+            builder: (_, __) => const LibraryTabScreen(),
           ),
           GoRoute(
             path: '/settings',
@@ -504,6 +505,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           bandId: state.extra as int,
           chartId: int.parse(state.pathParameters['chartId']!),
         ),
+      ),
+      // Songs — standalone list pushed from the Operations screen (no bottom
+      // nav, like /media). Form and detail routes are added with their
+      // screens; literal segments must precede parameterised ones.
+      GoRoute(
+        path: '/songs',
+        builder: (_, __) => const SongListScreen(),
       ),
     ],
     errorBuilder: (context, state) => CupertinoPageScaffold(

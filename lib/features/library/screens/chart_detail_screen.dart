@@ -1042,7 +1042,7 @@ class _LinkedSongEditor extends ConsumerWidget {
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
         title: const Text('Could Not Update Link'),
-        content: Text(e.toString()),
+        content: Text(ErrorView.friendlyMessage(e)),
         actions: [
           CupertinoDialogAction(
             onPressed: () => Navigator.of(ctx).pop(),

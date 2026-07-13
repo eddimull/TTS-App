@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,6 +28,7 @@ Chart _chart({ChartSongRef? song}) => Chart(
 class _FakeLibraryRepo implements LibraryRepository {
   _FakeLibraryRepo(this._chart);
   Chart _chart;
+  bool shouldFailUpdate = false;
 
   @override
   Future<Chart> getChart(int bandId, int chartId) async => _chart;
@@ -37,6 +39,18 @@ class _FakeLibraryRepo implements LibraryRepository {
     int chartId, {
     required int? songId,
   }) async {
+    if (shouldFailUpdate) {
+      // A Dio error with a response body — friendlyMessage() should surface
+      // its 'message' field instead of the raw exception toString().
+      throw DioException(
+        requestOptions: RequestOptions(path: '/mobile/bands/1/charts/10'),
+        response: Response(
+          requestOptions: RequestOptions(path: '/mobile/bands/1/charts/10'),
+          statusCode: 422,
+          data: {'message': 'That song already has a linked chart.'},
+        ),
+      );
+    }
     _chart = Chart(
       id: _chart.id,
       bandId: _chart.bandId,
@@ -129,5 +143,26 @@ void main() {
     final countAfterPickerOpen = songsRepo.getSongsCallCount;
     await container.read(songsProvider.future);
     expect(songsRepo.getSongsCallCount, countAfterPickerOpen + 1);
+  });
+
+  testWidgets('relink failure shows a friendly error dialog, not e.toString()',
+      (tester) async {
+    final libraryRepo = _FakeLibraryRepo(_chart())..shouldFailUpdate = true;
+    final songsRepo = _FakeSongsRepo();
+
+    await tester.pumpWidget(_harness(libraryRepo, songsRepo));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('None — tap to link a song'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Higher Ground — Stevie'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Could Not Update Link'), findsOneWidget);
+    expect(
+        find.text('That song already has a linked chart.'), findsOneWidget);
+    // Not the raw DioException.toString() dump.
+    expect(find.textContaining('DioException'), findsNothing);
   });
 }

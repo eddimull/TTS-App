@@ -188,10 +188,13 @@ class _SongListScreenState extends ConsumerState<SongListScreen> {
                       },
                     ),
                   ),
-                  _BottomSearchBar(
-                    controller: _searchController,
-                    onChanged: (v) => setState(() => _query = v.trim()),
-                    onAdd: _openCreateAndMaybeOpenDetail,
+                  SafeArea(
+                    top: false,
+                    child: _BottomSearchBar(
+                      controller: _searchController,
+                      onChanged: (v) => setState(() => _query = v.trim()),
+                      onAdd: _openCreateAndMaybeOpenDetail,
+                    ),
                   ),
                 ],
               ),

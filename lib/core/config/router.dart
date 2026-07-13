@@ -34,6 +34,8 @@ import '../../features/library/screens/chart_detail_screen.dart';
 import '../../features/library/screens/create_chart_screen.dart';
 import '../../features/library/screens/library_tab_screen.dart';
 import '../../features/media/screens/media_screen.dart';
+import '../../features/songs/data/models/song.dart';
+import '../../features/songs/screens/song_form_screen.dart';
 import '../../features/songs/screens/song_list_screen.dart';
 import '../../features/finances/screens/finances_screen.dart';
 import '../../features/finances/payout_editor/screens/payout_configs_screen.dart';
@@ -507,11 +509,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       // Songs — standalone list pushed from the Operations screen (no bottom
-      // nav, like /media). Form and detail routes are added with their
-      // screens; literal segments must precede parameterised ones.
+      // nav, like /media). Literal segment 'new' must precede the :songId
+      // parameter to prevent GoRouter from treating "new" as a song ID.
       GoRoute(
         path: '/songs',
         builder: (_, __) => const SongListScreen(),
+      ),
+      GoRoute(
+        path: '/songs/new',
+        builder: (_, __) => const SongFormScreen(),
+      ),
+      GoRoute(
+        path: '/songs/:songId/edit',
+        builder: (_, state) => SongFormScreen(
+          existing: state.extra as Song,
+        ),
       ),
     ],
     errorBuilder: (context, state) => CupertinoPageScaffold(

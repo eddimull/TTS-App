@@ -3,29 +3,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../features/auth/data/models/band_summary.dart';
 import '../../../features/auth/providers/auth_provider.dart';
-import '../../../features/chat/providers/conversations_provider.dart';
 import '../../../shared/providers/selected_band_provider.dart';
 import '../../../shared/widgets/nav_row.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 
-class MoreScreen extends ConsumerWidget {
-  const MoreScreen({super.key});
+/// Band settings & configuration — the ••• tab root.
+class SettingsScreen extends ConsumerWidget {
+  const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider).value;
     final bandId = ref.watch(selectedBandProvider).value;
-
     final bands = authState is AuthAuthenticated
         ? authState.bands
         : const <BandSummary>[];
     final currentBand =
         bandId == null ? null : bands.where((b) => b.id == bandId).firstOrNull;
     final isOwner = currentBand?.isOwner ?? false;
-    final unread = ref.watch(chatUnreadTotalProvider);
 
     return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(middle: Text('More')),
+      navigationBar: const CupertinoNavigationBar(middle: Text('Settings')),
       child: ListView(
         children: [
           const SizedBox(height: 16),
@@ -33,90 +31,35 @@ class MoreScreen extends ConsumerWidget {
             NavRow(
               title: 'Switch Band',
               subtitle: currentBand?.name,
-              leading: Icon(
-                CupertinoIcons.arrow_2_squarepath,
-                size: 22,
-                color: context.secondaryText,
-              ),
+              leading: Icon(CupertinoIcons.arrow_2_squarepath,
+                  size: 22, color: context.secondaryText),
               onTap: () => _showBandSwitcher(context, ref, bands, bandId),
             ),
-          NavRow(
-            title: 'Messages',
-            subtitle: unread > 0 ? '$unread unread' : null,
-            leading: Icon(
-              CupertinoIcons.chat_bubble_2,
-              size: 22,
-              color: unread > 0
-                  ? CupertinoColors.activeBlue.resolveFrom(context)
-                  : context.secondaryText,
+          if (isOwner)
+            NavRow(
+              title: 'Band Settings',
+              leading: Icon(CupertinoIcons.settings,
+                  size: 22, color: context.secondaryText),
+              onTap: () => context.push('/band-settings'),
             ),
-            onTap: () => context.push('/messages'),
-          ),
-          NavRow(
-            title: 'Finances',
-            leading: Icon(
-              CupertinoIcons.money_dollar_circle,
-              size: 22,
-              color: context.secondaryText,
-            ),
-            onTap: () => context.push('/finances'),
-          ),
-          NavRow(
-            title: 'Rehearsals',
-            leading: Icon(
-              CupertinoIcons.person_2,
-              size: 22,
-              color: context.secondaryText,
-            ),
-            onTap: () => context.push('/rehearsals'),
-          ),
-          NavRow(
-            title: 'Media',
-            leading: Icon(
-              CupertinoIcons.photo_on_rectangle,
-              size: 22,
-              color: context.secondaryText,
-            ),
-            onTap: () => context.push('/media'),
-          ),
           NavRow(
             title: 'My Stats',
-            leading: Icon(
-              CupertinoIcons.chart_bar_alt_fill,
-              size: 22,
-              color: context.secondaryText,
-            ),
+            leading: Icon(CupertinoIcons.chart_bar_alt_fill,
+                size: 22, color: context.secondaryText),
             onTap: () => context.push('/stats'),
           ),
           NavRow(
             title: 'Add to Calendar',
-            leading: Icon(
-              CupertinoIcons.calendar_badge_plus,
-              size: 22,
-              color: context.secondaryText,
-            ),
+            leading: Icon(CupertinoIcons.calendar_badge_plus,
+                size: 22, color: context.secondaryText),
             onTap: () => context.push('/calendar-feed'),
           ),
-          if (isOwner) ...[
-            NavRow(
-              title: 'Personnel',
-              leading: Icon(
-                CupertinoIcons.person_2_fill,
-                size: 22,
-                color: context.secondaryText,
-              ),
-              onTap: () => context.push('/personnel'),
-            ),
-            NavRow(
-              title: 'Band Settings',
-              leading: Icon(
-                CupertinoIcons.settings,
-                size: 22,
-                color: context.secondaryText,
-              ),
-              onTap: () => context.push('/band-settings'),
-            ),
-          ],
+          NavRow(
+            title: 'Account',
+            leading: Icon(CupertinoIcons.person_crop_circle,
+                size: 22, color: context.secondaryText),
+            onTap: () => context.push('/account'),
+          ),
         ],
       ),
     );

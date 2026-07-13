@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/connectivity_provider.dart';
 import '../providers/band_realtime_provider.dart';
 import '../providers/user_realtime_provider.dart';
+import '../../features/chat/providers/conversations_provider.dart';
 import '../../features/notifications/services/lifecycle_observer.dart';
 
 class _NavDestination {
@@ -33,10 +34,10 @@ const _destinations = [
     activeIcon: CupertinoIcons.search,
   ),
   _NavDestination(
-    route: '/bookings',
-    label: 'Bookings',
-    icon: CupertinoIcons.book,
-    activeIcon: CupertinoIcons.book_fill,
+    route: '/messages',
+    label: 'Messages',
+    icon: CupertinoIcons.chat_bubble_2,
+    activeIcon: CupertinoIcons.chat_bubble_2_fill,
   ),
   _NavDestination(
     route: '/library',
@@ -45,8 +46,8 @@ const _destinations = [
     activeIcon: CupertinoIcons.music_note_list,
   ),
   _NavDestination(
-    route: '/more',
-    label: 'More',
+    route: '/settings',
+    label: 'Settings',
     icon: CupertinoIcons.ellipsis,
     activeIcon: CupertinoIcons.ellipsis,
   ),
@@ -87,10 +88,44 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     return idx < 0 ? 0 : idx;
   }
 
+  Widget _tabIcon(_NavDestination d, {required bool selected, required int unread}) {
+    final icon = Icon(selected ? d.activeIcon : d.icon);
+    if (d.route != '/messages' || unread <= 0) return icon;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        icon,
+        Positioned(
+          top: -4,
+          right: -10,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            constraints: const BoxConstraints(minWidth: 16),
+            height: 16,
+            decoration: BoxDecoration(
+              color: CupertinoColors.systemRed.resolveFrom(context),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              unread > 99 ? '99+' : '$unread',
+              style: const TextStyle(
+                color: CupertinoColors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final selectedIndex = _selectedIndex(context);
     final connectivityAsync = ref.watch(connectivityProvider);
+    final unread = ref.watch(chatUnreadTotalProvider);
     // Keeps the band realtime subscription alive for the whole shell.
     ref.watch(bandRealtimeProvider);
     // Keeps the per-user (DM) realtime subscription alive for the whole shell.
@@ -128,8 +163,8 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             items: _destinations.map((d) {
               final isSelected = _destinations[selectedIndex].route == d.route;
               return BottomNavigationBarItem(
-                icon: Icon(isSelected ? d.activeIcon : d.icon),
-                activeIcon: Icon(d.activeIcon),
+                icon: _tabIcon(d, selected: isSelected, unread: unread),
+                activeIcon: _tabIcon(d, selected: true, unread: unread),
                 label: d.label,
               );
             }).toList(),

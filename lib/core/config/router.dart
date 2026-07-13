@@ -37,7 +37,8 @@ import '../../features/media/screens/media_screen.dart';
 import '../../features/finances/screens/finances_screen.dart';
 import '../../features/finances/payout_editor/screens/payout_configs_screen.dart';
 import '../../features/finances/payout_editor/screens/payout_flow_editor_screen.dart';
-import '../../features/more/screens/more_screen.dart';
+import '../../features/more/screens/operations_screen.dart';
+import '../../features/more/screens/settings_screen.dart';
 import '../../features/band_settings/screens/band_settings_screen.dart';
 import '../../features/personnel/screens/personnel_screen.dart';
 import '../../features/account/screens/account_screen.dart';
@@ -84,7 +85,9 @@ const _kShellPrefixes = [
   '/search',
   '/bookings',
   '/library',
-  '/more',
+  '/messages',
+  '/operations',
+  '/settings',
   '/band-settings',
   '/finances',
   '/personnel',
@@ -278,6 +281,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           inviteKey: state.pathParameters['key']!,
         ),
       ),
+      // Legacy location from pre-1.13 saved routes and muscle memory.
+      GoRoute(
+        path: '/more',
+        redirect: (_, __) => '/settings',
+      ),
       ShellRoute(
         builder: (context, state, child) => AppScaffold(child: child),
         routes: [
@@ -298,8 +306,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, __) => const LibraryScreen(),
           ),
           GoRoute(
-            path: '/more',
-            builder: (_, __) => const MoreScreen(),
+            path: '/settings',
+            builder: (_, __) => const SettingsScreen(),
+          ),
+          GoRoute(
+            path: '/operations',
+            builder: (_, __) => const OperationsScreen(),
+          ),
+          GoRoute(
+            path: '/messages',
+            builder: (_, __) => const MessagesScreen(),
           ),
           GoRoute(
             path: '/band-settings',
@@ -444,26 +460,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/account',
         builder: (_, __) => const AccountScreen(),
       ),
-      // Media — no bottom nav, pushed from More screen
+      // Media — no bottom nav, pushed from Operations screen
       GoRoute(
         path: '/media',
         builder: (_, __) => const MediaScreen(),
       ),
-      // Calendar subscription — no bottom nav, pushed from More screen
+      // Calendar subscription — no bottom nav, pushed from Settings screen
       GoRoute(
         path: '/calendar-feed',
         builder: (_, __) => const CalendarFeedScreen(),
       ),
-      // Personal stats — no bottom nav, pushed from More screen
+      // Personal stats — no bottom nav, pushed from Settings screen
       GoRoute(
         path: '/stats',
         builder: (_, __) => const UserStatsScreen(),
       ),
-      // Messages — no bottom nav, pushed from More screen
-      GoRoute(
-        path: '/messages',
-        builder: (_, __) => const MessagesScreen(),
-      ),
+      // Chat threads & new-DM picker — pushed over the Messages tab
       GoRoute(
         path: '/messages/new',
         builder: (_, __) => const NewMessageScreen(),
@@ -506,6 +518,10 @@ final routerProvider = Provider<GoRouter>((ref) {
   // initialLocationProvider — the redirect never reads RouteStorage.
   void onRouteChanged() {
     final path = router.routerDelegate.currentConfiguration.uri.path;
+    // Excluded even though it matches the '/messages' prefix: cold-start
+    // restore would otherwise boot straight into the New Message composer
+    // with no escape (see _kRestorableShellPrefixes in main.dart).
+    if (path == '/messages/new') return;
     if (!_kShellPrefixes.any((p) => path.startsWith(p))) return;
     ref.read(routeStorageProvider).value?.writeLastRoute(path);
   }

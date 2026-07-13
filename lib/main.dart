@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'app.dart';
 import 'core/config/router.dart';
 import 'core/network/dev_http_overrides.dart';
+import 'core/storage/hint_storage.dart';
 import 'core/storage/route_storage.dart';
 import 'features/bookings/data/bookings_cache_storage.dart';
 import 'features/media/data/upload_queue_storage.dart';
@@ -34,7 +35,9 @@ const _kRestorableShellPrefixes = [
   '/search',
   '/bookings',
   '/library',
-  '/more',
+  '/messages',
+  '/operations',
+  '/settings',
   '/band-settings',
   '/finances',
 ];
@@ -134,6 +137,7 @@ Future<void> main() async {
   // user's first interaction.
   final prefs = await SharedPreferences.getInstance();
   final routeStorage = RouteStorage(prefs);
+  final hintStorage = HintStorage(prefs);
   final bookingsCacheStorage = BookingsCacheStorage(prefs);
   final uploadQueueStorage = UploadQueueStorage(prefs);
   final initialLocation = _resolveInitialLocation(routeStorage);
@@ -167,6 +171,7 @@ Future<void> main() async {
         retry: _retryPolicy,
         overrides: [
           routeStorageProvider.overrideWith((_) async => routeStorage),
+          hintStorageProvider.overrideWithValue(AsyncValue.data(hintStorage)),
           bookingsCacheStorageProvider.overrideWithValue(bookingsCacheStorage),
           uploadQueueStorageProvider.overrideWithValue(uploadQueueStorage),
           initialLocationProvider.overrideWithValue(initialLocation),

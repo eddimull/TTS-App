@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:table_calendar/table_calendar.dart';
+import '../../../core/storage/hint_storage.dart';
+import '../../../core/theme/context_colors.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../../shared/providers/selected_band_provider.dart';
 import '../../../shared/widgets/empty_state_view.dart';
@@ -65,6 +67,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               CupertinoSliverNavigationBar(
                 largeTitle: Text(bandName),
+                leading: Semantics(
+                  label: 'Operations menu',
+                  button: true,
+                  child: CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () => context.push('/operations'),
+                    child: const Icon(CupertinoIcons.line_horizontal_3),
+                  ),
+                ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -113,6 +124,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ],
                 ),
               ),
+              const SliverToBoxAdapter(child: _BookingsMovedHint()),
               dashboardAsync.when(
                 loading: () => const SliverFillRemaining(
                   child: Center(child: CupertinoActivityIndicator()),
@@ -497,6 +509,64 @@ class _EmptyState extends StatelessWidget {
         subtitle: selected != null
             ? 'Nothing on ${DateFormat('MMMM d').format(selected)}.'
             : 'Nothing scheduled for ${DateFormat('MMMM').format(focusedDay)}.',
+      ),
+    );
+  }
+}
+
+/// One-release migration hint: Bookings left the tab bar in 1.13.
+class _BookingsMovedHint extends ConsumerStatefulWidget {
+  const _BookingsMovedHint();
+
+  @override
+  ConsumerState<_BookingsMovedHint> createState() => _BookingsMovedHintState();
+}
+
+class _BookingsMovedHintState extends ConsumerState<_BookingsMovedHint> {
+  bool _dismissedNow = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final storage = ref.watch(hintStorageProvider).value;
+    if (storage == null || _dismissedNow || storage.bookingsMovedDismissed) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: CupertinoColors.secondarySystemBackground.resolveFrom(context),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(CupertinoIcons.info_circle,
+                size: 18,
+                color: CupertinoColors.activeBlue.resolveFrom(context)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Bookings has moved — find it under ☰ Operations.',
+                style: TextStyle(fontSize: 13, color: context.primaryText),
+              ),
+            ),
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(34, 34),
+              onPressed: () {
+                setState(() => _dismissedNow = true);
+                storage.dismissBookingsMoved();
+              },
+              child: Semantics(
+                label: 'Dismiss',
+                button: true,
+                child: Icon(CupertinoIcons.xmark,
+                    size: 16, color: context.secondaryText),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

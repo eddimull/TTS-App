@@ -18,7 +18,7 @@ class MemberPermissionsScreen extends ConsumerWidget {
     ('Events', 'events'),
     ('Bookings', 'bookings'),
     ('Rehearsals', 'rehearsals'),
-    ('Charts', 'charts'),
+    ('Sheet music', 'charts'),
     ('Songs', 'songs'),
     ('Media', 'media'),
     ('Invoices', 'invoices'),

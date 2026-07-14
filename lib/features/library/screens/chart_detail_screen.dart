@@ -11,6 +11,8 @@ import '../data/library_repository.dart';
 import '../data/models/chart.dart';
 import '../providers/library_provider.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
+import '../../songs/data/models/song.dart';
+import '../../songs/providers/songs_provider.dart';
 
 // ── Upload type constants ─────────────────────────────────────────────────────
 
@@ -39,11 +41,11 @@ class ChartDetailScreen extends ConsumerWidget {
 
     return chartAsync.when(
       loading: () => const CupertinoPageScaffold(
-        navigationBar: CupertinoNavigationBar(middle: Text('Chart')),
+        navigationBar: CupertinoNavigationBar(middle: Text('Sheet Music')),
         child: Center(child: CupertinoActivityIndicator()),
       ),
       error: (e, _) => CupertinoPageScaffold(
-        navigationBar: const CupertinoNavigationBar(middle: Text('Chart')),
+        navigationBar: const CupertinoNavigationBar(middle: Text('Sheet Music')),
         child: ErrorView(
           message: ErrorView.friendlyMessage(e),
           onRetry: () => ref.invalidate(
@@ -210,6 +212,12 @@ class _ChartDetailBody extends ConsumerWidget {
                     // Metadata section
                     const _SectionHeader(label: 'Details'),
                     _MetadataCard(chart: chart),
+                    const _SectionHeader(label: 'Linked song'),
+                    _LinkedSongEditor(
+                      chart: chart,
+                      bandId: bandId,
+                      chartId: chartId,
+                    ),
                     // Uploads section
                     const _SectionHeader(label: 'Uploads'),
                     if (chart.uploads.isEmpty)
@@ -281,6 +289,14 @@ class _MetadataCard extends StatelessWidget {
 
     if (chart.composer.isNotEmpty) {
       rows.add(_MetaRow(label: 'Composer', value: chart.composer));
+    }
+
+    if (chart.song != null) {
+      final s = chart.song!;
+      rows.add(_MetaRow(
+        label: 'Song',
+        value: s.artist.isNotEmpty ? '${s.title} — ${s.artist}' : s.title,
+      ));
     }
 
     if (chart.description.isNotEmpty) {
@@ -927,6 +943,191 @@ class _UploadErrorBanner extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Linked song editor ────────────────────────────────────────────────────────
+
+/// Shows the currently linked song and lets the user relink/unlink via the
+/// PATCH chart endpoint. Uses [bandSongsProvider] because the chart's band
+/// can differ from the selected band.
+class _LinkedSongEditor extends ConsumerWidget {
+  const _LinkedSongEditor({
+    required this.chart,
+    required this.bandId,
+    required this.chartId,
+  });
+
+  final Chart chart;
+  final int bandId;
+  final int chartId;
+
+  Future<void> _pick(BuildContext context, WidgetRef ref) async {
+    final List<Song> songs;
+    try {
+      songs = await ref.read(bandSongsProvider(bandId).future);
+    } catch (e) {
+      if (context.mounted) _showError(context, e);
+      return;
+    }
+    if (!context.mounted) return;
+
+    final picked = await showCupertinoModalPopup<({Song? song})>(
+      context: context,
+      builder: (sheetCtx) => Container(
+        height: MediaQuery.of(sheetCtx).size.height * 0.6,
+        decoration: BoxDecoration(
+          color: CupertinoColors.systemBackground.resolveFrom(sheetCtx),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Text(
+                  'Linked song',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  children: [
+                    _PickerRow(
+                      label: 'None',
+                      onTap: () =>
+                          Navigator.of(sheetCtx).pop((song: null)),
+                    ),
+                    for (final song in songs)
+                      _PickerRow(
+                        label: song.artist.isNotEmpty
+                            ? '${song.title} — ${song.artist}'
+                            : song.title,
+                        onTap: () =>
+                            Navigator.of(sheetCtx).pop((song: song)),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (picked == null || !context.mounted) return;
+
+    try {
+      await ref.read(libraryRepositoryProvider).updateChartSong(
+            bandId,
+            chartId,
+            songId: picked.song?.id,
+          );
+      ref.invalidate(
+          chartDetailProvider((bandId: bandId, chartId: chartId)));
+      // The song detail screen renders song.charts from songsProvider's list
+      // state, which does not know about this chart-side link change.
+      ref.invalidate(songsProvider);
+    } catch (e) {
+      if (context.mounted) _showError(context, e);
+    }
+  }
+
+  void _showError(BuildContext context, Object e) {
+    showCupertinoDialog<void>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Could Not Update Link'),
+        content: Text(ErrorView.friendlyMessage(e)),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final linked = chart.song;
+    return Semantics(
+      button: true,
+      label:
+          'Linked song, ${linked?.title ?? 'None'}. Tap to change.',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _pick(context, ref),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color:
+                CupertinoColors.tertiarySystemBackground.resolveFrom(context),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  linked == null
+                      ? 'None — tap to link a song'
+                      : (linked.artist.isNotEmpty
+                          ? '${linked.title} — ${linked.artist}'
+                          : linked.title),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: linked == null
+                        ? context.secondaryText
+                        : context.primaryText,
+                  ),
+                ),
+              ),
+              Icon(
+                CupertinoIcons.chevron_right,
+                size: 14,
+                color: context.tertiaryText,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PickerRow extends StatelessWidget {
+  const _PickerRow({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      onPressed: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        alignment: Alignment.centerLeft,
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: CupertinoColors.separator.resolveFrom(context),
+              width: 0.5,
+            ),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 15, color: context.primaryText),
+        ),
       ),
     );
   }

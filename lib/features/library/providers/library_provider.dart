@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/data/models/band_summary.dart';
+import '../../songs/providers/songs_provider.dart';
 import '../data/library_repository.dart';
 import '../data/models/chart.dart';
 
@@ -60,6 +61,7 @@ class LibraryNotifier extends AsyncNotifier<LibraryState> {
     String? description,
     double? price,
     bool isPublic = false,
+    int? songId,
   }) async {
     final repo = ref.read(libraryRepositoryProvider);
     final created = await repo.createChart(
@@ -69,6 +71,7 @@ class LibraryNotifier extends AsyncNotifier<LibraryState> {
       description: description,
       price: price,
       isPublic: isPublic,
+      songId: songId,
     );
 
     final stamped = Chart(
@@ -87,6 +90,7 @@ class LibraryNotifier extends AsyncNotifier<LibraryState> {
         isPersonal: band.isPersonal,
         logoUrl: band.logoUrl,
       ),
+      song: created.song,
     );
 
     final current = state.value ?? const LibraryState();
@@ -95,6 +99,11 @@ class LibraryNotifier extends AsyncNotifier<LibraryState> {
           (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
     state = AsyncData(current.copyWith(charts: updated));
+
+    // A chart created with a linked song changes that song's charts list,
+    // which songsProvider's cached list state doesn't know about.
+    if (songId != null) ref.invalidate(songsProvider);
+
     return stamped;
   }
 

@@ -886,7 +886,7 @@ class _PerformanceSection extends StatelessWidget {
           const SizedBox(height: 8),
         ],
         if (performance.charts.isNotEmpty) ...[
-          Text('Charts',
+          Text('Sheet music',
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,

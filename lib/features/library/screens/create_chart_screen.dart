@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/data/models/band_summary.dart';
 import '../providers/library_provider.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
+import '../../songs/data/models/song.dart';
+import '../../songs/providers/songs_provider.dart';
 
 /// Full-screen modal form for creating a new chart.
 ///
@@ -28,6 +30,7 @@ class _CreateChartScreenState extends ConsumerState<CreateChartScreen> {
   bool _isPublic = false;
   bool _isSaving = false;
   String? _error;
+  Song? _linkedSong;
 
   @override
   void dispose() {
@@ -65,6 +68,7 @@ class _CreateChartScreenState extends ConsumerState<CreateChartScreen> {
                 : _descriptionController.text.trim(),
             price: price,
             isPublic: _isPublic,
+            songId: _linkedSong?.id,
           );
       if (mounted) Navigator.of(context).pop(chart);
     } catch (e) {
@@ -79,7 +83,7 @@ class _CreateChartScreenState extends ConsumerState<CreateChartScreen> {
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
-        middle: const Text('New Chart'),
+        middle: const Text('New Sheet Music'),
         leading: CupertinoButton(
           padding: EdgeInsets.zero,
           onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
@@ -197,6 +201,28 @@ class _CreateChartScreenState extends ConsumerState<CreateChartScreen> {
                               ),
                             ],
                           ),
+                        ),
+                        _FormDivider(),
+                        Consumer(
+                          builder: (context, ref, _) {
+                            final songsAsync =
+                                ref.watch(bandSongsProvider(widget.band.id));
+                            final songs = songsAsync.value ?? const <Song>[];
+                            return _LinkedSongRow(
+                              linkedSong: _linkedSong,
+                              onTap: songs.isEmpty
+                                  ? null
+                                  : () async {
+                                      final picked =
+                                          await _showLinkedSongPicker(
+                                              context, songs);
+                                      if (picked != null) {
+                                        setState(() =>
+                                            _linkedSong = picked.value);
+                                      }
+                                    },
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -399,6 +425,149 @@ class _ErrorBanner extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Linked song picker ────────────────────────────────────────────────────────
+
+/// Wrapper distinguishing "picked None" ([value] == null) from a dismissed
+/// sheet (the Future resolves to null).
+class _LinkedSongSelection {
+  const _LinkedSongSelection(this.value);
+  final Song? value;
+}
+
+Future<_LinkedSongSelection?> _showLinkedSongPicker(
+  BuildContext context,
+  List<Song> songs,
+) {
+  return showCupertinoModalPopup<_LinkedSongSelection>(
+    context: context,
+    builder: (sheetCtx) => Container(
+      height: MediaQuery.of(sheetCtx).size.height * 0.6,
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemBackground.resolveFrom(sheetCtx),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Text(
+                'Linked song',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                children: [
+                  _LinkedSongOption(
+                    label: 'None',
+                    onTap: () => Navigator.of(sheetCtx)
+                        .pop(const _LinkedSongSelection(null)),
+                  ),
+                  for (final song in songs)
+                    _LinkedSongOption(
+                      label: song.artist.isNotEmpty
+                          ? '${song.title} — ${song.artist}'
+                          : song.title,
+                      onTap: () => Navigator.of(sheetCtx)
+                          .pop(_LinkedSongSelection(song)),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _LinkedSongOption extends StatelessWidget {
+  const _LinkedSongOption({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      onPressed: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        alignment: Alignment.centerLeft,
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: CupertinoColors.separator.resolveFrom(context),
+              width: 0.5,
+            ),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 15, color: context.primaryText),
+        ),
+      ),
+    );
+  }
+}
+
+/// The tappable "Linked song" form row.
+class _LinkedSongRow extends StatelessWidget {
+  const _LinkedSongRow({required this.linkedSong, required this.onTap});
+
+  final Song? linkedSong;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Linked song, ${linkedSong?.title ?? 'None'}',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              const SizedBox(
+                width: 100,
+                child: Text(
+                  'Linked song',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  linkedSong?.title ?? 'None',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: linkedSong == null
+                        ? context.secondaryText
+                        : context.primaryText,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(
+                CupertinoIcons.chevron_right,
+                size: 14,
+                color: context.tertiaryText,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

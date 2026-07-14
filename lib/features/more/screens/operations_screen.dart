@@ -45,6 +45,12 @@ class OperationsScreen extends ConsumerWidget {
                 size: 22, color: context.secondaryText),
             onTap: () => context.push('/rehearsals'),
           ),
+          NavRow(
+            title: 'Song list',
+            leading: Icon(CupertinoIcons.music_note_2,
+                size: 22, color: context.secondaryText),
+            onTap: () => context.push('/songs'),
+          ),
           if (isOwner)
             NavRow(
               title: 'Personnel',

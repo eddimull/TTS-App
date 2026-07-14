@@ -107,6 +107,43 @@ class LibraryNotifier extends AsyncNotifier<LibraryState> {
     return stamped;
   }
 
+  /// Links ([songId] set) or unlinks ([songId] null) [chartId]'s song via the
+  /// PATCH chart endpoint, patching the chart in local state. Preserves the
+  /// locally stamped [Chart.band] (the PATCH payload does not carry it).
+  Future<void> updateChartSong(
+    int bandId,
+    int chartId, {
+    required int? songId,
+  }) async {
+    final repo = ref.read(libraryRepositoryProvider);
+    final updated = await repo.updateChartSong(bandId, chartId, songId: songId);
+
+    final current = state.value ?? const LibraryState();
+    state = AsyncData(current.copyWith(charts: [
+      for (final c in current.charts)
+        if (c.id == chartId)
+          Chart(
+            id: c.id,
+            bandId: c.bandId,
+            title: c.title,
+            composer: c.composer,
+            description: c.description,
+            price: c.price,
+            isPublic: c.isPublic,
+            uploadsCount: c.uploadsCount,
+            uploads: c.uploads,
+            band: c.band,
+            song: updated.song,
+          )
+        else
+          c,
+    ]));
+
+    // Linking/unlinking changes the affected songs' charts lists, which
+    // songsProvider's cached list state doesn't know about.
+    ref.invalidate(songsProvider);
+  }
+
   /// Removes a chart from local state and the server.
   Future<void> deleteChart(int bandId, int chartId) async {
     final repo = ref.read(libraryRepositoryProvider);

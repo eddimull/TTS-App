@@ -498,9 +498,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       // to prevent GoRouter from treating "new" as a chart ID.
       GoRoute(
         path: '/library/new',
-        builder: (_, state) => CreateChartScreen(
-          band: state.extra as BandSummary,
-        ),
+        builder: (_, state) {
+          final extra = state.extra;
+          if (extra is CreateChartArgs) {
+            return CreateChartScreen(
+              band: extra.band,
+              initialSong: extra.initialSong,
+            );
+          }
+          return CreateChartScreen(band: extra as BandSummary);
+        },
       ),
       GoRoute(
         path: '/library/:chartId',

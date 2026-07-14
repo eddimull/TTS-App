@@ -107,6 +107,35 @@ void main() {
       expect(m.isUser, false);
     });
 
+    test('test_prefers_display_name_for_user_linked_members', () {
+      // Raw Eloquent serialization (rosters index): user-linked members have
+      // a null `name` column; the real name is the appended `display_name`.
+      final m = RosterMember.fromJson({
+        'id': 1,
+        'user_id': 42,
+        'name': null,
+        'display_name': 'Edward Muller',
+        'user': {'id': 42, 'name': 'Edward Muller'},
+      });
+      expect(m.name, 'Edward Muller');
+    });
+
+    test('test_falls_back_to_nested_user_name', () {
+      final m = RosterMember.fromJson({
+        'id': 1,
+        'user_id': 42,
+        'name': null,
+        'user': {'id': 42, 'name': 'Nested Name'},
+      });
+      expect(m.name, 'Nested Name');
+    });
+
+    test('test_name_used_when_display_name_absent', () {
+      // show()-mapped payloads set `name` directly and omit `display_name`.
+      final m = RosterMember.fromJson({'id': 1, 'name': 'Sub Guy'});
+      expect(m.name, 'Sub Guy');
+    });
+
     test('test_copyWith_isActive', () {
       const m = RosterMember(id: 1, name: 'Bob', isActive: true, isUser: false);
       final updated = m.copyWith(isActive: false);

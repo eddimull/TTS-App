@@ -27,8 +27,7 @@ class SongSheetMusicSection extends ConsumerStatefulWidget {
       _SongSheetMusicSectionState();
 }
 
-class _SongSheetMusicSectionState
-    extends ConsumerState<SongSheetMusicSection> {
+class _SongSheetMusicSectionState extends ConsumerState<SongSheetMusicSection> {
   bool _busy = false;
 
   Song get song => widget.song;
@@ -69,20 +68,29 @@ class _SongSheetMusicSectionState
     if (_busy) return;
     setState(() => _busy = true);
     try {
+      // showCupertinoModalPopup creates a new route without the ProviderScope
+      // ancestor; re-attach the existing container (repo convention, see
+      // chart_detail_screen._showAddUploadSheet).
+      final container = ProviderScope.containerOf(context);
       final action = await showCupertinoModalPopup<_ChartAction>(
         context: context,
-        builder: (sheetCtx) => CupertinoActionSheet(
-          actions: [
-            CupertinoActionSheetAction(
-              isDestructiveAction: true,
-              onPressed: () =>
-                  Navigator.of(sheetCtx).pop(_ChartAction.unlink),
-              child: const Text('Unlink sheet music'),
+        builder: (_) => UncontrolledProviderScope(
+          container: container,
+          child: Builder(
+            builder: (sheetCtx) => CupertinoActionSheet(
+              actions: [
+                CupertinoActionSheetAction(
+                  isDestructiveAction: true,
+                  onPressed: () =>
+                      Navigator.of(sheetCtx).pop(_ChartAction.unlink),
+                  child: const Text('Unlink sheet music'),
+                ),
+              ],
+              cancelButton: CupertinoActionSheetAction(
+                onPressed: () => Navigator.of(sheetCtx).pop(),
+                child: const Text('Cancel'),
+              ),
             ),
-          ],
-          cancelButton: CupertinoActionSheetAction(
-            onPressed: () => Navigator.of(sheetCtx).pop(),
-            child: const Text('Cancel'),
           ),
         ),
       );
@@ -104,17 +112,21 @@ class _SongSheetMusicSectionState
       List<Chart> charts;
       try {
         final state = await ref.read(libraryProvider.future);
-        charts =
-            state.charts.where((c) => c.bandId == song.bandId).toList();
+        charts = state.charts.where((c) => c.bandId == song.bandId).toList();
       } catch (e) {
         if (mounted) _showError(e);
         return;
       }
       if (!mounted) return;
 
+      // Same ProviderScope re-attachment as the unlink action sheet above.
+      final container = ProviderScope.containerOf(context);
       final selection = await showCupertinoModalPopup<_PickerSelection>(
         context: context,
-        builder: (sheetCtx) => _ChartPickerSheet(charts: charts, song: song),
+        builder: (_) => UncontrolledProviderScope(
+          container: container,
+          child: _ChartPickerSheet(charts: charts, song: song),
+        ),
       );
 
       if (selection == null || !mounted) return;
@@ -158,8 +170,7 @@ class _SongSheetMusicSectionState
   }
 
   Future<void> _handleChartPicked(Chart chart) async {
-    final linkedElsewhere =
-        chart.song != null && chart.song!.id != song.id;
+    final linkedElsewhere = chart.song != null && chart.song!.id != song.id;
 
     if (!linkedElsewhere) {
       await _patch(chart.id, song.id);
@@ -321,8 +332,7 @@ class _LinkedChartRow extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         decoration: BoxDecoration(
-          color:
-              CupertinoColors.tertiarySystemBackground.resolveFrom(context),
+          color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -414,8 +424,8 @@ class _ChartPickerSheet extends StatelessWidget {
               child: ListView(
                 children: [
                   _NewChartRow(
-                    onTap: () => Navigator.of(context)
-                        .pop(const _NewChartSelection()),
+                    onTap: () =>
+                        Navigator.of(context).pop(const _NewChartSelection()),
                   ),
                   for (final chart in charts)
                     _ChartPickerRow(
@@ -423,8 +433,8 @@ class _ChartPickerSheet extends StatelessWidget {
                       song: song,
                       onTap: chart.song?.id == song.id
                           ? null
-                          : () => Navigator.of(context)
-                              .pop(_ChartSelection(chart)),
+                          : () =>
+                              Navigator.of(context).pop(_ChartSelection(chart)),
                     ),
                 ],
               ),

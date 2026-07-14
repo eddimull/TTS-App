@@ -15,6 +15,9 @@ class _FakeRepo implements LibraryRepository {
   List<Chart> charts;
   Chart? lastCreated;
   int? lastDeletedChartId;
+  int? lastPatchedChartId;
+  int? lastPatchedSongId;
+  bool lastPatchHadSongId = false;
 
   @override
   Future<List<Chart>> getAllCharts() async => charts;
@@ -52,6 +55,33 @@ class _FakeRepo implements LibraryRepository {
   @override
   Future<void> deleteChart(int bandId, int chartId) async {
     lastDeletedChartId = chartId;
+  }
+
+  @override
+  Future<Chart> updateChartSong(
+    int bandId,
+    int chartId, {
+    required int? songId,
+  }) async {
+    lastPatchedChartId = chartId;
+    lastPatchedSongId = songId;
+    lastPatchHadSongId = true;
+    final existing = charts.firstWhere((c) => c.id == chartId);
+    return Chart(
+      id: existing.id,
+      bandId: existing.bandId,
+      title: existing.title,
+      composer: existing.composer,
+      description: existing.description,
+      price: existing.price,
+      isPublic: existing.isPublic,
+      uploadsCount: existing.uploadsCount,
+      uploads: existing.uploads,
+      band: null, // repo payload does not carry the stamped band
+      song: songId != null
+          ? ChartSongRef(id: songId, title: 'Linked Song')
+          : null,
+    );
   }
 
   // Unused in these tests; satisfy the interface with throws.
@@ -219,6 +249,87 @@ void main() {
       final state = container.read(libraryProvider).value!;
       expect(state.charts.map((c) => c.id), [12]);
       expect(repo.lastDeletedChartId, 11);
+    });
+  });
+
+  group('updateChartSong', () {
+    Chart chart(int id, {ChartSongRef? song}) => Chart(
+          id: id,
+          bandId: 1,
+          title: 'Chart $id',
+          composer: '',
+          description: '',
+          price: 0,
+          isPublic: false,
+          uploadsCount: 0,
+          uploads: const [],
+          band: const ChartBand(id: 1, name: 'Band', isPersonal: false),
+          song: song,
+        );
+
+    test('links a song, patches local state, keeps the stamped band', () async {
+      final repo = _FakeRepo(charts: [chart(11)]);
+      final songsRepo = _FakeSongsRepo();
+      final container = ProviderContainer(overrides: [
+        libraryRepositoryProvider.overrideWithValue(repo),
+        songsRepositoryProvider.overrideWithValue(songsRepo),
+        selectedBandProvider.overrideWith(_StubBand.new),
+      ]);
+      addTearDown(container.dispose);
+      await container.read(libraryProvider.future);
+
+      await container
+          .read(libraryProvider.notifier)
+          .updateChartSong(1, 11, songId: 7);
+
+      expect(repo.lastPatchedChartId, 11);
+      expect(repo.lastPatchedSongId, 7);
+      final state = container.read(libraryProvider).value!;
+      final updated = state.charts.singleWhere((c) => c.id == 11);
+      expect(updated.song?.id, 7);
+      expect(updated.band?.name, 'Band',
+          reason: 'local band stamp must survive the patch');
+    });
+
+    test('unlinks with songId null', () async {
+      final repo = _FakeRepo(
+          charts: [chart(11, song: const ChartSongRef(id: 7, title: 'S'))]);
+      final container = ProviderContainer(overrides: [
+        libraryRepositoryProvider.overrideWithValue(repo),
+        songsRepositoryProvider.overrideWithValue(_FakeSongsRepo()),
+        selectedBandProvider.overrideWith(_StubBand.new),
+      ]);
+      addTearDown(container.dispose);
+      await container.read(libraryProvider.future);
+
+      await container
+          .read(libraryProvider.notifier)
+          .updateChartSong(1, 11, songId: null);
+
+      expect(repo.lastPatchHadSongId, true);
+      expect(repo.lastPatchedSongId, isNull);
+      final state = container.read(libraryProvider).value!;
+      expect(state.charts.singleWhere((c) => c.id == 11).song, isNull);
+    });
+
+    test('invalidates songsProvider so song.charts refreshes', () async {
+      final songsRepo = _FakeSongsRepo();
+      final container = ProviderContainer(overrides: [
+        libraryRepositoryProvider.overrideWithValue(_FakeRepo(charts: [chart(11)])),
+        songsRepositoryProvider.overrideWithValue(songsRepo),
+        selectedBandProvider.overrideWith(_StubBand.new),
+      ]);
+      addTearDown(container.dispose);
+      await container.read(libraryProvider.future);
+      await container.read(songsProvider.future);
+      final callsBefore = songsRepo.getSongsCallCount;
+
+      await container
+          .read(libraryProvider.notifier)
+          .updateChartSong(1, 11, songId: 7);
+      await container.read(songsProvider.future);
+
+      expect(songsRepo.getSongsCallCount, greaterThan(callsBefore));
     });
   });
 }

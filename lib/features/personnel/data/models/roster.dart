@@ -30,9 +30,17 @@ class RosterMember {
   final bool isUser;
 
   factory RosterMember.fromJson(Map<String, dynamic> json) {
+    // Raw Eloquent payloads (e.g. the rosters index) leave the `name` column
+    // null for user-linked members; the display label is the appended
+    // `display_name`, with the source of truth on the nested user.
+    final user = json['user'] as Map<String, dynamic>?;
+    final name = json['display_name'] as String? ??
+        json['name'] as String? ??
+        user?['name'] as String? ??
+        '';
     return RosterMember(
       id: (json['id'] as num).toInt(),
-      name: json['name'] as String? ?? '',
+      name: name,
       userId: (json['user_id'] as num?)?.toInt(),
       slotId: (json['slot_id'] as num?)?.toInt(),
       email: json['email'] as String?,

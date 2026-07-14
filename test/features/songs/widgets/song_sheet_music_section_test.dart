@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -31,12 +33,16 @@ class _StubAuthNotifier extends AuthNotifier {
 }
 
 class _FakeLibraryRepo implements LibraryRepository {
-  _FakeLibraryRepo(this.charts, {this.failPatch = false});
+  _FakeLibraryRepo(this.charts, {this.failPatch = false, this.pendingPatch});
   final List<Chart> charts;
   final bool failPatch;
+  /// When set, `updateChartSong` doesn't resolve until this completer does —
+  /// lets a test hold a PATCH "in flight" to exercise the busy guard.
+  final Completer<void>? pendingPatch;
   int? lastPatchedChartId;
   int? lastPatchedSongId;
   bool patchCalled = false;
+  int patchCallCount = 0;
 
   @override
   Future<List<Chart>> getAllCharts() async => charts;
@@ -44,8 +50,10 @@ class _FakeLibraryRepo implements LibraryRepository {
   @override
   Future<Chart> updateChartSong(int bandId, int chartId,
       {required int? songId}) async {
+    if (pendingPatch != null) await pendingPatch!.future;
     if (failPatch) throw Exception('nope');
     patchCalled = true;
+    patchCallCount++;
     lastPatchedChartId = chartId;
     lastPatchedSongId = songId;
     final c = charts.firstWhere((c) => c.id == chartId);
@@ -92,8 +100,9 @@ Widget _harness({
   required List<Chart> charts,
   List<BandSummary>? bands,
   bool failPatch = false,
+  _FakeLibraryRepo? repoOverride,
 }) {
-  final repo = _FakeLibraryRepo(charts, failPatch: failPatch);
+  final repo = repoOverride ?? _FakeLibraryRepo(charts, failPatch: failPatch);
   final router = GoRouter(routes: [
     GoRoute(
       path: '/',
@@ -135,6 +144,16 @@ _FakeLibraryRepo _repoOf(WidgetTester tester) {
   return container.read(libraryRepositoryProvider) as _FakeLibraryRepo;
 }
 
+/// Bounded alternative to `pumpAndSettle()` for use once a flow is holding
+/// the busy guard: the header's `CupertinoActivityIndicator` animates
+/// forever while `_busy` is true (by design — see the busy-guard fix), so
+/// `pumpAndSettle()` would time out. This just pumps enough frames for a
+/// modal-popup/dialog route transition to finish opening.
+Future<void> _settleModal(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 300));
+}
+
 void main() {
   setUp(() {
     pushedLocation = null;
@@ -154,7 +173,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.bySemanticsLabel('Add sheet music'));
-    await tester.pumpAndSettle();
+    await _settleModal(tester);
 
     expect(find.text('New sheet music…'), findsOneWidget);
     expect(find.text('Unlinked Chart'), findsOneWidget);
@@ -192,7 +211,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.bySemanticsLabel('Add sheet music'));
-    await tester.pumpAndSettle();
+    await _settleModal(tester);
 
     await tester.tap(find.text('Unlinked Chart'));
     await tester.pumpAndSettle();
@@ -213,10 +232,10 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.bySemanticsLabel('Add sheet music'));
-    await tester.pumpAndSettle();
+    await _settleModal(tester);
 
     await tester.tap(find.text('Taken Chart'));
-    await tester.pumpAndSettle();
+    await _settleModal(tester);
 
     expect(find.text('Move Sheet Music?'), findsOneWidget);
     expect(
@@ -234,9 +253,9 @@ void main() {
 
     // Reopen and tap Move.
     await tester.tap(find.bySemanticsLabel('Add sheet music'));
-    await tester.pumpAndSettle();
+    await _settleModal(tester);
     await tester.tap(find.text('Taken Chart'));
-    await tester.pumpAndSettle();
+    await _settleModal(tester);
     await tester.tap(find.text('Move'));
     await tester.pumpAndSettle();
 
@@ -257,7 +276,7 @@ void main() {
     await tester.tap(
       find.bySemanticsLabel('Sheet music options for September - Horns'),
     );
-    await tester.pumpAndSettle();
+    await _settleModal(tester);
 
     expect(find.text('Unlink sheet music'), findsOneWidget);
     await tester.tap(find.text('Unlink sheet music'));
@@ -278,7 +297,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.bySemanticsLabel('Add sheet music'));
-    await tester.pumpAndSettle();
+    await _settleModal(tester);
 
     await tester.tap(find.text('New sheet music…'));
     await tester.pumpAndSettle();
@@ -302,7 +321,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.bySemanticsLabel('Add sheet music'));
-    await tester.pumpAndSettle();
+    await _settleModal(tester);
 
     await tester.tap(find.text('Unlinked Chart'));
     await tester.pumpAndSettle();
@@ -312,6 +331,54 @@ void main() {
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
+    expect(find.bySemanticsLabel('Add sheet music'), findsOneWidget);
+    expect(find.byType(CupertinoActivityIndicator), findsNothing);
+  });
+
+  testWidgets(
+      'busy guard blocks reentry while a PATCH is in flight, and '
+      're-enables once it completes', (tester) async {
+    final charts = [
+      _chart(id: 11, title: 'September - Horns',
+          song: const ChartSongRef(id: 7, title: 'September')),
+      _chart(id: 12, title: 'Unlinked Chart'),
+    ];
+    final pendingPatch = Completer<void>();
+    final repo = _FakeLibraryRepo(charts, pendingPatch: pendingPatch);
+
+    await tester.pumpWidget(_harness(charts: charts, repoOverride: repo));
+    await tester.pumpAndSettle();
+
+    // Start the Add flow and pick an unlinked chart — this issues the PATCH,
+    // which now blocks on `pendingPatch`, holding `_busy` true across the
+    // whole flow (picker already dismissed itself via Navigator.pop, but the
+    // flow's finally hasn't run yet).
+    await tester.tap(find.bySemanticsLabel('Add sheet music'));
+    await _settleModal(tester);
+    await tester.tap(find.text('Unlinked Chart'));
+    await _settleModal(tester);
+
+    // Header shows the spinner instead of the Add button while the PATCH is
+    // in flight.
+    expect(find.bySemanticsLabel('Add sheet music'), findsNothing);
+    expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
+
+    // Row actions are disabled: tapping the ellipsis (or the row) does
+    // nothing — no second repo call is issued.
+    await tester.tap(
+      find.bySemanticsLabel('Sheet music options for September - Horns'),
+    );
+    await tester.pump();
+    expect(find.text('Unlink sheet music'), findsNothing);
+    expect(repo.patchCallCount, 0);
+
+    // Complete the in-flight PATCH and let the flow's finally clear _busy.
+    pendingPatch.complete();
+    await tester.pumpAndSettle();
+
+    expect(repo.patchCallCount, 1);
+    expect(repo.lastPatchedChartId, 12);
+    expect(repo.lastPatchedSongId, 7);
     expect(find.bySemanticsLabel('Add sheet music'), findsOneWidget);
     expect(find.byType(CupertinoActivityIndicator), findsNothing);
   });

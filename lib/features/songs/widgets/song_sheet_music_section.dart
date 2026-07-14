@@ -33,16 +33,16 @@ class _SongSheetMusicSectionState
 
   Song get song => widget.song;
 
+  /// PATCHes the chart-song link. Does NOT own [_busy] — the calling flow
+  /// (`_showAddPicker` / `_showChartOptions`) holds the guard for its whole
+  /// duration and clears it in its own `finally`.
   Future<void> _patch(int chartId, int? songId) async {
-    setState(() => _busy = true);
     try {
       await ref
           .read(libraryProvider.notifier)
           .updateChartSong(song.bandId, chartId, songId: songId);
     } catch (e) {
       if (mounted) _showError(e);
-    } finally {
-      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -65,58 +65,67 @@ class _SongSheetMusicSectionState
   // ── Unlink ───────────────────────────────────────────────────────────────
 
   Future<void> _showChartOptions(SongChartSummary chart) async {
-    final action = await showCupertinoModalPopup<_ChartAction>(
-      context: context,
-      builder: (sheetCtx) => CupertinoActionSheet(
-        actions: [
-          CupertinoActionSheetAction(
-            isDestructiveAction: true,
-            onPressed: () =>
-                Navigator.of(sheetCtx).pop(_ChartAction.unlink),
-            child: const Text('Unlink sheet music'),
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final action = await showCupertinoModalPopup<_ChartAction>(
+        context: context,
+        builder: (sheetCtx) => CupertinoActionSheet(
+          actions: [
+            CupertinoActionSheetAction(
+              isDestructiveAction: true,
+              onPressed: () =>
+                  Navigator.of(sheetCtx).pop(_ChartAction.unlink),
+              child: const Text('Unlink sheet music'),
+            ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.of(sheetCtx).pop(),
+            child: const Text('Cancel'),
           ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.of(sheetCtx).pop(),
-          child: const Text('Cancel'),
         ),
-      ),
-    );
+      );
 
-    if (action == _ChartAction.unlink) {
-      await _patch(chart.id, null);
+      if (action == _ChartAction.unlink) {
+        await _patch(chart.id, null);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   // ── Add flow ─────────────────────────────────────────────────────────────
 
   Future<void> _showAddPicker() async {
+    if (_busy) return;
     setState(() => _busy = true);
-    List<Chart> charts;
     try {
-      final state = await ref.read(libraryProvider.future);
-      charts =
-          state.charts.where((c) => c.bandId == song.bandId).toList();
-    } catch (e) {
-      if (mounted) _showError(e);
+      List<Chart> charts;
+      try {
+        final state = await ref.read(libraryProvider.future);
+        charts =
+            state.charts.where((c) => c.bandId == song.bandId).toList();
+      } catch (e) {
+        if (mounted) _showError(e);
+        return;
+      }
+      if (!mounted) return;
+
+      final selection = await showCupertinoModalPopup<_PickerSelection>(
+        context: context,
+        builder: (sheetCtx) => _ChartPickerSheet(charts: charts, song: song),
+      );
+
+      if (selection == null || !mounted) return;
+
+      switch (selection) {
+        case _NewChartSelection():
+          await _createNew();
+        case _ChartSelection(:final chart):
+          await _handleChartPicked(chart);
+      }
+    } finally {
       if (mounted) setState(() => _busy = false);
-      return;
-    }
-    if (mounted) setState(() => _busy = false);
-    if (!mounted) return;
-
-    final selection = await showCupertinoModalPopup<_PickerSelection>(
-      context: context,
-      builder: (sheetCtx) => _ChartPickerSheet(charts: charts, song: song),
-    );
-
-    if (selection == null || !mounted) return;
-
-    switch (selection) {
-      case _NewChartSelection():
-        await _createNew();
-      case _ChartSelection(:final chart):
-        await _handleChartPicked(chart);
     }
   }
 

@@ -37,6 +37,7 @@ class _SongSheetMusicSectionState
   /// (`_showAddPicker` / `_showChartOptions`) holds the guard for its whole
   /// duration and clears it in its own `finally`.
   Future<void> _patch(int chartId, int? songId) async {
+    if (!mounted) return;
     try {
       await ref
           .read(libraryProvider.notifier)

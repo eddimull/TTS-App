@@ -151,7 +151,8 @@ _FakeLibraryRepo _repoOf(WidgetTester tester) {
 /// modal-popup/dialog route transition to finish opening.
 Future<void> _settleModal(WidgetTester tester) async {
   await tester.pump();
-  await tester.pump(const Duration(milliseconds: 300));
+  // 350ms clears the Cupertino modal-popup transition (335ms) with margin.
+  await tester.pump(const Duration(milliseconds: 350));
 }
 
 void main() {

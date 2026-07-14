@@ -1,5 +1,66 @@
 # Changelog
 
+## [1.12.0](https://github.com/eddimull/TTS-App/compare/v1.11.0...v1.12.0) (2026-07-14)
+
+
+### Features
+
+* **chat:** ChatRepository over the conversations API ([9bc24ea](https://github.com/eddimull/TTS-App/commit/9bc24ea48476c23540adf7ba5945b51b70143cfe))
+* **chat:** comments sections on event, rehearsal, booking detail ([fc27e49](https://github.com/eddimull/TTS-App/commit/fc27e49ffdbde469d6b40eab2a1790c7ed7b9456))
+* **chat:** conversation list + unread total providers ([7ae97e8](https://github.com/eddimull/TTS-App/commit/7ae97e8b8b1c8c738f5b2bd9a5eeabd6bd9aaf25))
+* **chat:** conversation thread screen with images, receipts, edit/delete ([b79940a](https://github.com/eddimull/TTS-App/commit/b79940af9573ce6a6fa312a947c97687241f27e7))
+* **chat:** conversation/message/participant/contact models + endpoints ([e322524](https://github.com/eddimull/TTS-App/commit/e32252409087355437526c4cfb71ae9cc8ef14ac))
+* **chat:** Message in Bandmate action on contact screens ([810193d](https://github.com/eddimull/TTS-App/commit/810193dd570b878673e7d253b9ff37f6f39a17bb))
+* **chat:** Messages + New Message screens, routes, More tile with unread badge ([11f747b](https://github.com/eddimull/TTS-App/commit/11f747be8cda22ff5e6232a51ea8525d23ba2770))
+* **chat:** thread notifier with live channel, receipts, typing ([205f7af](https://github.com/eddimull/TTS-App/commit/205f7af77272b6ba4ca553f9c0e300299ae6b44e))
+* comments & chat — conversations, DMs, comments on events/rehearsals/bookings, realtime, push ([f744c58](https://github.com/eddimull/TTS-App/commit/f744c584d11ea3ed0cdf986188f7b64c6bca1d52))
+* **library:** CreateChartArgs route extra prefills chart from a song ([66799e4](https://github.com/eddimull/TTS-App/commit/66799e4f3a18257e8b86f6a355d845bca9e65873))
+* **library:** songs↔sheet-music linking on create form and detail screen ([25f8e89](https://github.com/eddimull/TTS-App/commit/25f8e892724ad902668838c100ca6cc927f61cf6))
+* **library:** updateChartSong on LibraryNotifier with local state patch ([914f1c4](https://github.com/eddimull/TTS-App/commit/914f1c4ef35e79deb5ee1016cab409e0908043ef))
+* nav restructure — Messages tab, Operations hamburger, Settings tab, message-a-bandmate ([16712f1](https://github.com/eddimull/TTS-App/commit/16712f1059e58bea18c78173058e0165f7081be7))
+* **nav:** dashboard hamburger opens Operations; one-time bookings-moved hint ([109543c](https://github.com/eddimull/TTS-App/commit/109543c6b0bce46e5a34a57d71c9eeadc76ef716))
+* **nav:** Messages tab with unread badge replaces Bookings; More becomes Settings ([25c1d14](https://github.com/eddimull/TTS-App/commit/25c1d142f0880f9877088b7666ca45dc9ecb6726))
+* **nav:** messages/operations/settings shell routes, /more redirect ([d258773](https://github.com/eddimull/TTS-App/commit/d258773b3426e15059d176e0cf6ae1126c5b1e5a))
+* **nav:** Operations and Settings screens (More split) ([718a0e3](https://github.com/eddimull/TTS-App/commit/718a0e3dcbf5d7bfed585bbdaee44f791158db94))
+* **nav:** Song list row on the Operations screen ([479c92b](https://github.com/eddimull/TTS-App/commit/479c92b460c1f2cd5fb6748ad119bda6a2fa0ace))
+* **push:** chat_message type routes to thread, suppressed when open ([3139c39](https://github.com/eddimull/TTS-App/commit/3139c396c678f8b30a66ae45e194054981c1e879))
+* **realtime:** message signals on band + per-user channels refresh chat ([8bce76c](https://github.com/eddimull/TTS-App/commit/8bce76c36d1ddffc8c4564b7a60b5a1f8b77a4cc))
+* song list management, chart linking, and Sheet music relabel ([b3c5a5b](https://github.com/eddimull/TTS-App/commit/b3c5a5b16c8efd988f7138f5756287e2ac85b6fe))
+* song-side sheet music linking + fix blank singer picker names ([a20e2fa](https://github.com/eddimull/TTS-App/commit/a20e2fa8b25a2a7b175e8a182dde3df332bfac46))
+* **songs:** manage sheet music links from the song detail screen ([8a68be0](https://github.com/eddimull/TTS-App/commit/8a68be0af24b73fbb54393f54cc81508efedd1df))
+* **songs:** song create/edit form with BPM lookup, pickers, and steppers ([bade99b](https://github.com/eddimull/TTS-App/commit/bade99b0a70ace870e5ce68fdd99873bf4fff57f))
+* **songs:** song detail screen with linked sheet music section ([d71b250](https://github.com/eddimull/TTS-App/commit/d71b250fc761ac9783aefc42605e16dce9836a6d))
+* **songs:** song list screen and segmented Library tab (Song list | Sheet music) ([f627e0e](https://github.com/eddimull/TTS-App/commit/f627e0e71e38494cd2e91540031a5c6fac0380c1))
+* **songs:** songs AsyncNotifier, inactive filter, band-scoped and lead-singer providers ([e030559](https://github.com/eddimull/TTS-App/commit/e0305598964a425f2669e15a07df0c67762402fe))
+* **songs:** songs repository and mobile API endpoints ([bdb5bcc](https://github.com/eddimull/TTS-App/commit/bdb5bcc7a1316b48be481ca45450a43189a753a8))
+* **songs:** unified Song model with fromJson/toJson/toUpdateJson ([3fea5f4](https://github.com/eddimull/TTS-App/commit/3fea5f4cb04c5a9558ac13bab9bb4b96a299d917))
+* **ui:** relabel user-facing Chart copy as Sheet music ([bce7748](https://github.com/eddimull/TTS-App/commit/bce774870972ac57174a39e74eb2e05981069ac4))
+
+
+### Bug Fixes
+
+* **auth:** clear chat provider caches on logout to stop cross-user leak ([d79519c](https://github.com/eddimull/TTS-App/commit/d79519c76e63707a13a41a1a09669c4dd03d16c6))
+* **chat:** address Copilot review — stable createdAt fallback, suppression-callback ordering ([684411c](https://github.com/eddimull/TTS-App/commit/684411c64eb8e8ed69e192ba25adc8a62f75f823))
+* **chat:** autoDispose thread notifier owning channel unsubscribe; mounted guards ([20d55b5](https://github.com/eddimull/TTS-App/commit/20d55b5aceed9ae4a248a19ecdd0b1163e239f91))
+* **chat:** band-scope the booking conversation endpoint ([25940f1](https://github.com/eddimull/TTS-App/commit/25940f10f3987c4559bdefb6d5882ba63c6024c8))
+* **chat:** only mark-read on others' messages, and debounce it ([7765f0d](https://github.com/eddimull/TTS-App/commit/7765f0d0b734072f76b8b0a7fc938e6230aecc8a))
+* **chat:** pre-PR minors — restore-on-failure, doc fix, dead field, cached bytes ([a3cd875](https://github.com/eddimull/TTS-App/commit/a3cd8756db2814d210eb204e38f2cb8b578103a3))
+* **chat:** reverse-list the thread to fix loadMore chain-fetch and prepend jump ([8b6f218](https://github.com/eddimull/TTS-App/commit/8b6f218f6b48fffd2dca9ef0e4fcee477c8f288e))
+* **library:** refresh songs state after chart link changes ([ba3483d](https://github.com/eddimull/TTS-App/commit/ba3483de41f15abb9cd812ba2e8775fb090b0825))
+* **nav:** address Copilot review — mirror shell shape in route-saving harness, accessible hint dismiss ([7ff4d1a](https://github.com/eddimull/TTS-App/commit/7ff4d1aeb20d43f3fed2f9faee11ccc4b7d5f668))
+* **nav:** close cold-restore trap into /messages/new composer ([b392436](https://github.com/eddimull/TTS-App/commit/b392436b6335ea9380e3ae01ad45a504ad50b96b))
+* **nav:** pre-warm hintStorageProvider in main.dart to avoid hint pop-in ([35de047](https://github.com/eddimull/TTS-App/commit/35de047c10037ef6a920fbfda957a922e91f1590))
+* **personnel:** parse display_name so user-linked roster members aren't blank ([c005356](https://github.com/eddimull/TTS-App/commit/c0053568000aee5bb6fb12fb5e9be052620272cb))
+* **push:** guard the background handler's plugin calls so failures never escape the isolate ([ba77110](https://github.com/eddimull/TTS-App/commit/ba77110db15cea4549e22f9e266f6787d5696175))
+* **push:** render chat_message notifications in the backgrounded FCM isolate ([2934bea](https://github.com/eddimull/TTS-App/commit/2934beaad0fcc3a80053bcc0b498adf99cbf26f7))
+* **push:** wire restore-path registration, fix chat suppression, tap deep-link, dev image TLS ([42e09df](https://github.com/eddimull/TTS-App/commit/42e09dfa4748c5aaf0a5a5a1ad3e2a43ebf85c40))
+* **songs:** address review feedback — picker error handling, toggle semantics, edit-route fallback ([bd7b912](https://github.com/eddimull/TTS-App/commit/bd7b912dd6acb484d57ff4b57ed04f97c3a088df))
+* **songs:** guard setState after awaits and cap BPM input at 3 digits ([9481cc1](https://github.com/eddimull/TTS-App/commit/9481cc17d53256a7f13a257e6a17ea5ac415a2c2))
+* **songs:** hold the sheet-music busy guard across the whole link flow ([85749cb](https://github.com/eddimull/TTS-App/commit/85749cb58aa03d467896de35319ab18067b527da))
+* **songs:** only safe-area the songs bottom bar on the standalone route ([3d91f77](https://github.com/eddimull/TTS-App/commit/3d91f77547f4c7335d3d47741988f6fb40bb77eb))
+* **songs:** re-attach ProviderScope container in modal popups (Copilot review) ([61bf6e7](https://github.com/eddimull/TTS-App/commit/61bf6e73a50bbce4f55a58bcb220f2c26f5bd57d))
+* **songs:** safe-area the standalone songs bar and friendly relink errors ([9e3a775](https://github.com/eddimull/TTS-App/commit/9e3a7757e35d8326aab700f999ed68b3dd7e5a7e))
+
 ## [1.11.0](https://github.com/eddimull/TTS-App/compare/v1.10.0...v1.11.0) (2026-07-08)
 
 

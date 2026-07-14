@@ -7,15 +7,25 @@ import 'package:tts_bandmate/core/theme/context_colors.dart';
 import '../../songs/data/models/song.dart';
 import '../../songs/providers/songs_provider.dart';
 
+/// Route extra for `/library/new`. [initialSong] pre-links the new chart and
+/// prefills title/composer from the song.
+class CreateChartArgs {
+  const CreateChartArgs({required this.band, this.initialSong});
+  final BandSummary band;
+  final Song? initialSong;
+}
+
 /// Full-screen modal form for creating a new chart.
 ///
-/// Pushed via `context.push('/library/new', extra: band)` from
-/// [LibraryScreen].  Pops with the newly created [Chart] on success so the
+/// Pushed via `context.push('/library/new', extra: CreateChartArgs(band: band, initialSong: song))`
+/// from [LibraryScreen] (or with just a [BandSummary] for backward compatibility).
+/// Pops with the newly created [Chart] on success so the
 /// caller can navigate into the detail screen if desired.
 class CreateChartScreen extends ConsumerStatefulWidget {
-  const CreateChartScreen({super.key, required this.band});
+  const CreateChartScreen({super.key, required this.band, this.initialSong});
 
   final BandSummary band;
+  final Song? initialSong;
 
   @override
   ConsumerState<CreateChartScreen> createState() => _CreateChartScreenState();
@@ -31,6 +41,17 @@ class _CreateChartScreenState extends ConsumerState<CreateChartScreen> {
   bool _isSaving = false;
   String? _error;
   Song? _linkedSong;
+
+  @override
+  void initState() {
+    super.initState();
+    final song = widget.initialSong;
+    if (song != null) {
+      _titleController.text = song.title;
+      _composerController.text = song.artist;
+      _linkedSong = song;
+    }
+  }
 
   @override
   void dispose() {

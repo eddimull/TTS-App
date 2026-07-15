@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -185,9 +186,26 @@ class _QuestionnaireRow extends ConsumerWidget {
             CupertinoActionSheetAction(
               onPressed: () async {
                 Navigator.of(sheetContext).pop();
-                await ref
-                    .read(questionnairesProvider(bandId).notifier)
-                    .archive(q.id);
+                try {
+                  await ref
+                      .read(questionnairesProvider(bandId).notifier)
+                      .archive(q.id);
+                } catch (_) {
+                  if (!context.mounted) return;
+                  await showCupertinoDialog<void>(
+                    context: context,
+                    builder: (dialogContext) => CupertinoAlertDialog(
+                      title: const Text('Archive failed'),
+                      content: const Text('Please try again.'),
+                      actions: [
+                        CupertinoDialogAction(
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                          child: const Text('OK'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
               },
               child: const Text('Archive'),
             ),
@@ -195,9 +213,26 @@ class _QuestionnaireRow extends ConsumerWidget {
             CupertinoActionSheetAction(
               onPressed: () async {
                 Navigator.of(sheetContext).pop();
-                await ref
-                    .read(questionnairesProvider(bandId).notifier)
-                    .restoreArchived(q.id);
+                try {
+                  await ref
+                      .read(questionnairesProvider(bandId).notifier)
+                      .restoreArchived(q.id);
+                } catch (_) {
+                  if (!context.mounted) return;
+                  await showCupertinoDialog<void>(
+                    context: context,
+                    builder: (dialogContext) => CupertinoAlertDialog(
+                      title: const Text('Restore failed'),
+                      content: const Text('Please try again.'),
+                      actions: [
+                        CupertinoDialogAction(
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                          child: const Text('OK'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
               },
               child: const Text('Restore'),
             ),
@@ -244,14 +279,47 @@ class _QuestionnaireRow extends ConsumerWidget {
       await ref
           .read(questionnairesProvider(bandId).notifier)
           .delete(questionnaire.id);
+    } on DioException catch (e) {
+      if (!context.mounted) return;
+      if (e.response?.statusCode == 409) {
+        await showCupertinoDialog<void>(
+          context: context,
+          builder: (dialogContext) => CupertinoAlertDialog(
+            title: const Text('Cannot delete'),
+            content: const Text(
+                'This questionnaire has been sent and can\'t be deleted — archive it instead.'),
+            actions: [
+              CupertinoDialogAction(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        await showCupertinoDialog<void>(
+          context: context,
+          builder: (dialogContext) => CupertinoAlertDialog(
+            title: const Text('Delete failed'),
+            content: const Text(
+                'Could not delete the questionnaire. Please try again.'),
+            actions: [
+              CupertinoDialogAction(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
     } catch (_) {
       if (!context.mounted) return;
       await showCupertinoDialog<void>(
         context: context,
         builder: (dialogContext) => CupertinoAlertDialog(
-          title: const Text('Cannot delete'),
+          title: const Text('Delete failed'),
           content: const Text(
-              'This questionnaire has been sent and can\'t be deleted — archive it instead.'),
+              'Could not delete the questionnaire. Please try again.'),
           actions: [
             CupertinoDialogAction(
               onPressed: () => Navigator.of(dialogContext).pop(),

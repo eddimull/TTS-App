@@ -6,8 +6,10 @@ import '../../../features/auth/data/models/band_summary.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../../shared/providers/selected_band_provider.dart';
 import '../data/models/questionnaire.dart';
+import '../providers/questionnaire_editor_provider.dart';
 import '../providers/questionnaires_provider.dart';
 import '../widgets/create_questionnaire_sheet.dart';
+import 'questionnaire_preview_screen.dart';
 
 class QuestionnairesScreen extends ConsumerWidget {
   const QuestionnairesScreen({super.key});
@@ -162,7 +164,23 @@ class _QuestionnaireRow extends ConsumerWidget {
               },
               child: const Text('Edit'),
             ),
-          // Task 12 adds a Preview action here.
+          CupertinoActionSheetAction(
+            onPressed: () async {
+              Navigator.of(sheetContext).pop();
+              final detail = await ref.read(questionnaireDetailProvider(
+                  (bandId: bandId, questionnaireId: q.id)).future);
+              if (!context.mounted) return;
+              Navigator.of(context).push(
+                CupertinoPageRoute<void>(
+                  builder: (_) => QuestionnairePreviewScreen(
+                    title: detail.name,
+                    fields: editorFieldsFromQuestionnaire(detail),
+                  ),
+                ),
+              );
+            },
+            child: const Text('Preview'),
+          ),
           if (isOwner && !q.isArchived)
             CupertinoActionSheetAction(
               onPressed: () async {

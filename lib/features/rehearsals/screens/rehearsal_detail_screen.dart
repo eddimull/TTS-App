@@ -10,7 +10,7 @@ import '../providers/rehearsals_provider.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
-import '../../chat/widgets/comments_section.dart';
+import '../../chat/widgets/comment_bar.dart';
 
 class RehearsalDetailScreen extends ConsumerWidget {
   const RehearsalDetailScreen({
@@ -334,12 +334,15 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
           ],
         ),
       ),
-      child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (rehearsal.isCancelled) ...[
-              Container(
+      child: CommentBarBody(
+        topic: TopicRef(kind: 'rehearsals', idOrKey: '${rehearsal.id}'),
+        child: SafeArea(
+          bottom: false, // CommentBar owns the bottom inset
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              if (rehearsal.isCancelled) ...[
+                Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
@@ -483,9 +486,9 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
                       ),
               ),
             ],
-            CommentsSection(kind: 'rehearsals', idOrKey: '${rehearsal.id}'),
             const SizedBox(height: 32),
           ],
+          ),
         ),
       ),
     );

@@ -101,7 +101,8 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
     case 'chart_uploads':
       return [chartsProvider, libraryProvider, chartDetailProvider];
     case 'message':
-      return [chatConversationsProvider, topicThreadProvider];
+      // dashboardProvider: keeps EventCard unread-comment badges fresh.
+      return [chatConversationsProvider, topicThreadProvider, dashboardProvider];
     default:
       return const [];
   }

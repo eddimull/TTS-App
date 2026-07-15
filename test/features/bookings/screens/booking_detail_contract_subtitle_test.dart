@@ -6,7 +6,6 @@ import 'package:tts_bandmate/features/bookings/data/models/booking_contract.dart
 import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
 import 'package:tts_bandmate/features/chat/data/models/conversation.dart';
 import 'package:tts_bandmate/features/chat/providers/topic_thread_provider.dart';
-import 'package:tts_bandmate/features/chat/widgets/comments_section.dart';
 import 'package:tts_bandmate/features/bookings/data/models/booking_detail.dart';
 import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
 import 'package:tts_bandmate/features/bookings/screens/booking_detail_screen.dart';
@@ -36,7 +35,7 @@ BookingDetail _detail({String? contractStatus}) => BookingDetail(
       band: const BandSummary(id: 1, name: 'Band', isOwner: true),
     );
 
-// The embedded CommentsSection resolves its topic thread via a provider; stub
+// The embedded CommentBar resolves its topic thread via a provider; stub
 // it so the section renders instantly without a network call in these tests.
 ThreadPage _emptyThread() => (
       conversation: const Conversation(id: 999, type: 'topic', title: ''),

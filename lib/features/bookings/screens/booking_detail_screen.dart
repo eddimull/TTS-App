@@ -15,7 +15,7 @@ import '../widgets/booking_contract_nudge.dart';
 import '../widgets/booking_engagement_summary.dart';
 import '../widgets/booking_section_tile.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
-import '../../chat/widgets/comments_section.dart';
+import '../../chat/widgets/comment_bar.dart';
 
 class BookingDetailScreen extends ConsumerWidget {
   const BookingDetailScreen({
@@ -404,150 +404,152 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
                 child: const Icon(CupertinoIcons.ellipsis_circle),
               ),
       ),
-      child: CustomScrollView(
-        slivers: [
-          SliverSafeArea(
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                // ── Band identity ─────────────────────────────────────────
-                // Shows "Personal + user avatar" for personal gigs; band
-                // name + logo for regular band bookings. Omitted when the
-                // backend hasn't yet returned a band payload (legacy cache).
-                if (b.band != null) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                    child: BandIdentityChip(
-                      band: b.band!,
-                      size: 22,
+      child: CommentBarBody(
+        topic: TopicRef(
+          kind: 'bookings',
+          idOrKey: '${widget.bookingId}',
+          bandId: widget.bandId,
+        ),
+        child: CustomScrollView(
+          slivers: [
+            SliverSafeArea(
+              bottom: false, // CommentBar owns the bottom inset
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  // ── Band identity ─────────────────────────────────────────
+                  // Shows "Personal + user avatar" for personal gigs; band
+                  // name + logo for regular band bookings. Omitted when the
+                  // backend hasn't yet returned a band payload (legacy cache).
+                  if (b.band != null) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                      child: BandIdentityChip(
+                        band: b.band!,
+                        size: 22,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
 
-                // ── Engagement summary strip ───────────────────────────────
-                const SizedBox(height: 8),
-                BookingEngagementSummary(booking: b),
-
-                // ── Status row ────────────────────────────────────────────
-                if (b.status != null) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: StatusChip(status: b.status!),
-                  ),
-                ],
-
-                // ── Contract next-step nudge ──────────────────────────────
-                BookingContractNudge(
-                  booking: b,
-                  onAddContact: () => context.push(
-                      '/bookings/${widget.bandId}/${widget.bookingId}/contacts'),
-                  onSendContract: () => context.push(
-                      '/bookings/${widget.bandId}/${widget.bookingId}/contract'),
-                ),
-
-                // ── Financial summary ─────────────────────────────────────
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _FinancialsCard(booking: b),
-                ),
-
-                // ── Events section ────────────────────────────────────────
-                const SizedBox(height: 16),
-                const _SectionHeader(label: 'Events'),
-                _eventsSection(b),
-
-                // ── Itemization summary ───────────────────────────────────
-                if (itemization != null) ...[
+                  // ── Engagement summary strip ───────────────────────────────
                   const SizedBox(height: 8),
-                  const _SectionHeader(label: 'Itemization'),
-                  itemization,
-                ],
+                  BookingEngagementSummary(booking: b),
 
-                // ── Section tiles ─────────────────────────────────────────
-                const SizedBox(height: 24),
-                const _SectionHeader(label: 'Payments'),
-                BookingSectionTile(
-                  icon: CupertinoIcons.money_dollar_circle,
-                  title: 'Payments',
-                  subtitle: _paymentsSubtitle(b),
-                  onTap: () => context.push(
-                      '/bookings/${widget.bandId}/${widget.bookingId}/payments'),
-                ),
-                if ((double.tryParse(b.price ?? '') ?? 0) > 0)
-                  BookingSectionTile(
-                    icon: CupertinoIcons.chart_pie,
-                    title: 'Payout',
-                    subtitle: 'Member breakdown across performances',
-                    onTap: () => context.push(
-                        '/bookings/${widget.bandId}/${widget.bookingId}/payout'),
+                  // ── Status row ────────────────────────────────────────────
+                  if (b.status != null) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: StatusChip(status: b.status!),
+                    ),
+                  ],
+
+                  // ── Contract next-step nudge ──────────────────────────────
+                  BookingContractNudge(
+                    booking: b,
+                    onAddContact: () => context.push(
+                        '/bookings/${widget.bandId}/${widget.bookingId}/contacts'),
+                    onSendContract: () => context.push(
+                        '/bookings/${widget.bandId}/${widget.bookingId}/contract'),
                   ),
 
-                // ── Inline contacts preview ───────────────────────────────
-                const SizedBox(height: 16),
-                const _SectionHeader(label: 'Contacts'),
-                if (b.contacts.isNotEmpty) ...[
-                  ...b.contacts.take(2).map((c) => _InlineContactRow(contact: c)),
-                ],
-                BookingSectionTile(
-                  icon: CupertinoIcons.person_2,
-                  title: 'All Contacts',
-                  subtitle: '${b.contacts.length} contact${b.contacts.length == 1 ? '' : 's'}',
-                  onTap: () => context.push(
-                      '/bookings/${widget.bandId}/${widget.bookingId}/contacts'),
-                ),
-
-                // ── Contract ──────────────────────────────────────────────
-                const SizedBox(height: 16),
-                const _SectionHeader(label: 'Contract'),
-                BookingSectionTile(
-                  icon: CupertinoIcons.doc_text,
-                  title: 'Contract',
-                  subtitle: _contractSubtitle(b),
-                  onTap: () => context.push(
-                      '/bookings/${widget.bandId}/${widget.bookingId}/contract'),
-                ),
-
-                // ── Notes ─────────────────────────────────────────────────
-                if (b.notes != null && b.notes!.isNotEmpty) ...[
+                  // ── Financial summary ─────────────────────────────────────
                   const SizedBox(height: 16),
-                  const _SectionHeader(label: 'Notes'),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.tertiarySystemBackground
-                            .resolveFrom(context),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(b.notes!,
-                          style: const TextStyle(fontSize: 15)),
-                    ),
+                    child: _FinancialsCard(booking: b),
                   ),
-                ],
 
-                // ── History ───────────────────────────────────────────────
-                const SizedBox(height: 16),
-                const _SectionHeader(label: 'History'),
-                BookingSectionTile(
-                  icon: CupertinoIcons.clock,
-                  title: 'History',
-                  onTap: () => context.push(
-                      '/bookings/${widget.bandId}/${widget.bookingId}/history'),
-                ),
+                  // ── Events section ────────────────────────────────────────
+                  const SizedBox(height: 16),
+                  const _SectionHeader(label: 'Events'),
+                  _eventsSection(b),
 
-                CommentsSection(
-                  kind: 'bookings',
-                  idOrKey: '${widget.bookingId}',
-                  bandId: widget.bandId,
-                ),
+                  // ── Itemization summary ───────────────────────────────────
+                  if (itemization != null) ...[
+                    const SizedBox(height: 8),
+                    const _SectionHeader(label: 'Itemization'),
+                    itemization,
+                  ],
 
-                const SizedBox(height: 32),
-              ]),
+                  // ── Section tiles ─────────────────────────────────────────
+                  const SizedBox(height: 24),
+                  const _SectionHeader(label: 'Payments'),
+                  BookingSectionTile(
+                    icon: CupertinoIcons.money_dollar_circle,
+                    title: 'Payments',
+                    subtitle: _paymentsSubtitle(b),
+                    onTap: () => context.push(
+                        '/bookings/${widget.bandId}/${widget.bookingId}/payments'),
+                  ),
+                  if ((double.tryParse(b.price ?? '') ?? 0) > 0)
+                    BookingSectionTile(
+                      icon: CupertinoIcons.chart_pie,
+                      title: 'Payout',
+                      subtitle: 'Member breakdown across performances',
+                      onTap: () => context.push(
+                          '/bookings/${widget.bandId}/${widget.bookingId}/payout'),
+                    ),
+
+                  // ── Inline contacts preview ───────────────────────────────
+                  const SizedBox(height: 16),
+                  const _SectionHeader(label: 'Contacts'),
+                  if (b.contacts.isNotEmpty) ...[
+                    ...b.contacts.take(2).map((c) => _InlineContactRow(contact: c)),
+                  ],
+                  BookingSectionTile(
+                    icon: CupertinoIcons.person_2,
+                    title: 'All Contacts',
+                    subtitle: '${b.contacts.length} contact${b.contacts.length == 1 ? '' : 's'}',
+                    onTap: () => context.push(
+                        '/bookings/${widget.bandId}/${widget.bookingId}/contacts'),
+                  ),
+
+                  // ── Contract ──────────────────────────────────────────────
+                  const SizedBox(height: 16),
+                  const _SectionHeader(label: 'Contract'),
+                  BookingSectionTile(
+                    icon: CupertinoIcons.doc_text,
+                    title: 'Contract',
+                    subtitle: _contractSubtitle(b),
+                    onTap: () => context.push(
+                        '/bookings/${widget.bandId}/${widget.bookingId}/contract'),
+                  ),
+
+                  // ── Notes ─────────────────────────────────────────────────
+                  if (b.notes != null && b.notes!.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    const _SectionHeader(label: 'Notes'),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: CupertinoColors.tertiarySystemBackground
+                              .resolveFrom(context),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(b.notes!,
+                            style: const TextStyle(fontSize: 15)),
+                      ),
+                    ),
+                  ],
+
+                  // ── History ───────────────────────────────────────────────
+                  const SizedBox(height: 16),
+                  const _SectionHeader(label: 'History'),
+                  BookingSectionTile(
+                    icon: CupertinoIcons.clock,
+                    title: 'History',
+                    onTap: () => context.push(
+                        '/bookings/${widget.bandId}/${widget.bookingId}/history'),
+                  ),
+
+                  const SizedBox(height: 32),
+                ]),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

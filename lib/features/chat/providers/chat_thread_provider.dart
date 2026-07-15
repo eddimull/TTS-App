@@ -240,7 +240,7 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
 
   /// Marks the newest message read and refreshes the conversation list so
   /// unread badges drop, plus every topicThreadProvider family member so a
-  /// CommentsSection embedded on a detail screen (event/rehearsal/booking)
+  /// CommentBar embedded on a detail screen (event/rehearsal/booking)
   /// clears its stale unread badge for this conversation too. Best-effort.
   Future<void> markRead() async {
     final last = state.messages.isNotEmpty ? state.messages.last : null;

@@ -15,7 +15,7 @@ import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/status_chip.dart';
-import '../../chat/widgets/comments_section.dart';
+import '../../chat/widgets/comment_bar.dart';
 import '../../bookings/widgets/venue_picker.dart' show geocodeAddress, VenuePreviewCard;
 import '../../contacts/contact_detail_screen.dart';
 import '../../contacts/contact_ref.dart';
@@ -111,157 +111,158 @@ class _EventDetailView extends ConsumerWidget {
               )
             : null,
       ),
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Booking backlink. Shows "Part of: <name>" when opened from the
-          // booking, or a generic "Go to booking" for booking-backed events
-          // opened any other way.
-          if (showBookingLink) ...[
-            PartOfBookingRow(
-              bookingName: parentBookingName,
-              onTap: () => context.push(
-                '/bookings/$bookingBandId/$bookingId',
+      child: CommentBarBody(
+        topic: TopicRef(kind: 'events', idOrKey: event.key),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Booking backlink. Shows "Part of: <name>" when opened from the
+            // booking, or a generic "Go to booking" for booking-backed events
+            // opened any other way.
+            if (showBookingLink) ...[
+              PartOfBookingRow(
+                bookingName: parentBookingName,
+                onTap: () => context.push(
+                  '/bookings/$bookingBandId/$bookingId',
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-          ],
+              const SizedBox(height: 12),
+            ],
 
-          // Date / Time
-          _InfoRow(
-            icon: CupertinoIcons.calendar,
-            label: 'Date',
-            value: _formatDateAndTime(event.date, event.time),
-          ),
-
-          // Venue
-          if (event.venueName != null && event.venueName!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _VenueCard(
-              venueName: event.venueName!,
-              venueAddress: event.venueAddress,
-            ),
-          ],
-
-          // Status
-          if (event.status != null) ...[
-            const SizedBox(height: 12),
+            // Date / Time
             _InfoRow(
-              icon: CupertinoIcons.info_circle,
-              label: 'Status',
-              value: '',
-              trailing: StatusChip(status: event.status!),
+              icon: CupertinoIcons.calendar,
+              label: 'Date',
+              value: _formatDateAndTime(event.date, event.time),
             ),
-          ],
 
-          // Event type + flags row
-          if (_hasFlags) ...[
-            const SizedBox(height: 16),
-            _FlagsRow(event: event),
-          ],
+            // Venue
+            if (event.venueName != null && event.venueName!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _VenueCard(
+                venueName: event.venueName!,
+                venueAddress: event.venueAddress,
+              ),
+            ],
 
-          // Timeline
-          if (event.timeline.isNotEmpty || event.time != null) ...[
+            // Status
+            if (event.status != null) ...[
+              const SizedBox(height: 12),
+              _InfoRow(
+                icon: CupertinoIcons.info_circle,
+                label: 'Status',
+                value: '',
+                trailing: StatusChip(status: event.status!),
+              ),
+            ],
+
+            // Event type + flags row
+            if (_hasFlags) ...[
+              const SizedBox(height: 16),
+              _FlagsRow(event: event),
+            ],
+
+            // Timeline
+            if (event.timeline.isNotEmpty || event.time != null) ...[
+              const SizedBox(height: 20),
+              const _SectionHeader(title: 'Timeline'),
+              const SizedBox(height: 8),
+              _TimelineSection(
+                entries: event.timeline,
+                eventDate: event.parsedDate,
+                showTime: event.time,
+                eventDateStr: event.date,
+              ),
+            ],
+
+            // Notes
+            if (event.notes != null && event.notes!.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const _SectionHeader(title: 'Notes'),
+              const SizedBox(height: 8),
+              _NotesBox(html: event.notes!),
+            ],
+
+            // Attachments (band-internal files — read-only)
+            if (event.attachments.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const _SectionHeader(title: 'Attachments'),
+              const SizedBox(height: 8),
+              _AttachmentsSection(attachments: event.attachments),
+            ],
+
+            // Media (client-shared photos/files — writers can upload)
+            if (event.media.isNotEmpty || event.canWrite) ...[
+              const SizedBox(height: 20),
+              _MediaSection(
+                media: event.media,
+                eventKey: event.key,
+                eventId: event.id,
+                canWrite: event.canWrite,
+              ),
+            ],
+
+            // Attire
+            if (event.attire != null && event.attire!.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const _SectionHeader(title: 'Attire'),
+              const SizedBox(height: 8),
+              _Card(child: Text(event.attire!, style: const TextStyle(fontSize: 15))),
+            ],
+
+            // Setlist (always available — editor; plus live mode when active)
             const SizedBox(height: 20),
-            const _SectionHeader(title: 'Timeline'),
-            const SizedBox(height: 8),
-            _TimelineSection(
-              entries: event.timeline,
-              eventDate: event.parsedDate,
-              showTime: event.time,
-              eventDateStr: event.date,
-            ),
-          ],
-
-          // Notes
-          if (event.notes != null && event.notes!.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            const _SectionHeader(title: 'Notes'),
-            const SizedBox(height: 8),
-            _NotesBox(html: event.notes!),
-          ],
-
-          // Attachments (band-internal files — read-only)
-          if (event.attachments.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            const _SectionHeader(title: 'Attachments'),
-            const SizedBox(height: 8),
-            _AttachmentsSection(attachments: event.attachments),
-          ],
-
-          // Media (client-shared photos/files — writers can upload)
-          if (event.media.isNotEmpty || event.canWrite) ...[
-            const SizedBox(height: 20),
-            _MediaSection(
-              media: event.media,
+            _SetlistRow(
               eventKey: event.key,
-              eventId: event.id,
-              canWrite: event.canWrite,
+              hasLiveSession: event.liveSessionId != null,
             ),
+
+            // Performance (songs / charts)
+            if (event.performance != null &&
+                (event.performance!.notes?.isNotEmpty == true ||
+                    event.performance!.songs.isNotEmpty ||
+                    event.performance!.charts.isNotEmpty)) ...[
+              const SizedBox(height: 20),
+              const _SectionHeader(title: 'Performance'),
+              const SizedBox(height: 8),
+              _PerformanceSection(performance: event.performance!),
+            ],
+
+            // Wedding details
+            if (event.wedding != null &&
+                (event.wedding!.onsite != null || event.wedding!.dances.isNotEmpty)) ...[
+              const SizedBox(height: 20),
+              const _SectionHeader(title: 'Wedding Details'),
+              const SizedBox(height: 8),
+              _WeddingSection(wedding: event.wedding!),
+            ],
+
+            // Lodging
+            if (event.lodging.isNotEmpty &&
+                event.lodging.any((l) => l.title == 'Provided' && l.data == true)) ...[
+              const SizedBox(height: 20),
+              const _SectionHeader(title: 'Lodging'),
+              const SizedBox(height: 8),
+              _LodgingSection(items: event.lodging),
+            ],
+
+            // Contacts
+            if (event.contacts.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const _SectionHeader(title: 'Contacts'),
+              const SizedBox(height: 8),
+              ...event.contacts.map((c) => _ContactRow(contact: c)),
+            ],
+
+            // Roster
+            if (event.members.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              _RosterSection(event: event),
+            ],
+
+            const SizedBox(height: 32),
           ],
-
-          // Attire
-          if (event.attire != null && event.attire!.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            const _SectionHeader(title: 'Attire'),
-            const SizedBox(height: 8),
-            _Card(child: Text(event.attire!, style: const TextStyle(fontSize: 15))),
-          ],
-
-          // Setlist (always available — editor; plus live mode when active)
-          const SizedBox(height: 20),
-          _SetlistRow(
-            eventKey: event.key,
-            hasLiveSession: event.liveSessionId != null,
-          ),
-
-          // Performance (songs / charts)
-          if (event.performance != null &&
-              (event.performance!.notes?.isNotEmpty == true ||
-                  event.performance!.songs.isNotEmpty ||
-                  event.performance!.charts.isNotEmpty)) ...[
-            const SizedBox(height: 20),
-            const _SectionHeader(title: 'Performance'),
-            const SizedBox(height: 8),
-            _PerformanceSection(performance: event.performance!),
-          ],
-
-          // Wedding details
-          if (event.wedding != null &&
-              (event.wedding!.onsite != null || event.wedding!.dances.isNotEmpty)) ...[
-            const SizedBox(height: 20),
-            const _SectionHeader(title: 'Wedding Details'),
-            const SizedBox(height: 8),
-            _WeddingSection(wedding: event.wedding!),
-          ],
-
-          // Lodging
-          if (event.lodging.isNotEmpty &&
-              event.lodging.any((l) => l.title == 'Provided' && l.data == true)) ...[
-            const SizedBox(height: 20),
-            const _SectionHeader(title: 'Lodging'),
-            const SizedBox(height: 8),
-            _LodgingSection(items: event.lodging),
-          ],
-
-          // Contacts
-          if (event.contacts.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            const _SectionHeader(title: 'Contacts'),
-            const SizedBox(height: 8),
-            ...event.contacts.map((c) => _ContactRow(contact: c)),
-          ],
-
-          // Roster
-          if (event.members.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            _RosterSection(event: event),
-          ],
-
-          CommentsSection(kind: 'events', idOrKey: event.key),
-
-          const SizedBox(height: 32),
-        ],
+        ),
       ),
     );
   }

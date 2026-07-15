@@ -56,16 +56,10 @@ class CommentBar extends ConsumerWidget {
               child: Text('Comments',
                   style: TextStyle(fontSize: 14, color: context.secondaryText)),
             ),
-            // Comments are secondary content on a detail screen — a load failure
-            // stays quiet and recoverable instead of blocking the page.
-            error: (_, __) => GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => ref.invalidate(topicThreadProvider(topic)),
-              child: _BarRow(
-                child: Text('Comments unavailable — tap to retry',
-                    style: TextStyle(fontSize: 14, color: context.secondaryText)),
-              ),
-            ),
+            // Unreachable: the hasError pre-check above intercepts every error
+            // state (including loading-with-previous-error). when() still
+            // requires the handler.
+            error: (_, __) => const SizedBox.shrink(),
             data: (page) {
               final latest = page.messages.isEmpty ? null : page.messages.last;
               return GestureDetector(

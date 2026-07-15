@@ -343,48 +343,48 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
             children: [
               if (rehearsal.isCancelled) ...[
                 Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: CupertinoColors.systemRed
-                      .resolveFrom(context)
-                      .withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                      color: CupertinoColors.systemRed
-                          .resolveFrom(context)
-                          .withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(CupertinoIcons.xmark_circle,
-                        color: CupertinoColors.systemRed.resolveFrom(context),
-                        size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'This rehearsal has been cancelled.',
-                        style: TextStyle(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.systemRed
+                        .resolveFrom(context)
+                        .withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: CupertinoColors.systemRed
+                            .resolveFrom(context)
+                            .withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(CupertinoIcons.xmark_circle,
                           color: CupertinoColors.systemRed.resolveFrom(context),
-                          fontWeight: FontWeight.w500,
-                          fontSize: 15,
+                          size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'This rehearsal has been cancelled.',
+                          style: TextStyle(
+                            color: CupertinoColors.systemRed.resolveFrom(context),
+                            fontWeight: FontWeight.w500,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
-                    ),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(0, 0),
-                      onPressed: _togglingCancelled ? null : _confirmRestore,
-                      child: _togglingCancelled
-                          ? const CupertinoActivityIndicator()
-                          : const Text('Restore',
-                              style: TextStyle(fontSize: 15)),
-                    ),
-                  ],
+                      CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 0),
+                        onPressed: _togglingCancelled ? null : _confirmRestore,
+                        child: _togglingCancelled
+                            ? const CupertinoActivityIndicator()
+                            : const Text('Restore',
+                                style: TextStyle(fontSize: 15)),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-            ],
+                const SizedBox(height: 16),
+              ],
             _InfoRow(
               icon: CupertinoIcons.calendar,
               label: 'Date',

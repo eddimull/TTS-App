@@ -117,4 +117,12 @@ void main() {
     // the widget tree, otherwise the pending timer trips the test harness.
     await tester.pumpAndSettle();
   });
+
+  test('TopicRef is value-equal (family cache key)', () {
+    expect(const TopicRef(kind: 'events', idOrKey: 'a'),
+        const TopicRef(kind: 'events', idOrKey: 'a'));
+    expect(
+        const TopicRef(kind: 'events', idOrKey: 'a').hashCode,
+        const TopicRef(kind: 'events', idOrKey: 'a').hashCode);
+  });
 }

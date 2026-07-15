@@ -10,7 +10,7 @@ import 'package:tts_bandmate/features/bookings/providers/booking_payout_provider
 import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
 import 'package:tts_bandmate/features/bookings/providers/bookings_window_provider.dart';
 import 'package:tts_bandmate/features/chat/providers/conversations_provider.dart';
-import 'package:tts_bandmate/features/chat/widgets/comments_section.dart';
+import 'package:tts_bandmate/features/chat/providers/topic_thread_provider.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
 import 'package:tts_bandmate/features/events/providers/events_provider.dart';
 import 'package:tts_bandmate/features/library/providers/library_provider.dart';

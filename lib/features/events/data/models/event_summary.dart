@@ -26,6 +26,7 @@ class EventSummary {
     this.liveSessionId,
     this.rosterStatus,
     this.band,
+    this.unreadCommentCount = 0,
   });
 
   final int? id;
@@ -66,6 +67,10 @@ class EventSummary {
   /// dashboard. Absent on legacy payloads.
   final BandSummary? band;
 
+  /// Unread comments in this event's topic thread. 0 on legacy payloads
+  /// that don't send unread_comment_count.
+  final int unreadCommentCount;
+
   factory EventSummary.fromJson(Map<String, dynamic> json) {
     final rawBand = json['band'];
     final band = rawBand is Map<String, dynamic>
@@ -91,6 +96,7 @@ class EventSummary {
           : (json['live_session_id'] as num).toInt(),
       rosterStatus: json['roster_status'] as String?,
       band: band,
+      unreadCommentCount: (json['unread_comment_count'] as num?)?.toInt() ?? 0,
     );
   }
 

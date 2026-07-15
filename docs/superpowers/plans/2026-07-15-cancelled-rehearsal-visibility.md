@@ -231,8 +231,9 @@ public function getGoogleCalendarSummary(BandCalendars $bandCalendar = null): st
 
 /**
  * True when this event's eventable is a rehearsal that has been cancelled.
+ * Public: the ICS feed (CalendarFeedController) keys STATUS:CANCELLED off it.
  */
-private function isCancelledRehearsal(): bool
+public function isCancelledRehearsal(): bool
 {
     return $this->eventable_type === 'App\\Models\\Rehearsal'
         && (bool) ($this->eventable?->is_cancelled ?? false);
@@ -397,7 +398,7 @@ git commit -m "feat(calendar): re-sync Google event when rehearsal is cancelled 
 - Test: `tests/Feature/CalendarFeedTest.php`
 
 **Interfaces:**
-- Consumes: `Events::getGoogleCalendarSummary()` (Task 2) — the feed already calls it at line 126, so the `Cancelled: ` prefix appears without changes; and `Spatie\IcalendarGenerator\Enums\EventStatus::Cancelled` (enum case, value `'CANCELLED'`).
+- Consumes: `Events::getGoogleCalendarSummary()` and `Events::isCancelledRehearsal()` (both Task 2) — the feed already calls the summary method at line 126, so the `Cancelled: ` prefix appears without changes; and `Spatie\IcalendarGenerator\Enums\EventStatus::Cancelled` (enum case, value `'CANCELLED'`).
 - Produces: VEVENTs for cancelled rehearsals carry `STATUS:CANCELLED`.
 
 - [ ] **Step 1: Write the failing test**
@@ -456,8 +457,7 @@ $calendarEvent = CalendarEvent::create()
 
 // Cancelled rehearsals stay in the feed but flagged, so subscribed
 // clients strike them through instead of silently dropping them.
-if ($event->eventable_type === 'App\\Models\\Rehearsal'
-    && ($event->eventable?->is_cancelled ?? false)) {
+if ($event->isCancelledRehearsal()) {
     $calendarEvent->status(EventStatus::Cancelled);
 }
 ```

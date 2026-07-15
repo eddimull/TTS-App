@@ -268,4 +268,16 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/bookings/$bookingId/conversation';
   static String mobileMessageAttachment(int messageId, int attachmentId) =>
       '/api/mobile/messages/$messageId/attachments/$attachmentId';
+
+  // Questionnaires
+  static String mobileBandQuestionnaires(int bandId) =>
+      '/api/mobile/bands/$bandId/questionnaires';
+  static String mobileBandQuestionnaireCatalog(int bandId) =>
+      '/api/mobile/bands/$bandId/questionnaires/catalog';
+  static String mobileBandQuestionnaire(int bandId, int questionnaireId) =>
+      '/api/mobile/bands/$bandId/questionnaires/$questionnaireId';
+  static String mobileBandQuestionnaireArchive(int bandId, int questionnaireId) =>
+      '/api/mobile/bands/$bandId/questionnaires/$questionnaireId/archive';
+  static String mobileBandQuestionnaireRestore(int bandId, int questionnaireId) =>
+      '/api/mobile/bands/$bandId/questionnaires/$questionnaireId/restore';
 }

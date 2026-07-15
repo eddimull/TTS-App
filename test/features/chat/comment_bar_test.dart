@@ -112,5 +112,9 @@ void main() {
     await tester.pumpWidget(host(container));
     // First frame only — the stubbed response hasn't resolved yet.
     expect(find.text('Comments'), findsOneWidget);
+
+    // Let the in-flight stubbed request settle before teardown disposes
+    // the widget tree, otherwise the pending timer trips the test harness.
+    await tester.pumpAndSettle();
   });
 }

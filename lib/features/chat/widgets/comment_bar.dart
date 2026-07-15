@@ -38,7 +38,10 @@ class CommentBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final pageAsync = ref.watch(topicThreadProvider(topic));
 
-    // If there's an error (even during retry), show error state.
+    // Riverpod's FutureProvider re-enters AsyncLoading (with hasError still
+    // true) while retrying after a failure, so when() would route back to
+    // loading() instead of error() during a retry. Check hasError first so
+    // the quiet retry row stays visible until the retry actually resolves.
     if (pageAsync.hasError) {
       return Container(
         decoration: BoxDecoration(
@@ -56,7 +59,6 @@ class CommentBar extends ConsumerWidget {
             behavior: HitTestBehavior.opaque,
             onTap: () => ref.invalidate(topicThreadProvider(topic)),
             child: _BarRow(
-              showChevron: false,
               child: Text('Comments unavailable — tap to retry',
                   style: TextStyle(fontSize: 14, color: context.secondaryText)),
             ),
@@ -76,7 +78,6 @@ class CommentBar extends ConsumerWidget {
         behavior: HitTestBehavior.opaque,
         onTap: () => ref.invalidate(topicThreadProvider(topic)),
         child: _BarRow(
-          showChevron: false,
           child: Text('Comments unavailable — tap to retry',
               style: TextStyle(fontSize: 14, color: context.secondaryText)),
         ),

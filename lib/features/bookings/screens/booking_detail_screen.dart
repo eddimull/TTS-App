@@ -15,7 +15,7 @@ import '../widgets/booking_contract_nudge.dart';
 import '../widgets/booking_engagement_summary.dart';
 import '../widgets/booking_section_tile.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
-import '../../chat/widgets/comments_section.dart';
+import '../../chat/widgets/comment_bar.dart';
 
 class BookingDetailScreen extends ConsumerWidget {
   const BookingDetailScreen({
@@ -404,9 +404,16 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
                 child: const Icon(CupertinoIcons.ellipsis_circle),
               ),
       ),
-      child: CustomScrollView(
-        slivers: [
-          SliverSafeArea(
+      child: CommentBarBody(
+        topic: TopicRef(
+          kind: 'bookings',
+          idOrKey: '${widget.bookingId}',
+          bandId: widget.bandId,
+        ),
+        child: CustomScrollView(
+          slivers: [
+            SliverSafeArea(
+              bottom: false, // CommentBar owns the bottom inset
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 // ── Band identity ─────────────────────────────────────────
@@ -537,18 +544,13 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
                       '/bookings/${widget.bandId}/${widget.bookingId}/history'),
                 ),
 
-                CommentsSection(
-                  kind: 'bookings',
-                  idOrKey: '${widget.bookingId}',
-                  bandId: widget.bandId,
-                ),
-
                 const SizedBox(height: 32),
               ]),
             ),
           ),
         ],
       ),
+        ),
     );
   }
 }

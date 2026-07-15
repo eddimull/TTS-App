@@ -307,7 +307,8 @@ void main() {
     expect(container.read(bandRealtimeProvider), isNull);
   });
 
-  test('message signal invalidates chat conversation + topic providers', () async {
+  test('message signal invalidates chat + topic + dashboard providers',
+      () async {
     final c = makeContainer();
     await activate(c);
 
@@ -318,6 +319,7 @@ void main() {
     expect(invalidated, containsAll(<ProviderOrFamily>[
       chatConversationsProvider,
       topicThreadProvider,
+      dashboardProvider,
     ]));
   });
 }

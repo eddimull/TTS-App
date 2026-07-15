@@ -27,6 +27,7 @@ class EventSummary {
     this.rosterStatus,
     this.band,
     this.unreadCommentCount = 0,
+    this.isCancelled = false,
   });
 
   final int? id;
@@ -71,6 +72,10 @@ class EventSummary {
   /// that don't send unread_comment_count.
   final int unreadCommentCount;
 
+  /// True when this event is a cancelled rehearsal. False on legacy
+  /// payloads that don't send is_cancelled.
+  final bool isCancelled;
+
   factory EventSummary.fromJson(Map<String, dynamic> json) {
     final rawBand = json['band'];
     final band = rawBand is Map<String, dynamic>
@@ -97,6 +102,7 @@ class EventSummary {
       rosterStatus: json['roster_status'] as String?,
       band: band,
       unreadCommentCount: (json['unread_comment_count'] as num?)?.toInt() ?? 0,
+      isCancelled: (json['is_cancelled'] as bool?) ?? false,
     );
   }
 

@@ -17,4 +17,14 @@ void main() {
     final e = EventSummary.fromJson(baseJson());
     expect(e.unreadCommentCount, 0);
   });
+
+  test('parses is_cancelled', () {
+    final e = EventSummary.fromJson({...baseJson(), 'is_cancelled': true});
+    expect(e.isCancelled, isTrue);
+  });
+
+  test('defaults is_cancelled to false on legacy payloads', () {
+    final e = EventSummary.fromJson(baseJson());
+    expect(e.isCancelled, isFalse);
+  });
 }

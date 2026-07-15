@@ -15,7 +15,7 @@ class EventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isRehearsal = event.isRehearsal;
-    final bgColor = isRehearsal
+    final bgColor = isRehearsal && !event.isCancelled
         ? CupertinoColors.systemBlue.resolveFrom(context).withValues(alpha: 0.08)
         : CupertinoColors.systemGrey6.resolveFrom(context);
 
@@ -61,7 +61,12 @@ class EventCard extends StatelessWidget {
                             event.title,
                             style: TextStyle(
                                 fontSize: 15, fontWeight: FontWeight.bold,
-                                color: context.primaryText),
+                                color: event.isCancelled
+                                    ? context.secondaryText
+                                    : context.primaryText,
+                                decoration: event.isCancelled
+                                    ? TextDecoration.lineThrough
+                                    : null),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -81,6 +86,14 @@ class EventCard extends StatelessWidget {
                           fontSize: 13,
                           color: context.secondaryText),
                     ),
+                    if (event.isCancelled) ...[
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Cancelled',
+                        style: TextStyle(
+                            fontSize: 12, color: CupertinoColors.systemRed),
+                      ),
+                    ],
                     // Band identity chip — visible only when the event carries
                     // band metadata (absent on legacy payloads).
                     if (event.band != null) ...[
@@ -125,6 +138,10 @@ class _EventTypeIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (event.isCancelled) {
+      return Icon(CupertinoIcons.xmark_circle,
+          size: 24, color: CupertinoColors.systemRed.resolveFrom(context));
+    }
     final iconPath = event.gigIconPath;
     if (iconPath != null) {
       return Image.asset(iconPath, width: 40, height: 40, fit: BoxFit.contain);

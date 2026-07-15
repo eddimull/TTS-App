@@ -108,9 +108,16 @@ class QuestionnairesScreen extends ConsumerWidget {
   }
 
   Future<void> _showCreateSheet(BuildContext context, int bandId) async {
+    // Capture the container before entering the new route so that
+    // showCupertinoModalPopup's independent BuildContext can re-attach to the
+    // same ProviderScope. This is the house pattern (matches generate_sheet).
+    final container = ProviderScope.containerOf(context);
     await showCupertinoModalPopup<void>(
       context: context,
-      builder: (_) => CreateQuestionnaireSheet(bandId: bandId),
+      builder: (_) => UncontrolledProviderScope(
+        container: container,
+        child: CreateQuestionnaireSheet(bandId: bandId),
+      ),
     );
   }
 }

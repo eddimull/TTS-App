@@ -227,7 +227,7 @@ void main() {
   });
 
   test('markRead invalidates both chatConversationsProvider and '
-      'topicThreadProvider so a CommentsSection badge on a detail screen '
+      'topicThreadProvider so a CommentBar badge on a detail screen '
       'clears once the thread has been read', () async {
     var conversationsCalls = 0;
     var topicCalls = 0;
@@ -255,7 +255,7 @@ void main() {
 
     const topic = TopicRef(kind: 'events', idOrKey: 'abc123');
     // Seed the topicThreadProvider family member and keep it alive with a
-    // listener, mirroring how a CommentsSection on a detail screen watches it.
+    // listener, mirroring how a CommentBar on a detail screen watches it.
     final topicSub = container.listen(topicThreadProvider(topic), (_, __) {});
     await container.read(topicThreadProvider(topic).future);
     expect(topicCalls, 1);

@@ -23,7 +23,7 @@ class TopicRef {
 /// Resolves (creating if needed) the comment thread for a topic and returns
 /// its first page. Invalidated by realtime 'message' signals and by
 /// [ChatThreadNotifier.markRead] (see chat_thread_provider.dart) so a stale
-/// unread badge on a detail screen's CommentsSection clears once the full
+/// unread badge on a detail screen's CommentBar clears once the full
 /// thread has been read.
 final topicThreadProvider = FutureProvider.family<ThreadPage, TopicRef>(
   (ref, topic) => ref

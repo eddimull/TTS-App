@@ -38,7 +38,7 @@ RehearsalDetail _detail({bool isCancelled = false, String? notes}) {
   });
 }
 
-// The embedded CommentsSection resolves its topic thread via a provider; stub
+// The embedded CommentBar resolves its topic thread via a provider; stub
 // it so the section renders instantly without a network call in these tests.
 ThreadPage _emptyThread() => (
       conversation: const Conversation(id: 999, type: 'topic', title: ''),

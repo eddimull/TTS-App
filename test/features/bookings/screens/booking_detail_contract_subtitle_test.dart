@@ -35,7 +35,7 @@ BookingDetail _detail({String? contractStatus}) => BookingDetail(
       band: const BandSummary(id: 1, name: 'Band', isOwner: true),
     );
 
-// The embedded CommentsSection resolves its topic thread via a provider; stub
+// The embedded CommentBar resolves its topic thread via a provider; stub
 // it so the section renders instantly without a network call in these tests.
 ThreadPage _emptyThread() => (
       conversation: const Conversation(id: 999, type: 'topic', title: ''),

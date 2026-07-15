@@ -310,7 +310,7 @@ void main() {
         const topic = TopicRef(kind: 'events', idOrKey: 'abc123');
 
         // Seed both chat caches with "user A"'s data, keeping them alive with
-        // listeners the way a live Messages screen / CommentsSection would.
+        // listeners the way a live Messages screen / CommentBar would.
         final convSub = container.listen(chatConversationsProvider, (_, __) {});
         final topicSub = container.listen(topicThreadProvider(topic), (_, __) {});
         addTearDown(convSub.close);

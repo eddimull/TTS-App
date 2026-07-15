@@ -194,4 +194,3 @@ class _UnreadCommentBadge extends StatelessWidget {
     );
   }
 }
-

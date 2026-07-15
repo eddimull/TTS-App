@@ -142,6 +142,13 @@ class _RingSpec {
 
 _RingSpec _ringSpec(BuildContext ctx, EventSummary e) {
   if (e.eventSource == 'rehearsal' || e.eventSource == 'rehearsal_schedule') {
+    if (e.isCancelled) {
+      return _RingSpec(
+        color: CupertinoColors.systemRed.resolveFrom(ctx),
+        dashed: false,
+        fadeAvatar: true,
+      );
+    }
     return _RingSpec(
       color: CupertinoColors.systemBlue.resolveFrom(ctx),
       dashed: false,
@@ -194,6 +201,10 @@ String _semanticsLabel(EventSummary e) {
       BookingConfirmation.cancelled => 'cancelled',
     };
     return '$bandName $type, $statusWord';
+  }
+  if ((e.eventSource == 'rehearsal' || e.eventSource == 'rehearsal_schedule') &&
+      e.isCancelled) {
+    return '$bandName $type, cancelled';
   }
   return '$bandName $type';
 }

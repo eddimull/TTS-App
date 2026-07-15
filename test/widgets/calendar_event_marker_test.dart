@@ -12,6 +12,7 @@ EventSummary _evt({
   String? time,
   int bandId = 1,
   String bandName = 'Band',
+  bool isCancelled = false,
 }) =>
     EventSummary(
       key: key,
@@ -21,6 +22,7 @@ EventSummary _evt({
       eventSource: source,
       status: status,
       band: BandSummary(id: bandId, name: bandName, isOwner: false),
+      isCancelled: isCancelled,
     );
 
 Widget _wrap(Widget child) => CupertinoApp(home: Center(child: child));
@@ -143,6 +145,45 @@ void main() {
       // — but the marker still renders (no crash, ring is still drawn).
       expect(find.byType(BandAvatar), findsNothing);
       expect(find.byType(CustomPaint), findsWidgets);
+    });
+
+    testWidgets('cancelled rehearsal marker fades avatar and announces cancelled',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      const eventRehearsalCancelled = EventSummary(
+        key: 'evt-1',
+        title: 'Tuesday Rehearsal',
+        date: '2026-07-20',
+        eventSource: 'rehearsal',
+        isCancelled: true,
+      );
+      await tester.pumpWidget(_wrap(const CalendarEventMarker(event: eventRehearsalCancelled)));
+
+      expect(find.bySemanticsLabel('Event rehearsal, cancelled'), findsOneWidget);
+
+      final opacity = tester.widget<Opacity>(find.byType(Opacity));
+      expect(opacity.opacity, 0.4);
+
+      handle.dispose();
+    });
+
+    testWidgets('active rehearsal marker keeps full opacity and plain label',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      const eventRehearsalActive = EventSummary(
+        key: 'evt-1',
+        title: 'Tuesday Rehearsal',
+        date: '2026-07-20',
+        eventSource: 'rehearsal',
+      );
+      await tester.pumpWidget(_wrap(const CalendarEventMarker(event: eventRehearsalActive)));
+
+      expect(find.bySemanticsLabel('Event rehearsal'), findsOneWidget);
+
+      final opacity = tester.widget<Opacity>(find.byType(Opacity));
+      expect(opacity.opacity, 1.0);
+
+      handle.dispose();
     });
   });
 }

@@ -42,80 +42,65 @@ class CommentBar extends ConsumerWidget {
     // true) while retrying after a failure, so when() would route back to
     // loading() instead of error() during a retry. Check hasError first so
     // the quiet retry row stays visible until the retry actually resolves.
-    if (pageAsync.hasError) {
-      return Container(
-        decoration: BoxDecoration(
-          color: CupertinoTheme.of(context).barBackgroundColor,
-          border: Border(
-            top: BorderSide(
-              color: CupertinoColors.separator.resolveFrom(context),
-              width: 0.5,
-            ),
-          ),
-        ),
-        child: SafeArea(
-          top: false,
-          child: GestureDetector(
+    final content = pageAsync.hasError
+        ? GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () => ref.invalidate(topicThreadProvider(topic)),
             child: _BarRow(
               child: Text('Comments unavailable — tap to retry',
                   style: TextStyle(fontSize: 14, color: context.secondaryText)),
             ),
-          ),
-        ),
-      );
-    }
-
-    final content = pageAsync.when(
-      loading: () => _BarRow(
-        child: Text('Comments',
-            style: TextStyle(fontSize: 14, color: context.secondaryText)),
-      ),
-      // Comments are secondary content on a detail screen — a load failure
-      // stays quiet and recoverable instead of blocking the page.
-      error: (_, __) => GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => ref.invalidate(topicThreadProvider(topic)),
-        child: _BarRow(
-          child: Text('Comments unavailable — tap to retry',
-              style: TextStyle(fontSize: 14, color: context.secondaryText)),
-        ),
-      ),
-      data: (page) {
-        final latest = page.messages.isEmpty ? null : page.messages.last;
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => context.push(
-            '/conversations/${page.conversation.id}',
-            extra: {'title': page.conversation.title},
-          ),
-          child: _BarRow(
-            unread: page.conversation.unreadCount,
-            showChevron: true,
-            child: latest == null
-                ? Text('Add a comment…',
-                    style:
-                        TextStyle(fontSize: 14, color: context.secondaryText))
-                : RichText(
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    text: TextSpan(
-                      style:
-                          TextStyle(fontSize: 14, color: context.primaryText),
-                      children: [
-                        TextSpan(
-                          text: '${latest.userName}: ',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+          )
+        : pageAsync.when(
+            loading: () => _BarRow(
+              child: Text('Comments',
+                  style: TextStyle(fontSize: 14, color: context.secondaryText)),
+            ),
+            // Comments are secondary content on a detail screen — a load failure
+            // stays quiet and recoverable instead of blocking the page.
+            error: (_, __) => GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => ref.invalidate(topicThreadProvider(topic)),
+              child: _BarRow(
+                child: Text('Comments unavailable — tap to retry',
+                    style: TextStyle(fontSize: 14, color: context.secondaryText)),
+              ),
+            ),
+            data: (page) {
+              final latest = page.messages.isEmpty ? null : page.messages.last;
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => context.push(
+                  '/conversations/${page.conversation.id}',
+                  extra: {'title': page.conversation.title},
+                ),
+                child: _BarRow(
+                  unread: page.conversation.unreadCount,
+                  showChevron: true,
+                  child: latest == null
+                      ? Text('Add a comment…',
+                          style: TextStyle(
+                              fontSize: 14, color: context.secondaryText))
+                      : RichText(
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          text: TextSpan(
+                            style: TextStyle(
+                                fontSize: 14, color: context.primaryText),
+                            children: [
+                              TextSpan(
+                                text: '${latest.userName}: ',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600),
+                              ),
+                              TextSpan(text: _previewText(latest)),
+                            ],
+                          ),
                         ),
-                        TextSpan(text: _previewText(latest)),
-                      ],
-                    ),
-                  ),
-          ),
-        );
-      },
-    );
+                ),
+              );
+            },
+          );
 
     return Container(
       decoration: BoxDecoration(

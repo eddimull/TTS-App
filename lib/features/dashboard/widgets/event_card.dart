@@ -70,6 +70,8 @@ class EventCard extends StatelessWidget {
                             event.rosterStatus != 'none' &&
                             event.rosterStatus!.isNotEmpty)
                           _RosterDot(status: event.rosterStatus!),
+                        if (event.unreadCommentCount > 0)
+                          _UnreadCommentBadge(count: event.unreadCommentCount),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -154,6 +156,40 @@ class _RosterDot extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.resolveFrom(context),
         shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+/// Red pill badge: unread comments in the event's topic thread.
+class _UnreadCommentBadge extends StatelessWidget {
+  const _UnreadCommentBadge({required this.count});
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(left: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemRed.resolveFrom(context),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(CupertinoIcons.chat_bubble_fill,
+              size: 10, color: CupertinoColors.white),
+          const SizedBox(width: 3),
+          Text(
+            '$count',
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: CupertinoColors.white,
+            ),
+          ),
+        ],
       ),
     );
   }

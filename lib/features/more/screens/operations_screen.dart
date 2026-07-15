@@ -64,6 +64,12 @@ class OperationsScreen extends ConsumerWidget {
                 size: 22, color: context.secondaryText),
             onTap: () => context.push('/media'),
           ),
+          NavRow(
+            title: 'Questionnaires',
+            leading: Icon(CupertinoIcons.doc_text,
+                size: 22, color: context.secondaryText),
+            onTap: () => context.push('/questionnaires'),
+          ),
         ],
       ),
     );

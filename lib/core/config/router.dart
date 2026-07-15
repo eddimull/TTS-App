@@ -45,6 +45,8 @@ import '../../features/more/screens/operations_screen.dart';
 import '../../features/more/screens/settings_screen.dart';
 import '../../features/band_settings/screens/band_settings_screen.dart';
 import '../../features/personnel/screens/personnel_screen.dart';
+import '../../features/questionnaires/screens/questionnaires_screen.dart';
+import '../../features/questionnaires/screens/questionnaire_editor_screen.dart';
 import '../../features/account/screens/account_screen.dart';
 import '../../features/calendar_feed/screens/calendar_feed_screen.dart';
 import '../../features/chat/screens/conversation_thread_screen.dart';
@@ -95,6 +97,7 @@ const _kShellPrefixes = [
   '/band-settings',
   '/finances',
   '/personnel',
+  '/questionnaires',
 ];
 
 /// Initial location used when constructing the GoRouter. Defaults to `/welcome`.
@@ -333,6 +336,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/finances',
             builder: (_, __) => const FinancesScreen(),
           ),
+          GoRoute(
+            path: '/questionnaires',
+            builder: (_, __) => const QuestionnairesScreen(),
+          ),
         ],
       ),
       GoRoute(
@@ -374,6 +381,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => PayoutFlowEditorScreen(
           bandId: int.parse(state.pathParameters['bandId']!),
           configId: int.parse(state.pathParameters['configId']!),
+        ),
+      ),
+      GoRoute(
+        path: '/questionnaires/:id/edit',
+        builder: (_, state) => QuestionnaireEditorScreen(
+          questionnaireId: int.parse(state.pathParameters['id']!),
         ),
       ),
       // Literal-segment routes before parameterised ones to avoid ambiguity

@@ -17,6 +17,8 @@ import 'package:tts_bandmate/features/library/providers/library_provider.dart';
 import 'package:tts_bandmate/features/media/providers/media_provider.dart';
 import 'package:tts_bandmate/features/search/providers/music_provider.dart';
 import 'package:tts_bandmate/features/personnel/providers/rosters_provider.dart';
+import 'package:tts_bandmate/features/questionnaires/providers/questionnaire_instances_provider.dart';
+import 'package:tts_bandmate/features/questionnaires/providers/questionnaires_provider.dart';
 import 'package:tts_bandmate/shared/providers/band_realtime_provider.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 
@@ -189,6 +191,24 @@ void main() {
     expect(targets, contains(bandEventsProvider));
     expect(targets, contains(rostersProvider));
     expect(targets, contains(rosterDetailProvider));
+  });
+
+  test('registry maps questionnaire signals to questionnaire providers', () {
+    expect(invalidationTargetsFor('questionnaires'),
+        contains(questionnairesProvider));
+    expect(invalidationTargetsFor('questionnaires'),
+        contains(questionnaireDetailProvider));
+
+    final instanceTargets = invalidationTargetsFor('questionnaire_instances');
+    expect(instanceTargets, contains(questionnaireInstancesProvider));
+    expect(instanceTargets, contains(instanceDetailProvider));
+    expect(instanceTargets, contains(bookingQuestionnairesProvider));
+    expect(instanceTargets, contains(eligibleBookingsProvider));
+    expect(instanceTargets, contains(questionnairesProvider));
+
+    final responseTargets = invalidationTargetsFor('questionnaire_responses');
+    expect(responseTargets, contains(instanceDetailProvider));
+    expect(responseTargets, contains(questionnaireInstancesProvider));
   });
 
   test('rapid band switch during in-flight subscribe does not leak', () async {

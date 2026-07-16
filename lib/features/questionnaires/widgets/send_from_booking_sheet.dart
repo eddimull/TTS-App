@@ -3,37 +3,38 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 import '../data/models/eligible_booking.dart';
 import '../providers/questionnaire_instances_provider.dart';
+import '../providers/questionnaires_provider.dart';
 
-class SendQuestionnaireSheet extends ConsumerStatefulWidget {
-  const SendQuestionnaireSheet({
+class SendFromBookingSheet extends ConsumerStatefulWidget {
+  const SendFromBookingSheet({
     super.key,
     required this.bandId,
-    required this.questionnaireId,
+    required this.bookingId,
+    required this.templates,
+    required this.contacts,
   });
 
   final int bandId;
-  final int questionnaireId;
+  final int bookingId;
+  final List<AvailableQuestionnaire> templates;
+  final List<EligibleContact> contacts;
 
   @override
-  ConsumerState<SendQuestionnaireSheet> createState() =>
-      _SendQuestionnaireSheetState();
+  ConsumerState<SendFromBookingSheet> createState() =>
+      _SendFromBookingSheetState();
 }
 
-class _SendQuestionnaireSheetState
-    extends ConsumerState<SendQuestionnaireSheet> {
-  EligibleBooking? _booking;
+class _SendFromBookingSheetState extends ConsumerState<SendFromBookingSheet> {
+  AvailableQuestionnaire? _template;
   EligibleContact? _contact;
   bool _sending = false;
   String? _error;
 
-  ({int bandId, int questionnaireId}) get _key =>
-      (bandId: widget.bandId, questionnaireId: widget.questionnaireId);
-
   Future<void> _submit() async {
-    final booking = _booking;
+    final template = _template;
     final contact = _contact;
-    if (booking == null || contact == null) {
-      setState(() => _error = 'Choose a booking and a recipient.');
+    if (template == null || contact == null) {
+      setState(() => _error = 'Choose a questionnaire and a recipient.');
       return;
     }
     setState(() {
@@ -41,10 +42,15 @@ class _SendQuestionnaireSheetState
       _error = null;
     });
     try {
-      await ref.read(questionnaireInstancesProvider(_key).notifier).send(
-            bookingId: booking.id,
+      await ref.read(questionnairesRepositoryProvider).sendQuestionnaire(
+            widget.bandId,
+            widget.bookingId,
+            questionnaireId: template.id,
             recipientContactId: contact.id,
           );
+      ref.invalidate(bookingQuestionnairesProvider(
+          (bandId: widget.bandId, bookingId: widget.bookingId)));
+      ref.invalidate(questionnairesProvider(widget.bandId));
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
       if (mounted) {
@@ -56,25 +62,19 @@ class _SendQuestionnaireSheetState
     }
   }
 
-  Future<void> _pickBooking(List<EligibleBooking> bookings) async {
+  Future<void> _pickTemplate() async {
     await showCupertinoModalPopup<void>(
       context: context,
       builder: (sheetContext) => CupertinoActionSheet(
-        title: const Text('Choose booking'),
+        title: const Text('Choose questionnaire'),
         actions: [
-          for (final b in bookings)
+          for (final t in widget.templates)
             CupertinoActionSheetAction(
               onPressed: () {
                 Navigator.of(sheetContext).pop();
-                setState(() {
-                  _booking = b;
-                  _contact = null;
-                });
+                setState(() => _template = t);
               },
-              child: Text(
-                '${b.name}${b.date != null ? ' · ${b.date}' : ''}'
-                '${b.alreadySent ? ' (already sent)' : ''}',
-              ),
+              child: Text(t.name),
             ),
         ],
         cancelButton: CupertinoActionSheetAction(
@@ -85,17 +85,17 @@ class _SendQuestionnaireSheetState
     );
   }
 
-  Future<void> _pickContact(EligibleBooking booking) async {
+  Future<void> _pickContact() async {
     await showCupertinoModalPopup<void>(
       context: context,
       builder: (sheetContext) => CupertinoActionSheet(
         title: const Text('Send to'),
-        message: booking.contacts.any((c) => !c.canLogin)
+        message: widget.contacts.any((c) => !c.canLogin)
             ? const Text(
                 'Contacts without portal access can\'t be sent a questionnaire.')
             : null,
         actions: [
-          for (final c in booking.contacts.where((c) => c.canLogin))
+          for (final c in widget.contacts.where((c) => c.canLogin))
             CupertinoActionSheetAction(
               onPressed: () {
                 Navigator.of(sheetContext).pop();
@@ -114,12 +114,9 @@ class _SendQuestionnaireSheetState
 
   @override
   Widget build(BuildContext context) {
-    final bookingsAsync = ref.watch(eligibleBookingsProvider(_key));
-    final bookings = bookingsAsync.value ?? const <EligibleBooking>[];
-    final selectedBooking = _booking;
+    final templates = widget.templates;
     final portalContacts =
-        selectedBooking?.contacts.where((c) => c.canLogin).toList() ??
-            const <EligibleContact>[];
+        widget.contacts.where((c) => c.canLogin).toList();
 
     return Container(
       decoration: BoxDecoration(
@@ -158,16 +155,12 @@ class _SendQuestionnaireSheetState
                 ],
               ),
               const SizedBox(height: 12),
-              if (bookingsAsync.isLoading && bookings.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Center(child: CupertinoActivityIndicator()),
-                )
-              else if (bookings.isEmpty)
+              if (templates.isEmpty)
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
-                    'No upcoming bookings to send to.',
+                    'No active questionnaires. Create one under '
+                    'Operations → Questionnaires.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: context.secondaryText),
                   ),
@@ -175,14 +168,14 @@ class _SendQuestionnaireSheetState
               else ...[
                 CupertinoButton(
                   padding: EdgeInsets.zero,
-                  onPressed: _sending ? null : () => _pickBooking(bookings),
+                  onPressed: _sending ? null : _pickTemplate,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Booking'),
+                      const Text('Questionnaire'),
                       Flexible(
                         child: Text(
-                          selectedBooking?.name ?? 'Choose…',
+                          _template?.name ?? 'Choose…',
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(color: context.secondaryText),
                         ),
@@ -192,9 +185,7 @@ class _SendQuestionnaireSheetState
                 ),
                 CupertinoButton(
                   padding: EdgeInsets.zero,
-                  onPressed: _sending || selectedBooking == null
-                      ? null
-                      : () => _pickContact(selectedBooking),
+                  onPressed: _sending ? null : _pickContact,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -202,11 +193,9 @@ class _SendQuestionnaireSheetState
                       Flexible(
                         child: Text(
                           _contact?.name ??
-                              (selectedBooking == null
-                                  ? 'Choose a booking first'
-                                  : portalContacts.isEmpty
-                                      ? 'No portal-enabled contacts'
-                                      : 'Choose…'),
+                              (portalContacts.isEmpty
+                                  ? 'No portal-enabled contacts'
+                                  : 'Choose…'),
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(color: context.secondaryText),
                         ),
@@ -214,15 +203,6 @@ class _SendQuestionnaireSheetState
                     ],
                   ),
                 ),
-                if (selectedBooking != null && selectedBooking.alreadySent)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      'This booking has already been sent this questionnaire.',
-                      style: TextStyle(
-                          color: context.secondaryText, fontSize: 13),
-                    ),
-                  ),
               ],
               if (_error != null) ...[
                 const SizedBox(height: 8),

@@ -74,7 +74,7 @@ class QuestionnaireInstance {
     final booking = json['booking'] as Map<String, dynamic>? ?? {};
     final rawFields = json['fields'] as List<dynamic>? ?? [];
     final rawResponses = json['responses'];
-    final rawSongs = json['song_lookup'] as Map<String, dynamic>? ?? {};
+    final rawSongs = json['song_lookup'];
     return QuestionnaireInstance(
       id: (json['id'] as num).toInt(),
       name: json['name'] as String? ?? '',
@@ -99,13 +99,15 @@ class QuestionnaireInstance {
       fields: rawFields
           .map((f) => QuestionnaireField.fromJson(f as Map<String, dynamic>))
           .toList(),
-      // Responses arrive keyed by int-ish field ids; normalize keys to String.
-      // An empty responses set serializes as [] in PHP, so tolerate lists.
+      // Responses/song_lookup arrive as JSON objects; an empty PHP array
+      // would serialize as [], so tolerate non-Map values.
       responses: rawResponses is Map<String, dynamic>
           ? rawResponses.map((k, v) => MapEntry(k, v))
           : const {},
-      songLookup: rawSongs.map(
-          (k, v) => MapEntry(k, SongRef.fromJson(v as Map<String, dynamic>))),
+      songLookup: rawSongs is Map<String, dynamic>
+          ? rawSongs.map((k, v) =>
+              MapEntry(k, SongRef.fromJson(v as Map<String, dynamic>)))
+          : const {},
     );
   }
 

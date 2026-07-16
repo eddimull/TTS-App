@@ -70,6 +70,20 @@ void main() {
         expect(i.statusLabel, label);
       }
     });
+
+    test('test_tolerates_empty_list_responses_and_song_lookup', () {
+      final i = QuestionnaireInstance.fromJson({
+        'id': 1,
+        'name': 'x',
+        'status': 'sent',
+        'recipient_name': 'r',
+        'booking': {'id': 1, 'name': 'b'},
+        'responses': <dynamic>[],
+        'song_lookup': <dynamic>[],
+      });
+      expect(i.responses, isEmpty);
+      expect(i.songLookup, isEmpty);
+    });
   });
 
   group('EligibleBooking.fromJson', () {

@@ -794,9 +794,15 @@ class _QuestionnairesSection extends ConsumerWidget {
                 ],
               ),
               subtitle: Text(i.recipientName),
-              trailing: const CupertinoListTileChevron(),
-              onTap: () => context.push(
-                  '/questionnaires/${i.questionnaireId ?? 0}/instances/${i.id}'),
+              // Instances of a deleted template have no questionnaire id and
+              // nowhere to navigate to — render them non-interactive.
+              trailing: i.questionnaireId == null
+                  ? null
+                  : const CupertinoListTileChevron(),
+              onTap: i.questionnaireId == null
+                  ? null
+                  : () => context.push(
+                      '/questionnaires/${i.questionnaireId}/instances/${i.id}'),
             ),
           if (data.instances.isEmpty && !isOwner)
             Padding(

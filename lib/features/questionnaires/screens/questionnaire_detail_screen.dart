@@ -96,6 +96,15 @@ class _QuestionnaireDetailScreenState
   Widget _summarySection(AsyncValue<Questionnaire> detailAsync, bool isOwner) {
     final q = detailAsync.value;
     if (q == null) {
+      if (detailAsync.hasError && !detailAsync.hasValue) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: Text('Failed to load questionnaire.',
+                style: TextStyle(color: context.secondaryText)),
+          ),
+        );
+      }
       return const Padding(
         padding: EdgeInsets.all(24),
         child: Center(child: CupertinoActivityIndicator()),

@@ -163,6 +163,15 @@ class _SendQuestionnaireSheetState
                   padding: EdgeInsets.all(16),
                   child: Center(child: CupertinoActivityIndicator()),
                 )
+              else if (bookingsAsync.hasError && bookings.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'Failed to load bookings.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: context.secondaryText),
+                  ),
+                )
               else if (bookings.isEmpty)
                 Padding(
                   padding: const EdgeInsets.all(16),

@@ -776,6 +776,12 @@ class _QuestionnairesSection extends ConsumerWidget {
             padding: EdgeInsets.all(12),
             child: Center(child: CupertinoActivityIndicator()),
           )
+        else if (async.hasError && data == null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text('Failed to load questionnaires.',
+                style: TextStyle(color: context.secondaryText)),
+          )
         else if (data != null) ...[
           for (final i in data.instances)
             CupertinoListTile(
@@ -798,11 +804,13 @@ class _QuestionnairesSection extends ConsumerWidget {
               child: Text('No questionnaires sent for this booking.',
                   style: TextStyle(color: context.secondaryText)),
             ),
-          if (isOwner && data.availableQuestionnaires.isNotEmpty)
+          if (isOwner)
             BookingSectionTile(
               icon: CupertinoIcons.doc_text,
               title: 'Send questionnaire',
-              subtitle: '${data.availableQuestionnaires.length} available',
+              subtitle: data.availableQuestionnaires.isNotEmpty
+                  ? '${data.availableQuestionnaires.length} available'
+                  : 'No active questionnaires',
               onTap: () => _showSendSheet(context, ref, data),
             ),
         ],

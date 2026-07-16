@@ -111,7 +111,7 @@ class QuestionnaireInstance {
     );
   }
 
-  QuestionnaireInstance copyWith({String? status, DateTime? lockedAt, bool clearLockedAt = false}) {
+  QuestionnaireInstance copyWith({String? status}) {
     return QuestionnaireInstance(
       id: id,
       name: name,
@@ -124,7 +124,7 @@ class QuestionnaireInstance {
       questionnaireId: questionnaireId,
       description: description,
       firstOpenedAt: firstOpenedAt,
-      lockedAt: clearLockedAt ? null : (lockedAt ?? this.lockedAt),
+      lockedAt: lockedAt,
       fields: fields,
       responses: responses,
       songLookup: songLookup,

@@ -34,6 +34,17 @@ bool shouldSuppressChatPush(
     payload.conversationId != null &&
     currentOpenConversation?.call()?.toString() == payload.conversationId;
 
+/// True for hybrid (notification+data) push types that should still be
+/// rendered locally while the app is in the FOREGROUND, where the OS shows
+/// nothing for the `notification` block. Chat and questionnaire pushes are
+/// sent hybrid so iOS delivers them when backgrounded (a data-only push
+/// without APNs content-available is silently dropped); their data map
+/// duplicates title/body so the local render needs nothing from the
+/// `notification` block. Pure so the rule is unit-testable.
+bool isForegroundRenderable(PushPayload payload) =>
+    payload.type == PushType.chatMessage ||
+    payload.type == PushType.questionnaireSubmitted;
+
 /// Thin wrapper over FCM + local notifications. Logic-free where possible.
 class PushService implements LocalScheduler {
   PushService(this._local);
@@ -168,13 +179,16 @@ class PushService implements LocalScheduler {
   }
 
   Future<void> _show(RemoteMessage message) async {
-    // Messages carrying a `notification` block are OS-rendered when the app is
-    // backgrounded/terminated, so we skip them here to avoid a double
-    // notification; band-update pushes are sent this way (hybrid
-    // notification+data). Data-only messages (leave-by reminders) have no
-    // `notification` block and are rendered locally below.
-    if (message.notification != null) return;
     final payload = PushPayload.fromData(message.data);
+    // Messages carrying a `notification` block are OS-rendered when the app is
+    // backgrounded/terminated; in the foreground the OS shows nothing, so
+    // chat/questionnaire hybrids are rendered locally below — chat
+    // additionally suppressed when its thread is open. Other hybrid types
+    // (band updates) stay foreground-silent for now, and skipping them here
+    // avoids a double notification.
+    if (message.notification != null && !isForegroundRenderable(payload)) {
+      return;
+    }
     if (shouldSuppressChatPush(payload, currentOpenConversation)) {
       return; // thread is open — the live channel already shows the message
     }

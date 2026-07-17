@@ -26,6 +26,34 @@ void main() {
             .notificationId);
   });
 
+  group('isForegroundRenderable (hybrid pushes rendered locally in fg)', () {
+    test('chat and questionnaire hybrids render locally in the foreground',
+        () {
+      expect(
+        isForegroundRenderable(PushPayload.fromData(
+            {'type': 'chat_message', 'conversationId': '5'})),
+        isTrue,
+      );
+      expect(
+        isForegroundRenderable(PushPayload.fromData(
+            {'type': 'questionnaire_submitted', 'bookingId': '3'})),
+        isTrue,
+      );
+    });
+
+    test('other hybrid types stay foreground-silent', () {
+      expect(
+        isForegroundRenderable(
+            PushPayload.fromData({'type': 'rehearsal_cancelled'})),
+        isFalse,
+      );
+      expect(
+        isForegroundRenderable(PushPayload.fromData({'type': 'nonsense'})),
+        isFalse,
+      );
+    });
+  });
+
   group('shouldSuppressChatPush (currentOpenConversation source of truth)',
       () {
     PushPayload chatPayload(String conversationId) => PushPayload.fromData({

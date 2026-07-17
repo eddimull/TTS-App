@@ -8,6 +8,7 @@ class BookingContact {
     this.bcId,
     this.contactId,
     this.isPrimary = false,
+    this.canLogin = false,
   });
 
   final int id;
@@ -25,6 +26,9 @@ class BookingContact {
   /// Whether this contact is the primary contact for the booking.
   final bool isPrimary;
 
+  /// Whether this contact can access the customer portal.
+  final bool canLogin;
+
   factory BookingContact.fromJson(Map<String, dynamic> json) {
     return BookingContact(
       id: (json['id'] as num).toInt(),
@@ -37,6 +41,7 @@ class BookingContact {
           ? null
           : (json['contact_id'] as num).toInt(),
       isPrimary: (json['is_primary'] as bool?) ?? false,
+      canLogin: (json['can_login'] as bool?) ?? false,
     );
   }
 

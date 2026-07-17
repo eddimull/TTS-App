@@ -1,7 +1,7 @@
 name: tts_bandmate
 description: TTS Bandmate — band booking and live setlist management
 publish_to: none
-version: 1.15.0+24
+version: 1.16.0+25
 
 environment:
   sdk: ">=3.3.0 <4.0.0"

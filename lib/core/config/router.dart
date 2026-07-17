@@ -46,7 +46,9 @@ import '../../features/more/screens/settings_screen.dart';
 import '../../features/band_settings/screens/band_settings_screen.dart';
 import '../../features/personnel/screens/personnel_screen.dart';
 import '../../features/questionnaires/screens/questionnaires_screen.dart';
+import '../../features/questionnaires/screens/questionnaire_detail_screen.dart';
 import '../../features/questionnaires/screens/questionnaire_editor_screen.dart';
+import '../../features/questionnaires/screens/instance_responses_screen.dart';
 import '../../features/account/screens/account_screen.dart';
 import '../../features/calendar_feed/screens/calendar_feed_screen.dart';
 import '../../features/chat/screens/conversation_thread_screen.dart';
@@ -386,6 +388,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/questionnaires/:id/edit',
         builder: (_, state) => QuestionnaireEditorScreen(
+          questionnaireId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/questionnaires/:id/instances/:instanceId',
+        builder: (_, state) => InstanceResponsesScreen(
+          questionnaireId: int.parse(state.pathParameters['id']!),
+          instanceId: int.parse(state.pathParameters['instanceId']!),
+        ),
+      ),
+      GoRoute(
+        path: '/questionnaires/:id',
+        builder: (_, state) => QuestionnaireDetailScreen(
           questionnaireId: int.parse(state.pathParameters['id']!),
         ),
       ),

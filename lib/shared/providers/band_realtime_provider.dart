@@ -20,6 +20,8 @@ import '../../features/media/providers/media_provider.dart';
 import '../../features/search/providers/music_provider.dart';
 import '../../features/events/providers/events_provider.dart';
 import '../../features/personnel/providers/rosters_provider.dart';
+import '../../features/questionnaires/providers/questionnaire_instances_provider.dart';
+import '../../features/questionnaires/providers/questionnaires_provider.dart';
 import '../../features/rehearsals/providers/rehearsals_provider.dart';
 import 'selected_band_provider.dart';
 
@@ -103,6 +105,18 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
     case 'message':
       // dashboardProvider: keeps EventCard unread-comment badges fresh.
       return [chatConversationsProvider, topicThreadProvider, dashboardProvider];
+    case 'questionnaires':
+      return [questionnairesProvider, questionnaireDetailProvider];
+    case 'questionnaire_instances':
+      return [
+        questionnaireInstancesProvider,
+        instanceDetailProvider,
+        bookingQuestionnairesProvider,
+        eligibleBookingsProvider,
+        questionnairesProvider, // times-sent counts on the list
+      ];
+    case 'questionnaire_responses':
+      return [instanceDetailProvider, questionnaireInstancesProvider];
     default:
       return const [];
   }
@@ -144,6 +158,9 @@ const List<String> _allRegisteredModels = [
   'charts',
   'chart_uploads',
   'message',
+  'questionnaires',
+  'questionnaire_instances',
+  'questionnaire_responses',
 ];
 
 /// Subscribes to the selected band's realtime channel and turns thin

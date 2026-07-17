@@ -280,4 +280,20 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/questionnaires/$questionnaireId/archive';
   static String mobileBandQuestionnaireRestore(int bandId, int questionnaireId) =>
       '/api/mobile/bands/$bandId/questionnaires/$questionnaireId/restore';
+  static String mobileBandQuestionnaireInstances(int bandId, int questionnaireId) =>
+      '/api/mobile/bands/$bandId/questionnaires/$questionnaireId/instances';
+  static String mobileBandQuestionnaireEligibleBookings(int bandId, int questionnaireId) =>
+      '/api/mobile/bands/$bandId/questionnaires/$questionnaireId/eligible-bookings';
+  static String mobileBandBookingQuestionnaireInstances(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/questionnaire-instances';
+  static String mobileBandBookingQuestionnairesSend(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/questionnaires';
+  static String mobileBandQuestionnaireInstance(int bandId, int instanceId) =>
+      '/api/mobile/bands/$bandId/questionnaire-instances/$instanceId';
+  static String mobileBandQuestionnaireInstanceResend(int bandId, int instanceId) =>
+      '/api/mobile/bands/$bandId/questionnaire-instances/$instanceId/resend';
+  static String mobileBandQuestionnaireInstanceLock(int bandId, int instanceId) =>
+      '/api/mobile/bands/$bandId/questionnaire-instances/$instanceId/lock';
+  static String mobileBandQuestionnaireInstanceUnlock(int bandId, int instanceId) =>
+      '/api/mobile/bands/$bandId/questionnaire-instances/$instanceId/unlock';
 }

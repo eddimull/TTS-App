@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import '../../../core/network/api_endpoints.dart';
+import 'models/eligible_booking.dart';
 import 'models/questionnaire.dart';
 import 'models/questionnaire_catalog.dart';
+import 'models/questionnaire_instance.dart';
 
 class QuestionnairesRepository {
   QuestionnairesRepository(this._dio);
@@ -89,6 +91,92 @@ class QuestionnairesRepository {
   Future<void> deleteQuestionnaire(int bandId, int questionnaireId) async {
     await _dio.delete<void>(
       ApiEndpoints.mobileBandQuestionnaire(bandId, questionnaireId),
+    );
+  }
+
+  Future<List<QuestionnaireInstance>> getInstances(
+      int bandId, int questionnaireId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandQuestionnaireInstances(bandId, questionnaireId),
+    );
+    final list = response.data!['instances'] as List<dynamic>;
+    return list
+        .map((i) => QuestionnaireInstance.fromJson(i as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<EligibleBooking>> getEligibleBookings(
+      int bandId, int questionnaireId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandQuestionnaireEligibleBookings(
+          bandId, questionnaireId),
+    );
+    final list = response.data!['bookings'] as List<dynamic>;
+    return list
+        .map((b) => EligibleBooking.fromJson(b as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<BookingQuestionnaires> getBookingQuestionnaires(
+      int bandId, int bookingId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandBookingQuestionnaireInstances(bandId, bookingId),
+    );
+    return BookingQuestionnaires.fromJson(response.data!);
+  }
+
+  Future<QuestionnaireInstance> getInstance(int bandId, int instanceId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandQuestionnaireInstance(bandId, instanceId),
+    );
+    return QuestionnaireInstance.fromJson(
+        response.data!['instance'] as Map<String, dynamic>);
+  }
+
+  Future<QuestionnaireInstance> sendQuestionnaire(
+    int bandId,
+    int bookingId, {
+    required int questionnaireId,
+    required int recipientContactId,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandBookingQuestionnairesSend(bandId, bookingId),
+      data: {
+        'questionnaire_id': questionnaireId,
+        'recipient_contact_id': recipientContactId,
+      },
+    );
+    return QuestionnaireInstance.fromJson(
+        response.data!['instance'] as Map<String, dynamic>);
+  }
+
+  Future<QuestionnaireInstance> resendInstance(int bandId, int instanceId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandQuestionnaireInstanceResend(bandId, instanceId),
+    );
+    return QuestionnaireInstance.fromJson(
+        response.data!['instance'] as Map<String, dynamic>);
+  }
+
+  Future<QuestionnaireInstance> lockInstance(int bandId, int instanceId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandQuestionnaireInstanceLock(bandId, instanceId),
+    );
+    return QuestionnaireInstance.fromJson(
+        response.data!['instance'] as Map<String, dynamic>);
+  }
+
+  Future<QuestionnaireInstance> unlockInstance(int bandId, int instanceId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandQuestionnaireInstanceUnlock(bandId, instanceId),
+    );
+    return QuestionnaireInstance.fromJson(
+        response.data!['instance'] as Map<String, dynamic>);
+  }
+
+  Future<void> deleteInstance(int bandId, int instanceId) async {
+    await _dio.delete<void>(
+      ApiEndpoints.mobileBandQuestionnaireInstance(bandId, instanceId),
     );
   }
 }

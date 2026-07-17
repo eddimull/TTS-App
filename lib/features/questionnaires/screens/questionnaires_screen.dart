@@ -146,13 +146,7 @@ class _QuestionnaireRow extends ConsumerWidget {
               : 'Sent ${q.instancesCount} time${q.instancesCount == 1 ? '' : 's'}',
         ),
         trailing: const CupertinoListTileChevron(),
-        onTap: () {
-          if (isOwner) {
-            context.push('/questionnaires/${q.id}/edit');
-          } else {
-            _showActions(context, ref);
-          }
-        },
+        onTap: () => context.push('/questionnaires/${q.id}'),
       ),
     );
   }

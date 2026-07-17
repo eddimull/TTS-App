@@ -16,6 +16,12 @@ import '../widgets/booking_engagement_summary.dart';
 import '../widgets/booking_section_tile.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 import '../../chat/widgets/comment_bar.dart';
+import '../../auth/data/models/band_summary.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../questionnaires/data/models/eligible_booking.dart';
+import '../../questionnaires/providers/questionnaire_instances_provider.dart';
+import '../../questionnaires/widgets/instance_status_badge.dart';
+import '../../questionnaires/widgets/send_from_booking_sheet.dart';
 
 class BookingDetailScreen extends ConsumerWidget {
   const BookingDetailScreen({
@@ -393,6 +399,13 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
   Widget build(BuildContext context) {
     final b = widget.booking;
     final itemization = _itemizationSummary(b);
+    final authState = ref.watch(authProvider).value;
+    final bands = authState is AuthAuthenticated
+        ? authState.bands
+        : const <BandSummary>[];
+    final currentBand =
+        bands.where((band) => band.id == widget.bandId).firstOrNull;
+    final isOwner = currentBand?.isOwner ?? false;
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
         middle: Text(b.name),
@@ -512,6 +525,16 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
                     subtitle: _contractSubtitle(b),
                     onTap: () => context.push(
                         '/bookings/${widget.bandId}/${widget.bookingId}/contract'),
+                  ),
+
+                  // ── Questionnaires ────────────────────────────────────────
+                  const SizedBox(height: 16),
+                  const _SectionHeader(label: 'Questionnaires'),
+                  _QuestionnairesSection(
+                    bandId: widget.bandId,
+                    bookingId: widget.bookingId,
+                    contacts: b.contacts,
+                    isOwner: isOwner,
                   ),
 
                   // ── Notes ─────────────────────────────────────────────────
@@ -721,6 +744,108 @@ class _InlineContactRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _QuestionnairesSection extends ConsumerWidget {
+  const _QuestionnairesSection({
+    required this.bandId,
+    required this.bookingId,
+    required this.contacts,
+    required this.isOwner,
+  });
+
+  final int bandId;
+  final int bookingId;
+  final List<BookingContact> contacts;
+  final bool isOwner;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final key = (bandId: bandId, bookingId: bookingId);
+    final async = ref.watch(bookingQuestionnairesProvider(key));
+    final data = async.value;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (async.isLoading && data == null)
+          const Padding(
+            padding: EdgeInsets.all(12),
+            child: Center(child: CupertinoActivityIndicator()),
+          )
+        else if (async.hasError && data == null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text('Failed to load questionnaires.',
+                style: TextStyle(color: context.secondaryText)),
+          )
+        else if (data != null) ...[
+          for (final i in data.instances)
+            CupertinoListTile(
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(i.name, overflow: TextOverflow.ellipsis),
+                  ),
+                  InstanceStatusBadge(status: i.status),
+                ],
+              ),
+              subtitle: Text(i.recipientName),
+              // Instances of a deleted template have no questionnaire id and
+              // nowhere to navigate to — render them non-interactive.
+              trailing: i.questionnaireId == null
+                  ? null
+                  : const CupertinoListTileChevron(),
+              onTap: i.questionnaireId == null
+                  ? null
+                  : () => context.push(
+                      '/questionnaires/${i.questionnaireId}/instances/${i.id}'),
+            ),
+          if (data.instances.isEmpty && !isOwner)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text('No questionnaires sent for this booking.',
+                  style: TextStyle(color: context.secondaryText)),
+            ),
+          if (isOwner)
+            BookingSectionTile(
+              icon: CupertinoIcons.doc_text,
+              title: 'Send questionnaire',
+              subtitle: data.availableQuestionnaires.isNotEmpty
+                  ? '${data.availableQuestionnaires.length} available'
+                  : 'No active questionnaires',
+              onTap: () => _showSendSheet(context, ref, data),
+            ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _showSendSheet(
+      BuildContext context, WidgetRef ref, BookingQuestionnaires data) async {
+    final eligibleContacts = contacts
+        .where((c) => c.contactId != null)
+        .map((c) => EligibleContact(
+              id: c.contactId!,
+              name: c.name,
+              isPrimary: c.isPrimary,
+              canLogin: c.canLogin,
+            ))
+        .toList();
+    final container = ProviderScope.containerOf(context);
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (_) => UncontrolledProviderScope(
+        container: container,
+        child: SendFromBookingSheet(
+          bandId: bandId,
+          bookingId: bookingId,
+          templates: data.availableQuestionnaires,
+          contacts: eligibleContacts,
+        ),
       ),
     );
   }

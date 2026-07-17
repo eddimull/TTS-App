@@ -22,6 +22,10 @@ class FakeQuestionnairesRepository implements QuestionnairesRepository {
   int? sentContactId;
   int? sentQuestionnaireId;
   int? deletedInstanceId;
+  int? appliedResponseId;
+  bool appliedAll = false;
+  bool appendedToNotes = false;
+  int applyAllResult = 0;
   int _nextId = 100;
   int _nextInstanceId = 500;
 
@@ -137,5 +141,21 @@ class FakeQuestionnairesRepository implements QuestionnairesRepository {
   @override
   Future<void> deleteInstance(int bandId, int instanceId) async {
     deletedInstanceId = instanceId;
+  }
+
+  @override
+  Future<void> applyResponse(int bandId, int instanceId, int responseId) async {
+    appliedResponseId = responseId;
+  }
+
+  @override
+  Future<int> applyAllResponses(int bandId, int instanceId) async {
+    appliedAll = true;
+    return applyAllResult;
+  }
+
+  @override
+  Future<void> appendToNotes(int bandId, int instanceId) async {
+    appendedToNotes = true;
   }
 }

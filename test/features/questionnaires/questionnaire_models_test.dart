@@ -41,6 +41,17 @@ void main() {
       expect(field.options, isEmpty);
       expect(field.visibilityRule, null);
       expect(field.mappingTarget, null);
+      expect(field.mappingLabel, null);
+    });
+
+    test('test_parses_mapping_label', () {
+      final field = QuestionnaireField.fromJson({
+        'id': 5,
+        'type': 'short_text',
+        'label': 'Name',
+        'mapping_label': 'Contact Name',
+      });
+      expect(field.mappingLabel, 'Contact Name');
     });
   });
 

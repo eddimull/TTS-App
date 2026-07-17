@@ -179,4 +179,25 @@ class QuestionnairesRepository {
       ApiEndpoints.mobileBandQuestionnaireInstance(bandId, instanceId),
     );
   }
+
+  Future<void> applyResponse(int bandId, int instanceId, int responseId) async {
+    await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandQuestionnaireResponseApply(
+          bandId, instanceId, responseId),
+    );
+  }
+
+  Future<int> applyAllResponses(int bandId, int instanceId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandQuestionnaireInstanceApplyAll(bandId, instanceId),
+    );
+    return ((response.data!['applied_count'] as num?) ?? 0).toInt();
+  }
+
+  Future<void> appendToNotes(int bandId, int instanceId) async {
+    await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandQuestionnaireInstanceAppendToNotes(
+          bandId, instanceId),
+    );
+  }
 }

@@ -84,6 +84,46 @@ void main() {
       expect(i.responses, isEmpty);
       expect(i.songLookup, isEmpty);
     });
+
+    test('test_parses_response_meta_with_apply_states', () {
+      final i = QuestionnaireInstance.fromJson({
+        'id': 7,
+        'name': 'x',
+        'status': 'submitted',
+        'recipient_name': 'r',
+        'booking': {'id': 1, 'name': 'b'},
+        'response_meta': {
+          '21': {
+            'response_id': 91,
+            'applied_to_event_at': null,
+            'updated_at': '2026-07-17T10:00:00+00:00',
+          },
+          '22': {
+            'response_id': 92,
+            'applied_to_event_at': '2026-07-17T09:00:00+00:00',
+            'updated_at': '2026-07-17T10:00:00+00:00',
+          },
+          '23': {
+            'response_id': 93,
+            'applied_to_event_at': '2026-07-17T11:00:00+00:00',
+            'updated_at': '2026-07-17T10:00:00+00:00',
+          },
+        },
+      });
+      expect(i.responseMeta['21']!.isApplied, false);
+      expect(i.responseMeta['22']!.isApplied, true);
+      expect(i.responseMeta['22']!.needsReapply, true); // updated after apply
+      expect(i.responseMeta['23']!.needsReapply, false); // applied after update
+    });
+
+    test('test_tolerates_empty_list_response_meta', () {
+      final i = QuestionnaireInstance.fromJson({
+        'id': 1, 'name': 'x', 'status': 'sent',
+        'recipient_name': 'r', 'booking': {'id': 1, 'name': 'b'},
+        'response_meta': <dynamic>[],
+      });
+      expect(i.responseMeta, isEmpty);
+    });
   });
 
   group('EligibleBooking.fromJson', () {

@@ -15,6 +15,33 @@ class SongRef {
       );
 }
 
+class ResponseMeta {
+  const ResponseMeta({
+    required this.responseId,
+    this.appliedToEventAt,
+    this.updatedAt,
+  });
+
+  final int responseId;
+  final DateTime? appliedToEventAt;
+  final DateTime? updatedAt;
+
+  bool get isApplied => appliedToEventAt != null;
+
+  bool get needsReapply =>
+      isApplied && updatedAt != null && updatedAt!.isAfter(appliedToEventAt!);
+
+  factory ResponseMeta.fromJson(Map<String, dynamic> json) => ResponseMeta(
+        responseId: (json['response_id'] as num).toInt(),
+        appliedToEventAt: json['applied_to_event_at'] == null
+            ? null
+            : DateTime.tryParse(json['applied_to_event_at'] as String),
+        updatedAt: json['updated_at'] == null
+            ? null
+            : DateTime.tryParse(json['updated_at'] as String),
+      );
+}
+
 class QuestionnaireInstance {
   const QuestionnaireInstance({
     required this.id,
@@ -32,6 +59,7 @@ class QuestionnaireInstance {
     this.fields = const [],
     this.responses = const {},
     this.songLookup = const {},
+    this.responseMeta = const {},
   });
 
   final int id;
@@ -51,6 +79,7 @@ class QuestionnaireInstance {
   /// Decoded answers keyed by instance field id (as string).
   final Map<String, dynamic> responses;
   final Map<String, SongRef> songLookup;
+  final Map<String, ResponseMeta> responseMeta;
 
   bool get isLocked => status == 'locked';
   bool get isSubmitted => status == 'submitted';
@@ -75,6 +104,7 @@ class QuestionnaireInstance {
     final rawFields = json['fields'] as List<dynamic>? ?? [];
     final rawResponses = json['responses'];
     final rawSongs = json['song_lookup'];
+    final rawMeta = json['response_meta'];
     return QuestionnaireInstance(
       id: (json['id'] as num).toInt(),
       name: json['name'] as String? ?? '',
@@ -99,7 +129,7 @@ class QuestionnaireInstance {
       fields: rawFields
           .map((f) => QuestionnaireField.fromJson(f as Map<String, dynamic>))
           .toList(),
-      // Responses/song_lookup arrive as JSON objects; an empty PHP array
+      // Responses/song_lookup/response_meta arrive as JSON objects; an empty PHP array
       // would serialize as [], so tolerate non-Map values.
       responses: rawResponses is Map<String, dynamic>
           ? rawResponses.map((k, v) => MapEntry(k, v))
@@ -107,6 +137,10 @@ class QuestionnaireInstance {
       songLookup: rawSongs is Map<String, dynamic>
           ? rawSongs.map((k, v) =>
               MapEntry(k, SongRef.fromJson(v as Map<String, dynamic>)))
+          : const {},
+      responseMeta: rawMeta is Map<String, dynamic>
+          ? rawMeta.map((k, v) =>
+              MapEntry(k, ResponseMeta.fromJson(v as Map<String, dynamic>)))
           : const {},
     );
   }
@@ -128,6 +162,7 @@ class QuestionnaireInstance {
       fields: fields,
       responses: responses,
       songLookup: songLookup,
+      responseMeta: responseMeta,
     );
   }
 

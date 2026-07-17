@@ -183,5 +183,27 @@ void main() {
       );
       expect(buildBackgroundNotification({'type': 'unknown'}), isNull);
     });
+
+    test('questionnaire_submitted parses type and renders in background', () {
+      final spec = buildBackgroundNotification({
+        'type': 'questionnaire_submitted',
+        'title': 'Alice submitted the Wedding Intake',
+        'body': 'Booking: Smith Wedding',
+        'questionnaireId': '3',
+        'instanceId': '9',
+      });
+      expect(spec, isNotNull);
+      expect(spec!.title, 'Alice submitted the Wedding Intake');
+      expect(spec.route, '/questionnaires/3/instances/9');
+    });
+
+    test('two questionnaire instances get distinct notification ids', () {
+      PushPayload payload(String instanceId) => PushPayload.fromData({
+            'type': 'questionnaire_submitted',
+            'instanceId': instanceId,
+          });
+      expect(payload('1').notificationId,
+          isNot(payload('2').notificationId));
+    });
   });
 }

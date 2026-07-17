@@ -2,7 +2,7 @@ import 'notification_channels.dart';
 import 'push_route.dart';
 
 /// The kind of push the backend sent.
-enum PushType { reminder8h, departure, rehearsalCancelled, rehearsalRestored, chatMessage, unknown }
+enum PushType { reminder8h, departure, rehearsalCancelled, rehearsalRestored, chatMessage, questionnaireSubmitted, unknown }
 
 /// Stable notification id for an event's "departure" slot. The push-rendered
 /// notification and the locally-scheduled enriched one MUST use this same id so
@@ -22,6 +22,8 @@ PushType _typeFromString(String? raw) {
       return PushType.rehearsalRestored;
     case 'chat_message':
       return PushType.chatMessage;
+    case 'questionnaire_submitted':
+      return PushType.questionnaireSubmitted;
     default:
       return PushType.unknown;
   }
@@ -40,6 +42,8 @@ class PushPayload {
     this.body,
     this.rehearsalId,
     this.conversationId,
+    this.questionnaireId,
+    this.instanceId,
   });
 
   final PushType type;
@@ -55,6 +59,8 @@ class PushPayload {
   final String? body;
   final String? rehearsalId;
   final String? conversationId;
+  final String? questionnaireId;
+  final String? instanceId;
 
   factory PushPayload.fromData(Map<String, dynamic> data) {
     String? str(String key) {
@@ -75,17 +81,19 @@ class PushPayload {
       body: str('body'),
       rehearsalId: str('rehearsalId'),
       conversationId: str('conversationId'),
+      questionnaireId: str('questionnaireId'),
+      instanceId: str('instanceId'),
     );
   }
 
   /// Stable id for deduping notifications: one slot per entity+type. Departure
   /// keeps its shared-slot contract with the enrichment scheduler; everything
-  /// else hashes its best entity key (eventKey, else conversationId, else rehearsalId) with its type.
+  /// else hashes its best entity key (eventKey, else conversationId, else rehearsalId, else instanceId) with its type.
   int get notificationId {
     if (type == PushType.departure) return departureNotificationId(eventKey);
     final entity = eventKey.isNotEmpty
         ? eventKey
-        : (conversationId ?? rehearsalId ?? '');
+        : (conversationId ?? rehearsalId ?? instanceId ?? '');
     return Object.hash(entity, type).toUnsigned(31);
   }
 }
@@ -121,15 +129,17 @@ class BackgroundNotificationSpec {
 /// render, or null when this type has no background rendering (e.g. reminder
 /// pushes, which arrive hybrid/OS-rendered, or unknown types).
 ///
-/// Scope: `chat_message` only for now — the backend sends chat pushes
-/// data-only, so without this the background isolate shows nothing on
-/// Android. Kept free of Riverpod/plugin imports so it runs safely in the
-/// separate background isolate FCM spins up for `onBackgroundMessage`.
+/// Scope: data-only push types (`chat_message` and `questionnaire_submitted`).
+/// The backend sends these data-only, so without this the background isolate
+/// shows nothing on Android. Kept free of Riverpod/plugin imports so it runs
+/// safely in the separate background isolate FCM spins up for `onBackgroundMessage`.
 BackgroundNotificationSpec? buildBackgroundNotification(
   Map<String, dynamic> data,
 ) {
   final payload = PushPayload.fromData(data);
-  if (payload.type != PushType.chatMessage) return null;
+  final rendersInBackground = payload.type == PushType.chatMessage ||
+      payload.type == PushType.questionnaireSubmitted;
+  if (!rendersInBackground) return null;
 
   return BackgroundNotificationSpec(
     id: payload.notificationId,

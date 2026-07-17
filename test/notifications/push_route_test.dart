@@ -25,4 +25,22 @@ void main() {
     expect(routeForPushData({'type': 'event_reminder_8h', 'eventKey': 'k'}), isNull);
     expect(routeForPushData({}), isNull);
   });
+
+  test('questionnaire_submitted routes to the instance responses screen', () {
+    expect(
+      routeForPushData({
+        'type': 'questionnaire_submitted',
+        'questionnaireId': '3',
+        'instanceId': '9',
+      }),
+      '/questionnaires/3/instances/9',
+    );
+  });
+
+  test('questionnaire_submitted without questionnaireId has no route', () {
+    expect(
+      routeForPushData({'type': 'questionnaire_submitted', 'instanceId': '9'}),
+      isNull,
+    );
+  });
 }

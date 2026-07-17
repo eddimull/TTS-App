@@ -9,6 +9,13 @@ String? routeForPushData(Map<String, dynamic> data) {
     if (conversationId == null) return null;
     return '/conversations/$conversationId';
   }
+  if (type == 'questionnaire_submitted') {
+    final questionnaireId =
+        int.tryParse(data['questionnaireId']?.toString() ?? '');
+    final instanceId = int.tryParse(data['instanceId']?.toString() ?? '');
+    if (questionnaireId == null || instanceId == null) return null;
+    return '/questionnaires/$questionnaireId/instances/$instanceId';
+  }
   if (type != 'rehearsal_cancelled' && type != 'rehearsal_restored') {
     return null;
   }

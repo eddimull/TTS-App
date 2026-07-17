@@ -279,6 +279,16 @@ class InstanceResponsesScreen extends ConsumerWidget {
                 if (context.mounted) {
                   _info(context, 'Done', 'Answers appended to event notes.');
                 }
+              } on DioException catch (e) {
+                if (context.mounted) {
+                  _info(
+                      context,
+                      'Append failed',
+                      (e.response?.data is Map &&
+                              e.response!.data['message'] is String)
+                          ? e.response!.data['message'] as String
+                          : 'Please try again.');
+                }
               } catch (_) {
                 if (context.mounted) {
                   _info(context, 'Append failed', 'Please try again.');

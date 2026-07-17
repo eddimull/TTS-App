@@ -1,5 +1,58 @@
 # Changelog
 
+## [1.13.0](https://github.com/eddimull/TTS-App/compare/v1.12.0...v1.13.0) (2026-07-17)
+
+
+### Features
+
+* **bookings:** pinned comment bar on booking detail ([84fa3d2](https://github.com/eddimull/TTS-App/commit/84fa3d27f253e7dfcbf6839268516adf82611b24))
+* cancelled rehearsal visibility on shared surfaces ([c6c2a3b](https://github.com/eddimull/TTS-App/commit/c6c2a3b0bbdabf5980e7d96a06764493332d22b4))
+* **chat:** pinned CommentBar widget for detail screens ([fb4e991](https://github.com/eddimull/TTS-App/commit/fb4e991be93e38f8ad1d38781d99e7688376667e))
+* **dashboard:** cancelled styling on event cards ([2a63555](https://github.com/eddimull/TTS-App/commit/2a635559710c4b5e667ba8ed1b7587e9922f62ed))
+* **dashboard:** red faded marker for cancelled rehearsals ([8f4c1f9](https://github.com/eddimull/TTS-App/commit/8f4c1f930609ef152047a15c0d6cc98af65e322c))
+* **dashboard:** unread-comment badge on event cards ([b509385](https://github.com/eddimull/TTS-App/commit/b5093858fe4cbe20afe53fa7889f51e90f9c885e))
+* **events:** parse is_cancelled into EventSummary ([f634b4f](https://github.com/eddimull/TTS-App/commit/f634b4f043c0b8dfbf9d59ce6c375b75de9af41e))
+* **events:** pinned comment bar on event detail ([bd0f786](https://github.com/eddimull/TTS-App/commit/bd0f78611d3e983362b132cc54390db4d1219e21))
+* **events:** unreadCommentCount on EventSummary ([0a59639](https://github.com/eddimull/TTS-App/commit/0a59639c0df586a138f65a616c8fd0ebca2e894e))
+* questionnaires on mobile — Phase 1 (templates CRUD + builder) ([ebd46e3](https://github.com/eddimull/TTS-App/commit/ebd46e3aec5f1082fde7ce55e8df44ddcdfea368))
+* questionnaires on mobile — Phase 2 (sending, logs, booking integration, realtime) ([636a32a](https://github.com/eddimull/TTS-App/commit/636a32a89f97082aa4d8f19988eef92326eeca66))
+* questionnaires on mobile — Phase 3 (apply-to-event + submission push) ([87c5542](https://github.com/eddimull/TTS-App/commit/87c5542da61711055c543e8a5d385fe9f1b285ae))
+* **questionnaires:** apply-to-event actions on responses screen ([8ed3592](https://github.com/eddimull/TTS-App/commit/8ed359262560dc2d92f50c6792baf12d0db7dfec))
+* **questionnaires:** booking detail questionnaires section ([ba779b3](https://github.com/eddimull/TTS-App/commit/ba779b3867d32c2d5e7021068643ce6b49774ea0))
+* **questionnaires:** builder screen with reorder + dirty-tracked save ([f654e98](https://github.com/eddimull/TTS-App/commit/f654e9815061d1fdbf537e3c0d0277b96dc533e8))
+* **questionnaires:** detail screen with sent log, filters + instance actions ([041965d](https://github.com/eddimull/TTS-App/commit/041965d96e3049b09498fe30e7fee5aa5289f3dc))
+* **questionnaires:** editor state provider with bulk-save contract ([2552cf7](https://github.com/eddimull/TTS-App/commit/2552cf751578239d933f426c551e08f77943f42c))
+* **questionnaires:** instance repository + providers ([57172c2](https://github.com/eddimull/TTS-App/commit/57172c2a78270373f383498f01e3b126225a183d))
+* **questionnaires:** instance responses screen ([bbefe39](https://github.com/eddimull/TTS-App/commit/bbefe39dca552d50c678cd70fbfba6c09bb78c8c))
+* **questionnaires:** instance wire models + endpoints ([127b8af](https://github.com/eddimull/TTS-App/commit/127b8afca0d836b35ed9db0a229ad71653666f09))
+* **questionnaires:** interactive preview with live visibility ([f95bc1a](https://github.com/eddimull/TTS-App/commit/f95bc1a8a434a342efa9d065c8b7d1981d6d86bd))
+* **questionnaires:** menu entry, routes, list screen + create sheet ([1a16986](https://github.com/eddimull/TTS-App/commit/1a16986ecfdf57ca80d036056fd928c4a04b2adf))
+* **questionnaires:** per-field editor (settings, mapping, visibility rules) ([b9a5583](https://github.com/eddimull/TTS-App/commit/b9a55833639837bb9ac1b3bf100059149b773a32))
+* **questionnaires:** questionnaire_submitted push type with deep link ([b4bb795](https://github.com/eddimull/TTS-App/commit/b4bb7958bf3bd2647bbbe64afab39de3bdf830c6))
+* **questionnaires:** realtime invalidation for questionnaire models ([8c7544e](https://github.com/eddimull/TTS-App/commit/8c7544efe35053b184e1965ae2c336e4e1dd5e5d))
+* **questionnaires:** repository + list/detail/catalog providers ([bdd207d](https://github.com/eddimull/TTS-App/commit/bdd207dadc75645413cfcc4e37cfec7d3954c2a8))
+* **questionnaires:** response metadata, mapping labels + apply repository calls ([97095c2](https://github.com/eddimull/TTS-App/commit/97095c2cdb52e053c40d7c77d57bc95168d81f42))
+* **questionnaires:** send sheets for questionnaire and booking flows ([5a97f27](https://github.com/eddimull/TTS-App/commit/5a97f27559b3e3343e88ba13bf7394fd85147765))
+* **questionnaires:** visibility evaluator port ([6bb8a30](https://github.com/eddimull/TTS-App/commit/6bb8a30dee469a0ce6783da98be99e67ec26cdd4))
+* **questionnaires:** wire models + API endpoints ([9d54b35](https://github.com/eddimull/TTS-App/commit/9d54b354fc62a7f4172d715b6b169abcb8b97821))
+* **realtime:** refresh dashboard badges on message signals ([438945c](https://github.com/eddimull/TTS-App/commit/438945c9347d5b21e9e031be1f52a7e03942f97c))
+* **rehearsals:** pinned comment bar on rehearsal detail ([699164f](https://github.com/eddimull/TTS-App/commit/699164ff668e109a382e0f3707afe77c7260804f))
+
+
+### Bug Fixes
+
+* address Copilot review — dedupe unreachable error handler, re-indent banner ([ec66af6](https://github.com/eddimull/TTS-App/commit/ec66af68c55d40df6661ec3e627355dfe71a2bf8))
+* **chat:** settle in-flight request in CommentBar loading test ([62d78f1](https://github.com/eddimull/TTS-App/commit/62d78f1ab0bcff3e849954f44f74b60b163a9a83))
+* **questionnaires:** disable navigation for instances without a questionnaire id ([88b05cc](https://github.com/eddimull/TTS-App/commit/88b05cc82ac3f9ffdd61af9d61481f3e5f02183e))
+* **questionnaires:** distinguish 409 from other delete failures, surface archive/restore errors ([775baf1](https://github.com/eddimull/TTS-App/commit/775baf1ca5875bd6adbf224dcc6d57d423662ebb))
+* **questionnaires:** re-attach provider scope in create sheet modal ([3137f49](https://github.com/eddimull/TTS-App/commit/3137f4918ca5dfa77de516e5e14ff0680bd3d08b))
+* **questionnaires:** refresh detail and surface server message on apply-all failure ([241c286](https://github.com/eddimull/TTS-App/commit/241c286f015c621fdce6fee5d8a59a18b9a497c9))
+* **questionnaires:** surface load errors, always-visible send tile, prune dead params ([2a61203](https://github.com/eddimull/TTS-App/commit/2a6120379827b45c7cb7e7086f2e6b4a64786aef))
+* **questionnaires:** surface server message on append-to-notes failure ([906c4a3](https://github.com/eddimull/TTS-App/commit/906c4a3c4c6cbe12ed7f40116bca922d596cbde2))
+* **questionnaires:** tolerate empty-list song_lookup in instance parse ([d537fc6](https://github.com/eddimull/TTS-App/commit/d537fc6facb69676ae70d0d92f8b62675d60c743))
+* **realtime:** never throw from pusher onAuthorizer; iOS push fixes ([26e291d](https://github.com/eddimull/TTS-App/commit/26e291d943814ddff7f63d0ad8e3dd52e0940e81))
+* **realtime:** pusher onAuthorizer crash on iOS + iOS chat push delivery ([3ef2e42](https://github.com/eddimull/TTS-App/commit/3ef2e42a2b29cc14d0b523e1341bcf59c5e07daf))
+
 ## [1.12.0](https://github.com/eddimull/TTS-App/compare/v1.11.0...v1.12.0) (2026-07-14)
 
 

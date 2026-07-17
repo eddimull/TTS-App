@@ -228,7 +228,21 @@ class InstanceResponsesScreen extends ConsumerWidget {
                     _info(context, 'Applied',
                         'Applied $count answer${count == 1 ? '' : 's'} to the event.');
                   }
+                } on DioException catch (e) {
+                  // The backend may have applied some responses before
+                  // failing, so re-fetch to reflect server truth.
+                  ref.invalidate(instanceDetailProvider(detailKey));
+                  if (context.mounted) {
+                    _info(
+                        context,
+                        'Apply all failed',
+                        (e.response?.data is Map &&
+                                e.response!.data['message'] is String)
+                            ? e.response!.data['message'] as String
+                            : 'Please try again.');
+                  }
                 } catch (_) {
+                  ref.invalidate(instanceDetailProvider(detailKey));
                   if (context.mounted) {
                     _info(context, 'Apply all failed', 'Please try again.');
                   }

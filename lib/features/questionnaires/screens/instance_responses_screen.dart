@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -9,6 +10,7 @@ import '../data/models/questionnaire_field.dart';
 import '../data/models/questionnaire_instance.dart';
 import '../logic/visibility_evaluator.dart';
 import '../providers/questionnaire_instances_provider.dart';
+import '../providers/questionnaires_provider.dart';
 import '../widgets/instance_status_badge.dart';
 
 class InstanceResponsesScreen extends ConsumerWidget {
@@ -130,7 +132,13 @@ class InstanceResponsesScreen extends ConsumerWidget {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   for (final field in visibleFields)
-                    _FieldAnswer(field: field, instance: instance),
+                    _FieldAnswer(
+                      field: field,
+                      instance: instance,
+                      canApply: isOwner,
+                      onApply: (responseId) =>
+                          _applyResponse(context, ref, bandId, responseId),
+                    ),
                 ]),
               ),
             ),
@@ -138,6 +146,25 @@ class InstanceResponsesScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _applyResponse(
+      BuildContext context, WidgetRef ref, int bandId, int responseId) async {
+    final key = (bandId: bandId, instanceId: instanceId);
+    try {
+      await ref
+          .read(questionnairesRepositoryProvider)
+          .applyResponse(bandId, instanceId, responseId);
+      ref.invalidate(instanceDetailProvider(key));
+    } on DioException catch (e) {
+      if (!context.mounted) return;
+      _info(context, 'Apply failed',
+          (e.response?.data is Map && e.response!.data['message'] is String)
+              ? e.response!.data['message'] as String
+              : 'Please try again.');
+    } catch (_) {
+      if (context.mounted) _info(context, 'Apply failed', 'Please try again.');
+    }
   }
 
   Future<void> _showActions(BuildContext context, WidgetRef ref, int bandId,
@@ -185,6 +212,67 @@ class InstanceResponsesScreen extends ConsumerWidget {
             },
             child: Text(instance.isLocked ? 'Unlock' : 'Lock'),
           ),
+          if (instance.fields.any((f) =>
+              f.mappingTarget != null &&
+              instance.responseMeta.containsKey('${f.id}') &&
+              !instance.responseMeta['${f.id}']!.isApplied))
+            CupertinoActionSheetAction(
+              onPressed: () async {
+                Navigator.of(sheetContext).pop();
+                try {
+                  final count = await ref
+                      .read(questionnairesRepositoryProvider)
+                      .applyAllResponses(bandId, instance.id);
+                  ref.invalidate(instanceDetailProvider(detailKey));
+                  if (context.mounted) {
+                    _info(context, 'Applied',
+                        'Applied $count answer${count == 1 ? '' : 's'} to the event.');
+                  }
+                } catch (_) {
+                  if (context.mounted) {
+                    _info(context, 'Apply all failed', 'Please try again.');
+                  }
+                }
+              },
+              child: const Text('Apply all pending to event'),
+            ),
+          CupertinoActionSheetAction(
+            onPressed: () async {
+              Navigator.of(sheetContext).pop();
+              final confirmed = await showCupertinoDialog<bool>(
+                context: context,
+                builder: (dialogContext) => CupertinoAlertDialog(
+                  title: const Text('Append to event notes?'),
+                  content: const Text(
+                      'All answers will be appended to the event\'s notes.'),
+                  actions: [
+                    CupertinoDialogAction(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    CupertinoDialogAction(
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                      child: const Text('Append'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed != true) return;
+              try {
+                await ref
+                    .read(questionnairesRepositoryProvider)
+                    .appendToNotes(bandId, instance.id);
+                if (context.mounted) {
+                  _info(context, 'Done', 'Answers appended to event notes.');
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  _info(context, 'Append failed', 'Please try again.');
+                }
+              }
+            },
+            child: const Text('Append answers to event notes'),
+          ),
           CupertinoActionSheetAction(
             isDestructiveAction: true,
             onPressed: () async {
@@ -227,10 +315,17 @@ class InstanceResponsesScreen extends ConsumerWidget {
 }
 
 class _FieldAnswer extends StatelessWidget {
-  const _FieldAnswer({required this.field, required this.instance});
+  const _FieldAnswer({
+    required this.field,
+    required this.instance,
+    required this.canApply,
+    required this.onApply,
+  });
 
   final QuestionnaireField field;
   final QuestionnaireInstance instance;
+  final bool canApply;
+  final void Function(int responseId) onApply;
 
   @override
   Widget build(BuildContext context) {
@@ -262,6 +357,53 @@ class _FieldAnswer extends StatelessWidget {
                   fontWeight: FontWeight.w600)),
           const SizedBox(height: 2),
           _answer(context, raw),
+          if (field.mappingTarget != null) _mappingRow(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _mappingRow(BuildContext context) {
+    final meta = instance.responseMeta['${field.id}'];
+    final label = field.mappingLabel ?? field.mappingTarget!;
+
+    // No answer yet: nothing to apply, just show where it would map.
+    if (meta == null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Text('Maps to $label',
+            style: TextStyle(color: context.secondaryText, fontSize: 12)),
+      );
+    }
+
+    final (stateText, showButton) = meta.needsReapply
+        ? ('Applied — answer changed since', true)
+        : meta.isApplied
+            ? ('Applied ✓', false)
+            : ('Not applied', true);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '$label · $stateText',
+              style: TextStyle(
+                color: meta.isApplied && !meta.needsReapply
+                    ? CupertinoColors.systemGreen.resolveFrom(context)
+                    : context.secondaryText,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          if (canApply && showButton)
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: () => onApply(meta.responseId),
+              child: Text(meta.needsReapply ? 'Re-apply' : 'Apply',
+                  style: const TextStyle(fontSize: 13)),
+            ),
         ],
       ),
     );

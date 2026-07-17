@@ -57,6 +57,7 @@ class QuestionnaireField {
     this.settings,
     this.visibilityRule,
     this.mappingTarget,
+    this.mappingLabel,
   });
 
   final int id;
@@ -68,6 +69,7 @@ class QuestionnaireField {
   final Map<String, dynamic>? settings;
   final VisibilityRule? visibilityRule;
   final String? mappingTarget;
+  final String? mappingLabel;
 
   List<FieldOption> get options {
     final raw = settings?['options'] as List<dynamic>? ?? [];
@@ -88,6 +90,7 @@ class QuestionnaireField {
       settings: json['settings'] as Map<String, dynamic>?,
       visibilityRule: rawRule == null ? null : VisibilityRule.fromJson(rawRule),
       mappingTarget: json['mapping_target'] as String?,
+      mappingLabel: json['mapping_label'] as String?,
     );
   }
 }

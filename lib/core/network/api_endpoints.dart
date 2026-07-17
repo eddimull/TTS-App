@@ -296,4 +296,11 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/questionnaire-instances/$instanceId/lock';
   static String mobileBandQuestionnaireInstanceUnlock(int bandId, int instanceId) =>
       '/api/mobile/bands/$bandId/questionnaire-instances/$instanceId/unlock';
+  static String mobileBandQuestionnaireResponseApply(
+          int bandId, int instanceId, int responseId) =>
+      '/api/mobile/bands/$bandId/questionnaire-instances/$instanceId/responses/$responseId/apply';
+  static String mobileBandQuestionnaireInstanceApplyAll(int bandId, int instanceId) =>
+      '/api/mobile/bands/$bandId/questionnaire-instances/$instanceId/apply-all';
+  static String mobileBandQuestionnaireInstanceAppendToNotes(int bandId, int instanceId) =>
+      '/api/mobile/bands/$bandId/questionnaire-instances/$instanceId/append-to-notes';
 }

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
+import 'package:tts_bandmate/core/network/pusher_authorizer.dart';
 import 'package:tts_bandmate/core/network/pusher_connection.dart';
 
 /// Counts init/connect/subscribe/unsubscribe calls without touching any
@@ -99,6 +100,42 @@ void main() {
     });
   });
 
+  group('buildPusherAuthPayload', () {
+    test('passes through string fields', () {
+      expect(
+        buildPusherAuthPayload(
+            {'auth': 'k:sig', 'channel_data': '{"user_id":"1"}'}, 200, 'ch'),
+        {'auth': 'k:sig', 'channel_data': '{"user_id":"1"}'},
+      );
+    });
+
+    // The iOS plugin casts the payload `as! [String: String]` — any non-String
+    // value would SIGABRT, so non-String JSON must be re-encoded to strings.
+    test('coerces non-string channel_data and shared_secret to strings', () {
+      expect(
+        buildPusherAuthPayload({
+          'auth': 'k:sig',
+          'channel_data': {'user_id': 1},
+          'shared_secret': 42,
+        }, 200, 'ch'),
+        {
+          'auth': 'k:sig',
+          'channel_data': '{"user_id":1}',
+          'shared_secret': '42',
+        },
+      );
+    });
+
+    test('throws StateError on a missing/invalid auth field', () {
+      expect(() => buildPusherAuthPayload(null, 500, 'ch'),
+          throwsStateError);
+      expect(() => buildPusherAuthPayload({'auth': ''}, 200, 'ch'),
+          throwsStateError);
+      expect(() => buildPusherAuthPayload({'other': 1}, 200, 'ch'),
+          throwsStateError);
+    });
+  });
+
   group('PusherConnection', () {
     late FakePusherChannelsFlutter fake;
     late PusherConnection connection;
@@ -144,6 +181,63 @@ void main() {
       expect(result, isNull);
       expect(fake.initCalls, 0);
       expect(fake.subscribedChannels, isEmpty);
+    });
+
+    // The iOS plugin force-casts the onAuthorizer result with
+    // `as! [String: String]`; a Dart exception crosses the method channel as
+    // a FlutterError object and the cast SIGABRTs the app (BANDMATE-APP-Q).
+    // The authorizer must therefore NEVER throw — every failure returns null,
+    // which the native side handles as a graceful auth failure.
+    group('onAuthorizer never throws', () {
+      Future<dynamic> invokeCapturedAuthorizer(PusherConnection c) async {
+        await c.subscribe('private-band.1', (_, __) {});
+        return fake.capturedAuthorizer!('private-band.1', '123.456', null);
+      }
+
+      test('returns auth payload on success', () async {
+        final c = PusherConnection(
+          () async => 'test-token',
+          getInstance: () => fake,
+          pusherKey: 'test-pusher-key',
+          authorizerFactory: (token) => (_, __, ___) async =>
+              {'auth': 'key:sig-for-$token'},
+        );
+        expect(await invokeCapturedAuthorizer(c),
+            {'auth': 'key:sig-for-test-token'});
+      });
+
+      test('returns null when the token read throws', () async {
+        final c = PusherConnection(
+          () async => throw Exception('keychain locked'),
+          getInstance: () => fake,
+          pusherKey: 'test-pusher-key',
+        );
+        // subscribe() reads the token too — it must also survive the throw.
+        expect(await c.subscribe('private-band.1', (_, __) {}), isNull);
+      });
+
+      test('returns null when the token is gone by auth time', () async {
+        var reads = 0;
+        final c = PusherConnection(
+          // First read (subscribe) succeeds; second (authorizer) finds the
+          // token deleted, e.g. after a 401 wiped storage.
+          () async => reads++ == 0 ? 'test-token' : null,
+          getInstance: () => fake,
+          pusherKey: 'test-pusher-key',
+        );
+        expect(await invokeCapturedAuthorizer(c), isNull);
+      });
+
+      test('returns null when the auth HTTP call throws', () async {
+        final c = PusherConnection(
+          () async => 'test-token',
+          getInstance: () => fake,
+          pusherKey: 'test-pusher-key',
+          authorizerFactory: (token) =>
+              (_, __, ___) async => throw StateError('auth endpoint 401'),
+        );
+        expect(await invokeCapturedAuthorizer(c), isNull);
+      });
     });
 
     test('no pusher key configured returns null without initializing',

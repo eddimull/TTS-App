@@ -46,6 +46,11 @@ class SecureStorage {
 final secureStorageProvider = Provider<SecureStorage>((ref) {
   const storage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    // first_unlock (not the default when_unlocked): the token is read while
+    // the app is backgrounded — Pusher channel re-auth, background pushes —
+    // and when_unlocked makes those reads fail with errSecInteractionNotAllowed
+    // (-25308) once the device locks (BANDMATE-APP-9).
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
   return SecureStorage(storage);
 });

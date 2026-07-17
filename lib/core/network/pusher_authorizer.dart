@@ -1,7 +1,36 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import '../config/app_config.dart';
 import 'dev_tls.dart';
+
+/// Validates the `/broadcasting/auth` response body and shapes it into the
+/// payload Pusher's native plugins expect. Pure — unit-tested directly.
+///
+/// Every value must be a String: the iOS plugin force-casts the payload with
+/// `as! [String: String]`, so a non-String value (or a FlutterError from a
+/// thrown Dart exception) aborts the process. Laravel normally returns
+/// `channel_data` as a JSON string already; anything else is re-encoded.
+Map<String, String> buildPusherAuthPayload(
+    Map<String, dynamic>? body, int? statusCode, String channelName) {
+  final auth = body?['auth'];
+  if (auth is! String || auth.isEmpty) {
+    throw StateError(
+      'Pusher auth failed for "$channelName": '
+      '/broadcasting/auth returned no valid "auth" (status '
+      '$statusCode, body: $body)',
+    );
+  }
+  String asString(Object v) => v is String ? v : jsonEncode(v);
+  final channelData = body!['channel_data'];
+  final sharedSecret = body['shared_secret'];
+  return {
+    'auth': auth,
+    if (channelData != null) 'channel_data': asString(channelData),
+    if (sharedSecret != null) 'shared_secret': asString(sharedSecret),
+  };
+}
 
 /// Builds the `onAuthorizer` callback for `pusher_channels_flutter`.
 ///
@@ -17,7 +46,7 @@ import 'dev_tls.dart';
 /// callback must itself POST to `/broadcasting/auth` with the token and the
 /// `socket_id` + `channel_name` form fields Laravel's BroadcastController
 /// expects, then return the JSON body (`{ "auth": "..." }`) that Pusher needs.
-Future<Map<String, dynamic>> Function(String, String, dynamic) pusherAuthorizer(
+Future<Map<String, String>> Function(String, String, dynamic) pusherAuthorizer(
   String token,
 ) {
   final dio = Dio(
@@ -49,22 +78,7 @@ Future<Map<String, dynamic>> Function(String, String, dynamic) pusherAuthorizer(
       options: Options(contentType: Headers.formUrlEncodedContentType),
     );
     // Laravel returns { "auth": "key:signature" } for private channels and adds
-    // "channel_data" for presence channels. The native plugin force-unwraps
-    // authData["auth"], so a missing/non-String value would crash it or silently
-    // re-fail the subscription — validate and throw a clear error instead.
-    final body = res.data;
-    final auth = body?['auth'];
-    if (auth is! String || auth.isEmpty) {
-      throw StateError(
-        'Pusher auth failed for "$channelName": '
-        '/broadcasting/auth returned no valid "auth" (status '
-        '${res.statusCode}, body: $body)',
-      );
-    }
-    return {
-      'auth': auth,
-      if (body!['channel_data'] != null) 'channel_data': body['channel_data'],
-      if (body['shared_secret'] != null) 'shared_secret': body['shared_secret'],
-    };
+    // "channel_data" for presence channels.
+    return buildPusherAuthPayload(res.data, res.statusCode, channelName);
   };
 }

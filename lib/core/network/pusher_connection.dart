@@ -11,6 +11,10 @@ import 'pusher_authorizer.dart';
 typedef PusherJsonHandler = void Function(
     String eventName, Map<String, dynamic> data);
 
+/// Authorizes one channel subscription (see [pusherAuthorizer]).
+typedef ChannelAuthorizer = Future<Map<String, String>> Function(
+    String channelName, String socketId, dynamic options);
+
 /// Decodes a raw Pusher event payload into a JSON object, or null when the
 /// payload is absent/malformed/not an object. Pure — unit-tested directly.
 Map<String, dynamic>? decodePusherData(dynamic raw) {
@@ -42,13 +46,17 @@ Map<String, dynamic>? decodePusherData(dynamic raw) {
 /// re-initializing it.
 class PusherConnection {
   PusherConnection(this._readToken,
-      {PusherChannelsFlutter Function()? getInstance, String? pusherKey})
+      {PusherChannelsFlutter Function()? getInstance,
+      String? pusherKey,
+      ChannelAuthorizer Function(String token)? authorizerFactory})
       : _getInstance = getInstance ?? PusherChannelsFlutter.getInstance,
-        _pusherKey = pusherKey ?? AppConfig.pusherKey;
+        _pusherKey = pusherKey ?? AppConfig.pusherKey,
+        _authorizerFactory = authorizerFactory ?? pusherAuthorizer;
 
   final Future<String?> Function() _readToken;
   final PusherChannelsFlutter Function() _getInstance;
   final String _pusherKey;
+  final ChannelAuthorizer Function(String token) _authorizerFactory;
 
   Future<void>? _ready;
 
@@ -58,7 +66,15 @@ class PusherConnection {
   /// "realtime unavailable", exactly like today).
   Future<Future<void> Function()?> subscribe(
       String channelName, PusherJsonHandler onEvent) async {
-    final token = await _readToken();
+    final String? token;
+    try {
+      token = await _readToken();
+    } catch (_) {
+      // iOS keychain reads fail while the device is locked (secure storage
+      // throws errSecInteractionNotAllowed, -25308). Treat it like "no
+      // token": realtime unavailable until the next resubscribe attempt.
+      return null;
+    }
     if (token == null || _pusherKey.isEmpty) return null;
 
     final pusher = _getInstance();
@@ -96,16 +112,29 @@ class PusherConnection {
   /// re-initialized. Instead it re-reads the token from storage on every
   /// auth request, so a fresh token is used every time Pusher needs to
   /// authorize a channel, without needing another `init`.
+  ///
+  /// The authorizer must NEVER throw: the iOS plugin force-casts its result
+  /// with `as! [String: String]`, and a Dart exception crosses the method
+  /// channel as a FlutterError object, so the cast SIGABRTs the whole app
+  /// (BANDMATE-APP-Q — fired on background/foreground transitions when the
+  /// keychain read or the auth POST failed mid-reconnect). Returning null
+  /// takes the plugin's graceful `completionHandler(nil)` path instead: the
+  /// subscription fails and is retried on the next reconnect.
   Future<void> _initAndConnect(PusherChannelsFlutter pusher) async {
     await pusher.init(
       apiKey: _pusherKey,
       cluster: AppConfig.pusherCluster,
       onAuthorizer: (channelName, socketId, options) async {
-        final token = await _readToken();
-        if (token == null) {
-          throw StateError('No auth token for Pusher auth');
+        try {
+          final token = await _readToken();
+          if (token == null) return null;
+          return await _authorizerFactory(token)(
+              channelName, socketId, options);
+        } catch (e) {
+          debugPrint(
+              'PusherConnection: channel auth failed for $channelName: $e');
+          return null;
         }
-        return pusherAuthorizer(token)(channelName, socketId, options);
       },
       onSubscriptionError: (message, error) {
         debugPrint('PusherConnection: subscription error — $message: $error');

@@ -35,8 +35,11 @@ void main() {
         isTrue,
       );
       expect(
-        isForegroundRenderable(PushPayload.fromData(
-            {'type': 'questionnaire_submitted', 'bookingId': '3'})),
+        isForegroundRenderable(PushPayload.fromData({
+          'type': 'questionnaire_submitted',
+          'questionnaireId': '3',
+          'instanceId': '7',
+        })),
         isTrue,
       );
     });

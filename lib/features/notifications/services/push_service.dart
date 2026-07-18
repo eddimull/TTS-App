@@ -141,6 +141,18 @@ class PushService implements LocalScheduler {
   /// Current FCM token, or null if unsupported/unavailable.
   Future<String?> token() async {
     if (!_pushSupported) return null;
+    // On iOS an FCM token cannot exist until APNs has delivered its device
+    // token to the SDK; getToken() before that throws apns-token-not-set.
+    // APNs registration races the post-login call path, so poll briefly
+    // instead of failing the one registration attempt. onTokenRefresh remains
+    // the safety net if APNs takes longer than this window.
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      for (var attempt = 0; attempt < 10; attempt++) {
+        final apns = await FirebaseMessaging.instance.getAPNSToken();
+        if (apns != null) break;
+        await Future<void>.delayed(const Duration(seconds: 1));
+      }
+    }
     return FirebaseMessaging.instance.getToken();
   }
 

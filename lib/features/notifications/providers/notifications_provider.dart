@@ -1,6 +1,9 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'package:tts_bandmate/core/network/geocoding.dart';
 
@@ -75,7 +78,16 @@ class PushRegistrar {
     };
     _watchTokenRefresh(push, platform);
     final token = await push.token();
-    if (token == null) return;
+    if (token == null) {
+      // A null token on a supported platform means push registration is
+      // broken for this install (e.g. APNs never delivered a device token).
+      // This failure mode was silent for months — keep it visible.
+      unawaited(Sentry.captureMessage(
+        'Push token unavailable on $platform — device not registered',
+        level: SentryLevel.warning,
+      ));
+      return;
+    }
     await _ref.read(deviceRepositoryProvider).register(
           token: token,
           platform: platform,

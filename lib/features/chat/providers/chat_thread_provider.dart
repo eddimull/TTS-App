@@ -285,8 +285,14 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
       final reactions = wasMine
           ? await _repo.removeReaction(messageId, emoji)
           : await _repo.addReaction(messageId, emoji);
+      if (!ref.mounted) return;
       _patchReactions(messageId, reactions);
     } catch (e) {
+      if (!ref.mounted) return;
+      // Roll back to the pre-toggle aggregate. This can clobber a concurrent
+      // remote reaction change that arrived mid-flight (narrow window), but
+      // leaving the optimistic guess in place on a failed request would be
+      // worse — it would show a reaction that was never actually recorded.
       _patchReactions(messageId, original.reactions);
       state = state.copyWith(error: () => e.toString());
     }

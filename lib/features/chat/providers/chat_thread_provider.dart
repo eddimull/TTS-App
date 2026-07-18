@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -63,6 +64,46 @@ int seenByOthersCount(
             p.lastReadAt != null &&
             !p.lastReadAt!.isBefore(message.createdAt))
         .length;
+
+/// Pure toggle of [userId]'s [emoji] within an aggregated reactions list:
+/// adds the user (creating the group at count 1) when absent, removes them
+/// (dropping the group at count 0) when present.
+List<MessageReaction> toggleReactionList(
+  List<MessageReaction> reactions,
+  String emoji,
+  int userId,
+) {
+  final existing = reactions.where((r) => r.emoji == emoji).firstOrNull;
+  if (existing == null) {
+    return [
+      ...reactions,
+      MessageReaction(emoji: emoji, count: 1, userIds: [userId]),
+    ];
+  }
+  if (!existing.userIds.contains(userId)) {
+    return [
+      for (final r in reactions)
+        r.emoji == emoji
+            ? MessageReaction(
+                emoji: emoji,
+                count: r.count + 1,
+                userIds: [...r.userIds, userId],
+              )
+            : r,
+    ];
+  }
+  return [
+    for (final r in reactions)
+      if (r.emoji != emoji)
+        r
+      else if (r.count > 1)
+        MessageReaction(
+          emoji: emoji,
+          count: r.count - 1,
+          userIds: [for (final id in r.userIds) if (id != userId) id],
+        ),
+  ];
+}
 
 class ChatThreadState {
   const ChatThreadState({
@@ -225,6 +266,37 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
       if (!ref.mounted) return;
       state = state.copyWith(error: () => e.toString());
     }
+  }
+
+  /// Optimistically toggles the caller's [emoji] on [messageId], then
+  /// reconciles with the server's aggregate (or rolls back on failure).
+  Future<void> toggleReaction(int messageId, String emoji, int userId) async {
+    ChatMessage? original;
+    for (final m in state.messages) {
+      if (m.id == messageId) original = m;
+    }
+    if (original == null || original.isDeleted) return;
+
+    final wasMine = original.reactions
+        .any((r) => r.emoji == emoji && r.userIds.contains(userId));
+    _replace(original.copyWith(
+        reactions: toggleReactionList(original.reactions, emoji, userId)));
+    try {
+      final reactions = wasMine
+          ? await _repo.removeReaction(messageId, emoji)
+          : await _repo.addReaction(messageId, emoji);
+      _patchReactions(messageId, reactions);
+    } catch (e) {
+      _patchReactions(messageId, original.reactions);
+      state = state.copyWith(error: () => e.toString());
+    }
+  }
+
+  void _patchReactions(int messageId, List<MessageReaction> reactions) {
+    state = state.copyWith(messages: [
+      for (final m in state.messages)
+        m.id == messageId ? m.copyWith(reactions: reactions) : m,
+    ]);
   }
 
   Future<void> deleteMsg(int messageId) async {

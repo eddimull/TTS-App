@@ -183,6 +183,45 @@ void main() {
     expect(find.byIcon(CupertinoIcons.photo), findsOneWidget);
   });
 
+  // NOTE: WidgetTester's synthetic fling resolves the PageView vs.
+  // InteractiveViewer gesture arena differently than real touch input does —
+  // this test passes even against the pre-fix code, so it could not
+  // reproduce the original device-only bug (swiping never changed pages on
+  // a physical device). It's kept as a regression guard for the fixed
+  // behavior; the fix itself was verified on-device.
+  testWidgets('swiping horizontally changes pages at rest zoom',
+      (tester) async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter =
+          StubAdapter((_) async => ResponseBody.fromBytes(kTransparentPng, 200));
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(wrap(
+      container,
+      AttachmentViewerScreen(
+        messageId: 9,
+        attachments: const [
+          ChatAttachment(id: 4, width: 1, height: 1),
+          ChatAttachment(id: 5, width: 1, height: 1),
+        ],
+        initialIndex: 0,
+        saveImage: (bytes, name) async {},
+        shareImage: (bytes, name) async {},
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 of 2'), findsOneWidget);
+
+    await tester.fling(find.byType(PageView), const Offset(-600, 0), 1500);
+    await tester.pumpAndSettle();
+
+    expect(find.text('2 of 2'), findsOneWidget);
+  });
+
   testWidgets('share failure surfaces an alert', (tester) async {
     final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
       ..httpClientAdapter =

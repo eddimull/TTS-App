@@ -201,19 +201,7 @@ class _AttachmentViewerScreenState
               final attachment = widget.attachments[index];
               final bytes = _bytes[attachment.id];
               if (bytes != null) {
-                return InteractiveViewer(
-                  maxScale: 5,
-                  child: Center(
-                    child: Image.memory(
-                      bytes,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
-                        CupertinoIcons.photo,
-                        size: 40,
-                        color: CupertinoColors.systemGrey,
-                      ),
-                    ),
-                  ),
-                );
+                return _ZoomableImage(bytes: bytes);
               }
               if (_failed.contains(attachment.id)) {
                 return Center(
@@ -258,6 +246,69 @@ class _AttachmentViewerScreenState
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Pinch-to-zoom wrapper for a single attachment image.
+///
+/// `InteractiveViewer.panEnabled` defaults to true, which lets its pan
+/// recognizer claim horizontal drags even at rest (scale 1.0) — that starves
+/// the enclosing `PageView` of the gesture and swiping never changes pages.
+/// This widget keeps `panEnabled` false while at rest so drags fall through
+/// to the pager, and flips it to true once the user has pinch-zoomed in so
+/// panning the zoomed image works as expected (and page-swiping is correctly
+/// suppressed while zoomed).
+class _ZoomableImage extends StatefulWidget {
+  const _ZoomableImage({required this.bytes});
+
+  final Uint8List bytes;
+
+  @override
+  State<_ZoomableImage> createState() => _ZoomableImageState();
+}
+
+class _ZoomableImageState extends State<_ZoomableImage> {
+  final TransformationController _controller = TransformationController();
+  bool _zoomed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_onTransformChanged);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onTransformChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onTransformChanged() {
+    final scale = _controller.value.getMaxScaleOnAxis();
+    final zoomed = scale > 1.0;
+    if (zoomed != _zoomed) {
+      setState(() => _zoomed = zoomed);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InteractiveViewer(
+      transformationController: _controller,
+      maxScale: 5,
+      panEnabled: _zoomed,
+      child: Center(
+        child: Image.memory(
+          widget.bytes,
+          errorBuilder: (context, error, stackTrace) => const Icon(
+            CupertinoIcons.photo,
+            size: 40,
+            color: CupertinoColors.systemGrey,
+          ),
+        ),
       ),
     );
   }

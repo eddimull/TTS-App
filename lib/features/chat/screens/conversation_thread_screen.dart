@@ -13,6 +13,7 @@ import '../data/models/chat_message.dart';
 import '../providers/active_chat_conversation_provider.dart';
 import '../providers/chat_thread_provider.dart';
 import '../utils/message_time.dart';
+import 'attachment_viewer_screen.dart';
 
 /// A picked-but-not-yet-sent image. Bytes are read once at pick time (not
 /// re-read from disk on every rebuild via a FutureBuilder) so the thumbnail
@@ -472,18 +473,31 @@ class _MessageBubble extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                for (final attachment in message.attachments)
+                for (final (index, attachment)
+                    in message.attachments.indexed)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: SizedBox(
-                        width: 200,
-                        height: attachment.width > 0
-                            ? 200 * attachment.height / attachment.width
-                            : 200,
-                        child: AuthThumbnail(
-                          url: repo.attachmentUrl(message.id, attachment.id),
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).push(
+                        CupertinoPageRoute<void>(
+                          fullscreenDialog: true,
+                          builder: (_) => AttachmentViewerScreen(
+                            messageId: message.id,
+                            attachments: message.attachments,
+                            initialIndex: index,
+                          ),
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: SizedBox(
+                          width: 200,
+                          height: attachment.width > 0
+                              ? 200 * attachment.height / attachment.width
+                              : 200,
+                          child: AuthThumbnail(
+                            url: repo.attachmentUrl(message.id, attachment.id),
+                          ),
                         ),
                       ),
                     ),

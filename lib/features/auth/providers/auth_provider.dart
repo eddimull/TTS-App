@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import '../../../core/providers/core_providers.dart';
 import '../../../core/storage/route_storage.dart';
 import '../../bookings/data/bookings_cache_storage.dart';
@@ -182,8 +183,11 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   Future<void> _registerPushToken() async {
     try {
       await ref.read(pushRegistrarProvider).registerCurrentToken();
-    } catch (_) {
-      // Push registration is best-effort; never block auth.
+    } catch (e, st) {
+      // Best-effort: never block auth on push registration — but never be
+      // silent either; this swallow hid a months-long iOS registration
+      // outage (no APNs/FCM token → no device row → no pushes, no errors).
+      unawaited(Sentry.captureException(e, stackTrace: st));
     }
   }
 

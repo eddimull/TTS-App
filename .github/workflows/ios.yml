@@ -53,12 +53,22 @@ jobs:
       - name: Write Firebase config
         env:
           FIREBASE_OPTIONS_DART_BASE64: ${{ secrets.FIREBASE_OPTIONS_DART_BASE64 }}
+          GOOGLESERVICE_INFO_PLIST_BASE64: ${{ secrets.GOOGLESERVICE_INFO_PLIST_BASE64 }}
         run: |
           if [ -z "$FIREBASE_OPTIONS_DART_BASE64" ]; then
             echo "::error::FIREBASE_OPTIONS_DART_BASE64 secret is not set; main.dart imports lib/firebase_options.dart."
             exit 1
           fi
           echo -n "$FIREBASE_OPTIONS_DART_BASE64" | base64 --decode > lib/firebase_options.dart
+          # GoogleService-Info.plist is a bundled resource (referenced in
+          # project.pbxproj) — without it iOS firebase_messaging never mints an
+          # FCM token, so no iOS device ever registers for push. Dart-side
+          # options alone are NOT sufficient for messaging on iOS.
+          if [ -z "$GOOGLESERVICE_INFO_PLIST_BASE64" ]; then
+            echo "::error::GOOGLESERVICE_INFO_PLIST_BASE64 secret is not set; the Xcode project bundles ios/Runner/GoogleService-Info.plist (download it from Firebase console → project settings → iOS app, then: base64 -w0 GoogleService-Info.plist)."
+            exit 1
+          fi
+          echo -n "$GOOGLESERVICE_INFO_PLIST_BASE64" | base64 --decode > ios/Runner/GoogleService-Info.plist
 
       - name: Import certificate and provisioning profile
         env:

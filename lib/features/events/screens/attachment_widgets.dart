@@ -2,8 +2,9 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/storage/secure_storage.dart';
 import '../data/models/event_detail.dart';
 
 // ── URL + icon helpers ────────────────────────────────────────────────────────
@@ -33,11 +34,20 @@ IconData attachmentIcon(String mimeType) {
 
 // ── Lightbox image fetch (full-size, authenticated) ──────────────────────────
 
-Future<Uint8List?> fetchImageBytes(String url) async {
+/// [readToken] must come from [SecureStorage] (via `secureStorageProvider`)
+/// rather than a raw FlutterSecureStorage instance: on iOS the token lives
+/// under the first_unlock accessibility level, which a default-options
+/// keychain query cannot see.
+Future<Uint8List?> fetchImageBytes(
+    String url, Future<String?> Function() readToken) async {
   final dio = Dio();
   try {
-    const s = FlutterSecureStorage();
-    final token = await s.read(key: 'auth_token');
+    String? token;
+    try {
+      token = await readToken();
+    } catch (_) {
+      token = null;
+    }
     final response = await dio.get<List<int>>(
       url,
       options: Options(
@@ -59,7 +69,7 @@ Future<Uint8List?> fetchImageBytes(String url) async {
 
 // ── Attachment Lightbox ───────────────────────────────────────────────────────
 
-class AttachmentLightbox extends StatefulWidget {
+class AttachmentLightbox extends ConsumerStatefulWidget {
   const AttachmentLightbox({
     super.key,
     required this.attachments,
@@ -71,10 +81,11 @@ class AttachmentLightbox extends StatefulWidget {
   final int startIndex;
 
   @override
-  State<AttachmentLightbox> createState() => _AttachmentLightboxState();
+  ConsumerState<AttachmentLightbox> createState() =>
+      _AttachmentLightboxState();
 }
 
-class _AttachmentLightboxState extends State<AttachmentLightbox> {
+class _AttachmentLightboxState extends ConsumerState<AttachmentLightbox> {
   late final PageController _pageController;
   late int _currentIndex;
   final Map<int, Future<Uint8List?>> _imageFutures = {};
@@ -127,7 +138,10 @@ class _AttachmentLightboxState extends State<AttachmentLightbox> {
                 itemBuilder: (context, i) {
                   final a = widget.attachments[i];
                   final url = resolveAttachmentUrl(a.url);
-                  final future = _imageFutures.putIfAbsent(i, () => fetchImageBytes(url));
+                  final future = _imageFutures.putIfAbsent(
+                      i,
+                      () => fetchImageBytes(
+                          url, ref.read(secureStorageProvider).readToken));
                   return InteractiveViewer(
                     minScale: 0.5,
                     maxScale: 4.0,

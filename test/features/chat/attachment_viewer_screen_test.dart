@@ -157,6 +157,34 @@ void main() {
     );
   });
 
+  testWidgets('corrupt image bytes show the decode-error state',
+      (tester) async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((_) async =>
+          ResponseBody.fromBytes(Uint8List.fromList([1, 2, 3]), 200));
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(wrap(
+      container,
+      AttachmentViewerScreen(
+        messageId: 9,
+        attachments: const [ChatAttachment(id: 4, width: 1, height: 1)],
+        saveImage: (bytes, name) async {},
+        shareImage: (bytes, name) async {},
+      ),
+    ));
+    // Decode failures keep scheduling frames, so pump discretely rather
+    // than pumpAndSettle (which would time out waiting for quiescence).
+    await tester.pump(Duration.zero);
+    await tester.pump(Duration.zero);
+    await tester.pump(Duration.zero);
+
+    expect(find.byIcon(CupertinoIcons.photo), findsOneWidget);
+  });
+
   testWidgets('share failure surfaces an alert', (tester) async {
     final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
       ..httpClientAdapter =

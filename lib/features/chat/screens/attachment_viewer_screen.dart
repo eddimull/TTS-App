@@ -203,7 +203,16 @@ class _AttachmentViewerScreenState
               if (bytes != null) {
                 return InteractiveViewer(
                   maxScale: 5,
-                  child: Center(child: Image.memory(bytes)),
+                  child: Center(
+                    child: Image.memory(
+                      bytes,
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                        CupertinoIcons.photo,
+                        size: 40,
+                        color: CupertinoColors.systemGrey,
+                      ),
+                    ),
+                  ),
                 );
               }
               if (_failed.contains(attachment.id)) {

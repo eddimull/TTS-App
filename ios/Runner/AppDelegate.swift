@@ -15,6 +15,14 @@ import UIKit
     } else {
       NSLog("[Runner] GMSApiKey is missing or empty; Google Maps views will not render. Set GOOGLE_MAPS_API_KEY in ios/Flutter/Secrets.xcconfig (local) or the CI inject step.")
     }
+    // firebase_messaging only calls registerForRemoteNotifications from its
+    // UIApplicationDidFinishLaunchingNotification observer, which it registers
+    // at plugin-registration time. Under the UIScene lifecycle the implicit
+    // Flutter engine (and thus plugin registration) initializes at
+    // scene-connect — after that notification has already been posted — so the
+    // observer never fires and APNs registration never happens. Register
+    // explicitly; the didRegister... override below forwards the token.
+    application.registerForRemoteNotifications()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

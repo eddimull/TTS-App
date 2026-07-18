@@ -11,6 +11,29 @@ class ChatAttachment {
       );
 }
 
+class MessageReaction {
+  const MessageReaction({
+    required this.emoji,
+    required this.count,
+    required this.userIds,
+  });
+
+  final String emoji;
+  final int count;
+  final List<int> userIds;
+
+  bool reactedBy(int userId) => userIds.contains(userId);
+
+  factory MessageReaction.fromJson(Map<String, dynamic> json) =>
+      MessageReaction(
+        emoji: json['emoji'] as String? ?? '',
+        count: (json['count'] as num?)?.toInt() ?? 0,
+        userIds: (json['user_ids'] as List? ?? const [])
+            .map((e) => (e as num).toInt())
+            .toList(),
+      );
+}
+
 class ChatMessage {
   const ChatMessage({
     required this.id,
@@ -23,6 +46,7 @@ class ChatMessage {
     this.attachments = const [],
     this.editedAt,
     this.isDeleted = false,
+    this.reactions = const [],
   });
 
   final int id;
@@ -34,6 +58,7 @@ class ChatMessage {
   final List<ChatAttachment> attachments;
   final DateTime? editedAt;
   final bool isDeleted;
+  final List<MessageReaction> reactions;
   final DateTime createdAt;
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
@@ -51,6 +76,10 @@ class ChatMessage {
             ? DateTime.tryParse(json['edited_at'] as String)
             : null,
         isDeleted: json['is_deleted'] as bool? ?? false,
+        reactions: (json['reactions'] as List? ?? const [])
+            .cast<Map<String, dynamic>>()
+            .map(MessageReaction.fromJson)
+            .toList(),
         // Stable fallback for an unparseable timestamp: epoch sorts a
         // malformed message as oldest instead of non-deterministically "new".
         createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ??
@@ -63,6 +92,7 @@ class ChatMessage {
     List<ChatAttachment>? attachments,
     DateTime? editedAt,
     bool? isDeleted,
+    List<MessageReaction>? reactions,
   }) =>
       ChatMessage(
         id: id ?? this.id,
@@ -74,6 +104,7 @@ class ChatMessage {
         attachments: attachments ?? this.attachments,
         editedAt: editedAt ?? this.editedAt,
         isDeleted: isDeleted ?? this.isDeleted,
+        reactions: reactions ?? this.reactions,
         createdAt: createdAt,
       );
 }

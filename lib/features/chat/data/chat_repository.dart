@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
 import 'models/chat_contact.dart';
-import 'models/chat_message.dart';
+import 'models/chat_message.dart' show ChatMessage, MessageReaction;
 import 'models/chat_participant.dart';
 import 'models/conversation.dart';
 
@@ -137,6 +137,31 @@ class ChatRepository {
 
   Future<void> deleteMessage(int messageId) =>
       _dio.delete<void>(ApiEndpoints.mobileMessage(messageId));
+
+  List<MessageReaction> _parseReactions(Map<String, dynamic>? data) =>
+      (data?['reactions'] as List? ?? const [])
+          .cast<Map<String, dynamic>>()
+          .map(MessageReaction.fromJson)
+          .toList();
+
+  /// Idempotent add of the caller's [emoji] reaction; returns the message's
+  /// updated aggregate.
+  Future<List<MessageReaction>> addReaction(int messageId, String emoji) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileMessageReactions(messageId),
+      data: {'emoji': emoji},
+    );
+    return _parseReactions(res.data);
+  }
+
+  /// Idempotent removal of the caller's [emoji] reaction.
+  Future<List<MessageReaction>> removeReaction(
+      int messageId, String emoji) async {
+    final res = await _dio.delete<Map<String, dynamic>>(
+      ApiEndpoints.mobileMessageReaction(messageId, emoji),
+    );
+    return _parseReactions(res.data);
+  }
 
   Future<void> markRead(int conversationId, int lastReadMessageId) =>
       _dio.post<void>(

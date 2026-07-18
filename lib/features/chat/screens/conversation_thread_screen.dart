@@ -12,6 +12,7 @@ import '../data/chat_repository.dart';
 import '../data/models/chat_message.dart';
 import '../providers/active_chat_conversation_provider.dart';
 import '../providers/chat_thread_provider.dart';
+import '../utils/message_time.dart';
 
 /// A picked-but-not-yet-sent image. Bytes are read once at pick time (not
 /// re-read from disk on every rebuild via a FutureBuilder) so the thumbnail
@@ -42,6 +43,7 @@ class _ConversationThreadScreenState
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   final List<_PendingImage> _pendingImages = [];
+  final Set<int> _revealedTimeIds = {};
 
   // The list is built with `reverse: true` (see build()): rendered item 0 is
   // the newest message and sits at the bottom of the viewport, with scroll
@@ -292,8 +294,10 @@ class _ConversationThreadScreenState
                         }
                         final idx = state.messages.length - 1 - i;
                         final message = state.messages[idx];
+                        final previous =
+                            idx > 0 ? state.messages[idx - 1] : null;
                         final isLast = idx == state.messages.length - 1;
-                        return _MessageBubble(
+                        final bubble = _MessageBubble(
                           message: message,
                           isOwn: message.userId == currentUserId,
                           showSeen: isLast &&
@@ -302,7 +306,29 @@ class _ConversationThreadScreenState
                                       currentUserId) >
                                   0,
                           isDm: state.conversation?.type == 'dm',
+                          showTime: _revealedTimeIds.contains(message.id),
+                          onTap: () => setState(() {
+                            if (!_revealedTimeIds.remove(message.id)) {
+                              _revealedTimeIds.add(message.id);
+                            }
+                          }),
                           onLongPress: () => _showMessageActions(message),
+                        );
+                        if (!needsDateSeparator(
+                            previous?.createdAt, message.createdAt)) {
+                          return bubble;
+                        }
+                        // stretch so the bubble Column keeps the full row
+                        // width its own start/end alignment relies on.
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _DateSeparator(
+                              label: dateSeparatorLabel(message.createdAt,
+                                  now: DateTime.now()),
+                            ),
+                            bubble,
+                          ],
                         );
                       },
                     ),
@@ -374,12 +400,30 @@ class _ConversationThreadScreenState
   }
 }
 
+class _DateSeparator extends StatelessWidget {
+  const _DateSeparator({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(fontSize: 12, color: context.secondaryText),
+          ),
+        ),
+      );
+}
+
 class _MessageBubble extends ConsumerWidget {
   const _MessageBubble({
     required this.message,
     required this.isOwn,
     required this.showSeen,
     required this.isDm,
+    required this.showTime,
+    required this.onTap,
     required this.onLongPress,
   });
 
@@ -387,6 +431,8 @@ class _MessageBubble extends ConsumerWidget {
   final bool isOwn;
   final bool showSeen;
   final bool isDm;
+  final bool showTime;
+  final VoidCallback onTap;
   final VoidCallback onLongPress;
 
   @override
@@ -405,6 +451,7 @@ class _MessageBubble extends ConsumerWidget {
             ),
           ),
         GestureDetector(
+          onTap: onTap,
           onLongPress: message.isDeleted ? null : onLongPress,
           child: Container(
             margin: const EdgeInsets.symmetric(vertical: 4),
@@ -458,11 +505,14 @@ class _MessageBubble extends ConsumerWidget {
                       color: isOwn ? CupertinoColors.white : context.primaryText,
                     ),
                   ),
-                if (message.editedAt != null && !message.isDeleted)
+                if (showTime)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
-                      'edited',
+                      message.editedAt != null && !message.isDeleted
+                          ? '${bubbleTimeLabel(message.createdAt, now: DateTime.now())} · edited'
+                          : bubbleTimeLabel(message.createdAt,
+                              now: DateTime.now()),
                       style: TextStyle(
                         fontSize: 11,
                         color: isOwn

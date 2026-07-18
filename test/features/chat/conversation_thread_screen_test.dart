@@ -350,4 +350,106 @@ void main() {
     expect(find.text('this will fail'), findsOneWidget,
         reason: 'a failed send must restore the typed text, not lose it');
   });
+
+  testWidgets('inserts date separators between messages on different days',
+      (tester) async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((_) async => json(200, {
+            'conversation': {'id': 5, 'type': 'dm', 'title': 'Sam'},
+            'messages': [
+              {
+                'id': 1,
+                'conversation_id': 5,
+                'user_id': 3,
+                'user_name': 'Sam',
+                'body': 'from june',
+                'created_at': '2026-06-03T14:00:00Z',
+              },
+              {
+                'id': 2,
+                'conversation_id': 5,
+                'user_id': 3,
+                'user_name': 'Sam',
+                'body': 'from july',
+                'created_at': '2026-07-02T14:00:00Z',
+              },
+            ],
+            'participants': [
+              {'user_id': 3, 'name': 'Sam', 'last_read_at': null},
+            ],
+            'channel': 'private-conversation.5',
+            'has_more': false,
+          }));
+
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatMarkReadDebounceProvider.overrideWithValue(Duration.zero),
+      chatChannelBinderProvider.overrideWithValue((_, __) => null),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const CupertinoApp(
+        home: ConversationThreadScreen(conversationId: 5, title: 'Sam'),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Both messages are >7 days old relative to any real test-run clock, so
+    // both separators use the tz-safe full-date form containing the year:
+    // one above the first message, one at the June→July day change.
+    expect(find.textContaining('2026'), findsNWidgets(2));
+  });
+
+  testWidgets('tapping a bubble reveals its timestamp (with edited marker)',
+      (tester) async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((_) async => json(200, {
+            'conversation': {'id': 5, 'type': 'dm', 'title': 'Sam'},
+            'messages': [
+              {
+                'id': 1,
+                'conversation_id': 5,
+                'user_id': 3,
+                'user_name': 'Sam',
+                'body': 'fixed a typo here',
+                'created_at': '2026-07-12T14:00:00Z',
+                'edited_at': '2026-07-12T14:05:00Z',
+              },
+            ],
+            'participants': [
+              {'user_id': 3, 'name': 'Sam', 'last_read_at': null},
+            ],
+            'channel': 'private-conversation.5',
+            'has_more': false,
+          }));
+
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatMarkReadDebounceProvider.overrideWithValue(Duration.zero),
+      chatChannelBinderProvider.overrideWithValue((_, __) => null),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const CupertinoApp(
+        home: ConversationThreadScreen(conversationId: 5, title: 'Sam'),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Hidden until tapped (the old always-on 'edited' label is gone).
+    expect(find.textContaining('edited'), findsNothing);
+
+    await tester.tap(find.text('fixed a typo here'));
+    await tester.pump();
+    expect(find.textContaining('· edited'), findsOneWidget);
+
+    // Tapping again hides it.
+    await tester.tap(find.text('fixed a typo here'));
+    await tester.pump();
+    expect(find.textContaining('edited'), findsNothing);
+  });
 }

@@ -1,10 +1,15 @@
+import 'dart:typed_data';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tts_bandmate/core/providers/core_providers.dart';
 import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
 import 'package:tts_bandmate/features/chat/providers/active_chat_conversation_provider.dart';
 import 'package:tts_bandmate/features/chat/providers/chat_thread_provider.dart';
+import 'package:tts_bandmate/features/chat/screens/attachment_viewer_screen.dart';
 import 'package:tts_bandmate/features/chat/screens/conversation_thread_screen.dart';
+import 'package:tts_bandmate/shared/widgets/auth_thumbnail.dart';
 import 'package:dio/dio.dart';
 
 import '../../helpers/test_harness.dart';
@@ -349,5 +354,173 @@ void main() {
 
     expect(find.text('this will fail'), findsOneWidget,
         reason: 'a failed send must restore the typed text, not lose it');
+  });
+
+  testWidgets('inserts date separators between messages on different days',
+      (tester) async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((_) async => json(200, {
+            'conversation': {'id': 5, 'type': 'dm', 'title': 'Sam'},
+            'messages': [
+              {
+                'id': 1,
+                'conversation_id': 5,
+                'user_id': 3,
+                'user_name': 'Sam',
+                'body': 'from june',
+                'created_at': '2020-06-03T14:00:00Z',
+              },
+              {
+                'id': 2,
+                'conversation_id': 5,
+                'user_id': 3,
+                'user_name': 'Sam',
+                'body': 'from july',
+                'created_at': '2020-07-02T14:00:00Z',
+              },
+            ],
+            'participants': [
+              {'user_id': 3, 'name': 'Sam', 'last_read_at': null},
+            ],
+            'channel': 'private-conversation.5',
+            'has_more': false,
+          }));
+
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatMarkReadDebounceProvider.overrideWithValue(Duration.zero),
+      chatChannelBinderProvider.overrideWithValue((_, __) => null),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const CupertinoApp(
+        home: ConversationThreadScreen(conversationId: 5, title: 'Sam'),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // These dates are far in the past (2020), so no matter what a real
+    // test-run clock reads, both separators fall back to the full
+    // date-with-year form rather than a "Today"/weekday label — making the
+    // assertion truly clock-independent. The June→July day change still
+    // yields exactly two separators: one above the first message, one at
+    // the day change.
+    expect(find.textContaining('2020'), findsNWidgets(2));
+  });
+
+  testWidgets('tapping a bubble reveals its timestamp (with edited marker)',
+      (tester) async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((_) async => json(200, {
+            'conversation': {'id': 5, 'type': 'dm', 'title': 'Sam'},
+            'messages': [
+              {
+                'id': 1,
+                'conversation_id': 5,
+                'user_id': 3,
+                'user_name': 'Sam',
+                'body': 'fixed a typo here',
+                'created_at': '2026-07-12T14:00:00Z',
+                'edited_at': '2026-07-12T14:05:00Z',
+              },
+            ],
+            'participants': [
+              {'user_id': 3, 'name': 'Sam', 'last_read_at': null},
+            ],
+            'channel': 'private-conversation.5',
+            'has_more': false,
+          }));
+
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatMarkReadDebounceProvider.overrideWithValue(Duration.zero),
+      chatChannelBinderProvider.overrideWithValue((_, __) => null),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const CupertinoApp(
+        home: ConversationThreadScreen(conversationId: 5, title: 'Sam'),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Hidden until tapped (the old always-on 'edited' label is gone).
+    expect(find.textContaining('edited'), findsNothing);
+
+    await tester.tap(find.text('fixed a typo here'));
+    await tester.pump();
+    expect(find.textContaining('· edited'), findsOneWidget);
+
+    // Tapping again hides it.
+    await tester.tap(find.text('fixed a typo here'));
+    await tester.pump();
+    expect(find.textContaining('edited'), findsNothing);
+  });
+
+  testWidgets('tapping an attachment opens the fullscreen viewer',
+      (tester) async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((options) async {
+        if (options.path.contains('/attachments/')) {
+          // Viewer fetch: any bytes will do — the screen itself is what the
+          // test asserts on, not a decoded image.
+          return ResponseBody.fromBytes(Uint8List.fromList([0]), 200);
+        }
+        return json(200, {
+          'conversation': {'id': 5, 'type': 'dm', 'title': 'Sam'},
+          'messages': [
+            {
+              'id': 1,
+              'conversation_id': 5,
+              'user_id': 3,
+              'user_name': 'Sam',
+              'body': '',
+              'created_at': '2026-07-12T14:00:00Z',
+              'attachments': [
+                {'id': 7, 'width': 100, 'height': 80},
+              ],
+            },
+          ],
+          'participants': [
+            {'user_id': 3, 'name': 'Sam', 'last_read_at': null},
+          ],
+          'channel': 'private-conversation.5',
+          'has_more': false,
+        });
+      });
+
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatMarkReadDebounceProvider.overrideWithValue(Duration.zero),
+      chatChannelBinderProvider.overrideWithValue((_, __) => null),
+      secureStorageProvider.overrideWithValue(FakeSecureStorage()),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const CupertinoApp(
+        home: ConversationThreadScreen(conversationId: 5, title: 'Sam'),
+      ),
+    ));
+    await tester.pump();
+    // A real Timer/microtask hop is needed for the stubbed Dio fetch to
+    // resolve — a bare pump() (no duration) does not advance pending Timers,
+    // only the microtask queue + one frame, so the initial load() never
+    // completes. pump(Duration.zero) advances the fake clock enough for the
+    // stub's Future chain to settle. pumpAndSettle isn't usable anywhere in
+    // this test: once the viewer is pushed below, its Image.memory decode
+    // failure (see note below) keeps scheduling frames forever.
+    await tester.pump(Duration.zero);
+
+    await tester.tap(find.byType(AuthThumbnail));
+    await tester.pump();
+    await tester.pump(Duration.zero);
+
+    expect(find.byType(AttachmentViewerScreen), findsOneWidget);
   });
 }

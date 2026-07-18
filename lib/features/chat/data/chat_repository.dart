@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -149,6 +151,16 @@ class ChatRepository {
   String attachmentUrl(int messageId, int attachmentId) =>
       _dio.options.baseUrl +
       ApiEndpoints.mobileMessageAttachment(messageId, attachmentId);
+
+  /// Full-resolution bytes of an attachment. The fullscreen viewer downloads
+  /// once and shares the bytes between display, save, and share.
+  Future<Uint8List> attachmentBytes(int messageId, int attachmentId) async {
+    final res = await _dio.get<List<int>>(
+      ApiEndpoints.mobileMessageAttachment(messageId, attachmentId),
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(res.data ?? const []);
+  }
 }
 
 final chatRepositoryProvider = Provider<ChatRepository>(

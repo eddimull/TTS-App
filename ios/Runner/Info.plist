@@ -100,6 +100,8 @@
 	<string>This app uses the camera to let you capture photos and videos for your band.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app accesses your photo library to let you upload media for your band.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Bandmate saves chat photos you choose to your photo library.</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>comgooglemaps</string>

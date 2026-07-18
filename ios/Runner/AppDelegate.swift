@@ -20,10 +20,9 @@ import UIKit
 
   // Under the UIScene lifecycle (SceneDelegate + UIApplicationSceneManifest)
   // firebase_messaging's app-delegate swizzling misses this callback, so
-  // Messaging.apnsToken is never set and every getToken() fails with
-  // apns-token-not-set (Sentry, dist 165) — no iOS device could ever register
-  // for push. Forward the APNs token explicitly; harmless if swizzling also
-  // delivers it.
+  // Messaging.apnsToken stays unset and getToken() fails with
+  // apns-token-not-set. Forward the APNs token explicitly; harmless if
+  // swizzling also delivers it.
   override func application(
     _ application: UIApplication,
     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data

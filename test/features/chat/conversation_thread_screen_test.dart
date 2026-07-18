@@ -514,22 +514,6 @@ void main() {
     // failure (see note below) keeps scheduling frames forever.
     await tester.pump(Duration.zero);
 
-    // The pushed viewer's own attachment fetch resolves with a single
-    // garbage byte, which dart:ui's image codec rejects asynchronously once
-    // Image.memory tries to decode it. That rejection surfaces via
-    // FlutterError.reportError (image-stream resolution, not the widget's own
-    // try/catch around the HTTP fetch), which flutter_test otherwise treats
-    // as a hard test failure. It's expected here — the screen itself, not a
-    // decoded image, is what this test asserts on — so it's silenced for the
-    // duration of this test only.
-    final previousOnError = FlutterError.onError;
-    addTearDown(() => FlutterError.onError = previousOnError);
-    FlutterError.onError = (details) {
-      if (!details.exceptionAsString().contains('Invalid image data')) {
-        previousOnError?.call(details);
-      }
-    };
-
     await tester.tap(find.byType(AuthThumbnail));
     await tester.pump();
     await tester.pump(Duration.zero);

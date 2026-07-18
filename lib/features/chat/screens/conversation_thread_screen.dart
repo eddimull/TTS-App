@@ -439,6 +439,10 @@ class _MessageBubble extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.read(chatRepositoryProvider);
+    final time = bubbleTimeLabel(message.createdAt, now: DateTime.now());
+    final timeLabel = message.editedAt != null && !message.isDeleted
+        ? '$time · edited'
+        : time;
     return Column(
       crossAxisAlignment:
           isOwn ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -523,10 +527,7 @@ class _MessageBubble extends ConsumerWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
-                      message.editedAt != null && !message.isDeleted
-                          ? '${bubbleTimeLabel(message.createdAt, now: DateTime.now())} · edited'
-                          : bubbleTimeLabel(message.createdAt,
-                              now: DateTime.now()),
+                      timeLabel,
                       style: TextStyle(
                         fontSize: 11,
                         color: isOwn

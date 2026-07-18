@@ -15,15 +15,17 @@ bool needsDateSeparator(DateTime? previous, DateTime current) {
   return !sameDay || c.difference(p) > const Duration(hours: 1);
 }
 
+/// intl emits a narrow no-break space (U+202F/U+00A0) before AM/PM on
+/// newer ICU data; normalize to a plain space so labels are stable.
+String _clock(DateTime t) =>
+    DateFormat.jm().format(t).replaceAll(RegExp(r'\s'), ' ');
+
 /// "Today 3:42 PM" / "Yesterday 9:10 AM" / "Tuesday 6:30 PM" (last 7 days) /
 /// "Jun 3, 2026 3:42 PM" (older).
 String dateSeparatorLabel(DateTime time, {required DateTime now}) {
   final t = time.toLocal();
   final n = now.toLocal();
-  final clock = DateFormat.jm().format(t).replaceAllMapped(
-    RegExp(r'[ \s]'),
-    (match) => ' ',
-  );
+  final clock = _clock(t);
   final daysAgo = DateTime(n.year, n.month, n.day)
       .difference(DateTime(t.year, t.month, t.day))
       .inDays;
@@ -39,9 +41,6 @@ String bubbleTimeLabel(DateTime time, {required DateTime now}) {
   final t = time.toLocal();
   final n = now.toLocal();
   final sameDay = t.year == n.year && t.month == n.month && t.day == n.day;
-  final clock = DateFormat.jm().format(t).replaceAllMapped(
-    RegExp(r'[ \s]'),
-    (match) => ' ',
-  );
+  final clock = _clock(t);
   return sameDay ? clock : '${DateFormat.yMMMd().format(t)} $clock';
 }

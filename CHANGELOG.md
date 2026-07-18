@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.18.0](https://github.com/eddimull/TTS-App/compare/v1.13.0...v1.18.0) (2026-07-18)
+
+
+### Bug Fixes
+
+* **auth:** migrate keychain items across the first_unlock accessibility switch ([b076849](https://github.com/eddimull/TTS-App/commit/b076849ae3709591d5b88b6c9d4ba57e79af12b8))
+* **auth:** migrate keychain items across the first_unlock accessibility switch ([d39473f](https://github.com/eddimull/TTS-App/commit/d39473fac6a726e20cb471bf1291b4f14f761c8a))
+* **events:** route lightbox token read through SecureStorage ([397f2ab](https://github.com/eddimull/TTS-App/commit/397f2abb06c0b8656a167d32c240b1b625e8e000))
+* **push:** bundle GoogleService-Info.plist on iOS + de-silence registration ([c27c5b0](https://github.com/eddimull/TTS-App/commit/c27c5b03b77bca7316fac8f8a8442b388630ea89))
+* **push:** bundle GoogleService-Info.plist on iOS; surface registration failures ([f6fc347](https://github.com/eddimull/TTS-App/commit/f6fc347e523f7a907afdad1dad839a278d66a11a))
+* **push:** explicitly register for remote notifications at launch ([5841d5c](https://github.com/eddimull/TTS-App/commit/5841d5c188e9b2658825f418f316260219b02eaf))
+* **push:** explicitly register for remote notifications at launch (UIScene) ([e9e90ac](https://github.com/eddimull/TTS-App/commit/e9e90ac31db4efcbecfac3d6948bbb0d162a2b6f))
+* **push:** forward APNs token to Firebase under UIScene lifecycle ([5bcfe06](https://github.com/eddimull/TTS-App/commit/5bcfe06cd4abe5f28adea47bcf3b475ad47654ad))
+* **push:** forward APNs token to Firebase under UIScene lifecycle ([89002d4](https://github.com/eddimull/TTS-App/commit/89002d45d9cf2eb4985d68d34ad65e898b3cb16d))
+* **push:** guard APNs token forwarding against pre-Firebase delivery ([38d62d7](https://github.com/eddimull/TTS-App/commit/38d62d71141e8d55d801514e5c37c17a5ee8bd2b))
+
+
+### Miscellaneous Chores
+
+* resync release-please past manually bumped versions ([a866b2f](https://github.com/eddimull/TTS-App/commit/a866b2fdd56477aa1cd337cdcd3aac5050b62345))
+
 ## [1.13.0](https://github.com/eddimull/TTS-App/compare/v1.12.0...v1.13.0) (2026-07-17)
 
 

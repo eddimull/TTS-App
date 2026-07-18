@@ -169,6 +169,14 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
   ChatChannelUnbind? _unbind;
   Timer? _markReadDebounce;
 
+  /// Messages with a toggleReaction() request currently in flight. Guards
+  /// against a fast double-toggle (sheet emoji tap immediately followed by
+  /// tapping the optimistic chip) issuing a POST and DELETE concurrently —
+  /// if their responses arrive out of order, the last _patchReactions call
+  /// would write a stale aggregate that nothing self-corrects (our own
+  /// broadcasts are toOthers()).
+  final Set<int> _reactionsInFlight = {};
+
   @override
   ChatThreadState build() {
     ref.onDispose(_teardown);
@@ -271,30 +279,38 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
   /// Optimistically toggles the caller's [emoji] on [messageId], then
   /// reconciles with the server's aggregate (or rolls back on failure).
   Future<void> toggleReaction(int messageId, String emoji, int userId) async {
+    if (_reactionsInFlight.contains(messageId)) return;
+
     ChatMessage? original;
     for (final m in state.messages) {
       if (m.id == messageId) original = m;
     }
     if (original == null || original.isDeleted) return;
 
-    final wasMine = original.reactions
-        .any((r) => r.emoji == emoji && r.userIds.contains(userId));
-    _replace(original.copyWith(
-        reactions: toggleReactionList(original.reactions, emoji, userId)));
+    _reactionsInFlight.add(messageId);
     try {
-      final reactions = wasMine
-          ? await _repo.removeReaction(messageId, emoji)
-          : await _repo.addReaction(messageId, emoji);
-      if (!ref.mounted) return;
-      _patchReactions(messageId, reactions);
-    } catch (e) {
-      if (!ref.mounted) return;
-      // Roll back to the pre-toggle aggregate. This can clobber a concurrent
-      // remote reaction change that arrived mid-flight (narrow window), but
-      // leaving the optimistic guess in place on a failed request would be
-      // worse — it would show a reaction that was never actually recorded.
-      _patchReactions(messageId, original.reactions);
-      state = state.copyWith(error: () => e.toString());
+      final wasMine = original.reactions
+          .any((r) => r.emoji == emoji && r.userIds.contains(userId));
+      _replace(original.copyWith(
+          reactions: toggleReactionList(original.reactions, emoji, userId)));
+      try {
+        final reactions = wasMine
+            ? await _repo.removeReaction(messageId, emoji)
+            : await _repo.addReaction(messageId, emoji);
+        if (!ref.mounted) return;
+        _patchReactions(messageId, reactions);
+      } catch (e) {
+        if (!ref.mounted) return;
+        // Roll back to the pre-toggle aggregate. This can clobber a
+        // concurrent remote reaction change that arrived mid-flight (narrow
+        // window), but leaving the optimistic guess in place on a failed
+        // request would be worse — it would show a reaction that was never
+        // actually recorded.
+        _patchReactions(messageId, original.reactions);
+        state = state.copyWith(error: () => e.toString());
+      }
+    } finally {
+      _reactionsInFlight.remove(messageId);
     }
   }
 

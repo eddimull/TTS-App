@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
@@ -216,5 +218,21 @@ void main() {
     final repo = ChatRepository(Dio(BaseOptions(baseUrl: 'http://test.local')));
     expect(repo.attachmentUrl(2, 7),
         'http://test.local/api/mobile/messages/2/attachments/7');
+  });
+
+  test('attachmentBytes requests binary and returns the raw bytes', () async {
+    final captured = <RequestOptions>[];
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((options) async {
+        captured.add(options);
+        return ResponseBody.fromBytes(Uint8List.fromList([1, 2, 3]), 200);
+      });
+    final repo = ChatRepository(dio);
+
+    final bytes = await repo.attachmentBytes(9, 4);
+
+    expect(bytes, [1, 2, 3]);
+    expect(captured.single.path, '/api/mobile/messages/9/attachments/4');
+    expect(captured.single.responseType, ResponseType.bytes);
   });
 }

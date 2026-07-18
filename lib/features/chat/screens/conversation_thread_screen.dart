@@ -15,6 +15,9 @@ import '../providers/chat_thread_provider.dart';
 import '../utils/message_time.dart';
 import 'attachment_viewer_screen.dart';
 
+/// The fixed tapback set (spec phase 2); extendable to a full picker later.
+const kQuickReactions = ['👍', '❤️', '😂', '😮', '😢', '🎉'];
+
 /// A picked-but-not-yet-sent image. Bytes are read once at pick time (not
 /// re-read from disk on every rebuild via a FutureBuilder) so the thumbnail
 /// strip and the eventual upload share the same in-memory copy.
@@ -166,18 +169,43 @@ class _ConversationThreadScreenState
 
   Future<void> _showMessageActions(ChatMessage message) async {
     final auth = ref.read(authProvider).value;
-    final currentUserId =
-        auth is AuthAuthenticated ? auth.user.id : null;
+    final currentUserId = auth is AuthAuthenticated ? auth.user.id : null;
     final state = ref.read(chatThreadProvider(widget.conversationId));
     final isOwn = message.userId == currentUserId;
     final canModerate = state.conversation?.canModerate ?? false;
-    if (message.isDeleted || (!isOwn && !canModerate)) return;
+    if (message.isDeleted || currentUserId == null) return;
 
     final notifier =
         ref.read(chatThreadProvider(widget.conversationId).notifier);
     await showCupertinoModalPopup<void>(
       context: context,
       builder: (sheetContext) => CupertinoActionSheet(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            for (final emoji in kQuickReactions)
+              CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  notifier.toggleReaction(message.id, emoji, currentUserId);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: message.reactions.any((r) =>
+                            r.emoji == emoji && r.reactedBy(currentUserId))
+                        ? CupertinoColors.activeBlue
+                            .resolveFrom(sheetContext)
+                            .withValues(alpha: 0.25)
+                        : null,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                ),
+              ),
+          ],
+        ),
         actions: [
           if (isOwn && message.attachments.isEmpty)
             CupertinoActionSheetAction(
@@ -187,14 +215,15 @@ class _ConversationThreadScreenState
               },
               child: const Text('Edit'),
             ),
-          CupertinoActionSheetAction(
-            isDestructiveAction: true,
-            onPressed: () {
-              Navigator.pop(sheetContext);
-              notifier.deleteMsg(message.id);
-            },
-            child: const Text('Delete'),
-          ),
+          if (isOwn || canModerate)
+            CupertinoActionSheetAction(
+              isDestructiveAction: true,
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                notifier.deleteMsg(message.id);
+              },
+              child: const Text('Delete'),
+            ),
         ],
         cancelButton: CupertinoActionSheetAction(
           onPressed: () => Navigator.pop(sheetContext),
@@ -301,6 +330,7 @@ class _ConversationThreadScreenState
                         final bubble = _MessageBubble(
                           message: message,
                           isOwn: message.userId == currentUserId,
+                          currentUserId: currentUserId,
                           showSeen: isLast &&
                               message.userId == currentUserId &&
                               seenByOthersCount(message, state.participants,
@@ -421,6 +451,7 @@ class _MessageBubble extends ConsumerWidget {
   const _MessageBubble({
     required this.message,
     required this.isOwn,
+    required this.currentUserId,
     required this.showSeen,
     required this.isDm,
     required this.showTime,
@@ -430,6 +461,7 @@ class _MessageBubble extends ConsumerWidget {
 
   final ChatMessage message;
   final bool isOwn;
+  final int currentUserId;
   final bool showSeen;
   final bool isDm;
   final bool showTime;
@@ -540,6 +572,41 @@ class _MessageBubble extends ConsumerWidget {
             ),
           ),
         ),
+        if (message.reactions.isNotEmpty && !message.isDeleted)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Wrap(
+              spacing: 4,
+              children: [
+                for (final reaction in message.reactions)
+                  GestureDetector(
+                    onTap: () => ref
+                        .read(chatThreadProvider(message.conversationId)
+                            .notifier)
+                        .toggleReaction(
+                            message.id, reaction.emoji, currentUserId),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: reaction.reactedBy(currentUserId)
+                            ? CupertinoColors.activeBlue
+                                .resolveFrom(context)
+                                .withValues(alpha: 0.25)
+                            : CupertinoColors.tertiarySystemBackground
+                                .resolveFrom(context),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${reaction.emoji} ${reaction.count}',
+                        style: TextStyle(
+                            fontSize: 13, color: context.primaryText),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         if (showSeen)
           Padding(
             padding: const EdgeInsets.only(right: 4),

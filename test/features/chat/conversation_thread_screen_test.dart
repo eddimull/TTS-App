@@ -368,7 +368,7 @@ void main() {
                 'user_id': 3,
                 'user_name': 'Sam',
                 'body': 'from june',
-                'created_at': '2026-06-03T14:00:00Z',
+                'created_at': '2020-06-03T14:00:00Z',
               },
               {
                 'id': 2,
@@ -376,7 +376,7 @@ void main() {
                 'user_id': 3,
                 'user_name': 'Sam',
                 'body': 'from july',
-                'created_at': '2026-07-02T14:00:00Z',
+                'created_at': '2020-07-02T14:00:00Z',
               },
             ],
             'participants': [
@@ -401,10 +401,13 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    // Both messages are >7 days old relative to any real test-run clock, so
-    // both separators use the tz-safe full-date form containing the year:
-    // one above the first message, one at the June→July day change.
-    expect(find.textContaining('2026'), findsNWidgets(2));
+    // These dates are far in the past (2020), so no matter what a real
+    // test-run clock reads, both separators fall back to the full
+    // date-with-year form rather than a "Today"/weekday label — making the
+    // assertion truly clock-independent. The June→July day change still
+    // yields exactly two separators: one above the first message, one at
+    // the day change.
+    expect(find.textContaining('2020'), findsNWidgets(2));
   });
 
   testWidgets('tapping a bubble reveals its timestamp (with edited marker)',

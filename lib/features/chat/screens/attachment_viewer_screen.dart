@@ -30,14 +30,15 @@ Future<void> _shareViaSheet(Uint8List bytes, String name) async {
 /// save-to-photos, and system share. Downloads each attachment's original
 /// bytes once and reuses them for display, save, and share.
 class AttachmentViewerScreen extends ConsumerStatefulWidget {
-  const AttachmentViewerScreen({
+  AttachmentViewerScreen({
     super.key,
     required this.messageId,
     required this.attachments,
     this.initialIndex = 0,
     this.saveImage = _saveWithGal,
     this.shareImage = _shareViaSheet,
-  });
+  })  : assert(attachments.isNotEmpty),
+        assert(initialIndex >= 0 && initialIndex < attachments.length);
 
   final int messageId;
   final List<ChatAttachment> attachments;
@@ -78,6 +79,7 @@ class _AttachmentViewerScreenState
   }
 
   Future<void> _load(int attachmentId) async {
+    if (!mounted) return;
     if (_bytes.containsKey(attachmentId) || _inFlight.contains(attachmentId)) {
       return;
     }

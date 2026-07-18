@@ -577,6 +577,43 @@ void main() {
     expect(message.reactions.single.reactedBy(currentUserId), isTrue);
   });
 
+  test('toggleReaction ignores the unauthenticated sentinel user id (-1) '
+      'and issues no request', () async {
+    var reactionRequests = 0;
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((options) async {
+        if (options.method == 'POST' && options.path.endsWith('/reactions')) {
+          reactionRequests++;
+        }
+        return json(200, threadJson);
+      });
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatTypingTtlProvider.overrideWithValue(Duration.zero),
+      chatChannelBinderProvider.overrideWithValue((channel, onEvent) {
+        capturedHandler = onEvent;
+        return null; // test seam: no live subscription, nothing to unbind
+      }),
+    ]);
+    addTearDown(container.dispose);
+
+    // Hold a listener: chatThreadProvider is autoDispose, and without one
+    // the notifier tears down between load() and toggleReaction() the
+    // moment load()'s internal keepAlive is released.
+    final sub = container.listen(chatThreadProvider(5), (_, __) {});
+    addTearDown(sub.close);
+
+    final notifier = container.read(chatThreadProvider(5).notifier);
+    await notifier.load();
+
+    await notifier.toggleReaction(1, '👍', -1);
+
+    expect(reactionRequests, 0,
+        reason: 'the -1 unauthenticated sentinel must never reach the API');
+    final message = container.read(chatThreadProvider(5)).messages.single;
+    expect(message.reactions, isEmpty);
+  });
+
   test('realtime message.updated with reactions patches the message',
       () async {
     final c = makeContainer();

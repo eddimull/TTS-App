@@ -279,6 +279,9 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
   /// Optimistically toggles the caller's [emoji] on [messageId], then
   /// reconciles with the server's aggregate (or rolls back on failure).
   Future<void> toggleReaction(int messageId, String emoji, int userId) async {
+    // Unauthenticated sentinel guard: callers fall back to -1 when auth
+    // hasn't loaded yet — never optimistically insert that into userIds.
+    if (userId <= 0) return;
     if (_reactionsInFlight.contains(messageId)) return;
 
     ChatMessage? original;

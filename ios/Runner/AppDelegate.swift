@@ -1,10 +1,15 @@
-import Flutter
+import FirebaseCore
 import FirebaseMessaging
+import Flutter
 import GoogleMaps
 import UIKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  /// APNs token that arrived before Firebase was configured (see
+  /// didRegisterForRemoteNotificationsWithDeviceToken below).
+  private var pendingApnsToken: Data?
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -31,11 +36,22 @@ import UIKit
   // Messaging.apnsToken stays unset and getToken() fails with
   // apns-token-not-set. Forward the APNs token explicitly; harmless if
   // swizzling also delivers it.
+  //
+  // The token can arrive before the Flutter engine has registered plugins
+  // (registration is requested in didFinishLaunching above), and
+  // Messaging.messaging() traps if no default FirebaseApp is configured yet —
+  // firebase_core configures it from the bundled GoogleService-Info.plist
+  // during plugin registration. Cache the token for that window and apply it
+  // in didInitializeImplicitFlutterEngine.
   override func application(
     _ application: UIApplication,
     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
   ) {
-    Messaging.messaging().apnsToken = deviceToken
+    if FirebaseApp.app() != nil {
+      Messaging.messaging().apnsToken = deviceToken
+    } else {
+      pendingApnsToken = deviceToken
+    }
     super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
   }
 
@@ -49,5 +65,12 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    // Plugin registration configured the default FirebaseApp (from the bundled
+    // plist); deliver an APNs token that arrived before that. Both callbacks
+    // run on the main thread, so there is no race on pendingApnsToken.
+    if let token = pendingApnsToken, FirebaseApp.app() != nil {
+      Messaging.messaging().apnsToken = token
+      pendingApnsToken = nil
+    }
   }
 }

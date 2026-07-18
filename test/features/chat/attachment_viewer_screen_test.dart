@@ -2,8 +2,10 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gal/gal.dart';
 import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
 import 'package:tts_bandmate/features/chat/data/models/chat_message.dart';
 import 'package:tts_bandmate/features/chat/screens/attachment_viewer_screen.dart';
@@ -118,5 +120,65 @@ void main() {
     await tester.tap(find.byIcon(CupertinoIcons.square_arrow_down));
     await tester.pumpAndSettle();
     expect(find.text('Could not save photo'), findsOneWidget);
+  });
+
+  testWidgets('save failure with accessDenied shows Settings hint',
+      (tester) async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter =
+          StubAdapter((_) async => ResponseBody.fromBytes(kTransparentPng, 200));
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(wrap(
+      container,
+      AttachmentViewerScreen(
+        messageId: 9,
+        attachments: const [ChatAttachment(id: 4, width: 1, height: 1)],
+        saveImage: (bytes, name) async => throw GalException(
+          type: GalExceptionType.accessDenied,
+          platformException: PlatformException(code: 'ACCESS_DENIED'),
+          stackTrace: StackTrace.current,
+        ),
+        shareImage: (bytes, name) async {},
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(CupertinoIcons.square_arrow_down));
+    await tester.pumpAndSettle();
+    expect(find.text('Could not save photo'), findsOneWidget);
+    expect(
+      find.text(
+          'Allow photo library access for Bandmate in Settings and try again.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('share failure surfaces an alert', (tester) async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter =
+          StubAdapter((_) async => ResponseBody.fromBytes(kTransparentPng, 200));
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(wrap(
+      container,
+      AttachmentViewerScreen(
+        messageId: 9,
+        attachments: const [ChatAttachment(id: 4, width: 1, height: 1)],
+        saveImage: (bytes, name) async {},
+        shareImage: (bytes, name) async => throw Exception('share failed'),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(CupertinoIcons.share));
+    await tester.pumpAndSettle();
+    expect(find.text('Could not share photo'), findsOneWidget);
   });
 }

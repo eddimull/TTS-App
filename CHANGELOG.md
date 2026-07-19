@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.19.0](https://github.com/eddimull/TTS-App/compare/v1.18.0...v1.19.0) (2026-07-19)
+
+
+### Features
+
+* **chat:** add 🖕 to the quick-reaction set ([af622e4](https://github.com/eddimull/TTS-App/commit/af622e48b9ec76048e7c32b1699369d1f3192dff))
+* **chat:** date separators and tap-to-reveal timestamps in thread ([a7f0b17](https://github.com/eddimull/TTS-App/commit/a7f0b17b51e133eb9904a052ad99ea30275ba44b))
+* **chat:** delivered receipts — participant field, bulk ack, realtime patch ([12b73fb](https://github.com/eddimull/TTS-App/commit/12b73fbf6b2874ece21f908d98d0d9876090ef04))
+* **chat:** delivered/seen message status (chat polish phase 3) ([efbee6d](https://github.com/eddimull/TTS-App/commit/efbee6dba7b15fb6e53490f047c4b02e3c062229))
+* **chat:** delivered/seen status line for DMs and seen-by count for groups ([6bbff77](https://github.com/eddimull/TTS-App/commit/6bbff7716ebbdd3c253ef056e715478f3fc8f7b3))
+* **chat:** fullscreen attachment viewer with save and share ([28208a3](https://github.com/eddimull/TTS-App/commit/28208a3740a8061aa325aba134e85692f1059a3a))
+* **chat:** fullscreen media viewer, save/share, timestamps (chat polish phase 1) ([9dddb42](https://github.com/eddimull/TTS-App/commit/9dddb42d46d8cd067d4d3842ecb9fa43dfc04424))
+* **chat:** open fullscreen viewer from attachment thumbnails ([263e53e](https://github.com/eddimull/TTS-App/commit/263e53e794e2ff7f8ac3ac9e290339d3fe92cecf))
+* **chat:** optimistic reaction toggle with server reconcile and rollback ([1efab63](https://github.com/eddimull/TTS-App/commit/1efab637ee867bc249eb670c7b0887884835e8ef))
+* **chat:** pure time-label helpers for separators and revealed timestamps ([5c533bb](https://github.com/eddimull/TTS-App/commit/5c533bb87b30bb47658b13dae3ca7120ce76571b))
+* **chat:** quick-reaction emoji row and aggregated reaction chips ([cde04e7](https://github.com/eddimull/TTS-App/commit/cde04e7285aae788af5b2dd56b55b7536dda16cc))
+* **chat:** reaction model, endpoints, and repository calls ([85fb673](https://github.com/eddimull/TTS-App/commit/85fb673023cd0fbfd50fef3ef5d793bd5e1fe237))
+* **chat:** repository fetch for full-resolution attachment bytes ([079c09d](https://github.com/eddimull/TTS-App/commit/079c09d42455ef5324d34a5c478da9d210cc4500))
+
+
+### Bug Fixes
+
+* **chat:** address Copilot review — dispose guard, input asserts, clock-proof test dates ([6f597f0](https://github.com/eddimull/TTS-App/commit/6f597f0d47fa40ff1f6ea3e600653c02e8adad49))
+* **chat:** guard reaction toggle state writes against disposal ([9fdeb94](https://github.com/eddimull/TTS-App/commit/9fdeb9438054a4a5743e2ee68d1a3463a9c0a14a))
+* **chat:** ignore reaction toggles from unauthenticated sentinel user id ([b5e1e26](https://github.com/eddimull/TTS-App/commit/b5e1e2657e84f1f378e1c3ef3bc1ee6c4f13ffac))
+* **chat:** let viewer pages swipe by gating InteractiveViewer pan on zoom ([ec250ef](https://github.com/eddimull/TTS-App/commit/ec250efcf9e53bd342d6e3ee485f6a9e97d8e1e0))
+* **chat:** qualifying-reader seen time, deterministic ack tests, polish ([2969666](https://github.com/eddimull/TTS-App/commit/2969666fd9d37648b227e7ed88f274078272ba65))
+* **chat:** render decode-error state for corrupt attachment images ([e6f35a3](https://github.com/eddimull/TTS-App/commit/e6f35a301861677c1f999ee3d5d960f1011bac6a))
+* **chat:** render seen-by names as content, not dismissing actions ([10391c6](https://github.com/eddimull/TTS-App/commit/10391c6713b681d49ea476950e4dac10db7fb9fa))
+* **chat:** serialize reaction toggles per message to prevent reorder divergence ([b074710](https://github.com/eddimull/TTS-App/commit/b0747106a837330db519248cfae889c32757a847))
+* **ui:** center welcome carousel preview, stop finances tab label wrap ([717fd47](https://github.com/eddimull/TTS-App/commit/717fd4758f2fa72751cf22d47760598a6d621fc6))
+* **ui:** center welcome carousel preview, stop finances tab label wrap ([d525261](https://github.com/eddimull/TTS-App/commit/d5252614a33a07987e3cb76d154e77463a2f481e))
+
 ## [1.18.0](https://github.com/eddimull/TTS-App/compare/v1.13.0...v1.18.0) (2026-07-18)
 
 

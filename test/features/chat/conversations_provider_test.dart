@@ -62,9 +62,9 @@ void main() {
 
     await container.read(chatConversationsProvider.future);
     // The ack is fire-and-forget; the stubbed POST crosses more than one
-    // microtask turn (like the real HTTP stack would), so give it a real
-    // short delay to land before asserting.
-    await Future<void>.delayed(const Duration(milliseconds: 50));
+    // microtask turn (like the real HTTP stack would), so pump the event
+    // queue to let it land before asserting.
+    await pumpEventQueue();
 
     expect(
       captured.any((o) =>
@@ -99,7 +99,7 @@ void main() {
       container.read(chatConversationsProvider.future),
       throwsA(anything),
     );
-    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await pumpEventQueue();
 
     expect(
       captured.any((o) => o.path == '/api/mobile/conversations/delivered'),

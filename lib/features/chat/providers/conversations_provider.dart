@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/chat_repository.dart';
@@ -11,8 +13,7 @@ final chatConversationsProvider = FutureProvider<List<Conversation>>((ref) async
   // Bulk delivered ack: this fetch IS "the app received what the server has".
   // Realtime message arrival invalidates this provider, so the refetch path
   // acks too — one hook covers both app-open and message-received triggers.
-  // ignore: unawaited_futures
-  repo.markDelivered().catchError((_) {});
+  unawaited(repo.markDelivered().catchError((_) {}));
   return conversations;
 });
 

@@ -357,9 +357,18 @@ class _ConversationThreadScreenState
                             switch (dmMessageStatus(
                                 message, state.participants, currentUserId)) {
                               case DmMessageStatus.seen:
-                                final at = other.isEmpty
+                                // dmMessageStatus returns `seen` if ANY other
+                                // participant's read receipt qualifies; pick
+                                // that same qualifying participant's
+                                // lastReadAt rather than assuming it's
+                                // other.first (they can disagree in a
+                                // >2-participant 'dm').
+                                final qualifying = other.where((p) =>
+                                    p.lastReadAt != null &&
+                                    !p.lastReadAt!.isBefore(message.createdAt));
+                                final at = qualifying.isEmpty
                                     ? null
-                                    : other.first.lastReadAt;
+                                    : qualifying.first.lastReadAt;
                                 status = _StatusLabel(
                                   text: at == null
                                       ? 'Seen'

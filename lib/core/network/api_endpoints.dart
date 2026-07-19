@@ -252,7 +252,7 @@ class ApiEndpoints {
   // Chat & comments
   static const String mobileConversations = '/api/mobile/conversations';
   static const String mobileConversationsDm = '/api/mobile/conversations/dm';
-  static const mobileConversationsDelivered =
+  static const String mobileConversationsDelivered =
       '/api/mobile/conversations/delivered';
   static const String mobileChatContacts = '/api/mobile/chat/contacts';
   static String mobileConversationMessages(int conversationId) =>

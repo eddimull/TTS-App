@@ -238,13 +238,22 @@ class _ConversationThreadScreenState
       context: context,
       builder: (sheetContext) => CupertinoActionSheet(
         title: const Text('Seen by'),
-        actions: [
-          for (final name in names)
-            CupertinoActionSheetAction(
-              onPressed: () => Navigator.pop(sheetContext),
-              child: Text(name),
-            ),
-        ],
+        message: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final name in names)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: context.primaryText,
+                  ),
+                ),
+              ),
+          ],
+        ),
         cancelButton: CupertinoActionSheetAction(
           onPressed: () => Navigator.pop(sheetContext),
           child: const Text('Cancel'),

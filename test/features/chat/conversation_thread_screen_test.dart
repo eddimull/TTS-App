@@ -4,6 +4,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/core/providers/core_providers.dart';
+import 'package:tts_bandmate/features/auth/data/models/auth_user.dart';
+import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
 import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
 import 'package:tts_bandmate/features/chat/providers/active_chat_conversation_provider.dart';
 import 'package:tts_bandmate/features/chat/providers/chat_thread_provider.dart';
@@ -13,6 +15,18 @@ import 'package:tts_bandmate/shared/widgets/auth_thumbnail.dart';
 import 'package:dio/dio.dart';
 
 import '../../helpers/test_harness.dart';
+
+/// Fixed-state auth notifier — matches the idiom used by
+/// chat_thread_provider_test.dart so widget tests can pin `currentUserId`.
+class _FakeAuth extends AuthNotifier {
+  _FakeAuth(this._state);
+  final AuthState _state;
+
+  @override
+  Future<AuthState> build() async => _state;
+}
+
+const _currentUserId = 2;
 
 void main() {
   testWidgets('renders messages, typing indicator, and deleted tombstone',
@@ -522,5 +536,144 @@ void main() {
     await tester.pump(Duration.zero);
 
     expect(find.byType(AttachmentViewerScreen), findsOneWidget);
+  });
+
+  /// A single-message thread (message id 1, authored by user 3 "Sam" — not
+  /// the current user, and the caller has no moderator rights) with
+  /// [reactions] seeded onto that message. [captured] accumulates every
+  /// request the StubAdapter sees so tests can assert on method + path;
+  /// [reactionResponse] is what a reactions POST/DELETE returns.
+  Future<ProviderContainer> pumpReactionsThread(
+    WidgetTester tester, {
+    List<Map<String, dynamic>> reactions = const [],
+    required List<RequestOptions> captured,
+    required Map<String, dynamic> reactionResponse,
+  }) async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((options) async {
+        captured.add(options);
+        if (options.path.endsWith('/reactions') ||
+            options.path.contains('/reactions/')) {
+          return json(200, reactionResponse);
+        }
+        return json(200, {
+          'conversation': {
+            'id': 5,
+            'type': 'dm',
+            'title': 'Sam',
+            'can_moderate': false,
+          },
+          'messages': [
+            {
+              'id': 1,
+              'conversation_id': 5,
+              'user_id': 3,
+              'user_name': 'Sam',
+              'body': 'you around?',
+              'created_at': '2026-07-12T14:00:00Z',
+              'reactions': reactions,
+            },
+          ],
+          'participants': [
+            {'user_id': 3, 'name': 'Sam', 'last_read_at': null},
+          ],
+          'channel': 'private-conversation.5',
+          'has_more': false,
+        });
+      });
+
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatMarkReadDebounceProvider.overrideWithValue(Duration.zero),
+      authProvider.overrideWith(() => _FakeAuth(const AuthAuthenticated(
+            user: AuthUser(id: _currentUserId, name: 'Eddie', email: 'e@x.com'),
+            bands: [],
+          ))),
+      chatChannelBinderProvider.overrideWithValue((channel, onEvent) => null),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const CupertinoApp(
+        home: ConversationThreadScreen(conversationId: 5, title: 'Sam'),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    return container;
+  }
+
+  testWidgets('long-press on another user\'s message opens the emoji row',
+      (tester) async {
+    // Thread with one message from user 3 (not the current user), no
+    // moderator rights. Long-press the bubble:
+    final captured = <RequestOptions>[];
+    await pumpReactionsThread(tester,
+        captured: captured, reactionResponse: {'reactions': <dynamic>[]});
+
+    await tester.longPress(find.text('you around?'));
+    await tester.pumpAndSettle();
+
+    // The sheet now opens (pre-change it early-returned) with the quick set
+    // visible and no Edit/Delete for someone else's message:
+    expect(find.text('👍'), findsOneWidget);
+    expect(find.text('🎉'), findsOneWidget);
+    expect(find.text('Edit'), findsNothing);
+    expect(find.text('Delete'), findsNothing);
+  });
+
+  testWidgets('tapping a quick emoji posts the reaction and renders a chip',
+      (tester) async {
+    final captured = <RequestOptions>[];
+    await pumpReactionsThread(tester, captured: captured, reactionResponse: {
+      'reactions': [
+        {
+          'emoji': '👍',
+          'count': 1,
+          'user_ids': [_currentUserId],
+        },
+      ],
+    });
+
+    await tester.longPress(find.text('you around?'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('👍'));
+    await tester.pumpAndSettle();
+
+    // Optimistic chip under the bubble (emoji + count):
+    expect(find.text('👍 1'), findsOneWidget);
+    // And the POST went out:
+    expect(
+      captured.any((r) =>
+          r.method == 'POST' && r.path == '/api/mobile/messages/1/reactions'),
+      isTrue,
+    );
+  });
+
+  testWidgets('tapping an existing chip toggles it off', (tester) async {
+    // Seed the thread page JSON so message 1 already has
+    // {'emoji':'👍','count':1,'user_ids':[<currentUserId>]} and stub the
+    // DELETE to return {'reactions': []}. Then:
+    final captured = <RequestOptions>[];
+    await pumpReactionsThread(
+      tester,
+      reactions: [
+        {
+          'emoji': '👍',
+          'count': 1,
+          'user_ids': [_currentUserId],
+        },
+      ],
+      captured: captured,
+      reactionResponse: {'reactions': <dynamic>[]},
+    );
+
+    expect(find.text('👍 1'), findsOneWidget);
+
+    await tester.tap(find.text('👍 1'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('👍 1'), findsNothing);
+    expect(captured.any((r) => r.method == 'DELETE'), isTrue);
   });
 }

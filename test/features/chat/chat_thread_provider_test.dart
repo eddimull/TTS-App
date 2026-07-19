@@ -408,4 +408,232 @@ void main() {
           reason: 'typing timers must be cancelled on dispose');
     });
   });
+
+  group('toggleReactionList', () {
+    test('adds when absent, removes when present, drops empty groups', () {
+      const emoji = '👍';
+      var reactions = toggleReactionList(const [], emoji, 2);
+      expect(reactions.single.count, 1);
+      expect(reactions.single.userIds, [2]);
+
+      reactions = toggleReactionList(reactions, emoji, 3);
+      expect(reactions.single.count, 2);
+
+      reactions = toggleReactionList(reactions, emoji, 2);
+      expect(reactions.single.count, 1);
+      expect(reactions.single.userIds, [3]);
+
+      reactions = toggleReactionList(reactions, emoji, 3);
+      expect(reactions, isEmpty);
+    });
+  });
+
+  const currentUserId = 2;
+
+  test('toggleReaction is optimistic and reconciles with server aggregate',
+      () async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((options) async {
+        if (options.method == 'POST' && options.path.endsWith('/reactions')) {
+          return json(200, {
+            'reactions': [
+              {
+                'emoji': '👍',
+                'count': 1,
+                'user_ids': [currentUserId],
+              },
+            ],
+          });
+        }
+        return json(200, threadJson);
+      });
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatTypingTtlProvider.overrideWithValue(Duration.zero),
+      authProvider.overrideWith(() => _FakeAuth(const AuthAuthenticated(
+            user: AuthUser(id: currentUserId, name: 'Eddie', email: 'e@x.com'),
+            bands: [],
+          ))),
+      chatChannelBinderProvider.overrideWithValue((channel, onEvent) {
+        capturedHandler = onEvent;
+        return null; // test seam: no live subscription, nothing to unbind
+      }),
+    ]);
+    addTearDown(container.dispose);
+
+    // Hold a listener: chatThreadProvider is autoDispose, and without one
+    // the notifier tears down between load() and toggleReaction() the
+    // moment load()'s internal keepAlive is released.
+    final sub = container.listen(chatThreadProvider(5), (_, __) {});
+    addTearDown(sub.close);
+
+    final notifier = container.read(chatThreadProvider(5).notifier);
+    await notifier.load();
+
+    await notifier.toggleReaction(1, '👍', currentUserId);
+    // Immediately after the await both the optimistic and reconciled state
+    // agree; assert the message now carries the server aggregate:
+    final message =
+        container.read(chatThreadProvider(5)).messages.single;
+    expect(message.reactions.single.emoji, '👍');
+    expect(message.reactions.single.reactedBy(currentUserId), isTrue);
+  });
+
+  test('toggleReaction rolls back on API failure', () async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((options) async {
+        if (options.method == 'POST' && options.path.endsWith('/reactions')) {
+          return json(500, {'message': 'nope'});
+        }
+        return json(200, threadJson);
+      });
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatTypingTtlProvider.overrideWithValue(Duration.zero),
+      authProvider.overrideWith(() => _FakeAuth(const AuthAuthenticated(
+            user: AuthUser(id: currentUserId, name: 'Eddie', email: 'e@x.com'),
+            bands: [],
+          ))),
+      chatChannelBinderProvider.overrideWithValue((channel, onEvent) {
+        capturedHandler = onEvent;
+        return null; // test seam: no live subscription, nothing to unbind
+      }),
+    ]);
+    addTearDown(container.dispose);
+
+    // Hold a listener: chatThreadProvider is autoDispose, and without one
+    // the notifier tears down between load() and toggleReaction() the
+    // moment load()'s internal keepAlive is released.
+    final sub = container.listen(chatThreadProvider(5), (_, __) {});
+    addTearDown(sub.close);
+
+    final notifier = container.read(chatThreadProvider(5).notifier);
+    await notifier.load();
+
+    await notifier.toggleReaction(1, '👍', currentUserId);
+    final message =
+        container.read(chatThreadProvider(5)).messages.single;
+    expect(message.reactions, isEmpty);
+    expect(container.read(chatThreadProvider(5)).error, isNotNull);
+  });
+
+  test('toggleReaction ignores a second call while the first is in flight',
+      () async {
+    var reactionRequests = 0;
+    final reactionCompleter = Completer<ResponseBody>();
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((options) {
+        if (options.method == 'POST' && options.path.endsWith('/reactions')) {
+          reactionRequests++;
+          return reactionCompleter.future;
+        }
+        return Future.value(json(200, threadJson));
+      });
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatTypingTtlProvider.overrideWithValue(Duration.zero),
+      authProvider.overrideWith(() => _FakeAuth(const AuthAuthenticated(
+            user: AuthUser(id: currentUserId, name: 'Eddie', email: 'e@x.com'),
+            bands: [],
+          ))),
+      chatChannelBinderProvider.overrideWithValue((channel, onEvent) {
+        capturedHandler = onEvent;
+        return null; // test seam: no live subscription, nothing to unbind
+      }),
+    ]);
+    addTearDown(container.dispose);
+
+    // Hold a listener: chatThreadProvider is autoDispose, and without one
+    // the notifier tears down between load() and toggleReaction() the
+    // moment load()'s internal keepAlive is released.
+    final sub = container.listen(chatThreadProvider(5), (_, __) {});
+    addTearDown(sub.close);
+
+    final notifier = container.read(chatThreadProvider(5).notifier);
+    await notifier.load();
+
+    // Fire two toggles back-to-back before the first request resolves
+    // (sheet emoji tap immediately followed by tapping the optimistic
+    // chip). Only the first should reach the network.
+    final firstToggle = notifier.toggleReaction(1, '👍', currentUserId);
+    final secondToggle = notifier.toggleReaction(1, '👍', currentUserId);
+
+    reactionCompleter.complete(json(200, {
+      'reactions': [
+        {
+          'emoji': '👍',
+          'count': 1,
+          'user_ids': [currentUserId],
+        },
+      ],
+    }));
+    await firstToggle;
+    await secondToggle;
+
+    expect(reactionRequests, 1,
+        reason: 'a fast double-toggle must not issue two concurrent requests');
+    final message = container.read(chatThreadProvider(5)).messages.single;
+    expect(message.reactions.single.emoji, '👍');
+    expect(message.reactions.single.reactedBy(currentUserId), isTrue);
+  });
+
+  test('toggleReaction ignores the unauthenticated sentinel user id (-1) '
+      'and issues no request', () async {
+    var reactionRequests = 0;
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((options) async {
+        if (options.method == 'POST' && options.path.endsWith('/reactions')) {
+          reactionRequests++;
+        }
+        return json(200, threadJson);
+      });
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatTypingTtlProvider.overrideWithValue(Duration.zero),
+      chatChannelBinderProvider.overrideWithValue((channel, onEvent) {
+        capturedHandler = onEvent;
+        return null; // test seam: no live subscription, nothing to unbind
+      }),
+    ]);
+    addTearDown(container.dispose);
+
+    // Hold a listener: chatThreadProvider is autoDispose, and without one
+    // the notifier tears down between load() and toggleReaction() the
+    // moment load()'s internal keepAlive is released.
+    final sub = container.listen(chatThreadProvider(5), (_, __) {});
+    addTearDown(sub.close);
+
+    final notifier = container.read(chatThreadProvider(5).notifier);
+    await notifier.load();
+
+    await notifier.toggleReaction(1, '👍', -1);
+
+    expect(reactionRequests, 0,
+        reason: 'the -1 unauthenticated sentinel must never reach the API');
+    final message = container.read(chatThreadProvider(5)).messages.single;
+    expect(message.reactions, isEmpty);
+  });
+
+  test('realtime message.updated with reactions patches the message',
+      () async {
+    final c = makeContainer();
+    await c.read(chatThreadProvider(5).notifier).load();
+
+    capturedHandler!('message.updated', {
+      'message': {
+        'id': 1,
+        'conversation_id': 5,
+        'user_id': 3,
+        'user_name': 'Sam',
+        'body': 'you around?',
+        'created_at': '2026-07-12T14:00:00Z',
+        'reactions': [
+          {'emoji': '🎉', 'count': 1, 'user_ids': [3]},
+        ],
+      },
+    });
+    final message =
+        c.read(chatThreadProvider(5)).messages.single;
+    expect(message.reactions.single.emoji, '🎉');
+  });
 }

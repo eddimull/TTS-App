@@ -235,4 +235,34 @@ void main() {
     expect(captured.single.path, '/api/mobile/messages/9/attachments/4');
     expect(captured.single.responseType, ResponseType.bytes);
   });
+
+  test('addReaction posts emoji and parses reactions', () async {
+    final captured = <RequestOptions>[];
+    final repo = ChatRepository(dioCapturing(captured, {
+      'reactions': [
+        {'emoji': '👍', 'count': 1, 'user_ids': [2]},
+      ],
+    }));
+
+    final reactions = await repo.addReaction(9, '👍');
+
+    expect(captured.single.method, 'POST');
+    expect(captured.single.path, '/api/mobile/messages/9/reactions');
+    expect(captured.single.data, {'emoji': '👍'});
+    expect(reactions.single.emoji, '👍');
+    expect(reactions.single.userIds, [2]);
+  });
+
+  test('removeReaction deletes percent-encoded emoji and parses reactions',
+      () async {
+    final captured = <RequestOptions>[];
+    final repo = ChatRepository(dioCapturing(captured, {'reactions': []}));
+
+    final reactions = await repo.removeReaction(9, '👍');
+
+    expect(captured.single.method, 'DELETE');
+    expect(captured.single.path,
+        '/api/mobile/messages/9/reactions/${Uri.encodeComponent('👍')}');
+    expect(reactions, isEmpty);
+  });
 }

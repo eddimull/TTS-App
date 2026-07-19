@@ -62,4 +62,39 @@ void main() {
     expect(read.lastReadAt, DateTime.utc(2026, 7, 12));
     expect(read.name, 'Sam');
   });
+
+  test('ChatMessage parses reactions and reactedBy works', () {
+    final message = ChatMessage.fromJson({
+      'id': 1,
+      'conversation_id': 5,
+      'user_id': 2,
+      'body': 'hi',
+      'created_at': '2026-07-12T14:00:00Z',
+      'reactions': [
+        {'emoji': '👍', 'count': 2, 'user_ids': [2, 3]},
+        {'emoji': '🎉', 'count': 1, 'user_ids': [3]},
+      ],
+    });
+
+    expect(message.reactions, hasLength(2));
+    expect(message.reactions.first.emoji, '👍');
+    expect(message.reactions.first.count, 2);
+    expect(message.reactions.first.reactedBy(2), isTrue);
+    expect(message.reactions.first.reactedBy(9), isFalse);
+
+    final cleared = message.copyWith(reactions: const []);
+    expect(cleared.reactions, isEmpty);
+    expect(message.reactions, hasLength(2)); // original untouched
+  });
+
+  test('ChatMessage reactions default to empty when absent', () {
+    final message = ChatMessage.fromJson({
+      'id': 1,
+      'conversation_id': 5,
+      'user_id': 2,
+      'body': 'hi',
+      'created_at': '2026-07-12T14:00:00Z',
+    });
+    expect(message.reactions, isEmpty);
+  });
 }

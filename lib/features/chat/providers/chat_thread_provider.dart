@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -64,6 +65,46 @@ int seenByOthersCount(
             !p.lastReadAt!.isBefore(message.createdAt))
         .length;
 
+/// Pure toggle of [userId]'s [emoji] within an aggregated reactions list:
+/// adds the user (creating the group at count 1) when absent, removes them
+/// (dropping the group at count 0) when present.
+List<MessageReaction> toggleReactionList(
+  List<MessageReaction> reactions,
+  String emoji,
+  int userId,
+) {
+  final existing = reactions.where((r) => r.emoji == emoji).firstOrNull;
+  if (existing == null) {
+    return [
+      ...reactions,
+      MessageReaction(emoji: emoji, count: 1, userIds: [userId]),
+    ];
+  }
+  if (!existing.userIds.contains(userId)) {
+    return [
+      for (final r in reactions)
+        r.emoji == emoji
+            ? MessageReaction(
+                emoji: emoji,
+                count: r.count + 1,
+                userIds: [...r.userIds, userId],
+              )
+            : r,
+    ];
+  }
+  return [
+    for (final r in reactions)
+      if (r.emoji != emoji)
+        r
+      else if (r.count > 1)
+        MessageReaction(
+          emoji: emoji,
+          count: r.count - 1,
+          userIds: [for (final id in r.userIds) if (id != userId) id],
+        ),
+  ];
+}
+
 class ChatThreadState {
   const ChatThreadState({
     this.messages = const [],
@@ -127,6 +168,14 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
   bool _bound = false;
   ChatChannelUnbind? _unbind;
   Timer? _markReadDebounce;
+
+  /// Messages with a toggleReaction() request currently in flight. Guards
+  /// against a fast double-toggle (sheet emoji tap immediately followed by
+  /// tapping the optimistic chip) issuing a POST and DELETE concurrently —
+  /// if their responses arrive out of order, the last _patchReactions call
+  /// would write a stale aggregate that nothing self-corrects (our own
+  /// broadcasts are toOthers()).
+  final Set<int> _reactionsInFlight = {};
 
   @override
   ChatThreadState build() {
@@ -225,6 +274,54 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
       if (!ref.mounted) return;
       state = state.copyWith(error: () => e.toString());
     }
+  }
+
+  /// Optimistically toggles the caller's [emoji] on [messageId], then
+  /// reconciles with the server's aggregate (or rolls back on failure).
+  Future<void> toggleReaction(int messageId, String emoji, int userId) async {
+    // Unauthenticated sentinel guard: callers fall back to -1 when auth
+    // hasn't loaded yet — never optimistically insert that into userIds.
+    if (userId <= 0) return;
+    if (_reactionsInFlight.contains(messageId)) return;
+
+    ChatMessage? original;
+    for (final m in state.messages) {
+      if (m.id == messageId) original = m;
+    }
+    if (original == null || original.isDeleted) return;
+
+    _reactionsInFlight.add(messageId);
+    try {
+      final wasMine = original.reactions
+          .any((r) => r.emoji == emoji && r.userIds.contains(userId));
+      _replace(original.copyWith(
+          reactions: toggleReactionList(original.reactions, emoji, userId)));
+      try {
+        final reactions = wasMine
+            ? await _repo.removeReaction(messageId, emoji)
+            : await _repo.addReaction(messageId, emoji);
+        if (!ref.mounted) return;
+        _patchReactions(messageId, reactions);
+      } catch (e) {
+        if (!ref.mounted) return;
+        // Roll back to the pre-toggle aggregate. This can clobber a
+        // concurrent remote reaction change that arrived mid-flight (narrow
+        // window), but leaving the optimistic guess in place on a failed
+        // request would be worse — it would show a reaction that was never
+        // actually recorded.
+        _patchReactions(messageId, original.reactions);
+        state = state.copyWith(error: () => e.toString());
+      }
+    } finally {
+      _reactionsInFlight.remove(messageId);
+    }
+  }
+
+  void _patchReactions(int messageId, List<MessageReaction> reactions) {
+    state = state.copyWith(messages: [
+      for (final m in state.messages)
+        m.id == messageId ? m.copyWith(reactions: reactions) : m,
+    ]);
   }
 
   Future<void> deleteMsg(int messageId) async {

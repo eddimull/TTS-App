@@ -256,6 +256,10 @@ class ApiEndpoints {
   static String mobileConversationMessages(int conversationId) =>
       '/api/mobile/conversations/$conversationId/messages';
   static String mobileMessage(int messageId) => '/api/mobile/messages/$messageId';
+  static String mobileMessageReactions(int messageId) =>
+      '/api/mobile/messages/$messageId/reactions';
+  static String mobileMessageReaction(int messageId, String emoji) =>
+      '/api/mobile/messages/$messageId/reactions/${Uri.encodeComponent(emoji)}';
   static String mobileConversationRead(int conversationId) =>
       '/api/mobile/conversations/$conversationId/read';
   static String mobileConversationTyping(int conversationId) =>

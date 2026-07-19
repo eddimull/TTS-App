@@ -16,7 +16,7 @@ import '../utils/message_time.dart';
 import 'attachment_viewer_screen.dart';
 
 /// The fixed tapback set (spec phase 2); extendable to a full picker later.
-const kQuickReactions = ['👍', '❤️', '😂', '😮', '😢', '🎉'];
+const kQuickReactions = ['👍', '❤️', '😂', '😮', '😢', '🎉', '🖕'];
 
 /// A picked-but-not-yet-sent image. Bytes are read once at pick time (not
 /// re-read from disk on every rebuild via a FutureBuilder) so the thumbnail

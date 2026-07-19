@@ -138,22 +138,37 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
               child: CupertinoSegmentedControl<_FinancesTab>(
                 groupValue: widget.tab,
                 onValueChanged: widget.onTabChanged,
+                // FittedBox: the four segments share the width equally, so on
+                // narrow (zoomed-display) screens the longer labels wrap
+                // mid-word; scale them down instead.
                 children: const {
                   _FinancesTab.unpaid: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('Unpaid'),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('Unpaid', maxLines: 1),
+                    ),
                   ),
                   _FinancesTab.paid: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('Paid'),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('Paid', maxLines: 1),
+                    ),
                   ),
                   _FinancesTab.revenue: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('Revenue'),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('Revenue', maxLines: 1),
+                    ),
                   ),
                   _FinancesTab.trends: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('Trends'),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('Trends', maxLines: 1),
+                    ),
                   ),
                 },
               ),

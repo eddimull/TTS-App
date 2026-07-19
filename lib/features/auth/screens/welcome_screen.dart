@@ -163,11 +163,19 @@ class _DemoPanel extends StatelessWidget {
           // The preview mocks are fixed-size content inside a Column that
           // wants its natural height. On shorter viewports that natural
           // height may exceed what's available — let this area scroll
-          // internally rather than overflow. No-op when there's enough room.
+          // internally rather than overflow. The minHeight constraint keeps
+          // the preview vertically centered when there IS enough room: inside
+          // a scroll view height is unbounded, so a bare Center would
+          // shrink-wrap and pin the preview to the top.
           Expanded(
-            child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              child: Center(child: preview),
+            child: LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Center(child: preview),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 24),
@@ -293,12 +301,14 @@ class _LiveSessionPreview extends StatelessWidget {
                         fontSize: 13,
                         color: context.secondaryText)),
                 const SizedBox(height: 8),
-                const Row(
+                // Wrap, not Row: on narrow (zoomed-display) screens the three
+                // tags exceed the card width and a Row would overflow.
+                const Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
                   children: [
                     _MockTag(label: 'Key: A'),
-                    SizedBox(width: 6),
                     _MockTag(label: '126 BPM'),
-                    SizedBox(width: 6),
                     _MockTag(label: '🎤 Mia'),
                   ],
                 ),

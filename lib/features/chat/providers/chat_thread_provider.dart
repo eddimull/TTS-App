@@ -65,6 +65,42 @@ int seenByOthersCount(
             !p.lastReadAt!.isBefore(message.createdAt))
         .length;
 
+enum DmMessageStatus { none, delivered, seen }
+
+/// DM status for [message] (assumed the caller's own): Seen beats Delivered;
+/// a receipt only counts if it is at/after the message's creation.
+DmMessageStatus dmMessageStatus(
+  ChatMessage message,
+  List<ChatParticipant> participants,
+  int currentUserId,
+) {
+  var delivered = false;
+  for (final p in participants) {
+    if (p.userId == currentUserId) continue;
+    if (p.lastReadAt != null && !p.lastReadAt!.isBefore(message.createdAt)) {
+      return DmMessageStatus.seen;
+    }
+    if (p.deliveredAt != null && !p.deliveredAt!.isBefore(message.createdAt)) {
+      delivered = true;
+    }
+  }
+  return delivered ? DmMessageStatus.delivered : DmMessageStatus.none;
+}
+
+/// Names of the OTHER participants who have read [message].
+List<String> seenByNames(
+  ChatMessage message,
+  List<ChatParticipant> participants,
+  int currentUserId,
+) =>
+    [
+      for (final p in participants)
+        if (p.userId != currentUserId &&
+            p.lastReadAt != null &&
+            !p.lastReadAt!.isBefore(message.createdAt))
+          p.name,
+    ];
+
 /// Pure toggle of [userId]'s [emoji] within an aggregated reactions list:
 /// adds the user (creating the group at count 1) when absent, removes them
 /// (dropping the group at count 0) when present.

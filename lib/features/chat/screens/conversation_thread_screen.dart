@@ -233,6 +233,26 @@ class _ConversationThreadScreenState
     );
   }
 
+  void _showSeenByNames(List<String> names) {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (sheetContext) => CupertinoActionSheet(
+        title: const Text('Seen by'),
+        actions: [
+          for (final name in names)
+            CupertinoActionSheetAction(
+              onPressed: () => Navigator.pop(sheetContext),
+              child: Text(name),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(sheetContext),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
   Future<void> _showEditDialog(ChatMessage message) async {
     final editController = TextEditingController(text: message.body);
     await showCupertinoDialog<void>(
@@ -327,16 +347,46 @@ class _ConversationThreadScreenState
                         final previous =
                             idx > 0 ? state.messages[idx - 1] : null;
                         final isLast = idx == state.messages.length - 1;
+                        final isDm = state.conversation?.type == 'dm';
+                        Widget? status;
+                        if (isLast && message.userId == currentUserId) {
+                          if (isDm) {
+                            final other = state.participants
+                                .where((p) => p.userId != currentUserId)
+                                .toList();
+                            switch (dmMessageStatus(
+                                message, state.participants, currentUserId)) {
+                              case DmMessageStatus.seen:
+                                final at = other.isEmpty
+                                    ? null
+                                    : other.first.lastReadAt;
+                                status = _StatusLabel(
+                                  text: at == null
+                                      ? 'Seen'
+                                      : 'Seen ${bubbleTimeLabel(at, now: DateTime.now())}',
+                                );
+                              case DmMessageStatus.delivered:
+                                status = const _StatusLabel(text: 'Delivered');
+                              case DmMessageStatus.none:
+                                status = null;
+                            }
+                          } else {
+                            final names = seenByNames(
+                                message, state.participants, currentUserId);
+                            if (names.isNotEmpty) {
+                              status = _StatusLabel(
+                                text: 'Seen by ${names.length}',
+                                onTap: () => _showSeenByNames(names),
+                              );
+                            }
+                          }
+                        }
                         final bubble = _MessageBubble(
                           message: message,
                           isOwn: message.userId == currentUserId,
                           currentUserId: currentUserId,
-                          showSeen: isLast &&
-                              message.userId == currentUserId &&
-                              seenByOthersCount(message, state.participants,
-                                      currentUserId) >
-                                  0,
-                          isDm: state.conversation?.type == 'dm',
+                          status: status,
+                          isDm: isDm,
                           showTime: _revealedTimeIds.contains(message.id),
                           onTap: () => setState(() {
                             if (!_revealedTimeIds.remove(message.id)) {
@@ -452,7 +502,7 @@ class _MessageBubble extends ConsumerWidget {
     required this.message,
     required this.isOwn,
     required this.currentUserId,
-    required this.showSeen,
+    required this.status,
     required this.isDm,
     required this.showTime,
     required this.onTap,
@@ -462,7 +512,7 @@ class _MessageBubble extends ConsumerWidget {
   final ChatMessage message;
   final bool isOwn;
   final int currentUserId;
-  final bool showSeen;
+  final Widget? status;
   final bool isDm;
   final bool showTime;
   final VoidCallback onTap;
@@ -607,17 +657,33 @@ class _MessageBubble extends ConsumerWidget {
               ],
             ),
           ),
-        if (showSeen)
+        if (status != null)
           Padding(
             padding: const EdgeInsets.only(right: 4),
-            child: Text(
-              'Seen',
-              style: TextStyle(fontSize: 11, color: context.tertiaryText),
-            ),
+            child: status,
           ),
       ],
     );
   }
+}
+
+class _StatusLabel extends StatelessWidget {
+  const _StatusLabel({required this.text, this.onTap});
+  final String text;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Semantics(
+          button: onTap != null,
+          label: onTap != null ? '$text, tap to see who' : text,
+          child: Text(
+            text,
+            style: TextStyle(fontSize: 11, color: context.tertiaryText),
+          ),
+        ),
+      );
 }
 
 class _Composer extends StatelessWidget {

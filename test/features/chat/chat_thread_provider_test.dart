@@ -628,6 +628,87 @@ void main() {
     expect(message.reactions, isEmpty);
   });
 
+  group('dmMessageStatus', () {
+    final msg = ChatMessage.fromJson({
+      'id': 1,
+      'conversation_id': 5,
+      'user_id': 2,
+      'body': 'hi',
+      'created_at': '2020-07-12T14:00:00Z',
+    });
+    ChatParticipant other({String? read, String? delivered}) =>
+        ChatParticipant.fromJson({
+          'user_id': 3,
+          'name': 'Sam',
+          'last_read_at': read,
+          'last_delivered_at': delivered,
+        });
+
+    test('none when the other participant has neither receipt', () {
+      expect(dmMessageStatus(msg, [other()], 2), DmMessageStatus.none);
+    });
+
+    test('delivered when delivered at/after created but not read', () {
+      expect(
+        dmMessageStatus(msg, [other(delivered: '2020-07-12T14:00:00Z')], 2),
+        DmMessageStatus.delivered,
+      );
+    });
+
+    test('seen wins over delivered', () {
+      expect(
+        dmMessageStatus(
+            msg,
+            [
+              other(
+                  read: '2020-07-12T14:30:00Z',
+                  delivered: '2020-07-12T14:00:00Z')
+            ],
+            2),
+        DmMessageStatus.seen,
+      );
+    });
+
+    test('receipts older than the message do not count', () {
+      expect(
+        dmMessageStatus(
+            msg,
+            [
+              other(
+                  read: '2020-07-12T13:00:00Z',
+                  delivered: '2020-07-12T13:30:00Z')
+            ],
+            2),
+        DmMessageStatus.none,
+      );
+    });
+  });
+
+  test('seenByNames lists other readers only', () {
+    final msg = ChatMessage.fromJson({
+      'id': 1,
+      'conversation_id': 5,
+      'user_id': 2,
+      'body': 'hi',
+      'created_at': '2020-07-12T14:00:00Z',
+    });
+    final participants = [
+      ChatParticipant.fromJson(
+          {'user_id': 2, 'name': 'Me', 'last_read_at': '2020-07-12T15:00:00Z'}),
+      ChatParticipant.fromJson({
+        'user_id': 3,
+        'name': 'Sam',
+        'last_read_at': '2020-07-12T15:00:00Z'
+      }),
+      ChatParticipant.fromJson({
+        'user_id': 4,
+        'name': 'Kim',
+        'last_read_at': '2020-07-12T13:00:00Z'
+      }),
+    ];
+    expect(seenByNames(msg, participants, 2), ['Sam']);
+  });
+
   test('realtime message.updated with reactions patches the message',
       () async {
     final c = makeContainer();

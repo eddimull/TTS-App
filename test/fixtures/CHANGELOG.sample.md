@@ -7,6 +7,7 @@
 
 * **events:** add media upload to event detail ([#48](https://github.com/eddimull/TTS-App/issues/48)) ([abc1234](https://github.com/eddimull/TTS-App/commit/abc1234))
 * **finances:** payout config create & activate ([#45](https://github.com/eddimull/TTS-App/issues/45)) ([def5678](https://github.com/eddimull/TTS-App/commit/def5678))
+* **chat:** add 🖕 to the quick-reaction set 🎉 ([#49](https://github.com/eddimull/TTS-App/issues/49)) ([af622e4](https://github.com/eddimull/TTS-App/commit/af622e4))
 
 
 ### Bug Fixes

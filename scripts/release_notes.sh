@@ -41,6 +41,13 @@ if [ -z "$(printf "%s" "$section" | tr -d '[:space:]')" ]; then
 fi
 
 # 2. Sanitize markdown -> plain text.
+#    The final perl pass strips emoji: commit subjects can carry them (e.g. a
+#    "add 🖕 to the quick-reaction set" feature), and those must never reach
+#    the App Store / Play "What's New" — an unintended rude emoji there risks a
+#    store rejection. The codepoint ranges cover the emoji blocks (incl. skin
+#    tones, ZWJ sequences, and variation selectors) while leaving ASCII digits,
+#    '#', and version strings intact. Emoji removal can leave double spaces or a
+#    dangling leading space on a bullet, so collapse/trim whitespace afterward.
 notes="$(printf "%s\n" "$section" \
   | sed -E 's/^#{1,6}[[:space:]]*//' \
   | sed -E 's/\[([^]]+)\]\([^)]*\)/\1/g' \
@@ -48,6 +55,10 @@ notes="$(printf "%s\n" "$section" \
   | sed -E 's/\*\*([^*]*)\*\*/\1/g' \
   | sed -E 's/^[[:space:]]*[*-][[:space:]]+/- /' \
   | sed -E 's/\*//g' \
+  | perl -CSD -pe 's/[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{1F1E6}-\x{1F1FF}\x{FE00}-\x{FE0F}\x{200D}\x{20E3}]//g' \
+  | sed -E 's/[[:space:]]{2,}/ /g' \
+  | sed -E 's/^(- )?[[:space:]]+/\1/' \
+  | sed -E 's/[[:space:]]+$//' \
   | sed -E '/^[[:space:]]*$/d')"
 
 # 3. Hard-cap total length (leaving room for the 1-char ellipsis).

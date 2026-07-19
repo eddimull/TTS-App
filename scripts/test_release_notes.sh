@@ -36,6 +36,12 @@ assert_not_contains "$OUT" "**" "no bold markers"
 assert_not_contains "$OUT" "](http" "no markdown link syntax"
 assert_not_contains "$OUT" "[" "no leftover link brackets"
 assert_contains "$OUT" "#48" "issue ref kept as plain text"
+# Emoji are stripped so a rude/unintended emoji can't reach the store notes,
+# but the surrounding feature text is preserved with clean spacing:
+assert_not_contains "$OUT" "🖕" "middle-finger emoji stripped"
+assert_not_contains "$OUT" "🎉" "celebration emoji stripped"
+assert_contains "$OUT" "add to the quick-reaction set" "emoji removed without eating surrounding words"
+assert_not_contains "$OUT" "add  to" "no double space left where emoji was"
 # Under Apple's 4000-char cap:
 assert_max_len "$OUT" 4000 "within Apple limit"
 

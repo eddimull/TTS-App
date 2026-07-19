@@ -44,10 +44,16 @@ fi
 #    The final perl pass strips emoji: commit subjects can carry them (e.g. a
 #    "add 🖕 to the quick-reaction set" feature), and those must never reach
 #    the App Store / Play "What's New" — an unintended rude emoji there risks a
-#    store rejection. The codepoint ranges cover the emoji blocks (incl. skin
-#    tones, ZWJ sequences, and variation selectors) while leaving ASCII digits,
-#    '#', and version strings intact. Emoji removal can leave double spaces or a
-#    dangling leading space on a bullet, so collapse/trim whitespace afterward.
+#    store rejection. \p{Extended_Pictographic} covers the whole emoji set
+#    (including BMP emoji like ⏰/⌚ that hand-maintained block ranges miss)
+#    without matching ASCII digits, '#', or '*' (those carry Emoji but not
+#    Extended_Pictographic), so version strings and issue refs are preserved.
+#    The extra codepoints catch pieces that property alone omits: regional
+#    indicators (flags), Fitzpatrick skin-tone modifiers, ZWJ, the keycap
+#    combiner, and the emoji/text variation selectors (FE0E/FE0F only — VS1–14
+#    are non-emoji CJK selectors and are left alone). Emoji removal can leave
+#    double spaces or a dangling leading space on a bullet, so collapse/trim
+#    whitespace afterward.
 notes="$(printf "%s\n" "$section" \
   | sed -E 's/^#{1,6}[[:space:]]*//' \
   | sed -E 's/\[([^]]+)\]\([^)]*\)/\1/g' \
@@ -55,7 +61,7 @@ notes="$(printf "%s\n" "$section" \
   | sed -E 's/\*\*([^*]*)\*\*/\1/g' \
   | sed -E 's/^[[:space:]]*[*-][[:space:]]+/- /' \
   | sed -E 's/\*//g' \
-  | perl -CSD -pe 's/[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{1F1E6}-\x{1F1FF}\x{FE00}-\x{FE0F}\x{200D}\x{20E3}]//g' \
+  | perl -CSD -pe 's/[\p{Extended_Pictographic}\x{1F1E6}-\x{1F1FF}\x{1F3FB}-\x{1F3FF}\x{200D}\x{20E3}\x{FE0E}\x{FE0F}]//g' \
   | sed -E 's/[[:space:]]{2,}/ /g' \
   | sed -E 's/^(- )?[[:space:]]+/\1/' \
   | sed -E 's/[[:space:]]+$//' \

@@ -42,6 +42,12 @@ assert_not_contains "$OUT" "🖕" "middle-finger emoji stripped"
 assert_not_contains "$OUT" "🎉" "celebration emoji stripped"
 assert_contains "$OUT" "add to the quick-reaction set" "emoji removed without eating surrounding words"
 assert_not_contains "$OUT" "add  to" "no double space left where emoji was"
+# BMP emoji (outside the U+1Fxxx planes) and skin-tone modifiers must also go —
+# a block-range approach would miss ⏰ (U+23F0) and leave a stray 🏻 (U+1F3FB).
+assert_not_contains "$OUT" "⏰" "BMP emoji (alarm clock) stripped"
+assert_not_contains "$OUT" "👍" "thumbs-up emoji stripped"
+assert_not_contains "$OUT" "🏻" "skin-tone modifier stripped (no orphan)"
+assert_contains "$OUT" "reminder alerts for upcoming rehearsals" "BMP+skin-tone removed without eating words"
 # Under Apple's 4000-char cap:
 assert_max_len "$OUT" 4000 "within Apple limit"
 

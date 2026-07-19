@@ -214,6 +214,16 @@ void main() {
     expect(req.path, '/api/mobile/conversations/5/typing');
   });
 
+  test('markDelivered posts the bulk ack', () async {
+    final captured = <RequestOptions>[];
+    final repo = ChatRepository(dioCapturing(captured, {}));
+
+    await repo.markDelivered();
+
+    expect(captured.single.method, 'POST');
+    expect(captured.single.path, '/api/mobile/conversations/delivered');
+  });
+
   test('attachmentUrl is absolute', () {
     final repo = ChatRepository(Dio(BaseOptions(baseUrl: 'http://test.local')));
     expect(repo.attachmentUrl(2, 7),

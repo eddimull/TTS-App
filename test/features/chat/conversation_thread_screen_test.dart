@@ -650,6 +650,138 @@ void main() {
     );
   });
 
+  testWidgets('DM shows Delivered then upgrades to Seen with time',
+      (tester) async {
+    void Function(String, Map<String, dynamic>)? handler;
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((_) async => json(200, {
+            'conversation': {'id': 5, 'type': 'dm', 'title': 'Sam'},
+            'messages': [
+              {
+                'id': 1,
+                'conversation_id': 5,
+                'user_id': _currentUserId,
+                'user_name': 'Eddie',
+                'body': 'hey',
+                'created_at': '2020-07-12T14:00:00Z',
+              },
+            ],
+            'participants': [
+              {
+                'user_id': _currentUserId,
+                'name': 'Eddie',
+                'last_read_at': '2020-07-12T14:00:00Z',
+              },
+              {
+                'user_id': 3,
+                'name': 'Sam',
+                'last_read_at': null,
+                'last_delivered_at': '2020-07-12T14:30:00Z',
+              },
+            ],
+            'channel': 'private-conversation.5',
+            'has_more': false,
+          }));
+
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatMarkReadDebounceProvider.overrideWithValue(Duration.zero),
+      authProvider.overrideWith(() => _FakeAuth(const AuthAuthenticated(
+            user: AuthUser(id: _currentUserId, name: 'Eddie', email: 'e@x.com'),
+            bands: [],
+          ))),
+      chatChannelBinderProvider.overrideWithValue((channel, onEvent) {
+        handler = onEvent;
+        return null; // test seam: no live subscription, nothing to unbind
+      }),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const CupertinoApp(
+        home: ConversationThreadScreen(conversationId: 5, title: 'Sam'),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delivered'), findsOneWidget);
+
+    // Realtime read receipt arrives:
+    handler!('conversation.read',
+        {'user_id': 3, 'last_read_at': '2020-07-12T15:00:00Z'});
+    await tester.pump();
+    expect(find.text('Delivered'), findsNothing);
+    // 'Seen <time>' — time is tz-dependent, assert prefix only.
+    expect(find.textContaining('Seen'), findsOneWidget);
+  });
+
+  testWidgets('group shows Seen by N and tap lists names', (tester) async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((_) async => json(200, {
+            'conversation': {'id': 5, 'type': 'band', 'title': 'The Band'},
+            'messages': [
+              {
+                'id': 1,
+                'conversation_id': 5,
+                'user_id': _currentUserId,
+                'user_name': 'Eddie',
+                'body': 'hey band',
+                'created_at': '2020-07-12T14:00:00Z',
+              },
+            ],
+            'participants': [
+              {
+                'user_id': _currentUserId,
+                'name': 'Eddie',
+                'last_read_at': '2020-07-12T14:00:00Z',
+              },
+              {
+                'user_id': 3,
+                'name': 'Sam',
+                'last_read_at': '2020-07-12T15:00:00Z',
+              },
+              {
+                'user_id': 4,
+                'name': 'Kim',
+                'last_read_at': '2020-07-12T16:00:00Z',
+              },
+              {
+                'user_id': 5,
+                'name': 'Alex',
+                'last_read_at': null,
+              },
+            ],
+            'channel': 'private-conversation.5',
+            'has_more': false,
+          }));
+
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatMarkReadDebounceProvider.overrideWithValue(Duration.zero),
+      authProvider.overrideWith(() => _FakeAuth(const AuthAuthenticated(
+            user: AuthUser(id: _currentUserId, name: 'Eddie', email: 'e@x.com'),
+            bands: [],
+          ))),
+      chatChannelBinderProvider.overrideWithValue((channel, onEvent) => null),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const CupertinoApp(
+        home: ConversationThreadScreen(conversationId: 5, title: 'The Band'),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Seen by 2'), findsOneWidget);
+    await tester.tap(find.text('Seen by 2'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sam'), findsOneWidget);
+    expect(find.text('Kim'), findsOneWidget);
+  });
+
   testWidgets('tapping an existing chip toggles it off', (tester) async {
     // Seed the thread page JSON so message 1 already has
     // {'emoji':'👍','count':1,'user_ids':[<currentUserId>]} and stub the

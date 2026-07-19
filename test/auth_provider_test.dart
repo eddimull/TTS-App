@@ -275,6 +275,12 @@ void main() {
                 ],
               });
             }
+            if (options.path == '/api/mobile/conversations/delivered') {
+              // Fire-and-forget bulk delivered ack fired by
+              // chatConversationsProvider after each successful fetch — not
+              // part of either call count this test asserts on.
+              return json(204, {});
+            }
             // topicThread (events/rehearsals/bookings conversation) path.
             topicCalls++;
             return json(200, {

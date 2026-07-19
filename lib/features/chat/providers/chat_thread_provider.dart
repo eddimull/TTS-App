@@ -414,6 +414,14 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
           for (final p in state.participants)
             p.userId == userId ? p.copyWith(lastReadAt: at) : p,
         ]);
+      case 'conversation.delivered':
+        final userId = (data['user_id'] as num?)?.toInt();
+        final at = DateTime.tryParse(data['last_delivered_at'] as String? ?? '');
+        if (userId == null || at == null) return;
+        state = state.copyWith(participants: [
+          for (final p in state.participants)
+            p.userId == userId ? p.copyWith(deliveredAt: at) : p,
+        ]);
       case 'conversation.typing':
         final userId = (data['user_id'] as num?)?.toInt();
         final name = data['name'] as String? ?? '';

@@ -40,4 +40,70 @@ void main() {
     final c = withConversations([]);
     expect(c.read(chatUnreadTotalProvider), 0);
   });
+
+  test('successful list fetch fires the bulk delivered ack', () async {
+    final captured = <RequestOptions>[];
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((options) async {
+        captured.add(options);
+        if (options.path == '/api/mobile/conversations') {
+          return json(200, {
+            'conversations': [
+              {'id': 1, 'type': 'dm', 'title': 'Sam', 'unread_count': 2},
+            ],
+          });
+        }
+        return json(204, {});
+      });
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+    ]);
+    addTearDown(container.dispose);
+
+    await container.read(chatConversationsProvider.future);
+    // The ack is fire-and-forget; the stubbed POST crosses more than one
+    // microtask turn (like the real HTTP stack would), so give it a real
+    // short delay to land before asserting.
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    expect(
+      captured.any((o) =>
+          o.method == 'POST' &&
+          o.path == '/api/mobile/conversations/delivered'),
+      isTrue,
+    );
+  });
+
+  test('failed list fetch does not ack', () async {
+    final captured = <RequestOptions>[];
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((options) async {
+        captured.add(options);
+        if (options.path == '/api/mobile/conversations') {
+          return json(500, {'message': 'nope'});
+        }
+        return json(204, {});
+      });
+    final container = ProviderContainer(
+      // Riverpod's default retry policy would keep retrying the failing GET
+      // (only main.dart's app-wide policy skips retry on a DioException with
+      // a response); disable it here so the error surfaces immediately.
+      retry: (_, __) => null,
+      overrides: [
+        chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container.read(chatConversationsProvider.future),
+      throwsA(anything),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    expect(
+      captured.any((o) => o.path == '/api/mobile/conversations/delivered'),
+      isFalse,
+    );
+  });
 }

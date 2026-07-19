@@ -172,6 +172,10 @@ class ChatRepository {
   Future<void> sendTyping(int conversationId) =>
       _dio.post<void>(ApiEndpoints.mobileConversationTyping(conversationId));
 
+  /// Bulk delivery ack: "this client has received everything up to now."
+  Future<void> markDelivered() =>
+      _dio.post<void>(ApiEndpoints.mobileConversationsDelivered);
+
   /// Absolute URL for an authenticated attachment image (for AuthThumbnail).
   String attachmentUrl(int messageId, int attachmentId) =>
       _dio.options.baseUrl +

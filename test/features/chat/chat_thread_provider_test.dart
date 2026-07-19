@@ -291,6 +291,20 @@ void main() {
     expect(sam.lastReadAt, isNotNull);
   });
 
+  test('realtime conversation.delivered patches the participant', () async {
+    final c = makeContainer();
+    await c.read(chatThreadProvider(5).notifier).load();
+    capturedHandler!('conversation.delivered', {
+      'user_id': 3,
+      'last_delivered_at': '2020-07-12T15:00:00Z',
+    });
+    final p = c
+        .read(chatThreadProvider(5))
+        .participants
+        .firstWhere((p) => p.userId == 3);
+    expect(p.deliveredAt, DateTime.parse('2020-07-12T15:00:00Z'));
+  });
+
   test('conversation.typing adds then expires a typing user', () async {
     final c = makeContainer();
     await c.read(chatThreadProvider(5).notifier).load();

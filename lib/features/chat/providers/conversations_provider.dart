@@ -5,9 +5,16 @@ import '../data/models/conversation.dart';
 
 /// DM + band-channel list for the Messages screen. Invalidated by realtime
 /// 'message' signals (band + user channels) and on thread reads.
-final chatConversationsProvider = FutureProvider<List<Conversation>>(
-  (ref) => ref.watch(chatRepositoryProvider).listConversations(),
-);
+final chatConversationsProvider = FutureProvider<List<Conversation>>((ref) async {
+  final repo = ref.watch(chatRepositoryProvider);
+  final conversations = await repo.listConversations();
+  // Bulk delivered ack: this fetch IS "the app received what the server has".
+  // Realtime message arrival invalidates this provider, so the refetch path
+  // acks too — one hook covers both app-open and message-received triggers.
+  // ignore: unawaited_futures
+  repo.markDelivered().catchError((_) {});
+  return conversations;
+});
 
 /// Total unread across all conversations; 0 while loading or on error.
 /// Drives the unread badge on the Messages tab in the bottom nav.

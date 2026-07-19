@@ -63,6 +63,20 @@ void main() {
     expect(read.name, 'Sam');
   });
 
+  test('ChatParticipant parses and copies last_delivered_at', () {
+    final p = ChatParticipant.fromJson({
+      'user_id': 3,
+      'name': 'Sam',
+      'last_read_at': '2020-07-12T14:00:00Z',
+      'last_delivered_at': '2020-07-12T15:00:00Z',
+    });
+    expect(p.deliveredAt, DateTime.parse('2020-07-12T15:00:00Z'));
+    expect(p.copyWith(deliveredAt: DateTime.parse('2020-07-13T00:00:00Z')).deliveredAt,
+        DateTime.parse('2020-07-13T00:00:00Z'));
+    expect(p.copyWith(lastReadAt: DateTime.parse('2020-07-13T00:00:00Z')).deliveredAt,
+        p.deliveredAt); // untouched fields carry over
+  });
+
   test('ChatMessage parses reactions and reactedBy works', () {
     final message = ChatMessage.fromJson({
       'id': 1,

@@ -270,7 +270,11 @@ class _ConversationThreadScreenState
         title: const Text('Edit message'),
         content: Padding(
           padding: const EdgeInsets.only(top: 8),
-          child: CupertinoTextField(controller: editController, maxLines: null),
+          child: CupertinoTextField(
+            controller: editController,
+            maxLines: null,
+            textCapitalization: TextCapitalization.sentences,
+          ),
         ),
         actions: [
           CupertinoDialogAction(
@@ -747,6 +751,7 @@ class _Composer extends StatelessWidget {
               controller: controller,
               placeholder: 'Message…',
               maxLines: null,
+              textCapitalization: TextCapitalization.sentences,
               onChanged: onChanged,
               style: TextStyle(color: context.primaryText),
               placeholderStyle: TextStyle(color: context.placeholderText),

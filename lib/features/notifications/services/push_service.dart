@@ -218,6 +218,13 @@ class PushService implements LocalScheduler {
     final body = isReminder
         ? renderBody(payload)
         : (payload.body ?? renderBody(payload));
+    // Chat renders into the same per-conversation tray slot (tag) the backend
+    // uses for OS-rendered hybrid pushes, so foreground- and background-
+    // delivered messages replace each other and one cancel clears both.
+    final chatTag = payload.type == PushType.chatMessage &&
+            payload.conversationId != null
+        ? chatNotificationTag(payload.conversationId!)
+        : null;
     final android = isReminder
         ? const AndroidNotificationDetails(
             'event_reminders',
@@ -225,11 +232,12 @@ class PushService implements LocalScheduler {
             importance: Importance.high,
             priority: Priority.high,
           )
-        : const AndroidNotificationDetails(
+        : AndroidNotificationDetails(
             BandUpdatesChannel.id,
             BandUpdatesChannel.name,
             importance: Importance.high,
             priority: Priority.high,
+            tag: chatTag,
           );
     await _local.show(
       payload.notificationId,
@@ -280,5 +288,24 @@ class PushService implements LocalScheduler {
   Future<void> cancelLocal(int id) async {
     if (!_pushSupported) return;
     await _local.cancel(id);
+  }
+
+  /// Remove a conversation's notifications from the tray once its thread is
+  /// on screen: the FCM-posted slot (tag `chat_<id>`, id 0 — Android renders
+  /// backgrounded hybrid pushes natively under the backend-supplied tag) and
+  /// the locally-rendered foreground slot. Without this, read messages sit in
+  /// the tray until swiped, and 4+ stacked entries auto-group into a summary
+  /// whose tap carries no deep link.
+  Future<void> clearChatNotifications(String conversationId) async {
+    if (!_pushSupported) return;
+    // Best-effort: tray cleanup must never take down the thread screen, and
+    // the plugin throws (not just errors) when its platform instance isn't
+    // registered — e.g. init() failed, or a test environment.
+    try {
+      await _local.cancel(chatNotificationId(conversationId));
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        await _local.cancel(0, tag: chatNotificationTag(conversationId));
+      }
+    } catch (_) {}
   }
 }

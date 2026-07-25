@@ -26,6 +26,22 @@ void main() {
             .notificationId);
   });
 
+  group('per-conversation notification slot (tag + local id)', () {
+    test('chatNotificationTag matches the backend FcmSender tag convention',
+        () {
+      expect(chatNotificationTag('5'), 'chat_5');
+    });
+
+    test('chatNotificationId matches the payload dedupe id for the same thread',
+        () {
+      expect(
+        chatNotificationId('5'),
+        PushPayload.fromData({'type': 'chat_message', 'conversationId': '5'})
+            .notificationId,
+      );
+    });
+  });
+
   group('isForegroundRenderable (hybrid pushes rendered locally in fg)', () {
     test('chat and questionnaire hybrids render locally in the foreground',
         () {

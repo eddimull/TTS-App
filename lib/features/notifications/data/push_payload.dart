@@ -10,6 +10,20 @@ enum PushType { reminder8h, departure, rehearsalCancelled, rehearsalRestored, ch
 int departureNotificationId(String eventKey) =>
     Object.hash(eventKey, PushType.departure).toUnsigned(31);
 
+/// Android tray tag for a conversation's single notification slot. MUST match
+/// the backend convention (FcmSender::sendAlert's androidTag, `chat_<id>`):
+/// FCM posts its tray notifications under this tag with id 0, so successive
+/// messages replace each other and the app can clear the slot by tag when the
+/// thread is opened.
+String chatNotificationTag(String conversationId) => 'chat_$conversationId';
+
+/// Local-notification id used for a conversation's foreground-rendered chat
+/// pushes — the same value [PushPayload.notificationId] computes for a chat
+/// payload of that conversation, exposed standalone so the clearing path
+/// doesn't need to fabricate a payload.
+int chatNotificationId(String conversationId) =>
+    Object.hash(conversationId, PushType.chatMessage).toUnsigned(31);
+
 PushType _typeFromString(String? raw) {
   switch (raw) {
     case 'event_reminder_8h':

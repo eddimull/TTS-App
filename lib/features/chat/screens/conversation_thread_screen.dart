@@ -1,8 +1,8 @@
-import 'dart:typed_data';
-
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:pasteboard/pasteboard.dart';
 
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
@@ -12,20 +12,26 @@ import '../data/chat_repository.dart';
 import '../data/models/chat_message.dart';
 import '../providers/active_chat_conversation_provider.dart';
 import '../providers/chat_thread_provider.dart';
+import '../utils/clipboard_image.dart';
 import '../utils/message_time.dart';
 import 'attachment_viewer_screen.dart';
 
 /// The fixed tapback set (spec phase 2); extendable to a full picker later.
 const kQuickReactions = ['👍', '❤️', '😂', '😮', '😢', '🎉', '🖕'];
 
-/// A picked-but-not-yet-sent image. Bytes are read once at pick time (not
-/// re-read from disk on every rebuild via a FutureBuilder) so the thumbnail
-/// strip and the eventual upload share the same in-memory copy.
+/// A picked/pasted-but-not-yet-sent image. Bytes are read once at pick time
+/// (not re-read from disk on every rebuild via a FutureBuilder) so the
+/// thumbnail strip and the eventual upload share the same in-memory copy.
+/// Holds a plain [filename] rather than an [XFile] so pasted images — which
+/// have no backing file — flow through the same preview/upload path as picks.
 class _PendingImage {
-  const _PendingImage({required this.file, required this.bytes});
-  final XFile file;
+  const _PendingImage({required this.filename, required this.bytes});
+  final String filename;
   final Uint8List bytes;
 }
+
+/// Max images a single message can carry; also caps [_pickImages]'s picker.
+const _kMaxPendingImages = 4;
 
 class ConversationThreadScreen extends ConsumerStatefulWidget {
   const ConversationThreadScreen({
@@ -125,15 +131,15 @@ class _ConversationThreadScreenState
     final picked = await ImagePicker().pickMultiImage(
       imageQuality: 80,
       maxWidth: 2048,
-      limit: 4,
+      limit: _kMaxPendingImages,
     );
     if (picked.isEmpty || !mounted) return;
     // Read each file's bytes once, up front, instead of leaving it to a
     // FutureBuilder in the thumbnail strip that would otherwise re-read from
     // disk on every rebuild (typing, send-button state changes, etc.).
     final pending = <_PendingImage>[
-      for (final x in picked.take(4))
-        _PendingImage(file: x, bytes: await x.readAsBytes()),
+      for (final x in picked.take(_kMaxPendingImages))
+        _PendingImage(filename: x.name, bytes: await x.readAsBytes()),
     ];
     if (!mounted) return;
     setState(() {
@@ -143,13 +149,33 @@ class _ConversationThreadScreenState
     });
   }
 
+  /// Pull an image off the system clipboard and stage it for send. Appends to
+  /// any already-staged images (unlike [_pickImages], which replaces) so a
+  /// paste adds to the batch, respecting the [_kMaxPendingImages] cap. No-ops
+  /// silently when the clipboard holds no image — text paste is still handled
+  /// natively by the composer's own selection menu.
+  Future<void> _pasteImage() async {
+    if (_pendingImages.length >= _kMaxPendingImages) return;
+    final raw = await Pasteboard.image;
+    if (raw == null || !mounted) return;
+    final jpeg = await compute(reencodeClipboardImageToJpeg, raw);
+    if (jpeg == null || !mounted) return;
+    if (_pendingImages.length >= _kMaxPendingImages) return;
+    setState(() {
+      _pendingImages.add(_PendingImage(
+        filename: 'pasted-image-${_pendingImages.length + 1}.jpg',
+        bytes: jpeg,
+      ));
+    });
+  }
+
   Future<void> _send() async {
     final text = _controller.text.trim();
     final images = List<_PendingImage>.of(_pendingImages);
     if (text.isEmpty && images.isEmpty) return;
     final uploads = <ChatImageUpload>[
       for (final img in images)
-        ChatImageUpload(bytes: img.bytes, filename: img.file.name),
+        ChatImageUpload(bytes: img.bytes, filename: img.filename),
     ];
     _controller.clear();
     setState(() => _pendingImages.clear());
@@ -270,7 +296,11 @@ class _ConversationThreadScreenState
         title: const Text('Edit message'),
         content: Padding(
           padding: const EdgeInsets.only(top: 8),
-          child: CupertinoTextField(controller: editController, maxLines: null),
+          child: CupertinoTextField(
+            controller: editController,
+            maxLines: null,
+            textCapitalization: TextCapitalization.sentences,
+          ),
         ),
         actions: [
           CupertinoDialogAction(
@@ -488,6 +518,7 @@ class _ConversationThreadScreenState
               isBusy: state.isSending,
               onSend: _send,
               onPickImages: _pickImages,
+              onPasteImage: _pasteImage,
               onChanged: (_) => ref
                   .read(chatThreadProvider(widget.conversationId).notifier)
                   .notifyTyping(),
@@ -710,6 +741,7 @@ class _Composer extends StatelessWidget {
     required this.isBusy,
     required this.onSend,
     required this.onPickImages,
+    required this.onPasteImage,
     required this.onChanged,
   });
 
@@ -717,6 +749,7 @@ class _Composer extends StatelessWidget {
   final bool isBusy;
   final VoidCallback onSend;
   final VoidCallback onPickImages;
+  final VoidCallback onPasteImage;
   final ValueChanged<String> onChanged;
 
   @override
@@ -740,6 +773,17 @@ class _Composer extends StatelessWidget {
               CupertinoIcons.photo,
               size: 24,
               color: context.secondaryText,
+              semanticLabel: 'Attach photos',
+            ),
+          ),
+          CupertinoButton(
+            padding: EdgeInsets.zero,
+            onPressed: isBusy ? null : onPasteImage,
+            child: Icon(
+              CupertinoIcons.doc_on_clipboard,
+              size: 22,
+              color: context.secondaryText,
+              semanticLabel: 'Paste image',
             ),
           ),
           Expanded(
@@ -747,6 +791,7 @@ class _Composer extends StatelessWidget {
               controller: controller,
               placeholder: 'Message…',
               maxLines: null,
+              textCapitalization: TextCapitalization.sentences,
               onChanged: onChanged,
               style: TextStyle(color: context.primaryText),
               placeholderStyle: TextStyle(color: context.placeholderText),

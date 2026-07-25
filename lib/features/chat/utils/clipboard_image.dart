@@ -17,7 +17,14 @@ const int kClipboardImageMaxWidth = 2048;
 /// clipboard held something that isn't a real image). Pure and isolate-safe —
 /// call it via `compute` so a full-resolution decode doesn't jank the UI.
 Uint8List? reencodeClipboardImageToJpeg(Uint8List bytes) {
-  final decoded = imglib.decodeImage(bytes);
+  imglib.Image? decoded;
+  try {
+    decoded = imglib.decodeImage(bytes);
+  } catch (_) {
+    // Some of the package's format probes (e.g. PSD) throw on malformed
+    // bytes instead of returning null.
+    return null;
+  }
   if (decoded == null) return null;
   final sized = decoded.width > kClipboardImageMaxWidth
       ? imglib.copyResize(decoded, width: kClipboardImageMaxWidth)

@@ -52,6 +52,12 @@ class FakeSecureStorage extends SecureStorage {
       _map['current_user_json'] = userJson;
 
   @override
+  Future<String?> readBands() async => _map['current_bands_json'];
+  @override
+  Future<void> writeBands(String bandsJson) async =>
+      _map['current_bands_json'] = bandsJson;
+
+  @override
   Future<void> clear() async => _map.clear();
 }
 

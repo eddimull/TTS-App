@@ -51,6 +51,12 @@ class FakeSecureStorage extends SecureStorage {
       _map['current_user_json'] = userJson;
 
   @override
+  Future<String?> readBands() async => _map['current_bands_json'];
+  @override
+  Future<void> writeBands(String bandsJson) async =>
+      _map['current_bands_json'] = bandsJson;
+
+  @override
   Future<void> clear() async => _map.clear();
 }
 
@@ -182,21 +188,79 @@ void main() {
     );
 
     test(
-      'test_build_clears_token_and_returns_unauthenticated_when_getme_fails',
+      'test_build_clears_token_and_returns_unauthenticated_on_401',
       () async {
         final storage = FakeSecureStorage();
-        // Write a stale token — getMe() will fail (no real server).
-        await storage.writeToken('stale-token-abc');
+        await storage.writeToken('revoked-token');
+
+        final apiClient = ApiClient(storage: storage);
+        apiClient.dio.httpClientAdapter =
+            StubAdapter((_) async => json(401, {'message': 'Unauthenticated.'}));
+
+        final container = ProviderContainer(
+          overrides: [
+            secureStorageProvider.overrideWithValue(storage),
+            apiClientProvider.overrideWithValue(apiClient),
+            routeStorageProvider.overrideWith((ref) async => fakeRouteStorage),
+            bookingsCacheStorageProvider.overrideWithValue(fakeBookingsCache),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final state = await container.read(authProvider.future);
+
+        // A 401 is the server's verdict that the token is dead — clear it.
+        expect(state, isA<AuthUnauthenticated>());
+        expect(await storage.readToken(), isNull,
+            reason: 'A server-rejected token must be removed');
+      },
+    );
+
+    test(
+      'test_build_restores_cached_session_and_keeps_token_when_server_unreachable',
+      () async {
+        // Regression test: cold-starting with no connectivity used to DELETE
+        // the stored token (any getMe failure was treated as auth failure),
+        // logging the user out for opening the app in a dead zone.
+        final storage = FakeSecureStorage();
+        await storage.writeToken('valid-token');
+        await storage.writeUser(_fakeUser.toJsonString());
+        await storage.writeBands(
+            '[{"id":10,"name":"The Rocking Eds","is_owner":true}]');
+
+        // makeContainer's ApiClient has no stub adapter: the request goes to
+        // a real socket and fails with a connection error — the offline case.
+        final container = makeContainer(storage);
+        addTearDown(container.dispose);
+
+        final state = await container.read(authProvider.future);
+
+        expect(state, isA<AuthAuthenticated>(),
+            reason: 'an unreachable server is not an auth verdict — restore '
+                'the cached session');
+        final auth = state as AuthAuthenticated;
+        expect(auth.user.id, _fakeUser.id);
+        expect(auth.bands.single.id, 10);
+        expect(await storage.readToken(), 'valid-token',
+            reason: 'the token must survive an offline start');
+      },
+    );
+
+    test(
+      'test_build_keeps_token_but_stays_unauthenticated_when_unreachable_with_no_cache',
+      () async {
+        final storage = FakeSecureStorage();
+        await storage.writeToken('valid-token');
+        // No cached user — nothing to restore offline.
 
         final container = makeContainer(storage);
         addTearDown(container.dispose);
 
         final state = await container.read(authProvider.future);
 
-        // The notifier should clear the bad token so the user is not stuck.
         expect(state, isA<AuthUnauthenticated>());
-        expect(await storage.readToken(), isNull,
-            reason: 'Stale token must be removed on getMe failure');
+        expect(await storage.readToken(), 'valid-token',
+            reason: 'the token must survive so the next online start restores');
       },
     );
 

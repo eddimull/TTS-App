@@ -7,6 +7,7 @@ class _Keys {
   static const String authToken = 'auth_token';
   static const String selectedBandId = 'selected_band_id';
   static const String currentUserJson = 'current_user_json';
+  static const String currentBandsJson = 'current_bands_json';
 }
 
 /// Wraps [FlutterSecureStorage] with iOS keychain-accessibility migration.
@@ -79,6 +80,13 @@ class SecureStorage {
 
   Future<void> writeUser(String userJson) =>
       _write(_Keys.currentUserJson, userJson);
+
+  /// The band list from the last successful auth, as a JSON array — cached so
+  /// a cold start with the server unreachable can restore the session offline.
+  Future<String?> readBands() => _read(_Keys.currentBandsJson);
+
+  Future<void> writeBands(String bandsJson) =>
+      _write(_Keys.currentBandsJson, bandsJson);
 
   // ── Bulk ───────────────────────────────────────────────────────────────────
 

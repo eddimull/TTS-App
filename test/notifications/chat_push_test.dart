@@ -40,6 +40,22 @@ void main() {
             .notificationId,
       );
     });
+
+    test(
+        'local render id: chat on Android uses 0 so (tag, id) matches the '
+        'FCM-posted slot; iOS keeps the per-thread hash id', () {
+      final chat = PushPayload.fromData(
+          {'type': 'chat_message', 'conversationId': '5'});
+      expect(localNotificationId(chat, isAndroid: true), 0);
+      expect(localNotificationId(chat, isAndroid: false), chat.notificationId);
+    });
+
+    test('local render id: non-chat payloads keep the hash id on Android', () {
+      final rehearsal = PushPayload.fromData(
+          {'type': 'rehearsal_cancelled', 'rehearsalId': '7'});
+      expect(localNotificationId(rehearsal, isAndroid: true),
+          rehearsal.notificationId);
+    });
   });
 
   group('isForegroundRenderable (hybrid pushes rendered locally in fg)', () {

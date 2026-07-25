@@ -34,6 +34,20 @@ bool shouldSuppressChatPush(
     payload.conversationId != null &&
     currentOpenConversation?.call()?.toString() == payload.conversationId;
 
+/// Id to render a local notification under. Android identifies notifications
+/// by the (tag, id) PAIR, and the backend's FCM-rendered chat pushes occupy
+/// (`chat_<conversationId>`, 0) — so chat renders locally under id 0 there too,
+/// or the same conversation would hold two tray entries and cancel-by-tag
+/// would miss one. iOS has no tags, so chat keeps the per-thread hash id
+/// (id 0 for every thread would make different conversations replace each
+/// other).
+int localNotificationId(PushPayload payload, {required bool isAndroid}) =>
+    isAndroid &&
+            payload.type == PushType.chatMessage &&
+            payload.conversationId != null
+        ? 0
+        : payload.notificationId;
+
 /// True for hybrid (notification+data) push types that should still be
 /// rendered locally while the app is in the FOREGROUND, where the OS shows
 /// nothing for the `notification` block. Chat and questionnaire pushes are
@@ -240,7 +254,8 @@ class PushService implements LocalScheduler {
             tag: chatTag,
           );
     await _local.show(
-      payload.notificationId,
+      localNotificationId(payload,
+          isAndroid: defaultTargetPlatform == TargetPlatform.android),
       title,
       body,
       NotificationDetails(
@@ -302,9 +317,13 @@ class PushService implements LocalScheduler {
     // the plugin throws (not just errors) when its platform instance isn't
     // registered — e.g. init() failed, or a test environment.
     try {
-      await _local.cancel(chatNotificationId(conversationId));
       if (defaultTargetPlatform == TargetPlatform.android) {
+        // FCM-rendered AND locally-rendered chat notifications both occupy
+        // the (chat_<id>, 0) slot on Android — one cancel clears either.
         await _local.cancel(0, tag: chatNotificationTag(conversationId));
+      } else {
+        // iOS has no tags; foreground-rendered pushes use the hash id.
+        await _local.cancel(chatNotificationId(conversationId));
       }
     } catch (_) {}
   }

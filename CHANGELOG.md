@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.19.1](https://github.com/eddimull/TTS-App/compare/v1.19.0...v1.19.1) (2026-07-25)
+
+
+### Bug Fixes
+
+* **auth:** stop logging out when the app cold-starts offline ([3a189b5](https://github.com/eddimull/TTS-App/commit/3a189b5dee18273702ffc17fc6ece771f3bacb98))
+* **chat:** address Copilot review — picker limit constant, composer a11y labels ([f8e89f3](https://github.com/eddimull/TTS-App/commit/f8e89f3d68053fcaa09bf0951dfa8f02b07e8320))
+* **chat:** clear a conversation's tray notifications when its thread opens ([a33d86b](https://github.com/eddimull/TTS-App/commit/a33d86bd553d9de2c3255dceb23a38c6c0f7ba34))
+* **chat:** don't crash on undecodable clipboard bytes; drop redundant import ([44777fb](https://github.com/eddimull/TTS-App/commit/44777fb94fa434e136ed9baa1c882661cb0d838c))
+* **chat:** render foreground chat notifications under (tag, 0) on Android ([ac031f2](https://github.com/eddimull/TTS-App/commit/ac031f2ed197c8bbb91b57501ea3e015775c00b3))
+
 ## [1.19.0](https://github.com/eddimull/TTS-App/compare/v1.18.0...v1.19.0) (2026-07-19)
 
 

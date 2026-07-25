@@ -30,7 +30,7 @@ class _PendingImage {
   final Uint8List bytes;
 }
 
-/// Max images a single message can carry (matches [_pickImages]'s `limit: 4`).
+/// Max images a single message can carry; also caps [_pickImages]'s picker.
 const _kMaxPendingImages = 4;
 
 class ConversationThreadScreen extends ConsumerStatefulWidget {
@@ -131,7 +131,7 @@ class _ConversationThreadScreenState
     final picked = await ImagePicker().pickMultiImage(
       imageQuality: 80,
       maxWidth: 2048,
-      limit: 4,
+      limit: _kMaxPendingImages,
     );
     if (picked.isEmpty || !mounted) return;
     // Read each file's bytes once, up front, instead of leaving it to a
@@ -773,6 +773,7 @@ class _Composer extends StatelessWidget {
               CupertinoIcons.photo,
               size: 24,
               color: context.secondaryText,
+              semanticLabel: 'Attach photos',
             ),
           ),
           CupertinoButton(
@@ -782,6 +783,7 @@ class _Composer extends StatelessWidget {
               CupertinoIcons.doc_on_clipboard,
               size: 22,
               color: context.secondaryText,
+              semanticLabel: 'Paste image',
             ),
           ),
           Expanded(

@@ -9,8 +9,11 @@ import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
 import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
 import 'package:tts_bandmate/features/chat/providers/active_chat_conversation_provider.dart';
 import 'package:tts_bandmate/features/chat/providers/chat_thread_provider.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:tts_bandmate/features/chat/screens/attachment_viewer_screen.dart';
 import 'package:tts_bandmate/features/chat/screens/conversation_thread_screen.dart';
+import 'package:tts_bandmate/features/notifications/providers/notifications_provider.dart';
+import 'package:tts_bandmate/features/notifications/services/push_service.dart';
 import 'package:tts_bandmate/shared/widgets/auth_thumbnail.dart';
 import 'package:dio/dio.dart';
 
@@ -808,4 +811,47 @@ void main() {
     expect(find.text('👍 1'), findsNothing);
     expect(captured.any((r) => r.method == 'DELETE'), isTrue);
   });
+
+  testWidgets('opening the thread clears its tray notifications', (tester) async {
+    final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((_) async => json(200, {
+            'conversation': {'id': 5, 'type': 'dm', 'title': 'Sam'},
+            'messages': <dynamic>[],
+            'participants': <dynamic>[],
+            'channel': 'private-conversation.5',
+            'has_more': false,
+          }));
+
+    final push = _RecordingPushService();
+    final container = ProviderContainer(overrides: [
+      chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+      chatChannelBinderProvider.overrideWithValue((channel, onEvent) => null),
+      pushServiceProvider.overrideWithValue(push),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const CupertinoApp(
+        home: ConversationThreadScreen(conversationId: 5, title: 'Sam'),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(push.clearedConversations, ['5'],
+        reason: 'opening a thread must clear its stacked tray notifications');
+  });
+}
+
+/// Records clear calls instead of touching the local-notifications plugin —
+/// the real implementation talks to a platform channel unavailable in tests.
+class _RecordingPushService extends PushService {
+  _RecordingPushService() : super(FlutterLocalNotificationsPlugin());
+
+  final clearedConversations = <String>[];
+
+  @override
+  Future<void> clearChatNotifications(String conversationId) async {
+    clearedConversations.add(conversationId);
+  }
 }

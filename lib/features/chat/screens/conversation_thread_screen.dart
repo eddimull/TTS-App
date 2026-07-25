@@ -1,3 +1,5 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +12,7 @@ import '../../../shared/widgets/error_view.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../data/chat_repository.dart';
 import '../data/models/chat_message.dart';
+import '../../notifications/providers/notifications_provider.dart';
 import '../providers/active_chat_conversation_provider.dart';
 import '../providers/chat_thread_provider.dart';
 import '../utils/clipboard_image.dart';
@@ -91,6 +94,12 @@ class _ConversationThreadScreenState
       // local notification for messages that arrive in it while it's open.
       // Deferred to post-frame to avoid modifying a provider during build.
       _activeConversationNotifier.open(widget.conversationId);
+      // The messages are on screen now — drop this conversation's stacked
+      // tray notifications so they don't linger (and, at 4+, auto-group into
+      // a summary whose tap can't deep-link).
+      unawaited(ref
+          .read(pushServiceProvider)
+          .clearChatNotifications('${widget.conversationId}'));
     });
     _scrollController.addListener(_maybeLoadMore);
   }

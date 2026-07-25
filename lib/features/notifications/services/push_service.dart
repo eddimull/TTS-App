@@ -34,6 +34,20 @@ bool shouldSuppressChatPush(
     payload.conversationId != null &&
     currentOpenConversation?.call()?.toString() == payload.conversationId;
 
+/// Id to render a local notification under. Android identifies notifications
+/// by the (tag, id) PAIR, and the backend's FCM-rendered chat pushes occupy
+/// (`chat_<conversationId>`, 0) — so chat renders locally under id 0 there too,
+/// or the same conversation would hold two tray entries and cancel-by-tag
+/// would miss one. iOS has no tags, so chat keeps the per-thread hash id
+/// (id 0 for every thread would make different conversations replace each
+/// other).
+int localNotificationId(PushPayload payload, {required bool isAndroid}) =>
+    isAndroid &&
+            payload.type == PushType.chatMessage &&
+            payload.conversationId != null
+        ? 0
+        : payload.notificationId;
+
 /// True for hybrid (notification+data) push types that should still be
 /// rendered locally while the app is in the FOREGROUND, where the OS shows
 /// nothing for the `notification` block. Chat and questionnaire pushes are
@@ -218,6 +232,13 @@ class PushService implements LocalScheduler {
     final body = isReminder
         ? renderBody(payload)
         : (payload.body ?? renderBody(payload));
+    // Chat renders into the same per-conversation tray slot (tag) the backend
+    // uses for OS-rendered hybrid pushes, so foreground- and background-
+    // delivered messages replace each other and one cancel clears both.
+    final chatTag = payload.type == PushType.chatMessage &&
+            payload.conversationId != null
+        ? chatNotificationTag(payload.conversationId!)
+        : null;
     final android = isReminder
         ? const AndroidNotificationDetails(
             'event_reminders',
@@ -225,14 +246,16 @@ class PushService implements LocalScheduler {
             importance: Importance.high,
             priority: Priority.high,
           )
-        : const AndroidNotificationDetails(
+        : AndroidNotificationDetails(
             BandUpdatesChannel.id,
             BandUpdatesChannel.name,
             importance: Importance.high,
             priority: Priority.high,
+            tag: chatTag,
           );
     await _local.show(
-      payload.notificationId,
+      localNotificationId(payload,
+          isAndroid: defaultTargetPlatform == TargetPlatform.android),
       title,
       body,
       NotificationDetails(
@@ -280,5 +303,28 @@ class PushService implements LocalScheduler {
   Future<void> cancelLocal(int id) async {
     if (!_pushSupported) return;
     await _local.cancel(id);
+  }
+
+  /// Remove a conversation's notifications from the tray once its thread is
+  /// on screen: the FCM-posted slot (tag `chat_<id>`, id 0 — Android renders
+  /// backgrounded hybrid pushes natively under the backend-supplied tag) and
+  /// the locally-rendered foreground slot. Without this, read messages sit in
+  /// the tray until swiped, and 4+ stacked entries auto-group into a summary
+  /// whose tap carries no deep link.
+  Future<void> clearChatNotifications(String conversationId) async {
+    if (!_pushSupported) return;
+    // Best-effort: tray cleanup must never take down the thread screen, and
+    // the plugin throws (not just errors) when its platform instance isn't
+    // registered — e.g. init() failed, or a test environment.
+    try {
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        // FCM-rendered AND locally-rendered chat notifications both occupy
+        // the (chat_<id>, 0) slot on Android — one cancel clears either.
+        await _local.cancel(0, tag: chatNotificationTag(conversationId));
+      } else {
+        // iOS has no tags; foreground-rendered pushes use the hash id.
+        await _local.cancel(chatNotificationId(conversationId));
+      }
+    } catch (_) {}
   }
 }

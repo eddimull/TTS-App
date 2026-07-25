@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import '../../../core/providers/core_providers.dart';
@@ -63,15 +65,62 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
     try {
       final result = await _repository.getMe();
-      await storage.writeUser(result.user.toJsonString());
+      await _cacheSession(storage, result.user, result.bands);
       unawaited(_registerPushToken());
       return AuthAuthenticated(user: result.user, bands: result.bands);
-    } catch (_) {
-      // Token may be expired or server unavailable — clear local token and
-      // treat as unauthenticated so the router sends the user to /login.
-      await storage.deleteToken();
-      await storage.deleteBandId();
+    } catch (e) {
+      // Only a 401 is the server's verdict that the token is dead. Anything
+      // else — no connectivity, DNS failure, timeout, a 5xx — says nothing
+      // about the token, and deleting it there logged users out just for
+      // cold-starting the app offline.
+      if (e is DioException && e.response?.statusCode == 401) {
+        await storage.deleteToken();
+        await storage.deleteBandId();
+        return const AuthUnauthenticated();
+      }
+      final cached = await _restoreCachedSession(storage);
+      if (cached != null) {
+        // Wires the tap/foreground listeners; the networked registration
+        // half fails quietly offline and is retried on the next login.
+        unawaited(_registerPushToken());
+        return cached;
+      }
+      // Nothing cached to restore — show the welcome screen, but KEEP the
+      // token so the next start with connectivity restores the session.
       return const AuthUnauthenticated();
+    }
+  }
+
+  /// Persist user + bands after a successful auth so an offline cold start
+  /// can restore the session without the server.
+  Future<void> _cacheSession(
+    SecureStorage storage,
+    AuthUser user,
+    List<BandSummary> bands,
+  ) async {
+    await storage.writeUser(user.toJsonString());
+    await storage.writeBands(jsonEncode([for (final b in bands) b.toJson()]));
+  }
+
+  /// Rebuild an [AuthAuthenticated] from the cached user/bands JSON, or null
+  /// when nothing usable is cached (never written, or corrupt).
+  Future<AuthAuthenticated?> _restoreCachedSession(SecureStorage storage) async {
+    try {
+      final userJson = await storage.readUser();
+      if (userJson == null) return null;
+      final bandsJson = await storage.readBands();
+      final bands = bandsJson == null
+          ? <BandSummary>[]
+          : [
+              for (final b in jsonDecode(bandsJson) as List)
+                BandSummary.fromJson(b as Map<String, dynamic>),
+            ];
+      return AuthAuthenticated(
+        user: AuthUser.fromJsonString(userJson),
+        bands: bands,
+      );
+    } catch (_) {
+      return null;
     }
   }
 
@@ -84,7 +133,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     state = await AsyncValue.guard(() async {
       final result = await _repository.login(email, password, 'tts_bandmate_app');
       await storage.writeToken(result.token);
-      await storage.writeUser(result.user.toJsonString());
+      await _cacheSession(storage, result.user, result.bands);
       return AuthAuthenticated(user: result.user, bands: result.bands);
     });
 
@@ -132,7 +181,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         'tts_bandmate_app',
       );
       await storage.writeToken(result.token);
-      await storage.writeUser(result.user.toJsonString());
+      await _cacheSession(storage, result.user, result.bands);
       return AuthAuthenticated(user: result.user, bands: result.bands);
     });
 
@@ -163,7 +212,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         'tts_bandmate_app',
       );
       await storage.writeToken(result.token);
-      await storage.writeUser(result.user.toJsonString());
+      await _cacheSession(storage, result.user, result.bands);
       return AuthAuthenticated(user: result.user, bands: result.bands);
     });
 
@@ -247,7 +296,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     try {
       final result = await _repository.getMe();
       final storage = ref.read(secureStorageProvider);
-      await storage.writeUser(result.user.toJsonString());
+      await _cacheSession(storage, result.user, result.bands);
       state = AsyncValue.data(
         AuthAuthenticated(user: result.user, bands: result.bands),
       );

@@ -28,6 +28,10 @@ class _FakeSecureStorage extends SecureStorage {
   @override
   Future<void> writeUser(String u) async => _m['u'] = u;
   @override
+  Future<String?> readBands() async => _m['bands'];
+  @override
+  Future<void> writeBands(String b) async => _m['bands'] = b;
+  @override
   Future<void> clear() async => _m.clear();
 }
 

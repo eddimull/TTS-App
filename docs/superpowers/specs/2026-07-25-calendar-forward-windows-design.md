@@ -31,8 +31,9 @@ bookings). A fixed bigger horizon was rejected (the wall just moves).
 
 ## 1. Backend — calendar forward windows
 
-**New endpoint** `GET /api/mobile/dashboard/newer?after_date=Y-m-d&before_date=Y-m-d`
-in `Api/Mobile/DashboardController`, mirroring `loadOlder`:
+**New endpoint** `GET /api/mobile/dashboard/load-newer?after_date=Y-m-d&before_date=Y-m-d`
+in `Api/Mobile/DashboardController`, mirroring `loadOlder` (named `load-newer`
+for symmetry with the existing `load-older` route):
 
 - `Auth::setUser($request->user())` (Sanctum guard binding, same as existing).
 - Calls `(new UserEventsService())->getEvents($afterDate, $beforeDate)` —

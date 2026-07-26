@@ -82,9 +82,13 @@ class _RehearsalsBody extends ConsumerWidget {
             }
             return SliverList(
               delegate: SliverChildBuilderDelegate(
-                (context, index) =>
-                    _ScheduleTile(schedule: schedules[index]),
-                childCount: schedules.length,
+                (context, index) {
+                  if (index == schedules.length) {
+                    return const _ShowMoreButton();
+                  }
+                  return _ScheduleTile(schedule: schedules[index]);
+                },
+                childCount: schedules.length + 1,
               ),
             );
           },
@@ -106,7 +110,10 @@ class _ScheduleTile extends StatelessWidget {
       if (schedule.locationName != null &&
           schedule.locationName!.isNotEmpty)
         schedule.locationName!,
-      if (schedule.frequency != null && schedule.frequency!.isNotEmpty)
+      if (schedule.recurrenceLabel != null &&
+          schedule.recurrenceLabel!.isNotEmpty)
+        schedule.recurrenceLabel!
+      else if (schedule.frequency != null && schedule.frequency!.isNotEmpty)
         _capitalise(schedule.frequency!),
     ].join(' · ');
 
@@ -223,8 +230,15 @@ class _RehearsalSubTile extends StatelessWidget {
         rehearsal.date != null ? _formatDate(rehearsal) : 'Date TBD';
 
     return GestureDetector(
-      onTap: () =>
-          GoRouter.of(context).push('/rehearsals/${rehearsal.id}'),
+      onTap: () {
+        final id = rehearsal.id;
+        if (id != null) {
+          GoRouter.of(context).push('/rehearsals/$id');
+        } else if (rehearsal.eventKey != null) {
+          // Virtual occurrence — resolved (and materialized) server-side.
+          GoRouter.of(context).push('/rehearsals/by-key/${rehearsal.eventKey}');
+        }
+      },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
@@ -232,7 +246,9 @@ class _RehearsalSubTile extends StatelessWidget {
             Icon(
               rehearsal.isCancelled
                   ? CupertinoIcons.xmark_circle
-                  : CupertinoIcons.checkmark_circle,
+                  : rehearsal.isVirtual
+                      ? CupertinoIcons.repeat
+                      : CupertinoIcons.checkmark_circle,
               size: 20,
               color: rehearsal.isCancelled
                   ? CupertinoColors.systemRed
@@ -285,5 +301,24 @@ class _RehearsalSubTile extends StatelessWidget {
       return rehearsal.date ?? 'Date TBD';
     }
   }
+}
 
+/// Extends the upcoming-rehearsals window by 90 days. The provider refetch
+/// replaces the list wholesale (idempotent — see spec §2).
+class _ShowMoreButton extends ConsumerWidget {
+  const _ShowMoreButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Center(
+        child: CupertinoButton(
+          onPressed: () =>
+              ref.read(schedulesWindowDaysProvider.notifier).extend(90),
+          child: const Text('Show more'),
+        ),
+      ),
+    );
+  }
 }

@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/notifications/data/push_payload.dart';
@@ -137,6 +138,26 @@ void main() {
         shouldSuppressChatPush(departure, () => 5),
         isFalse,
       );
+    });
+  });
+
+  group('suppressed foreground chat push (thread already open)', () {
+    test('invokes onChatPushSuppressed with the conversation id so the '
+        'thread can refresh instead of trusting a possibly-dead channel',
+        () async {
+      final push = PushService(FlutterLocalNotificationsPlugin());
+      push.currentOpenConversation = () => 5;
+      String? refreshed;
+      push.onChatPushSuppressed = (conversationId) =>
+          refreshed = conversationId;
+
+      await push.handleForegroundMessage(const RemoteMessage(data: {
+        'type': 'chat_message',
+        'conversationId': '5',
+        'body': 'yo',
+      }));
+
+      expect(refreshed, '5');
     });
   });
 

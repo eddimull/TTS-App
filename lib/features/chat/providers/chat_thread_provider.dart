@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/pusher_connection.dart';
@@ -141,6 +142,44 @@ List<MessageReaction> toggleReactionList(
   ];
 }
 
+/// Result of [mergeFetchedPage].
+class ThreadMergeResult {
+  const ThreadMergeResult({required this.messages, required this.replaced});
+
+  final List<ChatMessage> messages;
+
+  /// True when the local list was discarded in favor of the fetched page
+  /// (nothing local, or the page didn't reach back far enough to overlap).
+  /// The caller should then also adopt the page's hasMore — the local
+  /// scrollback it described is gone.
+  final bool replaced;
+}
+
+/// Merges a freshly fetched latest page into the messages already in memory,
+/// for a refresh of an open thread. Fetched versions of known messages win
+/// (edits/reactions made while offline are picked up), unknown ones are
+/// appended, and older scrollback pages loaded via loadMore are preserved.
+/// When the fetched page doesn't overlap the local list at all, more messages
+/// arrived than one page covers — merging would leave a hidden gap, so the
+/// local list is replaced wholesale. Pure — unit-tested directly.
+ThreadMergeResult mergeFetchedPage(
+  List<ChatMessage> current,
+  List<ChatMessage> fetched,
+) {
+  if (fetched.isEmpty) {
+    return ThreadMergeResult(messages: current, replaced: false);
+  }
+  if (current.isEmpty || fetched.first.id > current.last.id) {
+    return ThreadMergeResult(messages: fetched, replaced: true);
+  }
+  final byId = {for (final f in fetched) f.id: f};
+  final merged = [
+    for (final m in current) byId.remove(m.id) ?? m,
+    ...fetched.where((f) => byId.containsKey(f.id)),
+  ]..sort((a, b) => a.id.compareTo(b.id));
+  return ThreadMergeResult(messages: merged, replaced: false);
+}
+
 class ChatThreadState {
   const ChatThreadState({
     this.messages = const [],
@@ -202,8 +241,10 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
   final Map<int, Timer> _typingTimers = {};
   DateTime _lastTypingSent = DateTime.fromMillisecondsSinceEpoch(0);
   bool _bound = false;
+  bool _refreshing = false;
   ChatChannelUnbind? _unbind;
   Timer? _markReadDebounce;
+  AppLifecycleListener? _lifecycle;
 
   /// Messages with a toggleReaction() request currently in flight. Guards
   /// against a fast double-toggle (sheet emoji tap immediately followed by
@@ -216,6 +257,10 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
   @override
   ChatThreadState build() {
     ref.onDispose(_teardown);
+    // The Pusher socket dies while the app is backgrounded and Pusher has no
+    // replay, so an open thread misses every message sent in between —
+    // refetch and resubscribe on resume, mirroring BandRealtimeNotifier.
+    _lifecycle = AppLifecycleListener(onResume: () => refresh(rebind: true));
     return const ChatThreadState();
   }
 
@@ -224,6 +269,8 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
   /// notifier. Resets [_bound] so a rebuilt notifier can re-bind on its next
   /// load().
   void _teardown() {
+    _lifecycle?.dispose();
+    _lifecycle = null;
     for (final t in _typingTimers.values) {
       t.cancel();
     }
@@ -264,6 +311,57 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
     } finally {
       keepAlive.close();
     }
+  }
+
+  /// Re-fetches the latest page and merges it into the in-memory thread —
+  /// the recovery path for messages missed while the realtime channel was
+  /// down (app resume, or a chat push arriving before the channel is back).
+  /// Never blanks existing state; best-effort, so a failure keeps the stale
+  /// thread instead of surfacing an error. With [rebind] the (possibly dead)
+  /// channel subscription is torn down and re-established too.
+  Future<void> refresh({bool rebind = false}) async {
+    if (state.isLoading || _refreshing) return;
+    if (state.conversation == null && state.messages.isEmpty) return load();
+    _refreshing = true;
+    // Same in-flight guard as load(): the caller may hold no listener yet.
+    final keepAlive = ref.keepAlive();
+    try {
+      final page = await _repo.messages(_conversationId);
+      if (!ref.mounted) return;
+      final prevLastId =
+          state.messages.isNotEmpty ? state.messages.last.id : null;
+      final merge = mergeFetchedPage(state.messages, page.messages);
+      state = state.copyWith(
+        messages: merge.messages,
+        participants: page.participants,
+        conversation: page.conversation,
+        hasMore: merge.replaced ? page.hasMore : state.hasMore,
+      );
+      if (rebind) await _rebind(page.channel);
+      final hasNew = merge.messages.isNotEmpty &&
+          merge.messages.last.id != prevLastId;
+      if (hasNew) await markRead();
+    } catch (e) {
+      debugPrint('chatThread: refresh failed: $e');
+    } finally {
+      _refreshing = false;
+      keepAlive.close();
+    }
+  }
+
+  /// Releases the current channel subscription (which may be silently dead
+  /// after a background disconnect) and binds a fresh one.
+  Future<void> _rebind(String channel) async {
+    _bound = false;
+    final unbind = _unbind;
+    _unbind = null;
+    try {
+      await unbind?.call();
+    } catch (e) {
+      debugPrint('chatThread: unsubscribe failed: $e');
+    }
+    if (!ref.mounted) return;
+    _bind(channel);
   }
 
   Future<void> loadMore() async {

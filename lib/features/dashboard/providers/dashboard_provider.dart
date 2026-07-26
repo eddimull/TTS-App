@@ -106,6 +106,14 @@ class DashboardState {
   @override
   String toString() =>
       'DashboardState(events: ${events.length}, charts: ${upcomingCharts.length})';
+
+  /// True when the WHOLE of [focusedDay]'s month lies inside the loaded
+  /// window [loadedFrom, loadedTo). Months outside need an ensureMonthLoaded.
+  bool coversMonth(DateTime focusedDay) {
+    final monthStart = DateTime(focusedDay.year, focusedDay.month, 1);
+    final nextMonthFirst = DateTime(focusedDay.year, focusedDay.month + 1, 1);
+    return !monthStart.isBefore(loadedFrom) && !nextMonthFirst.isAfter(loadedTo);
+  }
 }
 
 // ── Notifier ──────────────────────────────────────────────────────────────────

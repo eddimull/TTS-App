@@ -106,6 +106,60 @@ class _RaceDashboardRepository extends DashboardRepository {
 }
 
 void main() {
+  group('DashboardState.coversMonth', () {
+    test('month fully inside the loaded window returns true', () {
+      final state = DashboardState(
+        events: const [],
+        upcomingCharts: const [],
+        loadedFrom: DateTime(2026, 6, 1),
+        loadedTo: DateTime(2026, 9, 1),
+      );
+
+      expect(state.coversMonth(DateTime(2026, 7, 15)), isTrue);
+    });
+
+    test('month straddling loadedTo returns false', () {
+      // loadedTo lands mid-month (Aug 15), so August itself is not fully
+      // covered even though it starts before the watermark.
+      final state = DashboardState(
+        events: const [],
+        upcomingCharts: const [],
+        loadedFrom: DateTime(2026, 6, 1),
+        loadedTo: DateTime(2026, 8, 15),
+      );
+
+      expect(state.coversMonth(DateTime(2026, 8, 10)), isFalse);
+    });
+
+    test('month straddling loadedFrom returns false', () {
+      // loadedFrom lands mid-month (Jun 10), so June itself is not fully
+      // covered even though it ends before the watermark.
+      final state = DashboardState(
+        events: const [],
+        upcomingCharts: const [],
+        loadedFrom: DateTime(2026, 6, 10),
+        loadedTo: DateTime(2026, 9, 1),
+      );
+
+      expect(state.coversMonth(DateTime(2026, 6, 20)), isFalse);
+    });
+
+    test('loadedTo-exclusive edge: nextMonthFirst == loadedTo returns true',
+        () {
+      // loadedTo is exclusive — events on/after it are NOT loaded — but the
+      // month whose exclusive end exactly equals loadedTo is still fully
+      // covered, since every day in it is strictly before loadedTo.
+      final state = DashboardState(
+        events: const [],
+        upcomingCharts: const [],
+        loadedFrom: DateTime(2026, 6, 1),
+        loadedTo: DateTime(2026, 9, 1),
+      );
+
+      expect(state.coversMonth(DateTime(2026, 8, 15)), isTrue);
+    });
+  });
+
   group('DashboardState.copyWith', () {
     test('defaults: empty, not loading older, start not reached', () {
       final from = DateTime(2026, 6, 1);

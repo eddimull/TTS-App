@@ -57,6 +57,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     final dashboardAsync = ref.watch(dashboardProvider);
 
+    // A provider reset (app-resume blanket invalidation, realtime signal,
+    // pull-to-refresh) replaces the loaded window with the initial one while
+    // _focusedDay stays parked — re-cover the focused month when that happens.
+    ref.listen<AsyncValue<DashboardState>>(dashboardProvider, (previous, next) {
+      final state = next.value;
+      if (state == null) return;
+      if (state.isLoadingOlder || state.isLoadingNewer) return;
+      if (state.coversMonth(_focusedDay)) return;
+      unawaited(
+        ref.read(dashboardProvider.notifier).ensureMonthLoaded(_focusedDay),
+      );
+    });
+
     return CupertinoPageScaffold(
       child: Stack(
         children: [

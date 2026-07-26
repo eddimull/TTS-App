@@ -10,10 +10,13 @@ class DashboardRepository {
   final Dio _dio;
 
   /// Fetches the dashboard payload — upcoming events and charts.
+  /// [to] (yyyy-MM-dd, exclusive) bounds the forward window; events beyond it
+  /// are fetched lazily via [loadNewerEvents].
   Future<({List<EventSummary> events, List<UpcomingChart> upcomingCharts})>
-      getDashboard() async {
+      getDashboard({String? to}) async {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiEndpoints.mobileDashboard,
+      queryParameters: {if (to != null) 'to': to},
     );
 
     final data = response.data!;
@@ -40,6 +43,22 @@ class DashboardRepository {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiEndpoints.mobileDashboardLoadOlder,
       queryParameters: {'before_date': beforeDate},
+    );
+
+    final rawEvents = response.data?['events'] as List<dynamic>? ?? [];
+    return rawEvents
+        .cast<Map<String, dynamic>>()
+        .map(EventSummary.fromJson)
+        .toList();
+  }
+
+  /// Fetches a future window of events for the calendar's lazy forward-fetch.
+  /// Both bounds are yyyy-MM-dd strings; the window is [afterDate, beforeDate).
+  Future<List<EventSummary>> loadNewerEvents(
+      String afterDate, String beforeDate) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileDashboardLoadNewer,
+      queryParameters: {'after_date': afterDate, 'before_date': beforeDate},
     );
 
     final rawEvents = response.data?['events'] as List<dynamic>? ?? [];

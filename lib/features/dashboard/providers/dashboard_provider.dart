@@ -11,8 +11,10 @@ class DashboardState {
     required this.events,
     required this.upcomingCharts,
     required this.loadedFrom,
+    required this.loadedTo,
     this.isLoadingOlder = false,
     this.hasReachedStart = false,
+    this.isLoadingNewer = false,
   });
 
   final List<EventSummary> events;
@@ -23,6 +25,13 @@ class DashboardState {
   /// watermark to decide whether swiping to a month needs an older fetch.
   final DateTime loadedFrom;
 
+  /// Exclusive forward watermark: events on/after this date are NOT loaded
+  /// yet. Only ever moves forward (see [DashboardNotifier._loadNewer]);
+  /// [DashboardNotifier.refresh] resets it. There is deliberately no
+  /// "reached end" flag — an empty forward window proves nothing about later
+  /// events, so the browse cap is the calendar's lastDay.
+  final DateTime loadedTo;
+
   /// True while an older-events fetch is in flight; guards against duplicate
   /// concurrent fetches and drives the loading indicator.
   final bool isLoadingOlder;
@@ -31,19 +40,26 @@ class DashboardState {
   /// to load, so further back-fetches are skipped.
   final bool hasReachedStart;
 
+  /// True while a newer-events fetch is in flight.
+  final bool isLoadingNewer;
+
   DashboardState copyWith({
     List<EventSummary>? events,
     List<UpcomingChart>? upcomingCharts,
     DateTime? loadedFrom,
+    DateTime? loadedTo,
     bool? isLoadingOlder,
     bool? hasReachedStart,
+    bool? isLoadingNewer,
   }) {
     return DashboardState(
       events: events ?? this.events,
       upcomingCharts: upcomingCharts ?? this.upcomingCharts,
       loadedFrom: loadedFrom ?? this.loadedFrom,
+      loadedTo: loadedTo ?? this.loadedTo,
       isLoadingOlder: isLoadingOlder ?? this.isLoadingOlder,
       hasReachedStart: hasReachedStart ?? this.hasReachedStart,
+      isLoadingNewer: isLoadingNewer ?? this.isLoadingNewer,
     );
   }
 
@@ -99,14 +115,24 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
   /// DashboardController::INITIAL_PAST_WINDOW_DAYS.
   static const int _initialPastWindowDays = 30;
 
+  /// Days of future events the initial payload covers.
+  static const int _initialForwardWindowDays = 90;
+
   /// Truncates a [DateTime] to midnight (date-only) for stable comparisons.
   static DateTime _dateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
+
+  static String _ymd(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  static DateTime _initialTo() => _dateOnly(
+      DateTime.now().add(const Duration(days: _initialForwardWindowDays)));
 
   @override
   Future<DashboardState> build() async {
     final initialFrom = _dateOnly(
       DateTime.now().subtract(const Duration(days: _initialPastWindowDays)),
     );
+    final initialTo = _initialTo();
 
     // Wait for band selection to resolve before fetching — avoids a missing
     // X-Band-ID header on the first request when storage hasn't been read yet.
@@ -116,15 +142,17 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
         events: const [],
         upcomingCharts: const [],
         loadedFrom: initialFrom,
+        loadedTo: initialTo,
       );
     }
 
     final repo = ref.watch(dashboardRepositoryProvider);
-    final result = await repo.getDashboard();
+    final result = await repo.getDashboard(to: _ymd(initialTo));
     return DashboardState(
       events: result.events,
       upcomingCharts: result.upcomingCharts,
       loadedFrom: initialFrom,
+      loadedTo: initialTo,
     );
   }
 
@@ -132,14 +160,16 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
+      final initialTo = _initialTo();
       final repo = ref.read(dashboardRepositoryProvider);
-      final result = await repo.getDashboard();
+      final result = await repo.getDashboard(to: _ymd(initialTo));
       return DashboardState(
         events: result.events,
         upcomingCharts: result.upcomingCharts,
         loadedFrom: _dateOnly(
           DateTime.now().subtract(const Duration(days: _initialPastWindowDays)),
         ),
+        loadedTo: initialTo,
       );
     });
   }
@@ -185,19 +215,79 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     }
   }
 
-  /// Ensures the WHOLE of [focusedDay]'s month is loaded, fetching older chunks
-  /// as needed. Fetches when the focused month's first day is strictly before
+  /// Fetches [loadedTo, target) and merges. [target] must be a month-start
+  /// (exclusive bound). No-ops while in flight or when already covered.
+  Future<void> _loadNewer(DateTime target) async {
+    final current = state.value;
+    if (current == null) return;
+    if (current.isLoadingNewer) return;
+    if (!target.isAfter(current.loadedTo)) return; // already covered
+
+    state = AsyncValue.data(current.copyWith(isLoadingNewer: true));
+
+    try {
+      final repo = ref.read(dashboardRepositoryProvider);
+      final newer = await repo.loadNewerEvents(
+          _ymd(current.loadedTo), _ymd(target));
+
+      // Dedup by id when present; by key for null-id events (virtual
+      // rehearsals) so an inclusive boundary day can never duplicate.
+      final existingIds =
+          current.events.map((e) => e.id).whereType<int>().toSet();
+      final existingKeys = current.events.map((e) => e.key).toSet();
+      final merged = [
+        ...current.events,
+        ...newer.where((e) => e.id != null
+            ? !existingIds.contains(e.id)
+            : !existingKeys.contains(e.key)),
+      ];
+
+      state = AsyncValue.data(current.copyWith(
+        events: merged,
+        loadedTo: target,
+        isLoadingNewer: false,
+      ));
+    } catch (_) {
+      state = AsyncValue.data(
+        (state.value ?? current).copyWith(isLoadingNewer: false),
+      );
+    }
+  }
+
+  /// Ensures the WHOLE of [focusedDay]'s month is loaded, fetching older
+  /// chunks backward and/or one newer window forward as needed.
+  ///
+  /// Backward: fetches when the focused month's first day is strictly before
   /// the (day-granular) [DashboardState.loadedFrom] watermark — so forward
-  /// navigation, or returning into a fully-loaded range, never triggers a fetch.
+  /// navigation, or returning into a fully-loaded range, never triggers a
+  /// fetch.
   ///
   /// The initial window starts mid-month (today − 30d), so the watermark's own
   /// month is only partially loaded. Comparing the month's FIRST day against the
   /// day-granular watermark means swiping into that month backfills its earlier
   /// days rather than leaving them blank. Loops to cover multi-month jumps,
   /// stopping when covered or history is exhausted.
+  ///
+  /// Forward: fetches the focused month's exclusive end (the first day of the
+  /// NEXT month) in a single window when it is beyond [DashboardState.loadedTo]
+  /// — covering multi-month forward jumps in one fetch rather than looping.
   Future<void> ensureMonthLoaded(DateTime focusedDay) async {
-    final monthStart = DateTime(focusedDay.year, focusedDay.month, 1);
+    await _ensureMonthLoadedBackward(
+        DateTime(focusedDay.year, focusedDay.month, 1));
 
+    // Forward: cover the focused month in ONE fetch to the month's exclusive
+    // end. DateTime normalizes month 13 to January of the next year.
+    final nextMonthFirst = DateTime(focusedDay.year, focusedDay.month + 1, 1);
+    final current = state.value;
+    if (current != null && nextMonthFirst.isAfter(current.loadedTo)) {
+      await _loadNewer(nextMonthFirst);
+    }
+  }
+
+  /// Backward phase of [ensureMonthLoaded]: the original while-loop body,
+  /// looping [loadOlder] calls until [monthStart] is covered or history is
+  /// exhausted.
+  Future<void> _ensureMonthLoadedBackward(DateTime monthStart) async {
     while (true) {
       final current = state.value;
       if (current == null) return;

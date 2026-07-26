@@ -23,6 +23,7 @@ class _FakeDashboardRepository extends DashboardRepository {
   _FakeDashboardRepository({
     required this.initialEvents,
     required this.olderBatches,
+    this.newerBatches = const [],
   }) : super(_throwingDio);
 
   final List<EventSummary> initialEvents;
@@ -31,19 +32,36 @@ class _FakeDashboardRepository extends DashboardRepository {
   /// exhausted, returns an empty list (signals start-of-history).
   final List<List<EventSummary>> olderBatches;
 
+  /// Successive responses for each loadNewerEvents call, in order. When
+  /// exhausted, returns an empty list.
+  final List<List<EventSummary>> newerBatches;
+
   final List<String> requestedBeforeDates = [];
+  final List<(String, String)> requestedNewerWindows = [];
+  final List<String?> requestedTos = [];
   int _batchIndex = 0;
+  int _newerIndex = 0;
 
   @override
   Future<({List<EventSummary> events, List<UpcomingChart> upcomingCharts})>
-      getDashboard() async =>
-          (events: initialEvents, upcomingCharts: const <UpcomingChart>[]);
+      getDashboard({String? to}) async {
+    requestedTos.add(to);
+    return (events: initialEvents, upcomingCharts: const <UpcomingChart>[]);
+  }
 
   @override
   Future<List<EventSummary>> loadOlderEvents(String beforeDate) async {
     requestedBeforeDates.add(beforeDate);
     if (_batchIndex >= olderBatches.length) return const [];
     return olderBatches[_batchIndex++];
+  }
+
+  @override
+  Future<List<EventSummary>> loadNewerEvents(
+      String afterDate, String beforeDate) async {
+    requestedNewerWindows.add((afterDate, beforeDate));
+    if (_newerIndex >= newerBatches.length) return const [];
+    return newerBatches[_newerIndex++];
   }
 }
 
@@ -57,25 +75,31 @@ void main() {
   group('DashboardState.copyWith', () {
     test('defaults: empty, not loading older, start not reached', () {
       final from = DateTime(2026, 6, 1);
+      final to = DateTime(2026, 9, 1);
       final state = DashboardState(
         events: const [],
         upcomingCharts: const [],
         loadedFrom: from,
+        loadedTo: to,
       );
 
       expect(state.events, isEmpty);
       expect(state.loadedFrom, from);
+      expect(state.loadedTo, to);
       expect(state.isLoadingOlder, isFalse);
       expect(state.hasReachedStart, isFalse);
+      expect(state.isLoadingNewer, isFalse);
     });
 
     test('copyWith overrides only the named fields', () {
       final from = DateTime(2026, 6, 1);
+      final to = DateTime(2026, 9, 1);
       final earlier = DateTime(2026, 5, 2);
       final state = DashboardState(
         events: const [],
         upcomingCharts: const [],
         loadedFrom: from,
+        loadedTo: to,
       );
 
       final next = state.copyWith(
@@ -194,6 +218,131 @@ void main() {
       await notifier.loadOlder();
 
       expect(fakeRepo.requestedBeforeDates.length, 1);
+    });
+  });
+
+  group('DashboardNotifier.loadNewer', () {
+    late ProviderContainer container;
+    late _FakeDashboardRepository fakeRepo;
+
+    Future<DashboardNotifier> buildNotifier() async {
+      final notifier = container.read(dashboardProvider.notifier);
+      await container.read(dashboardProvider.future); // resolve build()
+      return notifier;
+    }
+
+    void setUpContainer(_FakeDashboardRepository repo) {
+      fakeRepo = repo;
+      container = ProviderContainer(overrides: [
+        dashboardRepositoryProvider.overrideWithValue(repo),
+        selectedBandProvider.overrideWith(() => _StubBand()),
+      ]);
+      addTearDown(container.dispose);
+    }
+
+    String ymd(DateTime d) =>
+        '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+    test('initial fetch sends to = today + 90d', () async {
+      setUpContainer(_FakeDashboardRepository(
+        initialEvents: [], olderBatches: [],
+      ));
+      await buildNotifier();
+
+      final expected = ymd(DateTime.now().add(const Duration(days: 90)));
+      expect(fakeRepo.requestedTos, [expected]);
+    });
+
+    test('forward ensureMonthLoaded fetches one window to the month start after target', () async {
+      setUpContainer(_FakeDashboardRepository(
+        initialEvents: [], olderBatches: [],
+        newerBatches: [
+          [_event(5, '2028-03-10')],
+        ],
+      ));
+      final notifier = await buildNotifier();
+
+      // Jump 2+ years forward — must be a single fetch, not many.
+      final target = DateTime(2028, 3, 15);
+      await notifier.ensureMonthLoaded(target);
+
+      expect(fakeRepo.requestedNewerWindows, hasLength(1));
+      final (after, before) = fakeRepo.requestedNewerWindows.single;
+      expect(after, ymd(DateTime.now().add(const Duration(days: 90))),
+          reason: 'window starts at the current loadedTo watermark');
+      expect(before, '2028-04-01',
+          reason: 'window extends to the first day of the month after target');
+
+      final state = container.read(dashboardProvider).value!;
+      expect(state.events.map((e) => e.id), contains(5));
+      expect(state.loadedTo, DateTime(2028, 4, 1));
+    });
+
+    test('already-covered months trigger no fetch and empty windows do not stop future fetches', () async {
+      setUpContainer(_FakeDashboardRepository(
+        initialEvents: [], olderBatches: [],
+        newerBatches: [], // every loadNewer returns empty
+      ));
+      final notifier = await buildNotifier();
+
+      await notifier.ensureMonthLoaded(DateTime(2027, 6, 15));
+      expect(fakeRepo.requestedNewerWindows, hasLength(1));
+
+      // Same month again: covered, no new fetch.
+      await notifier.ensureMonthLoaded(DateTime(2027, 6, 20));
+      expect(fakeRepo.requestedNewerWindows, hasLength(1));
+
+      // Further month: MUST fetch again despite the last window being empty —
+      // there is no hasReachedEnd for the future.
+      await notifier.ensureMonthLoaded(DateTime(2028, 1, 10));
+      expect(fakeRepo.requestedNewerWindows, hasLength(2));
+    });
+
+    test('merges newer events deduping by id and by key for null-id events', () async {
+      EventSummary nullIdEvent(String key, String date) =>
+          EventSummary.fromJson({
+            'key': key,
+            'title': 'Event $key',
+            'date': date,
+            'event_source': 'rehearsal',
+          });
+
+      setUpContainer(_FakeDashboardRepository(
+        initialEvents: [_event(1, '2026-08-01'), nullIdEvent('vr-a', '2026-08-05')],
+        olderBatches: [],
+        newerBatches: [
+          [
+            _event(1, '2026-08-01'), // dup by id — dropped
+            nullIdEvent('vr-a', '2026-08-05'), // dup by key — dropped
+            nullIdEvent('vr-b', '2026-11-12'), // new — kept
+            _event(2, '2026-12-01'), // new — kept
+          ],
+        ],
+      ));
+      final notifier = await buildNotifier();
+
+      await notifier.ensureMonthLoaded(DateTime(2026, 12, 15));
+
+      final state = container.read(dashboardProvider).value!;
+      expect(state.events, hasLength(4));
+    });
+
+    test('refresh resets the forward watermark', () async {
+      setUpContainer(_FakeDashboardRepository(
+        initialEvents: [], olderBatches: [], newerBatches: [],
+      ));
+      final notifier = await buildNotifier();
+      await notifier.ensureMonthLoaded(DateTime(2028, 3, 15));
+
+      await notifier.refresh();
+
+      final state = container.read(dashboardProvider).value!;
+      final expected = DateTime.now().add(const Duration(days: 90));
+      expect(state.loadedTo.year, expected.year);
+      expect(state.loadedTo.month, expected.month);
+      expect(state.loadedTo.day, expected.day);
+      // And the refresh re-sent to=.
+      expect(fakeRepo.requestedTos, hasLength(2));
     });
   });
 

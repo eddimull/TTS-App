@@ -159,9 +159,14 @@ class ThreadMergeResult {
 /// for a refresh of an open thread. Fetched versions of known messages win
 /// (edits/reactions made while offline are picked up), unknown ones are
 /// appended, and older scrollback pages loaded via loadMore are preserved.
-/// When the fetched page doesn't overlap the local list at all, more messages
-/// arrived than one page covers — merging would leave a hidden gap, so the
-/// local list is replaced wholesale. Pure — unit-tested directly.
+/// When the fetched page doesn't overlap the local list at all, the local
+/// list is replaced wholesale — even when the ids look adjacent. Message ids
+/// are one global sequence across all conversations, so id arithmetic cannot
+/// prove the non-overlapping page has no gap in THIS conversation, and
+/// merging across a real gap would leave a hole that loadMore (which only
+/// paginates before the oldest message) could never heal. Replacing is safe:
+/// the caller adopts the page's hasMore, so the discarded scrollback is
+/// simply re-fetched on scroll-up. Pure — unit-tested directly.
 ThreadMergeResult mergeFetchedPage(
   List<ChatMessage> current,
   List<ChatMessage> fetched,

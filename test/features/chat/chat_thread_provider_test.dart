@@ -776,6 +776,16 @@ void main() {
       expect(r.replaced, isTrue);
     });
 
+    test('replaces (not merges) even when the fetched page starts right '
+        'after the local messages — ids are a global sequence across '
+        'conversations, so adjacency cannot prove the absence of a gap in '
+        'this thread; the replaced scrollback is re-fetchable via loadMore',
+        () {
+      final r = mergeFetchedPage([msg(1)], [msg(2), msg(3)]);
+      expect(r.messages.map((m) => m.id), [2, 3]);
+      expect(r.replaced, isTrue);
+    });
+
     test('an empty local list adopts the fetched page', () {
       final r = mergeFetchedPage(const [], [msg(1)]);
       expect(r.messages.map((m) => m.id), [1]);

@@ -49,7 +49,7 @@ void main() {
     addTearDown(container.dispose);
 
     await container.read(schedulesProvider(1).future);
-    container.read(schedulesWindowDaysProvider.notifier).state += 90;
+    container.read(schedulesWindowDaysProvider.notifier).extend(90);
     // The family provider rebuilds; await the new future.
     await container.read(schedulesProvider(1).future);
 

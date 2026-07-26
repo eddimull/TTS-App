@@ -9,6 +9,9 @@ import '../data/models/rehearsal_schedule.dart';
 class SchedulesWindowDaysNotifier extends Notifier<int> {
   @override
   int build() => 90;
+
+  /// Extends the window by the given number of days.
+  void extend(int days) => state += days;
 }
 
 /// Days ahead the rehearsals list covers. "Show more" bumps this by 90; a

@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.20.0](https://github.com/eddimull/TTS-App/compare/v1.19.1...v1.20.0) (2026-07-26)
+
+
+### Features
+
+* **dashboard:** allow calendar browsing five years forward ([b9cb411](https://github.com/eddimull/TTS-App/commit/b9cb4112cc6249a8d9d8ebf7d616e8bbe12a8a0d))
+* **dashboard:** forward loadedTo watermark with lazy load-newer fetching ([bbed947](https://github.com/eddimull/TTS-App/commit/bbed947c5ae76441340a8635db88c2101a24db43))
+* **dashboard:** repository support for load-newer windows and to= bound ([2c94498](https://github.com/eddimull/TTS-App/commit/2c94498385534cc423a154395e3285efb4e06cb7))
+* infinite forward calendar + rehearsal recurrence rendering ([7a2c9d9](https://github.com/eddimull/TTS-App/commit/7a2c9d94fdea9968d4a0a537eed2bf6756dd09c4))
+* **rehearsals:** fetch schedules with virtual occurrences and growable window ([8fedd31](https://github.com/eddimull/TTS-App/commit/8fedd31cedf70500488480f926efb8c175f05fe4))
+* **rehearsals:** model support for virtual occurrences and recurrence labels ([a674836](https://github.com/eddimull/TTS-App/commit/a6748367c68ed523003f795d621091b009e0f5ce))
+* **rehearsals:** recurrence headline, virtual occurrences, and Show more window ([f764e5c](https://github.com/eddimull/TTS-App/commit/f764e5c6716effb6389041dee5248fc5e7568732))
+
+
+### Bug Fixes
+
+* **dashboard:** concurrency-safe window merges; keep rehearsals list visible on Show more ([6e4b481](https://github.com/eddimull/TTS-App/commit/6e4b481c20158e54476aa47cee395a4d707312da))
+* **dashboard:** re-cover the focused month after a provider reset ([c78fc99](https://github.com/eddimull/TTS-App/commit/c78fc991796baa778337fd9becc8f1a3f8ca82c4))
+* **dashboard:** stop auto-retry when a window fetch completes without progress ([33e1710](https://github.com/eddimull/TTS-App/commit/33e1710edf8f94e9de4f1b0d10b5d13226d28c34))
+* **rehearsals:** make schedules window provider externally mutable without lint violations ([1ab5d44](https://github.com/eddimull/TTS-App/commit/1ab5d441b7edd3a610c9e2f84c41598e9a3774d3))
+* **test:** defer rehearsals repository test to Task 9 — skipped test broke compilation ([7d52440](https://github.com/eddimull/TTS-App/commit/7d524405ddc95092c9c2763eaa9590a3f3f6dddb))
+* **test:** update legacy dashboard provider test fakes for getDashboard signature ([5dd6fb8](https://github.com/eddimull/TTS-App/commit/5dd6fb856bbadc3c6e7b49f006dfdbdf4d1933a6))
+
+
+### Miscellaneous Chores
+
+* bump version to 1.20.0+35 ([18b46c6](https://github.com/eddimull/TTS-App/commit/18b46c65c7dc982b833e6e42131b8826422ed3fb))
+
 ## [1.19.1](https://github.com/eddimull/TTS-App/compare/v1.19.0...v1.19.1) (2026-07-25)
 
 

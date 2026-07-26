@@ -24,6 +24,7 @@ import '../widgets/calendar_filter_button.dart';
 import '../widgets/calendar_filter_sheet.dart';
 import '../widgets/event_card.dart';
 import '../widgets/live_now_card.dart';
+import '../widgets/month_year_picker_sheet.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -192,6 +193,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           .ensureMonthLoaded(focused),
                     );
                   },
+                  onHeaderTapped: (_) => _openMonthYearPicker(),
                 ),
               ),
             ],
@@ -220,6 +222,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
+  Future<void> _openMonthYearPicker() async {
+    final picked = await MonthYearPickerSheet.show(
+      context,
+      focusedDay: _focusedDay,
+      now: DateTime.now(),
+    );
+    if (picked == null || !mounted) return;
+    _jumpToMonth(picked);
+  }
+
+  void _jumpToMonth(DateTime month) {
+    // Keep the target inside TableCalendar's firstDay..lastDay — the
+    // first-of-month of the oldest pickable month precedes firstDay.
+    final now = DateTime.now();
+    final firstAllowed = now.subtract(const Duration(days: 365));
+    final lastAllowed = now.add(const Duration(days: 365 * 5));
+    var target = month;
+    if (target.isBefore(firstAllowed)) target = firstAllowed;
+    if (target.isAfter(lastAllowed)) target = lastAllowed;
+    setState(() {
+      _focusedDay = target;
+      _selectedDay = null;
+    });
+    unawaited(
+      ref.read(dashboardProvider.notifier).ensureMonthLoaded(target),
+    );
+  }
+
 }
 
 class _DashboardContent extends ConsumerStatefulWidget {
@@ -231,6 +261,7 @@ class _DashboardContent extends ConsumerStatefulWidget {
     required this.selectedDay,
     required this.onDaySelected,
     required this.onPageChanged,
+    required this.onHeaderTapped,
   });
 
   final List<EventSummary> events;
@@ -240,6 +271,7 @@ class _DashboardContent extends ConsumerStatefulWidget {
   final DateTime? selectedDay;
   final void Function(DateTime selected, DateTime focused) onDaySelected;
   final void Function(DateTime focusedDay) onPageChanged;
+  final void Function(DateTime focusedDay) onHeaderTapped;
 
   @override
   ConsumerState<_DashboardContent> createState() =>
@@ -326,6 +358,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           eventsByDay: eventsByDay,
           onDaySelected: widget.onDaySelected,
           onPageChanged: widget.onPageChanged,
+          onHeaderTapped: widget.onHeaderTapped,
         ),
         const SizedBox(height: 8),
         if (widget.isLoadingOlder)
@@ -392,6 +425,7 @@ class _CalendarSection extends StatelessWidget {
     required this.eventsByDay,
     required this.onDaySelected,
     this.onPageChanged,
+    this.onHeaderTapped,
   });
 
   final DateTime focusedDay;
@@ -399,6 +433,7 @@ class _CalendarSection extends StatelessWidget {
   final Map<DateTime, List<EventSummary>> eventsByDay;
   final void Function(DateTime selected, DateTime focused) onDaySelected;
   final void Function(DateTime focusedDay)? onPageChanged;
+  final void Function(DateTime focusedDay)? onHeaderTapped;
 
   DateTime _normalise(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
@@ -419,6 +454,7 @@ class _CalendarSection extends StatelessWidget {
           eventLoader: (day) => eventsByDay[_normalise(day)] ?? const [],
           onDaySelected: onDaySelected,
           onPageChanged: onPageChanged,
+          onHeaderTapped: onHeaderTapped,
           rowHeight: 56,
           calendarFormat: CalendarFormat.month,
           availableCalendarFormats: const {CalendarFormat.month: 'Month'},

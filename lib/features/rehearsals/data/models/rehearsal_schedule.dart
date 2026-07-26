@@ -10,6 +10,7 @@ class RehearsalSchedule {
     this.locationAddress,
     required this.active,
     required this.upcomingRehearsals,
+    this.recurrenceLabel,
   });
 
   final int id;
@@ -20,6 +21,7 @@ class RehearsalSchedule {
   final String? locationAddress;
   final bool active;
   final List<RehearsalSummary> upcomingRehearsals;
+  final String? recurrenceLabel;
 
   factory RehearsalSchedule.fromJson(Map<String, dynamic> json) {
     final rawRehearsals = json['upcoming_rehearsals'];
@@ -39,6 +41,7 @@ class RehearsalSchedule {
       locationAddress: json['location_address'] as String?,
       active: (json['active'] as bool?) ?? true,
       upcomingRehearsals: upcomingRehearsals,
+      recurrenceLabel: json['recurrence_label'] as String?,
     );
   }
 

@@ -88,7 +88,11 @@ void main() {
               ),
             )),
         dashboardProvider.overrideWith(() => _FixedDashboardNotifier(
-              DashboardState(events: events, upcomingCharts: const [], loadedFrom: DateTime(2026)),
+              DashboardState(
+                  events: events,
+                  upcomingCharts: const [],
+                  loadedFrom: DateTime(2026),
+                  loadedTo: DateTime(2026, 4, 1)),
             )),
       ],
       child: const CupertinoApp(home: Material(child: DashboardScreen())),

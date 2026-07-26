@@ -70,7 +70,11 @@ void main() {
               ),
             )),
         dashboardProvider.overrideWith(() => _FixedDashboardNotifier(
-              DashboardState(events: const [], upcomingCharts: const [], loadedFrom: DateTime(2026)),
+              DashboardState(
+                  events: const [],
+                  upcomingCharts: const [],
+                  loadedFrom: DateTime(2026),
+                  loadedTo: DateTime(2026, 4, 1)),
             )),
         hintStorageProvider.overrideWithValue(
           AsyncValue<HintStorage>.data(HintStorage(prefs)),

@@ -36,6 +36,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
+  // Tracks the last DashboardState seen by the resume-recover listener below
+  // (distinct from Riverpod's own `previous` AsyncValue param, which can be
+  // `loading`/`error` and doesn't carry a DashboardState to compare against).
+  // Used by shouldRecoverFocusedMonth to detect a fetch that just completed
+  // without moving either watermark, so a permanently failing forward fetch
+  // isn't auto-retried indefinitely.
+  DashboardState? _lastDashboardState;
+
   @override
   Widget build(BuildContext context) {
     final authAsync = ref.watch(authProvider);
@@ -56,6 +64,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }();
 
     final dashboardAsync = ref.watch(dashboardProvider);
+
+    // A provider reset (app-resume blanket invalidation, realtime signal,
+    // pull-to-refresh) replaces the loaded window with the initial one while
+    // _focusedDay stays parked — re-cover the focused month when that
+    // happens. shouldRecoverFocusedMonth also guards against retrying
+    // indefinitely when the forward fetch keeps failing (or history is
+    // exhausted): see its doc comment.
+    ref.listen<AsyncValue<DashboardState>>(dashboardProvider, (previous, next) {
+      final state = next.value;
+      if (state == null) return;
+      final shouldRecover = shouldRecoverFocusedMonth(
+        previous: _lastDashboardState,
+        next: state,
+        focusedDay: _focusedDay,
+      );
+      _lastDashboardState = state;
+      if (!shouldRecover) return;
+      unawaited(
+        ref.read(dashboardProvider.notifier).ensureMonthLoaded(_focusedDay),
+      );
+    });
 
     return CupertinoPageScaffold(
       child: Stack(
@@ -382,7 +411,9 @@ class _CalendarSection extends StatelessWidget {
         color: CupertinoColors.systemBackground.resolveFrom(context),
         child: TableCalendar<EventSummary>(
           firstDay: DateTime.now().subtract(const Duration(days: 365)),
-          lastDay: DateTime.now().add(const Duration(days: 365)),
+          // Sanity cap only — forward fetching is lazy (see ensureMonthLoaded),
+          // so this bounds the picker, not the data.
+          lastDay: DateTime.now().add(const Duration(days: 365 * 5)),
           focusedDay: focusedDay,
           selectedDayPredicate: (day) => isSameDay(selectedDay, day),
           eventLoader: (day) => eventsByDay[_normalise(day)] ?? const [],

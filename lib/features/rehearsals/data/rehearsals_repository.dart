@@ -11,9 +11,20 @@ class RehearsalsRepository {
   final Dio _dio;
 
   /// Fetches the rehearsal schedules (with upcoming rehearsals) for [bandId].
-  Future<List<RehearsalSchedule>> getSchedules(int bandId) async {
+  /// [until] (yyyy-MM-dd, inclusive) extends the upcoming window past the
+  /// server's 60-day default; [includeVirtual] merges un-materialized
+  /// occurrences generated from each schedule's recurrence rule.
+  Future<List<RehearsalSchedule>> getSchedules(
+    int bandId, {
+    String? until,
+    bool includeVirtual = false,
+  }) async {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiEndpoints.mobileBandRehearsalSchedules(bandId),
+      queryParameters: {
+        if (until != null) 'until': until,
+        if (includeVirtual) 'include_virtual': 1,
+      },
     );
 
     final data = response.data!;

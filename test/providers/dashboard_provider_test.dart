@@ -21,13 +21,18 @@ class FakeDashboardRepository implements DashboardRepository {
 
   @override
   Future<({List<EventSummary> events, List<UpcomingChart> upcomingCharts})>
-      getDashboard() async {
+      getDashboard({String? to}) async {
     callCount++;
     return (events: _events, upcomingCharts: _charts);
   }
 
   @override
   Future<List<EventSummary>> loadOlderEvents(String beforeDate) async => const [];
+
+  @override
+  Future<List<EventSummary>> loadNewerEvents(
+          String afterDate, String beforeDate) async =>
+      const [];
 }
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -141,12 +146,18 @@ class _FakeSelectedBandNotifier extends AsyncNotifier<int?>
 class _ThrowingDashboardRepository implements DashboardRepository {
   @override
   Future<({List<EventSummary> events, List<UpcomingChart> upcomingCharts})>
-      getDashboard() async {
+      getDashboard({String? to}) async {
     throw Exception('Network error');
   }
 
   @override
   Future<List<EventSummary>> loadOlderEvents(String beforeDate) async {
+    throw Exception('Network error');
+  }
+
+  @override
+  Future<List<EventSummary>> loadNewerEvents(
+      String afterDate, String beforeDate) async {
     throw Exception('Network error');
   }
 }

@@ -21,16 +21,19 @@ class MonthYearPickerSheet extends StatefulWidget {
 
   /// Shows the sheet for [focusedDay] and resolves with the chosen month.
   ///
-  /// Bounds mirror the dashboard calendar's range (one year back, five years
-  /// forward of [now]), normalised to first-of-month so the picker's
-  /// initial-value assertions can't trip on partial months.
+  /// Bounds derive from the same day arithmetic as the dashboard calendar's
+  /// firstDay/lastDay (365 days back, 365 * 5 days forward of [now]),
+  /// normalised to first-of-month — so every pickable month is reachable on
+  /// the calendar and the picker's initial-value assertions can't trip on
+  /// partial months.
   static Future<DateTime?> show(
     BuildContext context, {
     required DateTime focusedDay,
     required DateTime now,
   }) {
-    final min = DateTime(now.year - 1, now.month);
-    final max = DateTime(now.year + 5, now.month);
+    DateTime firstOfMonth(DateTime d) => DateTime(d.year, d.month);
+    final min = firstOfMonth(now.subtract(const Duration(days: 365)));
+    final max = firstOfMonth(now.add(const Duration(days: 365 * 5)));
     var initial = DateTime(focusedDay.year, focusedDay.month);
     if (initial.isBefore(min)) initial = min;
     if (initial.isAfter(max)) initial = max;
@@ -75,7 +78,11 @@ class _MonthYearPickerSheetState extends State<MonthYearPickerSheet> {
                   child: const Text('Today'),
                 ),
                 CupertinoButton(
-                  onPressed: () => Navigator.of(context).pop(_selected),
+                  // Normalise defensively: monthYear mode already emits
+                  // day-1 values, but the documented contract is
+                  // first-of-month regardless of picker behaviour.
+                  onPressed: () => Navigator.of(context)
+                      .pop(DateTime(_selected.year, _selected.month)),
                   child: const Text(
                     'Done',
                     style: TextStyle(fontWeight: FontWeight.w600),

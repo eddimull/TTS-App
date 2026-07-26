@@ -93,9 +93,12 @@ void main() {
     final farPast = DateTime(now.year - 2, now.month);
     await open(tester, focusedDay: farPast, now: now);
 
-    // Sheet opened successfully and shows the minimum (clamped) month.
+    // Sheet opened successfully and shows the minimum (clamped) month —
+    // derived exactly as the widget derives it, from the calendar's
+    // 365-day-back bound normalised to first-of-month.
     expect(find.byType(MonthYearPickerSheet), findsOneWidget);
-    final minMonth = DateTime(now.year - 1, now.month);
+    final minAnchor = now.subtract(const Duration(days: 365));
+    final minMonth = DateTime(minAnchor.year, minAnchor.month);
     expect(find.text(DateFormat.MMMM().format(minMonth)), findsWidgets);
 
     await tester.tap(find.text('Done'));

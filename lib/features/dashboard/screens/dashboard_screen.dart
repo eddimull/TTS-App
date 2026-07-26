@@ -382,7 +382,9 @@ class _CalendarSection extends StatelessWidget {
         color: CupertinoColors.systemBackground.resolveFrom(context),
         child: TableCalendar<EventSummary>(
           firstDay: DateTime.now().subtract(const Duration(days: 365)),
-          lastDay: DateTime.now().add(const Duration(days: 365)),
+          // Sanity cap only — forward fetching is lazy (see ensureMonthLoaded),
+          // so this bounds the picker, not the data.
+          lastDay: DateTime.now().add(const Duration(days: 365 * 5)),
           focusedDay: focusedDay,
           selectedDayPredicate: (day) => isSameDay(selectedDay, day),
           eventLoader: (day) => eventsByDay[_normalise(day)] ?? const [],

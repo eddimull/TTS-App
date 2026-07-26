@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -69,6 +71,38 @@ class _FakeDashboardRepository extends DashboardRepository {
 class _StubBand extends SelectedBandNotifier {
   @override
   Future<int?> build() async => 10;
+}
+
+/// Fake repository whose loadOlderEvents call resolves only when the test
+/// completes [olderCompleter] — used to force a deterministic race between a
+/// pending loadOlder() and a loadNewerEvents call that resolves first.
+class _RaceDashboardRepository extends DashboardRepository {
+  _RaceDashboardRepository({
+    required this.initialEvents,
+    required this.olderCompleter,
+    required this.newerResult,
+  }) : super(_throwingDio);
+
+  final List<EventSummary> initialEvents;
+  final Completer<List<EventSummary>> olderCompleter;
+  final List<EventSummary> newerResult;
+
+  @override
+  Future<({List<EventSummary> events, List<UpcomingChart> upcomingCharts})>
+      getDashboard({String? to}) async {
+    return (events: initialEvents, upcomingCharts: const <UpcomingChart>[]);
+  }
+
+  @override
+  Future<List<EventSummary>> loadOlderEvents(String beforeDate) {
+    return olderCompleter.future;
+  }
+
+  @override
+  Future<List<EventSummary>> loadNewerEvents(
+      String afterDate, String beforeDate) async {
+    return newerResult;
+  }
 }
 
 void main() {
@@ -454,6 +488,68 @@ void main() {
 
       expect(fakeRepo.requestedBeforeDates.length, 1);
       expect(container.read(dashboardProvider).value!.hasReachedStart, isTrue);
+    });
+  });
+
+  group('DashboardNotifier concurrency (loadOlder x _loadNewer race)', () {
+    test(
+        'loadOlder completing after a concurrent _loadNewer preserves both merges',
+        () async {
+      final olderCompleter = Completer<List<EventSummary>>();
+      final repo = _RaceDashboardRepository(
+        initialEvents: [_event(1, '2026-06-20')],
+        olderCompleter: olderCompleter,
+        newerResult: [_event(3, '2026-12-05')],
+      );
+
+      final container = ProviderContainer(overrides: [
+        dashboardRepositoryProvider.overrideWithValue(repo),
+        selectedBandProvider.overrideWith(() => _StubBand()),
+      ]);
+      addTearDown(container.dispose);
+
+      final notifier = container.read(dashboardProvider.notifier);
+      await container.read(dashboardProvider.future); // resolve build()
+
+      final beforeState = container.read(dashboardProvider).value!;
+      final expectedLoadedFrom =
+          beforeState.loadedFrom.subtract(const Duration(days: 30));
+
+      // Start loadOlder() — its repo call hangs on olderCompleter.
+      final olderFuture = notifier.loadOlder();
+
+      // While loadOlder is still in flight, kick off and fully await a
+      // _loadNewer via ensureMonthLoaded — its fake resolves immediately, so
+      // this completes and mutates state BEFORE loadOlder finishes.
+      final target = DateTime(2026, 12, 15);
+      await notifier.ensureMonthLoaded(target);
+
+      final midState = container.read(dashboardProvider).value!;
+      expect(midState.events.map((e) => e.id), contains(3),
+          reason: '_loadNewer must have merged its batch already');
+      expect(midState.isLoadingNewer, isFalse);
+      expect(midState.isLoadingOlder, isTrue,
+          reason: 'loadOlder is still pending at this point');
+
+      // Now let loadOlder's repo call resolve and await its completion.
+      olderCompleter.complete([_event(2, '2026-05-15')]);
+      await olderFuture;
+
+      final finalState = container.read(dashboardProvider).value!;
+      final ids = finalState.events.map((e) => e.id).toSet();
+
+      expect(ids, containsAll([1, 2, 3]),
+          reason:
+              'both the older batch (id 2) and newer batch (id 3) must survive '
+              '— a stale pre-await snapshot in loadOlder must not clobber the '
+              'newer merge that completed first');
+      expect(finalState.loadedFrom, expectedLoadedFrom,
+          reason: 'loadedFrom must move backward from the older fetch');
+      expect(finalState.loadedTo, DateTime(2027, 1, 1),
+          reason: 'loadedTo must move forward to the newer fetch target '
+              '(first day of the month after the focused month)');
+      expect(finalState.isLoadingOlder, isFalse);
+      expect(finalState.isLoadingNewer, isFalse);
     });
   });
 }

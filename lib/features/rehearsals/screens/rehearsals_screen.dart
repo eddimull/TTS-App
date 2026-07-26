@@ -61,6 +61,7 @@ class _RehearsalsBody extends ConsumerWidget {
           largeTitle: Text('Rehearsals'),
         ),
         schedulesAsync.when(
+          skipLoadingOnReload: true,
           loading: () => const SliverFillRemaining(
             child: Center(child: CupertinoActivityIndicator()),
           ),

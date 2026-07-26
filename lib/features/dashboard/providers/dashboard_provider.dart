@@ -192,19 +192,33 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       final older =
           await repo.loadOlderEvents(current.loadedFrom.toIso8601String());
 
+      // Merge against the LATEST state, not the pre-await `current` snapshot —
+      // a concurrent _loadNewer may have completed while this await was
+      // pending and mutated state in the meantime. Using a stale snapshot as
+      // the merge base would silently discard that concurrent update.
+      final latest = state.value ?? current;
+
       // Dedup only among events that have an id; events without one (e.g. some
       // rehearsal/scheduled shapes) are always kept — collapsing them by a
       // shared null id would silently drop distinct events.
       final existingIds =
-          current.events.map((e) => e.id).whereType<int>().toSet();
+          latest.events.map((e) => e.id).whereType<int>().toSet();
       final merged = [
-        ...current.events,
+        ...latest.events,
         ...older.where((e) => e.id == null || !existingIds.contains(e.id)),
       ];
 
-      state = AsyncValue.data(current.copyWith(
+      // loadedFrom only ever moves backward: take the earlier of this fetch's
+      // candidate and whatever latest.loadedFrom has become concurrently.
+      final candidateLoadedFrom =
+          current.loadedFrom.subtract(const Duration(days: 30));
+      final nextLoadedFrom = candidateLoadedFrom.isBefore(latest.loadedFrom)
+          ? candidateLoadedFrom
+          : latest.loadedFrom;
+
+      state = AsyncValue.data(latest.copyWith(
         events: merged,
-        loadedFrom: current.loadedFrom.subtract(const Duration(days: 30)),
+        loadedFrom: nextLoadedFrom,
         isLoadingOlder: false,
         hasReachedStart: older.isEmpty,
       ));
@@ -230,21 +244,32 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       final newer = await repo.loadNewerEvents(
           _ymd(current.loadedTo), _ymd(target));
 
+      // Merge against the LATEST state, not the pre-await `current` snapshot —
+      // a concurrent loadOlder may have completed while this await was
+      // pending and mutated state in the meantime. Using a stale snapshot as
+      // the merge base would silently discard that concurrent update.
+      final latest = state.value ?? current;
+
       // Dedup by id when present; by key for null-id events (virtual
       // rehearsals) so an inclusive boundary day can never duplicate.
       final existingIds =
-          current.events.map((e) => e.id).whereType<int>().toSet();
-      final existingKeys = current.events.map((e) => e.key).toSet();
+          latest.events.map((e) => e.id).whereType<int>().toSet();
+      final existingKeys = latest.events.map((e) => e.key).toSet();
       final merged = [
-        ...current.events,
+        ...latest.events,
         ...newer.where((e) => e.id != null
             ? !existingIds.contains(e.id)
             : !existingKeys.contains(e.key)),
       ];
 
-      state = AsyncValue.data(current.copyWith(
+      // loadedTo only ever moves forward: never move it backward even if a
+      // concurrent op already advanced it further than this fetch's target.
+      final nextLoadedTo =
+          target.isAfter(latest.loadedTo) ? target : latest.loadedTo;
+
+      state = AsyncValue.data(latest.copyWith(
         events: merged,
-        loadedTo: target,
+        loadedTo: nextLoadedTo,
         isLoadingNewer: false,
       ));
     } catch (_) {

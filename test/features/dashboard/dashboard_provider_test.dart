@@ -158,6 +158,20 @@ void main() {
 
       expect(state.coversMonth(DateTime(2026, 8, 15)), isTrue);
     });
+
+    test('loadedFrom-inclusive edge: monthStart == loadedFrom returns true',
+        () {
+      // loadedFrom is inclusive of its own day — a month whose first day
+      // exactly equals loadedFrom is fully covered, not excluded.
+      final state = DashboardState(
+        events: const [],
+        upcomingCharts: const [],
+        loadedFrom: DateTime(2026, 6, 1),
+        loadedTo: DateTime(2026, 9, 1),
+      );
+
+      expect(state.coversMonth(DateTime(2026, 6, 15)), isTrue);
+    });
   });
 
   group('DashboardState.copyWith', () {

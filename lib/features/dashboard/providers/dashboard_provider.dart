@@ -116,6 +116,44 @@ class DashboardState {
   }
 }
 
+/// Decides whether a dashboard provider state transition should trigger an
+/// `ensureMonthLoaded` retry for [focusedDay] — the decision behind the
+/// resume-recover `ref.listen` in `DashboardScreen`.
+///
+/// Returns `false` (no retry) when:
+/// - the focused month is already covered, or
+/// - a fetch is currently in flight (avoid piling on a concurrent request), or
+/// - [previous] is non-null and neither watermark (`loadedFrom`/`loadedTo`)
+///   moved since it was observed. This covers two related cases: a fetch
+///   that just completed WITHOUT moving either watermark (a permanent
+///   failure or exhausted history), and a state replacement (e.g. a provider
+///   rebuild) that happens to carry identical watermarks — neither is new
+///   information worth acting on. Retrying automatically on either would
+///   storm: the retry's own failure (or no-op) produces an identical
+///   no-progress transition, which would otherwise re-trigger another retry
+///   forever for as long as the screen stays parked on that month. The next
+///   real trigger — a page change, pull-to-refresh, or a provider reset that
+///   actually changes the watermark — gets a fresh attempt, matching the
+///   backward path's non-progress guard in `_ensureMonthLoadedBackward`.
+///
+/// Otherwise returns `true`.
+bool shouldRecoverFocusedMonth({
+  required DashboardState? previous,
+  required DashboardState next,
+  required DateTime focusedDay,
+}) {
+  if (next.isLoadingOlder || next.isLoadingNewer) return false;
+  if (next.coversMonth(focusedDay)) return false;
+
+  if (previous != null &&
+      next.loadedTo == previous.loadedTo &&
+      next.loadedFrom == previous.loadedFrom) {
+    return false;
+  }
+
+  return true;
+}
+
 // ── Notifier ──────────────────────────────────────────────────────────────────
 
 class DashboardNotifier extends AsyncNotifier<DashboardState> {

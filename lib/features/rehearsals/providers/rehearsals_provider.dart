@@ -5,6 +5,22 @@ import '../data/models/rehearsal_schedule.dart';
 
 // ── Rehearsal schedules (list) ────────────────────────────────────────────────
 
+/// Notifier for the rehearsals window days.
+class SchedulesWindowDaysNotifier extends Notifier<int> {
+  @override
+  int build() => 90;
+}
+
+/// Days ahead the rehearsals list covers. "Show more" bumps this by 90; a
+/// pull-to-refresh keeps the current window.
+final schedulesWindowDaysProvider =
+    NotifierProvider<SchedulesWindowDaysNotifier, int>(
+  SchedulesWindowDaysNotifier.new,
+);
+
+String _ymd(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
 /// Provides the list of [RehearsalSchedule] for a given band, each including
 /// its upcoming rehearsals.
 ///
@@ -15,8 +31,10 @@ import '../data/models/rehearsal_schedule.dart';
 final schedulesProvider =
     FutureProvider.family<List<RehearsalSchedule>, int>(
         (ref, bandId) async {
+  final windowDays = ref.watch(schedulesWindowDaysProvider);
+  final until = DateTime.now().add(Duration(days: windowDays));
   final repo = ref.watch(rehearsalsRepositoryProvider);
-  return repo.getSchedules(bandId);
+  return repo.getSchedules(bandId, until: _ymd(until), includeVirtual: true);
 });
 
 // ── Rehearsal detail (single) ─────────────────────────────────────────────────

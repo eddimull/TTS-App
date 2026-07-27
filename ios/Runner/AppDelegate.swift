@@ -3,6 +3,7 @@ import FirebaseMessaging
 import Flutter
 import GoogleMaps
 import UIKit
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -28,6 +29,17 @@ import UIKit
     // observer never fires and APNs registration never happens. Register
     // explicitly; the didRegister... override below forwards the token.
     application.registerForRemoteNotifications()
+    // Same UIScene gap, but for notification taps: firebase_messaging would
+    // install itself as the UNUserNotificationCenter delegate from its launch
+    // hook, which never runs (see above), so NO delegate is ever set and iOS
+    // drops every tap (didReceiveNotificationResponse) without invoking
+    // anyone — the app opens but never navigates. FlutterAppDelegate
+    // implements the delegate methods and forwards them to every registered
+    // plugin (firebase_messaging AND flutter_local_notifications), and a
+    // plugin that later checks the delegate sees a FlutterAppLifeCycleProvider
+    // and leaves it in place. Must be assigned before launching finishes or
+    // iOS won't deliver the cold-start tap response.
+    UNUserNotificationCenter.current().delegate = self
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

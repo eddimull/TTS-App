@@ -1,6 +1,9 @@
+import 'dart:async' show unawaited;
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 import '../data/notification_channels.dart';
@@ -8,6 +11,18 @@ import '../data/notification_text.dart';
 import '../data/push_payload.dart';
 import '../data/push_route.dart';
 import 'enrichment_service.dart' show LocalScheduler;
+
+/// Breadcrumb for a notification tap. Taps were dropped silently on iOS for
+/// months (no UNUserNotificationCenter delegate under the UIScene lifecycle)
+/// with zero telemetry to show it — leave a trail per tap source so Sentry
+/// can confirm which paths fire and what route each resolved. Best-effort.
+void _tapBreadcrumb(String source, String? route) {
+  unawaited(Sentry.addBreadcrumb(Breadcrumb(
+    category: 'push.tap',
+    message: route ?? '(no route)',
+    data: {'source': source},
+  )));
+}
 
 /// True only on platforms where FCM is supported.
 bool get _pushSupported =>
@@ -135,6 +150,9 @@ class PushService implements LocalScheduler {
 
     final launchDetails = await _local.getNotificationAppLaunchDetails();
     final launchPayload = launchDetails?.notificationResponse?.payload;
+    if (launchDetails?.didNotificationLaunchApp == true) {
+      _tapBreadcrumb('local_launch', launchPayload);
+    }
     if (launchDetails?.didNotificationLaunchApp == true &&
         launchPayload != null &&
         launchPayload.isNotEmpty) {
@@ -148,6 +166,7 @@ class PushService implements LocalScheduler {
   /// [NotificationResponse] directly, without going through the plugin.
   void handleLocalNotificationResponse(NotificationResponse response) {
     final route = response.payload;
+    _tapBreadcrumb('local_tap', route);
     if (route != null && route.isNotEmpty) {
       onLocalTap?.call(route);
     }
@@ -200,14 +219,16 @@ class PushService implements LocalScheduler {
     if (!_pushSupported || _tapsListening) return;
     _tapsListening = true;
 
-    void handle(RemoteMessage message) {
+    void handle(String source, RemoteMessage message) {
       final route = routeForPushData(message.data);
+      _tapBreadcrumb(source, route);
       if (route != null) onRoute(route);
     }
 
-    FirebaseMessaging.onMessageOpenedApp.listen(handle);
+    FirebaseMessaging.onMessageOpenedApp
+        .listen((message) => handle('fcm_opened_app', message));
     FirebaseMessaging.instance.getInitialMessage().then((message) {
-      if (message != null) handle(message);
+      if (message != null) handle('fcm_initial_message', message);
     });
   }
 

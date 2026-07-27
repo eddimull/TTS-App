@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:fake_async/fake_async.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/auth/data/models/auth_user.dart';
@@ -24,7 +25,7 @@ class _FakeAuth extends AuthNotifier {
 }
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
 
   final threadJson = {
     'conversation': {'id': 5, 'type': 'dm', 'title': 'Sam'},
@@ -49,6 +50,11 @@ void main() {
   late List<String> boundChannels;
   late void Function(String, Map<String, dynamic>)? capturedHandler;
   late int readPostCount;
+  late int unbindCount;
+  // Mutable so refresh tests can change what the "server" returns between
+  // the initial load and a later refetch.
+  late Map<String, dynamic> threadResponse;
+  late int threadStatus;
 
   ProviderContainer makeContainer({
     AuthState? authState,
@@ -57,12 +63,15 @@ void main() {
     boundChannels = [];
     capturedHandler = null;
     readPostCount = 0;
+    unbindCount = 0;
+    threadResponse = threadJson;
+    threadStatus = 200;
     final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
       ..httpClientAdapter = StubAdapter((options) async {
         if (options.method == 'POST' && options.path.endsWith('/read')) {
           readPostCount++;
         }
-        return json(200, threadJson);
+        return json(threadStatus, threadResponse);
       });
     final container = ProviderContainer(overrides: [
       chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
@@ -72,7 +81,9 @@ void main() {
       chatChannelBinderProvider.overrideWithValue((channel, onEvent) {
         boundChannels.add(channel);
         capturedHandler = onEvent;
-        return null; // test seam: no live subscription, nothing to unbind
+        return Future.value(() async {
+          unbindCount++;
+        });
       }),
     ]);
     addTearDown(container.dispose);
@@ -730,5 +741,236 @@ void main() {
     final message =
         c.read(chatThreadProvider(5)).messages.single;
     expect(message.reactions.single.emoji, '🎉');
+  });
+
+  Map<String, dynamic> msgJson(int id, {String body = 'msg', int userId = 3}) =>
+      {
+        'id': id,
+        'conversation_id': 5,
+        'user_id': userId,
+        'user_name': 'Sam',
+        'body': body,
+        'created_at': '2026-07-12T14:${id.toString().padLeft(2, '0')}:00Z',
+      };
+
+  group('mergeFetchedPage', () {
+    ChatMessage msg(int id, {String body = 'msg'}) =>
+        ChatMessage.fromJson(msgJson(id, body: body));
+
+    test('appends fetched messages missing locally when pages overlap', () {
+      final r = mergeFetchedPage([msg(1), msg(2)], [msg(2), msg(3)]);
+      expect(r.messages.map((m) => m.id), [1, 2, 3]);
+      expect(r.replaced, isFalse);
+    });
+
+    test('fetched versions of known messages win, so edits are picked up', () {
+      final r = mergeFetchedPage([msg(1, body: 'old')], [msg(1, body: 'new')]);
+      expect(r.messages.single.body, 'new');
+      expect(r.replaced, isFalse);
+    });
+
+    test('replaces wholesale when the fetched page does not reach back to '
+        'the local messages (gap bigger than one page)', () {
+      final r = mergeFetchedPage([msg(1)], [msg(10), msg(11)]);
+      expect(r.messages.map((m) => m.id), [10, 11]);
+      expect(r.replaced, isTrue);
+    });
+
+    test('replaces (not merges) even when the fetched page starts right '
+        'after the local messages — ids are a global sequence across '
+        'conversations, so adjacency cannot prove the absence of a gap in '
+        'this thread; the replaced scrollback is re-fetchable via loadMore',
+        () {
+      final r = mergeFetchedPage([msg(1)], [msg(2), msg(3)]);
+      expect(r.messages.map((m) => m.id), [2, 3]);
+      expect(r.replaced, isTrue);
+    });
+
+    test('an empty local list adopts the fetched page', () {
+      final r = mergeFetchedPage(const [], [msg(1)]);
+      expect(r.messages.map((m) => m.id), [1]);
+      expect(r.replaced, isTrue);
+    });
+
+    test('an empty fetched page keeps the local messages', () {
+      final r = mergeFetchedPage([msg(1)], const []);
+      expect(r.messages.map((m) => m.id), [1]);
+      expect(r.replaced, isFalse);
+    });
+  });
+
+  group('refresh (recovers messages missed while realtime was down)', () {
+    test('merges newly arrived messages into the existing thread', () async {
+      final c = makeContainer();
+      final sub = c.listen(chatThreadProvider(5), (_, __) {});
+      addTearDown(sub.close);
+      await c.read(chatThreadProvider(5).notifier).load();
+      expect(c.read(chatThreadProvider(5)).messages.map((m) => m.id), [1]);
+
+      threadResponse = {
+        ...threadJson,
+        'messages': [msgJson(1), msgJson(2, body: 'sent while backgrounded')],
+      };
+      await c.read(chatThreadProvider(5).notifier).refresh();
+
+      final state = c.read(chatThreadProvider(5));
+      expect(state.messages.map((m) => m.id), [1, 2]);
+      expect(state.messages.last.body, 'sent while backgrounded');
+    });
+
+    test('keeps the previous hasMore when the fetched page overlaps, adopts '
+        'the fetched hasMore when it replaced wholesale', () async {
+      final c = makeContainer();
+      final sub = c.listen(chatThreadProvider(5), (_, __) {});
+      addTearDown(sub.close);
+      await c.read(chatThreadProvider(5).notifier).load();
+      expect(c.read(chatThreadProvider(5)).hasMore, isFalse);
+
+      // Overlapping page: the server's hasMore describes the fetched page,
+      // not our (longer) merged list — keep what we had.
+      threadResponse = {
+        ...threadJson,
+        'messages': [msgJson(1), msgJson(2)],
+        'has_more': true,
+      };
+      await c.read(chatThreadProvider(5).notifier).refresh();
+      expect(c.read(chatThreadProvider(5)).hasMore, isFalse);
+
+      // Non-overlapping page: local scrollback was discarded, so the fetched
+      // page's hasMore is now the truth.
+      threadResponse = {
+        ...threadJson,
+        'messages': [msgJson(40), msgJson(41)],
+        'has_more': true,
+      };
+      await c.read(chatThreadProvider(5).notifier).refresh();
+      final state = c.read(chatThreadProvider(5));
+      expect(state.messages.map((m) => m.id), [40, 41]);
+      expect(state.hasMore, isTrue);
+    });
+
+    test('POSTs a read when new messages arrived', () async {
+      final c = makeContainer();
+      final sub = c.listen(chatThreadProvider(5), (_, __) {});
+      addTearDown(sub.close);
+      await c.read(chatThreadProvider(5).notifier).load();
+      expect(readPostCount, 1, reason: 'initial load marks read once');
+
+      threadResponse = {
+        ...threadJson,
+        'messages': [msgJson(1), msgJson(2)],
+      };
+      await c.read(chatThreadProvider(5).notifier).refresh();
+      expect(readPostCount, 2);
+    });
+
+    test('does not POST a read when nothing new arrived', () async {
+      final c = makeContainer();
+      final sub = c.listen(chatThreadProvider(5), (_, __) {});
+      addTearDown(sub.close);
+      await c.read(chatThreadProvider(5).notifier).load();
+      expect(readPostCount, 1);
+
+      await c.read(chatThreadProvider(5).notifier).refresh();
+      expect(readPostCount, 1,
+          reason: 'an unchanged thread must not re-mark read');
+    });
+
+    test('rebind: true tears down the old channel subscription and binds '
+        'a fresh one', () async {
+      final c = makeContainer();
+      final sub = c.listen(chatThreadProvider(5), (_, __) {});
+      addTearDown(sub.close);
+      await c.read(chatThreadProvider(5).notifier).load();
+      await pumpEventQueue();
+      expect(boundChannels, ['private-conversation.5']);
+
+      await c.read(chatThreadProvider(5).notifier).refresh(rebind: true);
+      await pumpEventQueue();
+
+      expect(unbindCount, 1, reason: 'the dead subscription must be released');
+      expect(boundChannels,
+          ['private-conversation.5', 'private-conversation.5']);
+    });
+
+    test('a failed refresh keeps the stale thread and surfaces no error',
+        () async {
+      final c = makeContainer();
+      final sub = c.listen(chatThreadProvider(5), (_, __) {});
+      addTearDown(sub.close);
+      await c.read(chatThreadProvider(5).notifier).load();
+
+      threadStatus = 500;
+      threadResponse = {'message': 'boom'};
+      await c.read(chatThreadProvider(5).notifier).refresh();
+
+      final state = c.read(chatThreadProvider(5));
+      expect(state.messages.map((m) => m.id), [1],
+          reason: 'best-effort refresh must not blank a healthy thread');
+      expect(state.error, isNull,
+          reason: 'a background refresh failure must not flash an error');
+    });
+
+    test('refresh on a never-loaded thread performs the initial load',
+        () async {
+      final c = makeContainer();
+      final sub = c.listen(chatThreadProvider(5), (_, __) {});
+      addTearDown(sub.close);
+
+      await c.read(chatThreadProvider(5).notifier).refresh();
+
+      final state = c.read(chatThreadProvider(5));
+      expect(state.messages.map((m) => m.id), [1]);
+      expect(boundChannels, ['private-conversation.5']);
+    });
+  });
+
+  group('app resume (socket died while backgrounded, Pusher has no replay)',
+      () {
+    test('a loaded thread refetches and re-binds its channel on resume',
+        () async {
+      final c = makeContainer();
+      final sub = c.listen(chatThreadProvider(5), (_, __) {});
+      addTearDown(sub.close);
+      await c.read(chatThreadProvider(5).notifier).load();
+      await pumpEventQueue();
+      expect(boundChannels, ['private-conversation.5']);
+
+      threadResponse = {
+        ...threadJson,
+        'messages': [msgJson(1), msgJson(2, body: 'sent while backgrounded')],
+      };
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await pumpEventQueue();
+
+      final state = c.read(chatThreadProvider(5));
+      expect(state.messages.map((m) => m.id), [1, 2]);
+      expect(unbindCount, 1);
+      expect(boundChannels,
+          ['private-conversation.5', 'private-conversation.5']);
+    });
+
+    test('a disposed thread notifier does not refetch on resume', () async {
+      final c = makeContainer();
+      final sub = c.listen(chatThreadProvider(5), (_, __) {});
+      await c.read(chatThreadProvider(5).notifier).load();
+      await pumpEventQueue();
+
+      sub.close();
+      await pumpEventQueue();
+      final bindsBefore = boundChannels.length;
+
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await pumpEventQueue();
+
+      expect(boundChannels.length, bindsBefore,
+          reason: 'the lifecycle listener must be disposed with the notifier');
+    });
   });
 }

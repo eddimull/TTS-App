@@ -17,6 +17,7 @@ import '../services/enrichment_service.dart';
 import '../services/location_service.dart';
 import '../services/push_service.dart';
 import '../../chat/providers/active_chat_conversation_provider.dart';
+import '../../chat/providers/chat_thread_provider.dart';
 import '../../events/providers/events_provider.dart';
 import '../../events/data/events_repository.dart';
 import '../../../shared/providers/selected_band_provider.dart';
@@ -58,6 +59,14 @@ class PushRegistrar {
     // so a message arriving in that window can't render for an open thread.
     push.currentOpenConversation =
         () => _ref.read(activeChatConversationProvider);
+    // A suppressed push means its thread is on screen — refresh it so the
+    // message shows even when the realtime channel missed it (dead socket
+    // right after an app resume).
+    push.onChatPushSuppressed = (conversationId) {
+      final id = int.tryParse(conversationId);
+      if (id == null) return;
+      unawaited(_ref.read(chatThreadProvider(id).notifier).refresh());
+    };
     await push.init();
     await push.requestPermission();
     push.listenForeground();

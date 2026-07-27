@@ -78,6 +78,13 @@ class PushService implements LocalScheduler {
   /// `currentConfiguration`.
   int? Function()? currentOpenConversation;
 
+  /// Invoked (instead of rendering) when a chat push is suppressed because
+  /// its thread is open on screen. Right after an app resume the thread's
+  /// realtime channel can still be dead/reconnecting, so the push may carry a
+  /// message the channel never delivered — the provider layer refreshes the
+  /// open thread rather than trusting the channel to have shown it.
+  void Function(String conversationId)? onChatPushSuppressed;
+
   /// Invoked when the user taps a locally-rendered notification (foreground
   /// tap callback, or a cold-start launch resolved in [init] via
   /// `getNotificationAppLaunchDetails`) that carries a route payload. Set by
@@ -181,7 +188,7 @@ class PushService implements LocalScheduler {
   void listenForeground() {
     if (!_pushSupported || _listening) return;
     _listening = true;
-    FirebaseMessaging.onMessage.listen(_show);
+    FirebaseMessaging.onMessage.listen(handleForegroundMessage);
   }
 
   bool _tapsListening = false;
@@ -204,7 +211,11 @@ class PushService implements LocalScheduler {
     });
   }
 
-  Future<void> _show(RemoteMessage message) async {
+  /// Handler for `FirebaseMessaging.onMessage` (foreground pushes). Public
+  /// only so the suppression branch can be unit-tested with a hand-built
+  /// [RemoteMessage].
+  @visibleForTesting
+  Future<void> handleForegroundMessage(RemoteMessage message) async {
     final payload = PushPayload.fromData(message.data);
     // Messages carrying a `notification` block are OS-rendered when the app is
     // backgrounded/terminated; in the foreground the OS shows nothing, so
@@ -216,7 +227,11 @@ class PushService implements LocalScheduler {
       return;
     }
     if (shouldSuppressChatPush(payload, currentOpenConversation)) {
-      return; // thread is open — the live channel already shows the message
+      // Thread is open — no tray notification, but the live channel may have
+      // missed this message (dead socket right after resume), so let the
+      // provider layer refresh the thread.
+      onChatPushSuppressed?.call(payload.conversationId!);
+      return;
     }
     if (payload.type == PushType.departure) {
       final cb = onDeparturePush;

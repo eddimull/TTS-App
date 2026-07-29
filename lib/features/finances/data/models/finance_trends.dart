@@ -42,6 +42,7 @@ class FinanceTrends {
     required this.months,
     required this.currentMonths,
     required this.unearnedCents,
+    required this.unearnedByYearCents,
   });
 
   final int year;
@@ -51,6 +52,10 @@ class FinanceTrends {
   final List<TrendMonth>? currentMonths;
   /// Deposits held for not-yet-executed bookings (all years, as of today).
   final int unearnedCents;
+
+  /// Unearned deposits bucketed by event-date year (cents). Empty when the
+  /// backend doesn't send the field.
+  final Map<int, int> unearnedByYearCents;
 
   factory FinanceTrends.fromJson(Map<String, dynamic> json) {
     List<TrendMonth> parse(List<dynamic> raw) =>
@@ -64,6 +69,11 @@ class FinanceTrends {
       months: parse(json['months'] as List<dynamic>? ?? const []),
       currentMonths: current is List ? parse(current) : null,
       unearnedCents: (json['unearned'] as num?)?.toInt() ?? 0,
+      unearnedByYearCents: {
+        for (final e in (json['unearned_by_year'] as List<dynamic>? ?? const []))
+          ((e as Map<String, dynamic>)['year'] as num).toInt():
+              (e['amount'] as num?)?.toInt() ?? 0,
+      },
     );
   }
 
@@ -76,6 +86,8 @@ class FinanceTrends {
   int get totalCount => months.fold(0, (s, m) => s + m.count);
 
   bool get isEmpty => months.every((m) => m.isZero);
+
+  int unearnedForYear(int year) => unearnedByYearCents[year] ?? 0;
 
   int? get currentTotalPaidCents =>
       currentMonths?.fold<int>(0, (s, m) => s + m.paidCents);

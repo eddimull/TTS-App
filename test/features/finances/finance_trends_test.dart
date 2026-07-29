@@ -48,6 +48,33 @@ void main() {
       });
       expect(t.unearnedCents, 0);
     });
+
+    test('parses unearned_by_year into a year map', () {
+      final t = FinanceTrends.fromJson({
+        'year': 2026,
+        'available_years': [2026],
+        'months': [_month(1)],
+        'unearned': 150000,
+        'unearned_by_year': [
+          {'year': 2026, 'amount': 50000},
+          {'year': 2027, 'amount': 100000},
+        ],
+      });
+      expect(t.unearnedByYearCents, {2026: 50000, 2027: 100000});
+      expect(t.unearnedForYear(2026), 50000);
+      expect(t.unearnedForYear(2027), 100000);
+      expect(t.unearnedForYear(2030), 0);
+    });
+
+    test('unearned_by_year defaults to empty when missing', () {
+      final t = FinanceTrends.fromJson({
+        'year': 2026,
+        'available_years': [2026],
+        'months': [_month(1)],
+      });
+      expect(t.unearnedByYearCents, isEmpty);
+      expect(t.unearnedForYear(2026), 0);
+    });
   });
 
   group('derived totals', () {

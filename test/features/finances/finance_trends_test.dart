@@ -29,6 +29,25 @@ void main() {
       expect(t.currentMonths, isNotNull);
       expect(t.currentMonths!.single.paidCents, 500000);
     });
+
+    test('parses unearned cents', () {
+      final t = FinanceTrends.fromJson({
+        'year': 2026,
+        'available_years': [2026],
+        'months': [_month(1)],
+        'unearned': 150000,
+      });
+      expect(t.unearnedCents, 150000);
+    });
+
+    test('unearned defaults to 0 when the field is missing', () {
+      final t = FinanceTrends.fromJson({
+        'year': 2026,
+        'available_years': [2026],
+        'months': [_month(1)],
+      });
+      expect(t.unearnedCents, 0);
+    });
   });
 
   group('derived totals', () {

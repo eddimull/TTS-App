@@ -41,6 +41,7 @@ class FinanceTrends {
     required this.availableYears,
     required this.months,
     required this.currentMonths,
+    required this.unearnedCents,
   });
 
   final int year;
@@ -48,6 +49,8 @@ class FinanceTrends {
   final List<int> availableYears;
   final List<TrendMonth> months;
   final List<TrendMonth>? currentMonths;
+  /// Deposits held for not-yet-executed bookings (all years, as of today).
+  final int unearnedCents;
 
   factory FinanceTrends.fromJson(Map<String, dynamic> json) {
     List<TrendMonth> parse(List<dynamic> raw) =>
@@ -60,6 +63,7 @@ class FinanceTrends {
           .cast<num>().map((e) => e.toInt()).toList(),
       months: parse(json['months'] as List<dynamic>? ?? const []),
       currentMonths: current is List ? parse(current) : null,
+      unearnedCents: (json['unearned'] as num?)?.toInt() ?? 0,
     );
   }
 

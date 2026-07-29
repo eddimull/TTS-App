@@ -77,6 +77,37 @@ carries for free).
 Nothing new. A missing `unearned` field defaults to 0; a band with no future
 deposits legitimately shows $0.00 (the card always renders, never hides).
 
+## Revision 2 (2026-07-28, user-requested): year separation + tap breakdown
+
+The single all-years card proved too coarse. Approved interaction: the card is
+**year-scoped** (follows the trends year picker like the other cards) and
+**tapping it opens a breakdown sheet** listing every year's unearned amount
+with the all-years total.
+
+**Backend:** payload keeps `unearned` (int cents, all-years total, unchanged
+semantics) and adds `unearned_by_year`: ascending-year array of
+`{"year": int, "amount": int}` (cents), only years with a nonzero amount.
+Buckets are keyed by the future booking's **event-date year**. Both fields
+remain as-of-today and independent of `year`/`snapshot_date`/
+`compare_with_current`. Implemented as `unearnedByYearCents(Collection): array`;
+the total is derived from it (no second pass).
+
+**Flutter model:** `FinanceTrends` adds `final Map<int, int> unearnedByYearCents`
+(missing field → empty map) and `int unearnedForYear(int year)` (absent year →
+0). `unearnedCents` (total) stays.
+
+**Flutter UI:** the Unearned card shows `unearnedForYear(selected year)`;
+caption becomes `tap for all years`; no delta badge. Tapping opens a
+`showCupertinoModalPopup` sheet: title "Unearned deposits", subtitle
+"as of today", one row per year (ascending) plus a bold Total row using the
+all-years `unearnedCents`. With no future deposits the sheet shows only the
+Total row ($0.00). Must render at 320pt.
+
+**Process note:** backend PR TTS#553 (the v1 scalar field) was merged to
+staging mid-revision; the Copilot fixes (commit 4aeaa722) plus this revision
+ship as a follow-up TTS PR. App PR #130 is still open and absorbs the UI
+revision.
+
 ## Testing & verification
 
 - Backend: feature tests above, run via `docker compose exec app` (never host

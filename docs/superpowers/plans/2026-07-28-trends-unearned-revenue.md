@@ -502,3 +502,498 @@ Use the `run-on-device` skill (app on the physical Android phone against the loc
 - [ ] **Step 6: Report**
 
 Summarize PR links, test results, and the on-device screenshot to the user. Merging is the user's call (TTS merge auto-deploys staging).
+
+---
+
+# Revision 2: year separation + tap breakdown (tasks 5-8)
+
+Per the approved Revision 2 in the spec. Backend context that changed since
+Task 1: PR TTS#553 merged to staging with the v1 scalar `unearned`; the
+Copilot-fix commit 4aeaa722 sits on the re-pushed `feat/trends-unearned-revenue`
+branch with no open PR. Tasks 5's work joins that commit in a follow-up PR
+(Task 8). App PR #130 is open and absorbs tasks 6-7.
+
+### Task 5: Backend — `unearned_by_year` in trends payload (TTS repo)
+
+**Files:**
+- Modify: `/home/eddie/github/TTS/app/Http/Controllers/Api/Mobile/FinancesController.php` (trends() payload, unearnedCents helper)
+- Test: `/home/eddie/github/TTS/tests/Feature/Api/Mobile/FinanceTrendsTest.php`
+
+**Interfaces:**
+- Consumes: existing `allBookings(Bands $band): Collection` and the unearned filter predicate from `unearnedCents(Collection $bookings): int`.
+- Produces: payload gains `"unearned_by_year"`: ascending-year list of `{"year": int, "amount": int}` (cents, only nonzero years); `"unearned"` (total) unchanged in value. Task 6 parses `unearned_by_year` exactly.
+
+- [ ] **Step 1: Write the failing tests**
+
+In `tests/Feature/Api/Mobile/FinanceTrendsTest.php`, extend `test_unearned_sums_payments_on_strictly_future_bookings` by appending these assertions after the existing `$res->assertJsonPath('unearned', 150000);` line (the test already creates: $500 paid on a future booking ~2 months out, $1000 fully-paid next year, and excluded today/past/cancelled bookings):
+
+```php
+        // Per-year breakdown: ascending years, only nonzero years, cents.
+        $futureYear = (int) now()->addMonths(2)->year;
+        $nextYear = (int) now()->addYear()->year;
+        if ($futureYear === $nextYear) {
+            // Rare window (Nov/Dec): both bookings share a year bucket.
+            $this->assertSame(
+                [['year' => $futureYear, 'amount' => 150000]],
+                $res->json('unearned_by_year'),
+            );
+        } else {
+            $this->assertSame(
+                [
+                    ['year' => $futureYear, 'amount' => 50000],
+                    ['year' => $nextYear, 'amount' => 100000],
+                ],
+                $res->json('unearned_by_year'),
+            );
+        }
+```
+
+And in `test_unearned_ignores_year_and_snapshot_params`, after each existing `assertJsonPath('unearned', 25000)` assertion (both Request A and Request B), add:
+
+```php
+        $this->assertSame(
+            [['year' => (int) now()->addMonths(3)->year, 'amount' => 25000]],
+            $res->json('unearned_by_year'),
+        );
+```
+
+(Variable is `$res` for Request A and whatever the test names Request B's response — match the actual variable names in the current test.)
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+```bash
+cd /home/eddie/github/TTS
+docker compose exec app php artisan test --filter=FinanceTrendsTest
+```
+
+Expected: the two amended tests FAIL (`unearned_by_year` is null); the other six still pass.
+
+- [ ] **Step 3: Implement**
+
+In `FinancesController.php`:
+
+3a. Replace the `unearnedCents(Collection $bookings): int` helper with a by-year version (same filter predicate, same per-booking cent rounding):
+
+```php
+    /**
+     * Deposits held for performances that haven't happened yet, bucketed by the
+     * booking's event-date year: amount_paid on non-cancelled bookings dated
+     * strictly after today, in cents. Ascending years, nonzero amounts only.
+     * Per-booking rounding ensures exact cent-level precision.
+     */
+    private function unearnedByYearCents(Collection $bookings): array
+    {
+        $today = \Carbon\Carbon::today();
+
+        return $bookings
+            ->filter(fn ($bk) => ($bk->status ?? null) !== 'cancelled'
+                && !empty($bk->start_date)
+                && \Carbon\Carbon::parse($bk->start_date)->startOfDay()->gt($today))
+            ->groupBy(fn ($bk) => (int) \Carbon\Carbon::parse($bk->start_date)->year)
+            ->map(fn ($group, $year) => [
+                'year' => (int) $year,
+                'amount' => (int) $group->sum(fn ($bk) => (int) round(((float) $bk->amount_paid) * 100)),
+            ])
+            ->filter(fn ($row) => $row['amount'] > 0)
+            ->sortBy('year')
+            ->values()
+            ->all();
+    }
+```
+
+3b. In `trends()`, derive both fields from one pass — replace the `'unearned' => $this->unearnedCents($allBookings),` payload line with:
+
+```php
+        $unearnedByYear = $this->unearnedByYearCents($allBookings);
+
+        $payload = [
+            'year' => $year,
+            'snapshot_date' => $snapshotDate,
+            'available_years' => $this->availableYears($allBookings),
+            'unearned' => array_sum(array_column($unearnedByYear, 'amount')),
+            'unearned_by_year' => $unearnedByYear,
+            'months' => $months,
+        ];
+```
+
+(The `$unearnedByYear` line goes right before the `$payload` array; the old standalone `unearnedCents` method is deleted.)
+
+3c. Extend the `trends()` docblock's `unearned` sentence:
+
+```php
+ * Always includes `unearned` (cents collected on not-yet-executed bookings,
+ * all years, as of today) and `unearned_by_year` (the same figure bucketed by
+ * event-date year, ascending, nonzero years only) — both independent of
+ * year/snapshot params.
+```
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+```bash
+docker compose exec app php artisan test --filter=FinanceTrendsTest
+```
+
+Expected: all 8 pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+cd /home/eddie/github/TTS
+git add app/Http/Controllers/Api/Mobile/FinancesController.php tests/Feature/Api/Mobile/FinanceTrendsTest.php
+git commit -m "feat(mobile): bucket unearned deposits by event year in trends payload
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 6: Flutter model — parse `unearned_by_year` (tts_bandmate repo)
+
+**Files:**
+- Modify: `/home/eddie/github/tts_bandmate/lib/features/finances/data/models/finance_trends.dart`
+- Test: `/home/eddie/github/tts_bandmate/test/features/finances/finance_trends_test.dart`
+
+**Interfaces:**
+- Consumes: JSON `"unearned_by_year"` list of `{"year": int, "amount": int}` (may be absent on older backends).
+- Produces: `FinanceTrends.unearnedByYearCents` — `final Map<int, int>`, empty when absent; `int unearnedForYear(int year)` returning 0 for absent years. Task 7 uses both plus the existing `unearnedCents`.
+
+- [ ] **Step 1: Write the failing tests**
+
+Add to the `FinanceTrends.fromJson` group in `test/features/finances/finance_trends_test.dart`:
+
+```dart
+    test('parses unearned_by_year into a year map', () {
+      final t = FinanceTrends.fromJson({
+        'year': 2026,
+        'available_years': [2026],
+        'months': [_month(1)],
+        'unearned': 150000,
+        'unearned_by_year': [
+          {'year': 2026, 'amount': 50000},
+          {'year': 2027, 'amount': 100000},
+        ],
+      });
+      expect(t.unearnedByYearCents, {2026: 50000, 2027: 100000});
+      expect(t.unearnedForYear(2026), 50000);
+      expect(t.unearnedForYear(2027), 100000);
+      expect(t.unearnedForYear(2030), 0);
+    });
+
+    test('unearned_by_year defaults to empty when missing', () {
+      final t = FinanceTrends.fromJson({
+        'year': 2026,
+        'available_years': [2026],
+        'months': [_month(1)],
+      });
+      expect(t.unearnedByYearCents, isEmpty);
+      expect(t.unearnedForYear(2026), 0);
+    });
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+```bash
+cd /home/eddie/github/tts_bandmate
+flutter test test/features/finances/finance_trends_test.dart
+```
+
+Expected: compile error — `unearnedByYearCents` undefined.
+
+- [ ] **Step 3: Implement**
+
+In `lib/features/finances/data/models/finance_trends.dart`, in `FinanceTrends`:
+
+Constructor — after `required this.unearnedCents,`:
+
+```dart
+    required this.unearnedByYearCents,
+```
+
+Fields — after the `unearnedCents` field:
+
+```dart
+  /// Unearned deposits bucketed by event-date year (cents). Empty when the
+  /// backend doesn't send the field.
+  final Map<int, int> unearnedByYearCents;
+```
+
+Getter — next to the other derived getters:
+
+```dart
+  int unearnedForYear(int year) => unearnedByYearCents[year] ?? 0;
+```
+
+`fromJson` — after the `unearnedCents:` line:
+
+```dart
+      unearnedByYearCents: {
+        for (final e in (json['unearned_by_year'] as List<dynamic>? ?? const []))
+          ((e as Map<String, dynamic>)['year'] as num).toInt():
+              (e['amount'] as num?)?.toInt() ?? 0,
+      },
+```
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+```bash
+flutter test test/features/finances/finance_trends_test.dart
+```
+
+Expected: PASS (all groups).
+
+- [ ] **Step 5: Commit**
+
+```bash
+cd /home/eddie/github/tts_bandmate
+git add lib/features/finances/data/models/finance_trends.dart test/features/finances/finance_trends_test.dart
+git commit -m "feat(finances): parse per-year unearned deposits in FinanceTrends
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 7: Flutter UI — year-scoped card + breakdown sheet (tts_bandmate repo)
+
+**Files:**
+- Modify: `/home/eddie/github/tts_bandmate/lib/features/finances/screens/widgets/trends_view.dart` (`_SummaryCards`, new `_UnearnedBreakdownSheet`)
+- Modify: `/home/eddie/github/tts_bandmate/test/features/finances/trends_view_unearned_test.dart`
+
+**Interfaces:**
+- Consumes: `FinanceTrends.unearnedForYear(int)`, `.unearnedByYearCents`, `.unearnedCents` (Task 6); existing `_fmtCents`, `_StatCard` (with its `caption` param), `context.secondaryText`.
+- Produces: user-visible year-scoped Unearned card; tap opens the breakdown sheet. No API for later tasks.
+
+- [ ] **Step 1: Rewrite the widget test (failing first)**
+
+Replace the body of `test/features/finances/trends_view_unearned_test.dart`'s `main()` (keep the existing `_FakeRepo` class but update its `fetchTrends` payload) so the fake returns year-relative data and the test drives the tap:
+
+```dart
+  // In _FakeRepo.fetchTrends, replace the returned FinanceTrends.fromJson map with:
+    final thisYear = DateTime.now().year;
+    return FinanceTrends.fromJson({
+      'year': year,
+      'available_years': [year],
+      'unearned': 123456,
+      'unearned_by_year': [
+        {'year': thisYear, 'amount': 50000},
+        {'year': thisYear + 1, 'amount': 73456},
+      ],
+      'months': [
+        {
+          'month': 1,
+          'paid': 100000,
+          'unpaid': 0,
+          'forecast': 100000,
+          'net': 20000,
+          'count': 1,
+        }
+      ],
+    });
+```
+
+```dart
+void main() {
+  Future<void> pumpTrends(WidgetTester tester) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          financesRepositoryProvider.overrideWithValue(_FakeRepo()),
+        ],
+        child: const CupertinoApp(
+          home: CustomScrollView(slivers: [TrendsView(bandId: 1)]),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('UNEARNED'), 200);
+  }
+
+  testWidgets('Unearned card is year-scoped with tap affordance at 320pt',
+      (tester) async {
+    await pumpTrends(tester);
+
+    expect(find.text('UNEARNED'), findsOneWidget);
+    // Selected year defaults to the current year → that year's bucket only.
+    expect(find.text('\$500.00'), findsOneWidget);
+    expect(find.text('tap for all years'), findsOneWidget);
+    // The all-years total is NOT on the card.
+    expect(find.text('\$1,234.56'), findsNothing);
+  });
+
+  testWidgets('tapping the Unearned card opens the per-year breakdown sheet',
+      (tester) async {
+    await pumpTrends(tester);
+
+    await tester.tap(find.text('UNEARNED'));
+    await tester.pumpAndSettle();
+
+    final thisYear = DateTime.now().year;
+    expect(find.text('Unearned deposits'), findsOneWidget);
+    expect(find.text('$thisYear'), findsWidgets); // year row (year picker may also show it)
+    expect(find.text('${thisYear + 1}'), findsOneWidget);
+    expect(find.text('\$500.00'), findsWidgets); // card + sheet row
+    expect(find.text('\$734.56'), findsOneWidget);
+    expect(find.text('Total'), findsOneWidget);
+    expect(find.text('\$1,234.56'), findsOneWidget);
+  });
+}
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+```bash
+cd /home/eddie/github/tts_bandmate
+flutter test test/features/finances/trends_view_unearned_test.dart
+```
+
+Expected: FAIL — card still shows the all-years total and old caption; no sheet.
+
+- [ ] **Step 3: Implement**
+
+In `lib/features/finances/screens/widgets/trends_view.dart`:
+
+3a. `_SummaryCards` gains the selected year and the tap handler. Change the class header:
+
+```dart
+class _SummaryCards extends StatelessWidget {
+  const _SummaryCards({required this.trends, required this.year});
+  final FinanceTrends trends;
+  final int year;
+```
+
+and update the call site in `_TrendsViewState.build`:
+
+```dart
+          _SummaryCards(trends: trends, year: _year),
+```
+
+3b. Replace the Unearned `_StatCard` in the last row with a tappable, year-scoped one:
+
+```dart
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => showCupertinoModalPopup<void>(
+                  context: context,
+                  builder: (_) => _UnearnedBreakdownSheet(trends: trends),
+                ),
+                child: _StatCard(
+                  label: 'Unearned',
+                  value: _fmtCents(trends.unearnedForYear(year)),
+                  tint: CupertinoColors.systemTeal.resolveFrom(context),
+                  caption: 'tap for all years',
+                ),
+              ),
+            ),
+```
+
+3c. Add the sheet widget (place it after `_StatCard`/`_DeltaBadge`, before `_EmptyBody`):
+
+```dart
+// ── Unearned breakdown ────────────────────────────────────────────────────────
+
+/// Bottom sheet listing unearned deposits per event year with the all-years
+/// total. Opened by tapping the Unearned stat card.
+class _UnearnedBreakdownSheet extends StatelessWidget {
+  const _UnearnedBreakdownSheet({required this.trends});
+  final FinanceTrends trends;
+
+  @override
+  Widget build(BuildContext context) {
+    final years = trends.unearnedByYearCents.keys.toList()..sort();
+
+    Widget row(String label, String value, {bool bold = false}) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+                      color: CupertinoColors.label.resolveFrom(context))),
+              Text(value,
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+                      color: CupertinoColors.label.resolveFrom(context))),
+            ],
+          ),
+        );
+
+    return Container(
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemBackground.resolveFrom(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 2),
+              child: Text('Unearned deposits',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: CupertinoColors.label.resolveFrom(context))),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text('Deposits held for future performances · as of today',
+                  textAlign: TextAlign.center,
+                  style:
+                      TextStyle(fontSize: 12, color: context.secondaryText)),
+            ),
+            for (final y in years)
+              row('$y', _fmtCents(trends.unearnedByYearCents[y]!)),
+            Container(
+              height: 0.5,
+              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              color: CupertinoColors.separator.resolveFrom(context),
+            ),
+            row('Total', _fmtCents(trends.unearnedCents), bold: true),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+}
+```
+
+- [ ] **Step 4: Run the tests and analyzer**
+
+```bash
+flutter test test/features/finances/trends_view_unearned_test.dart
+flutter analyze
+```
+
+Expected: both widget tests pass at 320pt; analyzer shows only the 4 pre-existing issues.
+
+- [ ] **Step 5: Commit**
+
+```bash
+cd /home/eddie/github/tts_bandmate
+git add lib/features/finances/screens/widgets/trends_view.dart test/features/finances/trends_view_unearned_test.dart
+git commit -m "feat(finances): year-scoped unearned card with per-year breakdown sheet
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 8: Revision wrap-up — suites, PRs, verification
+
+- [ ] Full suites: `flutter analyze && flutter test` (app repo); `docker compose exec app php artisan test --filter=FinanceTrendsTest` and `--filter=FinancesControllerTest` (TTS repo).
+- [ ] Push app branch (updates open PR #130); update PR #130's body to describe the year-scoped card + breakdown sheet.
+- [ ] Push TTS branch and open a NEW PR → staging titled "feat(mobile): per-year unearned deposits in finances trends" whose body notes it follows up merged #553 (contains the Copilot fixes 4aeaa722 + the by-year field).
+- [ ] Wait for Copilot on both, address comments.
+- [ ] On-device verify: Finances → Trends shows the year-scoped card; tapping opens the sheet with per-year rows + total; screenshot to user.

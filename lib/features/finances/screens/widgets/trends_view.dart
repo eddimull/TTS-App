@@ -472,6 +472,15 @@ class _SummaryCards extends StatelessWidget {
                 deltaCents: trends.deltaForecastCents,
               ),
             ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _StatCard(
+                label: 'Unearned',
+                value: _fmtCents(trends.unearnedCents),
+                tint: CupertinoColors.systemTeal.resolveFrom(context),
+                caption: 'as of today, all years',
+              ),
+            ),
           ]),
         ],
       ),
@@ -486,6 +495,7 @@ class _StatCard extends StatelessWidget {
     required this.tint,
     this.deltaCents,
     this.deltaCount,
+    this.caption,
   });
 
   final String label;
@@ -493,6 +503,7 @@ class _StatCard extends StatelessWidget {
   final Color tint;
   final int? deltaCents;
   final int? deltaCount;
+  final String? caption;
 
   @override
   Widget build(BuildContext context) {
@@ -516,6 +527,11 @@ class _StatCard extends StatelessWidget {
           Text(value,
               style: TextStyle(
                   fontSize: 18, fontWeight: FontWeight.w700, color: tint)),
+          if (caption != null) ...[
+            const SizedBox(height: 2),
+            Text(caption!,
+                style: TextStyle(fontSize: 9, color: context.secondaryText)),
+          ],
           if (delta != null && delta != 0) ...[
             const SizedBox(height: 2),
             _DeltaBadge(delta: delta, isMoney: isMoney),

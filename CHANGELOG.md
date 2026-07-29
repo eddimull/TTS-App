@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.21.0](https://github.com/eddimull/TTS-App/compare/v1.20.0...v1.21.0) (2026-07-29)
+
+
+### Features
+
+* **finances:** parse per-year unearned deposits in FinanceTrends ([e14de17](https://github.com/eddimull/TTS-App/commit/e14de1793ab7de905a0df4ec25ecb5a861e1227c))
+* **finances:** parse unearned deposits total in FinanceTrends ([6c55e4d](https://github.com/eddimull/TTS-App/commit/6c55e4d98a96c266f36c2a8e3c23a4237d5b1715))
+* **finances:** show unearned deposits card in trends summary ([8a287ab](https://github.com/eddimull/TTS-App/commit/8a287ab8b7f1a15ad6c5d94dd876742274a540af))
+* **finances:** unearned deposits card in trends ([b4db8ca](https://github.com/eddimull/TTS-App/commit/b4db8caa7aeb1fdaa2a58eab7dcb374aaac65076))
+* **finances:** year-scoped unearned card with per-year breakdown sheet ([7321450](https://github.com/eddimull/TTS-App/commit/732145006019dca14e546108eca1f5ab403c770f))
+
+
+### Bug Fixes
+
+* **finances:** all-years fallback for unearned card on older backends ([722c118](https://github.com/eddimull/TTS-App/commit/722c11848cf1fe770ef307c92f5df869d779c539))
+
 ## [1.20.0](https://github.com/eddimull/TTS-App/compare/v1.19.1...v1.20.0) (2026-07-27)
 
 

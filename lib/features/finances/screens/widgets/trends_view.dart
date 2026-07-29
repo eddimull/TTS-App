@@ -481,11 +481,22 @@ class _SummaryCards extends StatelessWidget {
                   context: context,
                   builder: (_) => _UnearnedBreakdownSheet(trends: trends),
                 ),
-                child: _StatCard(
-                  label: 'Unearned',
-                  value: _fmtCents(trends.unearnedForYear(year)),
-                  tint: CupertinoColors.systemTeal.resolveFrom(context),
-                  caption: 'tap for all years',
+                child: Semantics(
+                  button: true,
+                  child: _StatCard(
+                    label: 'Unearned',
+                    value: _fmtCents(
+                      trends.unearnedByYearCents.isEmpty &&
+                              trends.unearnedCents > 0
+                          ? trends.unearnedCents
+                          : trends.unearnedForYear(year),
+                    ),
+                    tint: CupertinoColors.systemTeal.resolveFrom(context),
+                    caption: trends.unearnedByYearCents.isEmpty &&
+                            trends.unearnedCents > 0
+                        ? 'as of today, all years'
+                        : 'tap for all years',
+                  ),
                 ),
               ),
             ),

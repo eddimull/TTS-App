@@ -108,6 +108,16 @@ staging mid-revision; the Copilot fixes (commit 4aeaa722) plus this revision
 ship as a follow-up TTS PR. App PR #130 is still open and absorbs the UI
 revision.
 
+**Post-review amendments:** (1) the card inherits the trends tab's existing
+empty-state: when the selected year has no booking activity at all, the
+summary cards (including Unearned) are replaced by the empty state —
+accepted deviation from v1's "always renders" line; surfacing unearned in
+the empty state is a possible follow-up. (2) Version-skew fallback: against
+a backend without `unearned_by_year`, the card shows the all-years total
+with the v1 caption. (3) `unearned_by_year` filter is `amount !== 0`
+(nonzero, not positive-only) so hypothetical negative buckets don't inflate
+the total.
+
 ## Testing & verification
 
 - Backend: feature tests above, run via `docker compose exec app` (never host

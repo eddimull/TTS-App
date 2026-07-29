@@ -45,8 +45,44 @@ class _FakeRepo implements FinancesRepository {
   Future<BandRevenue> fetchRevenue(int bandId) => throw UnimplementedError();
 }
 
+/// Simulates an older backend that sends `unearned` (the all-years total)
+/// but does not yet send `unearned_by_year`.
+class _FakeRepoNoYearBreakdown implements FinancesRepository {
+  @override
+  Future<FinanceTrends> fetchTrends(int bandId,
+      {required int year,
+      String? snapshotDate,
+      bool compareWithCurrent = false}) async {
+    return FinanceTrends.fromJson({
+      'year': year,
+      'available_years': [year],
+      'unearned': 123456,
+      'months': [
+        {
+          'month': 1,
+          'paid': 100000,
+          'unpaid': 0,
+          'forecast': 100000,
+          'net': 20000,
+          'count': 1,
+        }
+      ],
+    });
+  }
+
+  @override
+  Future<List<FinanceBooking>> fetchUnpaid(int bandId, {int? year}) =>
+      throw UnimplementedError();
+  @override
+  Future<List<FinanceBooking>> fetchPaid(int bandId, {int? year}) =>
+      throw UnimplementedError();
+  @override
+  Future<BandRevenue> fetchRevenue(int bandId) => throw UnimplementedError();
+}
+
 void main() {
-  Future<void> pumpTrends(WidgetTester tester) async {
+  Future<void> pumpTrends(WidgetTester tester,
+      {FinancesRepository? repo}) async {
     tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -54,7 +90,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          financesRepositoryProvider.overrideWithValue(_FakeRepo()),
+          financesRepositoryProvider.overrideWithValue(repo ?? _FakeRepo()),
         ],
         child: const CupertinoApp(
           home: CustomScrollView(slivers: [TrendsView(bandId: 1)]),
@@ -92,5 +128,16 @@ void main() {
     expect(find.text('\$734.56'), findsOneWidget);
     expect(find.text('Total'), findsOneWidget);
     expect(find.text('\$1,234.56'), findsOneWidget);
+  });
+
+  testWidgets(
+      'Unearned card falls back to all-years total when unearned_by_year is absent',
+      (tester) async {
+    await pumpTrends(tester, repo: _FakeRepoNoYearBreakdown());
+
+    expect(find.text('UNEARNED'), findsOneWidget);
+    expect(find.text('\$1,234.56'), findsOneWidget);
+    expect(find.text('as of today, all years'), findsOneWidget);
+    expect(find.text('tap for all years'), findsNothing);
   });
 }

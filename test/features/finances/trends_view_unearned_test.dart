@@ -13,10 +13,15 @@ class _FakeRepo implements FinancesRepository {
       {required int year,
       String? snapshotDate,
       bool compareWithCurrent = false}) async {
+    final thisYear = DateTime.now().year;
     return FinanceTrends.fromJson({
       'year': year,
       'available_years': [year],
       'unearned': 123456,
+      'unearned_by_year': [
+        {'year': thisYear, 'amount': 50000},
+        {'year': thisYear + 1, 'amount': 73456},
+      ],
       'months': [
         {
           'month': 1,
@@ -41,9 +46,7 @@ class _FakeRepo implements FinancesRepository {
 }
 
 void main() {
-  testWidgets('renders Unearned card with as-of-today caption at 320pt',
-      (tester) async {
-    // User's phone is narrow (~320pt) — verify no overflow at that width.
+  Future<void> pumpTrends(WidgetTester tester) async {
     tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -59,11 +62,35 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-
-    // The summary cards sit below the chart — scroll them into view.
     await tester.scrollUntilVisible(find.text('UNEARNED'), 200);
+  }
+
+  testWidgets('Unearned card is year-scoped with tap affordance at 320pt',
+      (tester) async {
+    await pumpTrends(tester);
+
     expect(find.text('UNEARNED'), findsOneWidget);
+    // Selected year defaults to the current year → that year's bucket only.
+    expect(find.text('\$500.00'), findsOneWidget);
+    expect(find.text('tap for all years'), findsOneWidget);
+    // The all-years total is NOT on the card.
+    expect(find.text('\$1,234.56'), findsNothing);
+  });
+
+  testWidgets('tapping the Unearned card opens the per-year breakdown sheet',
+      (tester) async {
+    await pumpTrends(tester);
+
+    await tester.tap(find.text('UNEARNED'));
+    await tester.pumpAndSettle();
+
+    final thisYear = DateTime.now().year;
+    expect(find.text('Unearned deposits'), findsOneWidget);
+    expect(find.text('$thisYear'), findsWidgets); // year row (year picker may also show it)
+    expect(find.text('${thisYear + 1}'), findsOneWidget);
+    expect(find.text('\$500.00'), findsWidgets); // card + sheet row
+    expect(find.text('\$734.56'), findsOneWidget);
+    expect(find.text('Total'), findsOneWidget);
     expect(find.text('\$1,234.56'), findsOneWidget);
-    expect(find.text('as of today, all years'), findsOneWidget);
   });
 }

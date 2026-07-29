@@ -135,7 +135,7 @@ class _TrendsViewState extends ConsumerState<TrendsView> {
           ),
           const _Legend(),
           const SizedBox(height: 12),
-          _SummaryCards(trends: trends),
+          _SummaryCards(trends: trends, year: _year),
         ],
         const SizedBox(height: 24),
       ]),
@@ -414,8 +414,9 @@ class _Legend extends StatelessWidget {
 // ── Summary cards ─────────────────────────────────────────────────────────────
 
 class _SummaryCards extends StatelessWidget {
-  const _SummaryCards({required this.trends});
+  const _SummaryCards({required this.trends, required this.year});
   final FinanceTrends trends;
+  final int year;
 
   @override
   Widget build(BuildContext context) {
@@ -474,11 +475,18 @@ class _SummaryCards extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: _StatCard(
-                label: 'Unearned',
-                value: _fmtCents(trends.unearnedCents),
-                tint: CupertinoColors.systemTeal.resolveFrom(context),
-                caption: 'as of today, all years',
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => showCupertinoModalPopup<void>(
+                  context: context,
+                  builder: (_) => _UnearnedBreakdownSheet(trends: trends),
+                ),
+                child: _StatCard(
+                  label: 'Unearned',
+                  value: _fmtCents(trends.unearnedForYear(year)),
+                  tint: CupertinoColors.systemTeal.resolveFrom(context),
+                  caption: 'tap for all years',
+                ),
               ),
             ),
           ]),
@@ -565,6 +573,80 @@ class _DeltaBadge extends StatelessWidget {
             overflow: TextOverflow.ellipsis),
       ),
     ]);
+  }
+}
+
+// ── Unearned breakdown ────────────────────────────────────────────────────────
+
+/// Bottom sheet listing unearned deposits per event year with the all-years
+/// total. Opened by tapping the Unearned stat card.
+class _UnearnedBreakdownSheet extends StatelessWidget {
+  const _UnearnedBreakdownSheet({required this.trends});
+  final FinanceTrends trends;
+
+  @override
+  Widget build(BuildContext context) {
+    final years = trends.unearnedByYearCents.keys.toList()..sort();
+
+    Widget row(String label, String value, {bool bold = false}) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+                      color: CupertinoColors.label.resolveFrom(context))),
+              Text(value,
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+                      color: CupertinoColors.label.resolveFrom(context))),
+            ],
+          ),
+        );
+
+    return Container(
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemBackground.resolveFrom(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 2),
+              child: Text('Unearned deposits',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: CupertinoColors.label.resolveFrom(context))),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text('Deposits held for future performances · as of today',
+                  textAlign: TextAlign.center,
+                  style:
+                      TextStyle(fontSize: 12, color: context.secondaryText)),
+            ),
+            for (final y in years)
+              row('$y', _fmtCents(trends.unearnedByYearCents[y]!)),
+            Container(
+              height: 0.5,
+              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              color: CupertinoColors.separator.resolveFrom(context),
+            ),
+            row('Total', _fmtCents(trends.unearnedCents), bold: true),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 }
 

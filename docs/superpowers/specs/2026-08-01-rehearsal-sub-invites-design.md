@@ -32,7 +32,7 @@ New table `rehearsal_subs`, modeled on `event_subs` minus the invitation-key /
 pending machinery:
 
 | column | notes |
-|---|---|
+| --- | --- |
 | id | |
 | rehearsal_id | FK → rehearsals, cascade on delete |
 | band_id | FK → bands |
@@ -80,11 +80,15 @@ virtual rows to a real id first, then uses the id-based sub endpoints.
 
 ### Notifications
 
+Every invited sub receives an email; registered subs with the app additionally
+get a push.
+
 - `ProcessRehearsalSubAdded` job, modeled on `ProcessRehearsalCancelled`:
-  - Registered sub: `SendUserPush` (`type: 'rehearsal_sub_added'`,
-    `rehearsalId`, date; tap deep-links to rehearsal detail) + email with band,
-    date/time, venue, notes. New mailable `RehearsalSubAdded`.
-  - Ad-hoc invitee (no account): email only.
+  - Email (all invitees, always): new mailable `RehearsalSubAdded` with band,
+    date/time, venue, notes.
+  - Push (registered subs with device tokens): `SendUserPush`
+    (`type: 'rehearsal_sub_added'`, `rehearsalId`, date; tap deep-links to
+    rehearsal detail).
 - Removal sends a matching "no longer needed" push/email
   (`ProcessRehearsalSubRemoved`, `type: 'rehearsal_sub_removed'`).
 - `ProcessRehearsalCancelled` is extended to also notify the rehearsal's

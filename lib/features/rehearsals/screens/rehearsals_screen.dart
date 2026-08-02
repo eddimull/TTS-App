@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
+import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 import 'package:tts_bandmate/shared/utils/time_format.dart';
 import 'package:tts_bandmate/shared/widgets/app_scaffold.dart';
@@ -361,6 +362,11 @@ class _RehearsalSubTile extends ConsumerWidget {
         phone: result.phone,
         bandRoleId: result.bandRoleId,
       );
+
+      ref.read(cacheInvalidatorProvider).onRehearsalChanged(
+            rehearsalId: id,
+            eventKey: rehearsal.eventKey,
+          );
 
       if (context.mounted) {
         showCupertinoDialog(

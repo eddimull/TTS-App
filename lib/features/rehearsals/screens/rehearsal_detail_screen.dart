@@ -12,6 +12,7 @@ import '../widgets/rehearsal_sub_picker_sheet.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
+import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 import '../../chat/widgets/comment_bar.dart';
 
@@ -305,6 +306,10 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
         bandRoleId: result.bandRoleId,
       );
       if (mounted) setState(() => _subs = updated);
+      ref.read(cacheInvalidatorProvider).onRehearsalChanged(
+            rehearsalId: _rehearsal.id,
+            eventKey: _rehearsal.eventKey,
+          );
     } catch (e) {
       if (mounted) _showSubError(e);
     } finally {
@@ -339,6 +344,10 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
       final repo = ref.read(rehearsalsRepositoryProvider);
       final updated = await repo.removeSub(_rehearsal.id, sub.id);
       if (mounted) setState(() => _subs = updated);
+      ref.read(cacheInvalidatorProvider).onRehearsalChanged(
+            rehearsalId: _rehearsal.id,
+            eventKey: _rehearsal.eventKey,
+          );
     } catch (e) {
       if (mounted) _showSubError(e);
     } finally {
@@ -562,7 +571,7 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
                     style:
                         TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                 const Spacer(),
-                if (_isOwner)
+                if (_isOwner && !rehearsal.isCancelled)
                   CupertinoButton(
                     padding: EdgeInsets.zero,
                     minimumSize: const Size(0, 0),

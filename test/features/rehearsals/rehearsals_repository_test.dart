@@ -136,6 +136,18 @@ void main() {
         {'name': 'Pat', 'email': 'p@x.com', 'phone': '555'});
   });
 
+  test('addSub posts band_role_id when provided', () async {
+    final adapter = _FakeAdapter({'subs': []});
+    final dio = Dio(BaseOptions(baseUrl: 'http://x'))
+      ..httpClientAdapter = adapter;
+    final repo = RehearsalsRepository(dio);
+
+    await repo.addSub(42, name: 'Pat', email: 'p@x.com', bandRoleId: 3);
+
+    expect(adapter.lastRequest!.data,
+        {'name': 'Pat', 'email': 'p@x.com', 'band_role_id': 3});
+  });
+
   test('removeSub deletes and parses remaining subs', () async {
     final adapter = _FakeAdapter({'subs': []});
     final dio = Dio(BaseOptions(baseUrl: 'http://x'))

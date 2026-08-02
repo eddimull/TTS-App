@@ -43,4 +43,18 @@ void main() {
       isNull,
     );
   });
+
+  test('rehearsal_sub_added routes to rehearsal detail', () {
+    expect(
+      routeForPushData({'type': 'rehearsal_sub_added', 'rehearsalId': '42'}),
+      '/rehearsals/42',
+    );
+  });
+
+  test('rehearsal_sub_removed has no destination', () {
+    expect(
+      routeForPushData({'type': 'rehearsal_sub_removed', 'rehearsalId': '42'}),
+      isNull,
+    );
+  });
 }

@@ -16,7 +16,12 @@ String? routeForPushData(Map<String, dynamic> data) {
     if (questionnaireId == null || instanceId == null) return null;
     return '/questionnaires/$questionnaireId/instances/$instanceId';
   }
-  if (type != 'rehearsal_cancelled' && type != 'rehearsal_restored') {
+  const rehearsalTypes = {
+    'rehearsal_cancelled',
+    'rehearsal_restored',
+    'rehearsal_sub_added',
+  };
+  if (!rehearsalTypes.contains(type)) {
     return null;
   }
   final rehearsalId = int.tryParse(data['rehearsalId']?.toString() ?? '');

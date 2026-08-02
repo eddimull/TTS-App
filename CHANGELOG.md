@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.22.0](https://github.com/eddimull/TTS-App/compare/v1.21.0...v1.22.0) (2026-08-02)
+
+
+### Features
+
+* invite subs to individual rehearsals ([88b5094](https://github.com/eddimull/TTS-App/commit/88b509481efcb62b3489edce0ef12a4531fef988))
+* **rehearsals:** deep-link rehearsal_sub_added push taps ([03546d2](https://github.com/eddimull/TTS-App/commit/03546d262a91d112495c743978cbf1a203059eec))
+* **rehearsals:** long-press invite-sub action on schedule rows ([4b520bd](https://github.com/eddimull/TTS-App/commit/4b520bd4b640f41b163780395e11a4e6074782f3))
+* **rehearsals:** RehearsalSub model + subs endpoints in repository ([a06ee5a](https://github.com/eddimull/TTS-App/commit/a06ee5a92defc1244c660dbf420927d043419304))
+* **rehearsals:** sub picker sheet (call lists + ad-hoc invite) ([14d5880](https://github.com/eddimull/TTS-App/commit/14d58802877aee71e41e59cedfc2e8b13ed081c3))
+* **rehearsals:** subs section on rehearsal detail screen ([5479752](https://github.com/eddimull/TTS-App/commit/5479752039b83daae56916b6ee80d119602b432c))
+
+
+### Bug Fixes
+
+* **rehearsals:** guard ad-hoc addSub payload against null name/email ([71b3a5d](https://github.com/eddimull/TTS-App/commit/71b3a5d9e26c4396d936b81c52934dce826a08fa))
+* **rehearsals:** invalidate rehearsal detail cache after sub mutations ([ebb1f76](https://github.com/eddimull/TTS-App/commit/ebb1f7637ee874ea6f9654612f0b876a760d88d1))
+* **rehearsals:** provider scope for picker popups, runtime addSub validation, cancelled-state affordances ([ceab0d3](https://github.com/eddimull/TTS-App/commit/ceab0d332fe9f2bca36493dcfbe8b35e16c1192f))
+
 ## [1.21.0](https://github.com/eddimull/TTS-App/compare/v1.20.0...v1.21.0) (2026-07-29)
 
 

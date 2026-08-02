@@ -96,10 +96,11 @@ class RehearsalsRepository {
     String? phone,
     int? bandRoleId,
   }) async {
-    assert(
-      callListEntryId != null || (name != null && email != null),
-      'addSub requires callListEntryId or name+email',
-    );
+    if (callListEntryId == null && (name == null || email == null)) {
+      throw ArgumentError(
+        'addSub requires callListEntryId or name+email',
+      );
+    }
     final response = await _dio.post<Map<String, dynamic>>(
       ApiEndpoints.mobileRehearsalSubs(rehearsalId),
       data: {

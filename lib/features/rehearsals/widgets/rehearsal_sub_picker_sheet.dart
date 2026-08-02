@@ -34,9 +34,16 @@ Future<RehearsalSubPickerResult?> showRehearsalSubPicker(
   BuildContext context, {
   required int bandId,
 }) {
+  // showCupertinoModalPopup creates a new route with a fresh widget tree, so
+  // the ProviderScope ancestor is lost. Re-attach the existing container via
+  // UncontrolledProviderScope so the sheet shares the same notifier instances.
+  final container = ProviderScope.containerOf(context);
   return showCupertinoModalPopup<RehearsalSubPickerResult>(
     context: context,
-    builder: (_) => _RehearsalSubPickerSheet(bandId: bandId),
+    builder: (_) => UncontrolledProviderScope(
+      container: container,
+      child: _RehearsalSubPickerSheet(bandId: bandId),
+    ),
   );
 }
 
@@ -146,9 +153,17 @@ class _RehearsalSubPickerSheet extends ConsumerWidget {
   Widget _inviteByEmailButton(BuildContext context) {
     return CupertinoButton(
       onPressed: () async {
+        // showCupertinoModalPopup creates a new route with a fresh widget
+        // tree, so the ProviderScope ancestor is lost. Re-attach the
+        // existing container via UncontrolledProviderScope so the sheet
+        // shares the same notifier instances.
+        final container = ProviderScope.containerOf(context);
         final result = await showCupertinoModalPopup<RehearsalSubPickerResult>(
           context: context,
-          builder: (_) => _AdHocInviteSheet(bandId: bandId),
+          builder: (_) => UncontrolledProviderScope(
+            container: container,
+            child: _AdHocInviteSheet(bandId: bandId),
+          ),
         );
         if (result != null && context.mounted) {
           Navigator.pop(context, result);

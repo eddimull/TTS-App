@@ -618,7 +618,7 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
                                 ],
                               ),
                             ),
-                            if (_isOwner)
+                            if (_isOwner && !rehearsal.isCancelled)
                               CupertinoButton(
                                 padding: EdgeInsets.zero,
                                 minimumSize: const Size(0, 0),

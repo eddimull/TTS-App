@@ -104,4 +104,48 @@ void main() {
     expect(detail.id, 42);
     expect(detail.isCancelled, isTrue);
   });
+
+  test('addSub posts call_list_entry_id and parses subs', () async {
+    final adapter = _FakeAdapter({
+      'subs': [
+        {'id': 1, 'name': 'Pat', 'email': 'p@x.com', 'user_id': 9},
+      ],
+    });
+    final dio = Dio(BaseOptions(baseUrl: 'http://x'))
+      ..httpClientAdapter = adapter;
+    final repo = RehearsalsRepository(dio);
+
+    final subs = await repo.addSub(42, callListEntryId: 7);
+
+    expect(adapter.lastRequest!.path, '/api/mobile/rehearsals/42/subs');
+    expect(adapter.lastRequest!.method, 'POST');
+    expect(adapter.lastRequest!.data, {'call_list_entry_id': 7});
+    expect(subs.single.name, 'Pat');
+    expect(subs.single.isRegistered, isTrue);
+  });
+
+  test('addSub posts ad-hoc fields', () async {
+    final adapter = _FakeAdapter({'subs': []});
+    final dio = Dio(BaseOptions(baseUrl: 'http://x'))
+      ..httpClientAdapter = adapter;
+    final repo = RehearsalsRepository(dio);
+
+    await repo.addSub(42, name: 'Pat', email: 'p@x.com', phone: '555');
+
+    expect(adapter.lastRequest!.data,
+        {'name': 'Pat', 'email': 'p@x.com', 'phone': '555'});
+  });
+
+  test('removeSub deletes and parses remaining subs', () async {
+    final adapter = _FakeAdapter({'subs': []});
+    final dio = Dio(BaseOptions(baseUrl: 'http://x'))
+      ..httpClientAdapter = adapter;
+    final repo = RehearsalsRepository(dio);
+
+    final subs = await repo.removeSub(42, 5);
+
+    expect(adapter.lastRequest!.path, '/api/mobile/rehearsals/42/subs/5');
+    expect(adapter.lastRequest!.method, 'DELETE');
+    expect(subs, isEmpty);
+  });
 }

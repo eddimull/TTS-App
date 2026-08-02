@@ -95,6 +95,10 @@ class ApiEndpoints {
       '/api/mobile/rehearsals/$rehearsalId/notes';
   static String mobileRehearsalSetCancelled(int rehearsalId) =>
       '/api/mobile/rehearsals/$rehearsalId/cancelled';
+  static String mobileRehearsalSubs(int rehearsalId) =>
+      '/api/mobile/rehearsals/$rehearsalId/subs';
+  static String mobileRehearsalSub(int rehearsalId, int subId) =>
+      '/api/mobile/rehearsals/$rehearsalId/subs/$subId';
 
   static const String mobileSearch = '/api/mobile/search';
 

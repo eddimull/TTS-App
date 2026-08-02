@@ -1,3 +1,5 @@
+import 'rehearsal_sub.dart';
+
 // ── Inline stubs ──────────────────────────────────────────────────────────────
 
 class ScheduleStub {
@@ -59,6 +61,7 @@ class RehearsalDetail {
     this.eventKey,
     required this.schedule,
     required this.associatedBookings,
+    this.subs = const [],
   });
 
   final int id;
@@ -75,6 +78,7 @@ class RehearsalDetail {
   final String? eventKey;
   final ScheduleStub schedule;
   final List<AssociatedBooking> associatedBookings;
+  final List<RehearsalSub> subs;
 
   factory RehearsalDetail.fromJson(Map<String, dynamic> json) {
     final rawBookings = json['associated_bookings'];
@@ -84,6 +88,14 @@ class RehearsalDetail {
             .map(AssociatedBooking.fromJson)
             .toList()
         : <AssociatedBooking>[];
+
+    final rawSubs = json['subs'];
+    final subs = rawSubs is List
+        ? rawSubs
+            .cast<Map<String, dynamic>>()
+            .map(RehearsalSub.fromJson)
+            .toList()
+        : <RehearsalSub>[];
 
     return RehearsalDetail(
       id: (json['id'] as num).toInt(),
@@ -96,6 +108,7 @@ class RehearsalDetail {
       schedule:
           ScheduleStub.fromJson(json['schedule'] as Map<String, dynamic>),
       associatedBookings: associatedBookings,
+      subs: subs,
     );
   }
 

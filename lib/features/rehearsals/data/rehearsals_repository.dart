@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tts_bandmate/core/providers/core_providers.dart';
 import 'models/rehearsal_detail.dart';
 import 'models/rehearsal_schedule.dart';
+import 'models/rehearsal_sub.dart';
 
 class RehearsalsRepository {
   RehearsalsRepository(this._dio);
@@ -83,6 +84,45 @@ class RehearsalsRepository {
 
     final data = response.data!;
     return RehearsalDetail.fromJson(data['rehearsal'] as Map<String, dynamic>);
+  }
+
+  /// Invites a sub to the rehearsal — either from a call-list entry or ad-hoc
+  /// by name/email. Returns the rehearsal's refreshed subs list.
+  Future<List<RehearsalSub>> addSub(
+    int rehearsalId, {
+    int? callListEntryId,
+    String? name,
+    String? email,
+    String? phone,
+    int? bandRoleId,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileRehearsalSubs(rehearsalId),
+      data: {
+        if (callListEntryId != null) 'call_list_entry_id': callListEntryId,
+        if (callListEntryId == null) ...{
+          'name': name,
+          'email': email,
+          if (phone != null && phone.isNotEmpty) 'phone': phone,
+          if (bandRoleId != null) 'band_role_id': bandRoleId,
+        },
+      },
+    );
+    return _parseSubs(response.data!);
+  }
+
+  /// Removes an invited sub. Returns the rehearsal's refreshed subs list.
+  Future<List<RehearsalSub>> removeSub(int rehearsalId, int subId) async {
+    final response = await _dio.delete<Map<String, dynamic>>(
+      ApiEndpoints.mobileRehearsalSub(rehearsalId, subId),
+    );
+    return _parseSubs(response.data!);
+  }
+
+  List<RehearsalSub> _parseSubs(Map<String, dynamic> data) {
+    final raw = data['subs'];
+    if (raw is! List) return const [];
+    return raw.cast<Map<String, dynamic>>().map(RehearsalSub.fromJson).toList();
   }
 }
 

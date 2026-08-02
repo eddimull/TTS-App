@@ -100,15 +100,20 @@ void main() {
     await tester.tap(find.text(headerTitle(now)));
     await tester.pumpAndSettle();
 
-    // Advance the wheel 5 months — safely beyond the ~90-day initial
-    // forward window regardless of today's day-of-month.
-    final monthLabel = DateFormat.MMMM().format(DateTime(now.year, now.month));
-    await tester.drag(find.text(monthLabel), const Offset(0, -5.5 * _itemExtent));
+    // Advance the wheel 1 year (via the year column, not the month column)
+    // — safely beyond the ~90-day initial forward window regardless of
+    // today's day-of-month, and avoids driving the linked month/year wheels
+    // across a December→January rollover in a single gesture, which
+    // CupertinoDatePicker's monthYear mode does not reliably cascade in
+    // widget tests. Dragging the year column alone keeps the month fixed
+    // and only advances the year, which is deterministic.
+    final yearPicker = find.byType(CupertinoPicker).last;
+    await tester.drag(yearPicker, const Offset(0, -1.5 * _itemExtent));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
 
-    final target = DateTime(now.year, now.month + 5);
+    final target = DateTime(now.year + 1, now.month);
     expect(find.text(headerTitle(target)), findsOneWidget,
         reason: 'calendar header must now show the picked month');
     expect(repo.requestedNewerWindows, isNotEmpty,

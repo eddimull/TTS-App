@@ -5,10 +5,14 @@ import 'package:intl/intl.dart';
 import 'package:tts_bandmate/shared/utils/time_format.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/models/rehearsal_detail.dart';
+import '../data/models/rehearsal_sub.dart';
 import '../data/rehearsals_repository.dart';
 import '../providers/rehearsals_provider.dart';
+import '../widgets/rehearsal_sub_picker_sheet.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
+import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
+import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 import '../../chat/widgets/comment_bar.dart';
 
@@ -65,6 +69,8 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
   late TextEditingController _notesController;
   late RehearsalDetail _rehearsal;
   bool _togglingCancelled = false;
+  late List<RehearsalSub> _subs;
+  bool _mutatingSubs = false;
 
   @override
   void initState() {
@@ -72,6 +78,7 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
     _rehearsal = widget.rehearsal;
     _notes = widget.rehearsal.notes;
     _notesController = TextEditingController(text: _notes ?? '');
+    _subs = List.of(widget.rehearsal.subs);
   }
 
   @override
@@ -86,6 +93,9 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
             ? null
             : widget.rehearsal.notes;
         _notesController.text = _notes ?? '';
+      }
+      if (!_mutatingSubs) {
+        _subs = List.of(widget.rehearsal.subs);
       }
     }
   }
@@ -264,6 +274,97 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
               Navigator.pop(dialogContext);
               _setCancelled(false);
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool get _isOwner {
+    final bandId = ref.watch(selectedBandProvider).value;
+    final auth = ref.watch(authProvider).value;
+    if (bandId == null || auth is! AuthAuthenticated) return false;
+    return auth.bands.any((b) => b.id == bandId && b.isOwner);
+  }
+
+  Future<void> _inviteSub() async {
+    final bandId = ref.read(selectedBandProvider).value;
+    if (bandId == null) return;
+
+    final result = await showRehearsalSubPicker(context, bandId: bandId);
+    if (result == null || !mounted) return;
+
+    setState(() => _mutatingSubs = true);
+    try {
+      final repo = ref.read(rehearsalsRepositoryProvider);
+      final updated = await repo.addSub(
+        _rehearsal.id,
+        callListEntryId: result.callListEntryId,
+        name: result.name,
+        email: result.email,
+        phone: result.phone,
+        bandRoleId: result.bandRoleId,
+      );
+      if (mounted) setState(() => _subs = updated);
+      ref.read(cacheInvalidatorProvider).onRehearsalChanged(
+            rehearsalId: _rehearsal.id,
+            eventKey: _rehearsal.eventKey,
+          );
+    } catch (e) {
+      if (mounted) _showSubError(e);
+    } finally {
+      if (mounted) setState(() => _mutatingSubs = false);
+    }
+  }
+
+  Future<void> _removeSub(RehearsalSub sub) async {
+    final confirmed = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (dialogContext) => CupertinoAlertDialog(
+        title: const Text('Remove sub?'),
+        content: Text('${sub.name} will be notified they are no longer '
+            'needed for this rehearsal.'),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(dialogContext, false),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            child: const Text('Remove'),
+            onPressed: () => Navigator.pop(dialogContext, true),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _mutatingSubs = true);
+    try {
+      final repo = ref.read(rehearsalsRepositoryProvider);
+      final updated = await repo.removeSub(_rehearsal.id, sub.id);
+      if (mounted) setState(() => _subs = updated);
+      ref.read(cacheInvalidatorProvider).onRehearsalChanged(
+            rehearsalId: _rehearsal.id,
+            eventKey: _rehearsal.eventKey,
+          );
+    } catch (e) {
+      if (mounted) _showSubError(e);
+    } finally {
+      if (mounted) setState(() => _mutatingSubs = false);
+    }
+  }
+
+  void _showSubError(Object e) {
+    showCupertinoDialog(
+      context: context,
+      builder: (dialogContext) => CupertinoAlertDialog(
+        title: const Text('Error'),
+        content: Text(ErrorView.friendlyMessage(e)),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('OK'),
+            onPressed: () => Navigator.pop(dialogContext),
           ),
         ],
       ),
@@ -463,6 +564,78 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
                 ],
               ),
             ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Text('Subs',
+                    style:
+                        TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                const Spacer(),
+                if (_isOwner && !rehearsal.isCancelled)
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(0, 0),
+                    onPressed: _mutatingSubs ? null : _inviteSub,
+                    child: _mutatingSubs
+                        ? const CupertinoActivityIndicator()
+                        : const Icon(CupertinoIcons.person_badge_plus,
+                            size: 22),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (_subs.isEmpty)
+              Text(
+                'No subs invited.',
+                style: TextStyle(fontSize: 13, color: context.secondaryText),
+              )
+            else
+              Container(
+                decoration: BoxDecoration(
+                  color: CupertinoColors.tertiarySystemBackground
+                      .resolveFrom(context),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    for (final sub in _subs)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(sub.name,
+                                      style: const TextStyle(fontSize: 15)),
+                                  if (sub.roleName != null)
+                                    Text(sub.roleName!,
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: context.secondaryText)),
+                                ],
+                              ),
+                            ),
+                            if (_isOwner && !rehearsal.isCancelled)
+                              CupertinoButton(
+                                padding: EdgeInsets.zero,
+                                minimumSize: const Size(0, 0),
+                                onPressed: _mutatingSubs
+                                    ? null
+                                    : () => _removeSub(sub),
+                                child: Icon(CupertinoIcons.minus_circle,
+                                    size: 20,
+                                    color: CupertinoColors.systemRed
+                                        .resolveFrom(context)),
+                              ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             if (rehearsal.associatedBookings.isNotEmpty) ...[
               const SizedBox(height: 20),
               const Text('Associated Bookings',

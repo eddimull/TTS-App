@@ -89,9 +89,20 @@ to events), so each booking option gains `date` = its nearest event date
 
 ## 5. Mobile event detail: at-a-glance card + logistics-first reorder
 
-- New compact summary card directly under the existing header block
-  (Go-to-booking / date / venue-map card / status chips — all unchanged;
-  the map card already covers venue, so the summary does NOT repeat it):
+- Header tightening:
+  - The labeled Status row ("Status" + Confirmed pill) is removed; status
+    becomes a small colored dot beside the event title (same idiom as the
+    Roster section's dot): green confirmed, and the other status values
+    keep their existing pill colors as dot colors. Dot carries a
+    semantic label for accessibility.
+  - The boolean chips (Private / Outdoor / Backline / Production) render
+    as one compact single-line row — smaller padding/font, horizontally
+    scrollable if they ever overflow 320pt — instead of wrapping to two
+    rows.
+- New compact summary card directly under the tightened header block
+  (Go-to-booking / date / venue-map card / chips row otherwise
+  unchanged; the map card already covers venue, so the summary does NOT
+  repeat it):
   - show time (same source as the Timeline's injected Show Time row),
   - attire one-liner (first line, ellipsized),
   - lodging one-liner "🛏 <name> · check-in <time>" (when linked stays

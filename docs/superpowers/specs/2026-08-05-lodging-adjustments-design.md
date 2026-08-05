@@ -91,9 +91,10 @@ to events), so each booking option gains `date` = its nearest event date
 
 - Nav actions consolidate into a ⋯ overflow menu replacing the edit
   pencil: **Go to booking** (→ booking detail, replacing the body row,
-  which is removed), **Go to roster** (scrolls to the Roster section),
-  **Edit event** (→ edit screen, canWrite only). CupertinoActionSheet or
-  pulldown, matching existing idioms.
+  which is removed), **Go to roster** (opens the roster sheet),
+  **Setlist** (→ setlist screen, replacing the in-body Setlist button,
+  which is removed), **Edit event** (→ edit screen, canWrite only).
+  CupertinoActionSheet or pulldown, matching existing idioms.
 - Header tightening:
   - The labeled Status row ("Status" + Confirmed pill) is removed; status
     becomes a small colored dot beside the event title (same idiom as the
@@ -123,9 +124,10 @@ to events), so each booking option gains `date` = its nearest event date
   section (attachments are contextually part of the notes: itineraries,
   screenshots the note refers to). The note text renders clamped, with
   the attachment rows below it inside the same section (their 3-row
-  collapse intact). Then: Timeline, Setlist button, Lodging, Contacts,
-  Roster row, Performance, Wedding Details, Media. There are no
-  standalone Attachments or Attire sections anymore.
+  collapse intact). Then: Timeline, Lodging, Contacts, Roster row,
+  Performance, Wedding Details, Media. There are no standalone
+  Attachments or Attire sections, and no in-body Setlist button (it
+  lives in the ⋯ menu).
 - **Roster collapses to a row + full-screen sheet** (modeled on the web
   dashboard's roster modal): the inline grouped roster is replaced by a
   one-line summary row — member count + sub count, an attention dot when

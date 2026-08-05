@@ -88,7 +88,6 @@ class _EventDetailView extends ConsumerStatefulWidget {
 
 class _EventDetailViewState extends ConsumerState<_EventDetailView> {
   final _timelineKey = GlobalKey();
-  final _rosterKey = GlobalKey();
 
   EventDetail get event => widget.event;
 
@@ -301,7 +300,7 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
 
             // Roster
             if (event.members.isNotEmpty) ...[
-              SizedBox(height: 20, key: _rosterKey),
+              const SizedBox(height: 20),
               _RosterSummaryRow(event: event, onTap: _openRoster),
             ],
 

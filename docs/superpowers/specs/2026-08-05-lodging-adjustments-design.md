@@ -161,7 +161,11 @@ to events), so each booking option gains `date` = its nearest event date
   `Size(320, 568)` for the summary card (rows collapse when data absent)
   and a calendar day with a lodging marker + agenda row; filter-toggle
   test; notes-clamp toggle test (long note collapsed by default, expands
-  on tap) and attachments show-all test.
+  on tap) and attachments show-all test; attire inline-expand test;
+  roster summary-row test (count + attention dot from fixture statuses)
+  and roster-sheet test (groups render, status controls gated on
+  canWrite); ⋯ menu test (all four actions present, Edit hidden without
+  canWrite).
 
 ## Rollout
 

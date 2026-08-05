@@ -1,6 +1,7 @@
 import 'package:intl/intl.dart';
 import '../../../auth/data/models/band_summary.dart';
 import '../../../events/data/models/event_summary.dart';
+import '../../../lodging/data/models/lodging.dart';
 import 'booking_contact.dart';
 import 'booking_contract.dart';
 import 'booking_payment.dart';
@@ -30,6 +31,7 @@ class BookingDetail {
     this.depositType = 'percent',
     this.depositValue = '50.00',
     this.expectedDepositAmount,
+    this.lodgings = const [],
   });
 
   final int id;
@@ -83,6 +85,10 @@ class BookingDetail {
   /// responses that pre-date the deposit-config feature.
   final String? expectedDepositAmount;
 
+  /// Lodging summaries visible to this viewer (backend gates per-viewer;
+  /// missing/malformed payloads parse to empty).
+  final List<LodgingSummary> lodgings;
+
   factory BookingDetail.fromJson(Map<String, dynamic> json) {
     final rawContacts = json['contacts'];
     final contacts = rawContacts is List
@@ -122,6 +128,11 @@ class BookingDetail {
     final depositValue = json['deposit_value']?.toString() ?? '50.00';
     final expectedDepositAmount = json['expected_deposit_amount']?.toString();
 
+    final rawLodgings = json['lodgings'];
+    final lodgings = rawLodgings is List
+        ? rawLodgings.cast<Map<String, dynamic>>().map(LodgingSummary.fromJson).toList()
+        : <LodgingSummary>[];
+
     return BookingDetail(
       id: (json['id'] as num).toInt(),
       name: json['name'] as String,
@@ -148,6 +159,7 @@ class BookingDetail {
       depositType: depositType,
       depositValue: depositValue,
       expectedDepositAmount: expectedDepositAmount,
+      lodgings: lodgings,
     );
   }
 

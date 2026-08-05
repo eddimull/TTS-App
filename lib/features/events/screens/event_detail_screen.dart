@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:timelines_plus/timelines_plus.dart';
 import 'package:map_launcher/map_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -24,6 +25,7 @@ import '../../media/widgets/upload_queue_sheet.dart';
 import '../data/events_repository.dart';
 import '../data/models/event_detail.dart';
 import '../data/models/event_member.dart';
+import '../../lodging/data/models/lodging.dart';
 import '../data/models/sub_entry.dart';
 import '../providers/events_provider.dart';
 import '../../../shared/widgets/attachment_widgets.dart';
@@ -238,12 +240,11 @@ class _EventDetailView extends ConsumerWidget {
             ],
 
             // Lodging
-            if (event.lodging.isNotEmpty &&
-                event.lodging.any((l) => l.title == 'Provided' && l.data == true)) ...[
+            if (event.lodgings.isNotEmpty) ...[
               const SizedBox(height: 20),
               const _SectionHeader(title: 'Lodging'),
               const SizedBox(height: 8),
-              _LodgingSection(items: event.lodging),
+              _LodgingLinksSection(lodgings: event.lodgings),
             ],
 
             // Contacts
@@ -1086,60 +1087,68 @@ class _WeddingSection extends StatelessWidget {
 
 // ── Lodging ───────────────────────────────────────────────────────────────────
 
-class _LodgingSection extends StatelessWidget {
-  const _LodgingSection({required this.items});
-  final List<LodgingItem> items;
+class _LodgingLinksSection extends StatelessWidget {
+  const _LodgingLinksSection({required this.lodgings});
+  final List<LodgingSummary> lodgings;
 
   @override
   Widget build(BuildContext context) {
     return _Card(
       child: Column(
         children: [
-          for (int i = 0; i < items.length; i++) ...[
+          for (int i = 0; i < lodgings.length; i++) ...[
             if (i > 0)
-              Container(height: 0.5, color: CupertinoColors.separator.resolveFrom(context)),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
+              Container(
+                  height: 0.5,
+                  color: CupertinoColors.separator.resolveFrom(context)),
+            _LodgingLinkRow(lodging: lodgings[i]),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LodgingLinkRow extends StatelessWidget {
+  const _LodgingLinkRow({required this.lodging});
+  final LodgingSummary lodging;
+
+  @override
+  Widget build(BuildContext context) {
+    final dateFmt = DateFormat('EEE, MMM d');
+    final checkIn = lodging.parsedCheckIn;
+    final checkOut = DateTime.tryParse(lodging.checkOutAt) ?? checkIn;
+    final range = '${dateFmt.format(checkIn)} – ${dateFmt.format(checkOut)}';
+
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      onPressed: () => context.push('/lodging/${lodging.id}'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(CupertinoIcons.bed_double, size: 18, color: context.secondaryText),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (items[i].type == 'checkbox')
-                    Icon(
-                      items[i].data == true
-                          ? CupertinoIcons.checkmark_square_fill
-                          : CupertinoIcons.square,
-                      size: 18,
-                      color: items[i].data == true
-                          ? CupertinoColors.systemGreen.resolveFrom(context)
-                          : CupertinoColors.secondaryLabel.resolveFrom(context),
-                    )
-                  else
-                    Icon(CupertinoIcons.bed_double,
-                        size: 18,
-                        color: context.secondaryText),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(items[i].title,
-                            style: const TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w500)),
-                        if (items[i].type == 'text' &&
-                            items[i].data != null &&
-                            items[i].data.toString().isNotEmpty)
-                          Text(items[i].data.toString(),
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  color: context.secondaryText)),
-                      ],
-                    ),
-                  ),
+                  Text(lodging.name,
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w500)),
+                  Text(range,
+                      style:
+                          TextStyle(fontSize: 13, color: context.secondaryText)),
                 ],
               ),
             ),
+            const SizedBox(width: 8),
+            Icon(CupertinoIcons.chevron_right,
+                size: 16, color: context.tertiaryText),
           ],
-        ],
+        ),
       ),
     );
   }

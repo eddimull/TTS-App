@@ -1,4 +1,5 @@
 import '../../../../shared/widgets/attachment_widgets.dart';
+import '../../../lodging/data/models/lodging.dart';
 import 'event_member.dart';
 
 // ── Supporting types ──────────────────────────────────────────────────────────
@@ -182,19 +183,6 @@ class Performance {
   }
 }
 
-class LodgingItem {
-  const LodgingItem({required this.type, required this.title, this.data});
-  final String type;
-  final String title;
-  final dynamic data;
-
-  factory LodgingItem.fromJson(Map<String, dynamic> json) => LodgingItem(
-        type: json['type'] as String? ?? 'text',
-        title: json['title'] as String? ?? '',
-        data: json['data'],
-      );
-}
-
 // ── EventDetail ───────────────────────────────────────────────────────────────
 
 class EventDetail {
@@ -224,7 +212,7 @@ class EventDetail {
     this.outside,
     this.backlineProvided,
     this.productionNeeded,
-    required this.lodging,
+    this.lodgings = const [],
     this.performance,
     this.wedding,
     required this.contacts,
@@ -276,7 +264,10 @@ class EventDetail {
   final bool? outside;
   final bool? backlineProvided;
   final bool? productionNeeded;
-  final List<LodgingItem> lodging;
+
+  /// Lodging summaries visible to this viewer (backend gates per-viewer;
+  /// missing/malformed payloads parse to empty).
+  final List<LodgingSummary> lodgings;
   final Performance? performance;
   final WeddingDetail? wedding;
   final List<EventContact> contacts;
@@ -297,10 +288,10 @@ class EventDetail {
         ? rawTimeline.cast<Map<String, dynamic>>().map(EventTimelineEntry.fromJson).toList()
         : <EventTimelineEntry>[];
 
-    final rawLodging = json['lodging'];
-    final lodging = rawLodging is List
-        ? rawLodging.cast<Map<String, dynamic>>().map(LodgingItem.fromJson).toList()
-        : <LodgingItem>[];
+    final rawLodgings = json['lodgings'];
+    final lodgings = rawLodgings is List
+        ? rawLodgings.cast<Map<String, dynamic>>().map(LodgingSummary.fromJson).toList()
+        : <LodgingSummary>[];
 
     final rawContacts = json['contacts'];
     final contacts = rawContacts is List
@@ -360,7 +351,7 @@ class EventDetail {
       outside: json['outside'] as bool?,
       backlineProvided: json['backline_provided'] as bool?,
       productionNeeded: json['production_needed'] as bool?,
-      lodging: lodging,
+      lodgings: lodgings,
       performance: performance,
       wedding: wedding,
       contacts: contacts,

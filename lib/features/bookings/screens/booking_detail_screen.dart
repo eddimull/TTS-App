@@ -7,6 +7,7 @@ import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import 'package:tts_bandmate/shared/widgets/status_chip.dart';
 import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 import '../../events/data/models/event_summary.dart';
+import '../../lodging/data/models/lodging.dart';
 import '../data/bookings_repository.dart';
 import '../data/models/booking_contact.dart';
 import '../data/models/booking_detail.dart';
@@ -483,6 +484,16 @@ class _BookingDetailViewState extends ConsumerState<_BookingDetailView> {
                     itemization,
                   ],
 
+                  // ── Lodging ────────────────────────────────────────────────
+                  if (b.lodgings.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    const _SectionHeader(label: 'Lodging'),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _LodgingLinksSection(lodgings: b.lodgings),
+                    ),
+                  ],
+
                   // ── Section tiles ─────────────────────────────────────────
                   const SizedBox(height: 24),
                   const _SectionHeader(label: 'Payments'),
@@ -690,6 +701,79 @@ class _FinanceRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _LodgingLinksSection extends StatelessWidget {
+  const _LodgingLinksSection({required this.lodgings});
+  final List<LodgingSummary> lodgings;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          for (int i = 0; i < lodgings.length; i++) ...[
+            if (i > 0)
+              Container(
+                  height: 0.5,
+                  color: CupertinoColors.separator.resolveFrom(context)),
+            _LodgingLinkRow(lodging: lodgings[i]),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LodgingLinkRow extends StatelessWidget {
+  const _LodgingLinkRow({required this.lodging});
+  final LodgingSummary lodging;
+
+  @override
+  Widget build(BuildContext context) {
+    final dateFmt = DateFormat('EEE, MMM d');
+    final checkIn = lodging.parsedCheckIn;
+    final checkOut = DateTime.tryParse(lodging.checkOutAt) ?? checkIn;
+    final range = '${dateFmt.format(checkIn)} – ${dateFmt.format(checkOut)}';
+
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      onPressed: () => context.push('/lodging/${lodging.id}'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(CupertinoIcons.bed_double, size: 18, color: context.secondaryText),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(lodging.name,
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w500)),
+                  Text(range,
+                      style:
+                          TextStyle(fontSize: 13, color: context.secondaryText)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(CupertinoIcons.chevron_right,
+                size: 16, color: context.tertiaryText),
+          ],
+        ),
+      ),
     );
   }
 }

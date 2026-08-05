@@ -66,7 +66,6 @@ class EventsRepository {
     bool? outside,
     bool? backlineProvided,
     bool? productionNeeded,
-    List<Map<String, dynamic>>? lodging,
     Map<String, dynamic>? wedding,
   }) async {
     final body = <String, dynamic>{
@@ -93,9 +92,6 @@ class EventsRepository {
         'timeline': timeline
             .map((e) => {'title': e.title, 'time': e.time})
             .toList(),
-      // Lodging replaces the stored list wholesale; pass the canonical
-      // 4-row shape (Provided / location / check_in / check_out).
-      if (lodging != null) 'lodging': lodging,
       // Wedding sub-object: send only for events that have a wedding block.
       // Shape mirrors UpdateEventRequest: {onsite: bool?, dances: [{title, data}]}.
       if (wedding != null) 'wedding': wedding,

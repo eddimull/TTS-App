@@ -41,7 +41,6 @@ class _RecordingEventsRepository extends EventsRepository {
   bool? lastOutside;
   bool? lastBacklineProvided;
   bool? lastProductionNeeded;
-  List<Map<String, dynamic>>? lastLodging;
   Map<String, dynamic>? lastWedding;
 
   @override
@@ -61,7 +60,6 @@ class _RecordingEventsRepository extends EventsRepository {
     bool? outside,
     bool? backlineProvided,
     bool? productionNeeded,
-    List<Map<String, dynamic>>? lodging,
     Map<String, dynamic>? wedding,
   }) async {
     updateCallCount++;
@@ -78,7 +76,6 @@ class _RecordingEventsRepository extends EventsRepository {
     lastOutside = outside;
     lastBacklineProvided = backlineProvided;
     lastProductionNeeded = productionNeeded;
-    lastLodging = lodging;
     lastWedding = wedding;
   }
 }
@@ -165,12 +162,6 @@ EventDetail _fullyPopulatedEvent() => EventDetail.fromJson({
       'outside': false,
       'backline_provided': true,
       'production_needed': false,
-      'lodging': [
-        {'title': 'Provided', 'type': 'checkbox', 'data': true},
-        {'title': 'location', 'type': 'text', 'data': 'Hilton Riverwalk'},
-        {'title': 'check_in', 'type': 'text', 'data': '15:00'},
-        {'title': 'check_out', 'type': 'text', 'data': '11:00'},
-      ],
       'wedding': {
         'onsite': true,
         'dances': [
@@ -235,18 +226,6 @@ void main() {
         expect(repo.lastTimeline![0].time, '2026-04-15 16:00');
         expect(repo.lastTimeline![1].title, 'Soundcheck');
         expect(repo.lastTimeline![1].time, '2026-04-15 17:30');
-
-        // Lodging.
-        expect(repo.lastLodging, isNotNull);
-        expect(repo.lastLodging!.length, 4);
-        expect(repo.lastLodging![0],
-            {'title': 'Provided', 'type': 'checkbox', 'data': true});
-        expect(repo.lastLodging![1],
-            {'title': 'location', 'type': 'text', 'data': 'Hilton Riverwalk'});
-        expect(repo.lastLodging![2],
-            {'title': 'check_in', 'type': 'text', 'data': '15:00'});
-        expect(repo.lastLodging![3],
-            {'title': 'check_out', 'type': 'text', 'data': '11:00'});
 
         // Wedding.
         expect(repo.lastWedding, isNotNull);
@@ -370,7 +349,7 @@ void main() {
     );
   });
 
-  group('EventEditScreen toggle / lodging editing', () {
+  group('EventEditScreen toggle editing', () {
     testWidgets(
       'flipping the Outdoor switch persists the new value',
       (tester) async {
@@ -391,42 +370,6 @@ void main() {
         expect(repo.lastIsPublic, isTrue);
         expect(repo.lastBacklineProvided, isTrue);
         expect(repo.lastProductionNeeded, isFalse);
-      },
-    );
-
-    testWidgets(
-      'flipping Lodging Provided persists the new checkbox value',
-      (tester) async {
-        final repo = _RecordingEventsRepository();
-        // Start with lodgingProvided: false so the flip moves it to true.
-        final event = EventDetail.fromJson({
-          'id': 1,
-          'key': 'evt-1',
-          'title': 'Test Event',
-          'date': '2026-04-15',
-          'can_write': true,
-          'members': [],
-          'lodging': [
-            {'title': 'Provided', 'type': 'checkbox', 'data': false},
-            {'title': 'location', 'type': 'text', 'data': ''},
-            {'title': 'check_in', 'type': 'text', 'data': ''},
-            {'title': 'check_out', 'type': 'text', 'data': ''},
-          ],
-        });
-
-        await _pumpEditScreen(tester, event: event, repo: repo);
-
-        await _scrollLabelIntoCenter(tester, 'Lodging Provided');
-        await tester.tap(_switchForLabel('Lodging Provided'));
-        await tester.pumpAndSettle();
-
-        await tester.tap(find.widgetWithText(CupertinoButton, 'Save'));
-        await tester.pumpAndSettle();
-
-        expect(repo.lastLodging, isNotNull);
-        final providedRow =
-            repo.lastLodging!.firstWhere((r) => r['title'] == 'Provided');
-        expect(providedRow['data'], isTrue);
       },
     );
   });

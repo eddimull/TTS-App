@@ -221,12 +221,17 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
   /// date, or — if every event is in the past — the latest event date.
   /// Bookings with no events (or none with a parseable date) sort as
   /// undated.
+  ///
+  /// Uses `DateTime.tryParse` on the raw wire string and skips nulls —
+  /// `EventSummary.parsedDate`'s `now()` fallback would silently treat a
+  /// malformed-but-non-empty date as "today," mirroring the same pitfall
+  /// `lodgingByDay` guards against.
   DateTime? _bookingDate(BookingSummary b) {
     final today = DateTime.now();
     final todayDay = DateTime(today.year, today.month, today.day);
     final dates = [
       for (final e in b.events)
-        if (e.date.isNotEmpty) e.parsedDate,
+        if (DateTime.tryParse(e.date) case final d?) d,
     ];
     if (dates.isEmpty) return null;
     final upcoming = dates.where((d) => !d.isBefore(todayDay)).toList();
@@ -242,8 +247,8 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
       for (final e in b.events) {
         final id = e.id;
         if (id == null) continue;
-        options
-            .add(LinkOption(id, e.title, e.date.isEmpty ? null : e.parsedDate));
+        // tryParse + skip-on-null, not e.parsedDate — see _bookingDate.
+        options.add(LinkOption(id, e.title, DateTime.tryParse(e.date)));
       }
     }
     return options;

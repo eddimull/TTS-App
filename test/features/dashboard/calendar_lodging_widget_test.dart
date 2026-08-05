@@ -45,12 +45,22 @@ class _FakeDashboardRepository extends DashboardRepository {
       String afterDate, String beforeDate) async => const [];
 }
 
-/// One stay covering now()+3d..now()+5d (check-in day, a middle day, and a
-/// check-out day).
+/// One 2-night stay (check-in day, a middle day, and a check-out day)
+/// anchored to the 15th of the currently displayed month — a day-of-month
+/// that only ever appears once in a `TableCalendar` month grid, so a
+/// `find.text('${day}')` lookup can't collide with a leading/trailing cell
+/// from an adjacent month the way a `now()+Nd` offset can near month
+/// boundaries. Still relative to `now()` (not a hardcoded date), so this
+/// never time-bombs.
 class _FakeLodgingRepository extends LodgingRepository {
   _FakeLodgingRepository() : super(_throwingDio);
 
-  final checkIn = DateTime.now().add(const Duration(days: 3, hours: 15));
+  static DateTime _anchor() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, 15, 15);
+  }
+
+  final checkIn = _anchor();
   late final checkOut = checkIn.add(const Duration(days: 2));
 
   @override

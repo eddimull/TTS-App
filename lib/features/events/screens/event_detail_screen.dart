@@ -255,6 +255,18 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
               ),
             ],
 
+            // Notes + Attachments (combined — band-internal files, read-only)
+            if (_NotesAndAttachmentsSection.hasContent(
+                event.notes, event.attachments)) ...[
+              const SizedBox(height: 20),
+              const _SectionHeader(title: 'Notes'),
+              const SizedBox(height: 8),
+              _NotesAndAttachmentsSection(
+                notesHtml: event.notes,
+                attachments: event.attachments,
+              ),
+            ],
+
             // Timeline
             if (event.timeline.isNotEmpty || event.time != null) ...[
               SizedBox(height: 20, key: _timelineKey),
@@ -266,60 +278,6 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
                 showTime: event.time,
                 eventDateStr: event.date,
               ),
-            ],
-
-            // Notes
-            if (event.notes != null && event.notes!.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              const _SectionHeader(title: 'Notes'),
-              const SizedBox(height: 8),
-              _NotesBox(html: event.notes!),
-            ],
-
-            // Attachments (band-internal files — read-only)
-            if (event.attachments.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              const _SectionHeader(title: 'Attachments'),
-              const SizedBox(height: 8),
-              _AttachmentsSection(attachments: event.attachments),
-            ],
-
-            // Media (client-shared photos/files — writers can upload)
-            if (event.media.isNotEmpty || event.canWrite) ...[
-              const SizedBox(height: 20),
-              _MediaSection(
-                media: event.media,
-                eventKey: event.key,
-                eventId: event.id,
-                canWrite: event.canWrite,
-              ),
-            ],
-
-            // Setlist (always available — editor; plus live mode when active)
-            const SizedBox(height: 20),
-            _SetlistRow(
-              eventKey: event.key,
-              hasLiveSession: event.liveSessionId != null,
-            ),
-
-            // Performance (songs / charts)
-            if (event.performance != null &&
-                (event.performance!.notes?.isNotEmpty == true ||
-                    event.performance!.songs.isNotEmpty ||
-                    event.performance!.charts.isNotEmpty)) ...[
-              const SizedBox(height: 20),
-              const _SectionHeader(title: 'Performance'),
-              const SizedBox(height: 8),
-              _PerformanceSection(performance: event.performance!),
-            ],
-
-            // Wedding details
-            if (event.wedding != null &&
-                (event.wedding!.onsite != null || event.wedding!.dances.isNotEmpty)) ...[
-              const SizedBox(height: 20),
-              const _SectionHeader(title: 'Wedding Details'),
-              const SizedBox(height: 8),
-              _WeddingSection(wedding: event.wedding!),
             ],
 
             // Lodging
@@ -342,6 +300,44 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
             if (event.members.isNotEmpty) ...[
               SizedBox(height: 20, key: _rosterKey),
               _RosterSection(event: event),
+            ],
+
+            // Performance (songs / charts)
+            if (event.performance != null &&
+                (event.performance!.notes?.isNotEmpty == true ||
+                    event.performance!.songs.isNotEmpty ||
+                    event.performance!.charts.isNotEmpty)) ...[
+              const SizedBox(height: 20),
+              const _SectionHeader(title: 'Performance'),
+              const SizedBox(height: 8),
+              _PerformanceSection(performance: event.performance!),
+            ],
+
+            // Wedding details
+            if (event.wedding != null &&
+                (event.wedding!.onsite != null || event.wedding!.dances.isNotEmpty)) ...[
+              const SizedBox(height: 20),
+              const _SectionHeader(title: 'Wedding Details'),
+              const SizedBox(height: 8),
+              _WeddingSection(wedding: event.wedding!),
+            ],
+
+            // Live setlist join (state-driven CTA — shown only during an
+            // active live session; the plain Setlist row lives in the ⋯ menu)
+            if (event.liveSessionId != null) ...[
+              const SizedBox(height: 20),
+              _LiveSetlistButton(eventKey: event.key),
+            ],
+
+            // Media (client-shared photos/files — writers can upload)
+            if (event.media.isNotEmpty || event.canWrite) ...[
+              const SizedBox(height: 20),
+              _MediaSection(
+                media: event.media,
+                eventKey: event.key,
+                eventId: event.id,
+                canWrite: event.canWrite,
+              ),
             ],
 
             const SizedBox(height: 32),
@@ -854,16 +850,41 @@ class _TimelineSectionState extends State<_TimelineSection> {
   }
 }
 
-// ── Notes ─────────────────────────────────────────────────────────────────────
+// ── Notes + Attachments (combined section) ────────────────────────────────────
 
-class _NotesBox extends StatelessWidget {
-  const _NotesBox({required this.html});
-  final String html;
+/// Bundles the free-text notes and band-internal file attachments into a
+/// single "Notes" section. Long notes are clamped to 6 lines with a
+/// "Show more"/"Show less" toggle, and attachments beyond the first 3 are
+/// hidden behind a "Show all (N)" toggle. Both toggles are local state so
+/// expanding one doesn't affect the other.
+class _NotesAndAttachmentsSection extends StatefulWidget {
+  const _NotesAndAttachmentsSection({
+    this.notesHtml,
+    this.attachments = const [],
+  });
+
+  final String? notesHtml;
+  final List<EventAttachment> attachments;
+
+  static const int _attachmentPreviewCount = 3;
+  static const int _notesClampLines = 6;
+
+  static bool hasContent(String? notesHtml, List<EventAttachment> attachments) =>
+      (notesHtml != null && notesHtml.isNotEmpty) || attachments.isNotEmpty;
 
   @override
-  Widget build(BuildContext context) {
-    // Strip basic HTML tags for display
-    final plain = html
+  State<_NotesAndAttachmentsSection> createState() =>
+      _NotesAndAttachmentsSectionState();
+}
+
+class _NotesAndAttachmentsSectionState
+    extends State<_NotesAndAttachmentsSection> {
+  bool _notesExpanded = false;
+  bool _attachmentsExpanded = false;
+
+  String get _plainNotes {
+    final html = widget.notesHtml ?? '';
+    return html
         .replaceAll(RegExp(r'<br\s*/?>'), '\n')
         .replaceAll(RegExp(r'<p[^>]*>'), '')
         .replaceAll('</p>', '\n')
@@ -873,46 +894,99 @@ class _NotesBox extends StatelessWidget {
         .replaceAll('&lt;', '<')
         .replaceAll('&gt;', '>')
         .trim();
-    return _Card(child: Text(plain, style: const TextStyle(fontSize: 15)));
   }
-}
 
-// ── Setlist ───────────────────────────────────────────────────────────────────
-
-class _SetlistRow extends StatelessWidget {
-  const _SetlistRow({required this.eventKey, required this.hasLiveSession});
-  final String eventKey;
-  final bool hasLiveSession;
+  /// Cheap heuristic for "would this overflow 6 lines" without a
+  /// LayoutBuilder/TextPainter measure pass: count explicit newlines plus
+  /// an estimate of wrapped lines from character count.
+  bool get _notesOverflow {
+    final notes = _plainNotes;
+    if (notes.isEmpty) return false;
+    final estimatedLines =
+        '\n'.allMatches(notes).length + notes.length ~/ 40;
+    return estimatedLines > _NotesAndAttachmentsSection._notesClampLines;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          child: CupertinoButton(
-            color: CupertinoColors.systemGrey5.resolveFrom(context),
-            onPressed: () => context.push('/events/$eventKey/setlist'),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(CupertinoIcons.music_note_list, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  'Setlist',
-                  style: TextStyle(
-                    color: context.primaryText,
-                  ),
-                ),
-              ],
+    final notes = _plainNotes;
+    final hasNotes = notes.isNotEmpty;
+    final attachments = widget.attachments;
+    final hasAttachments = attachments.isNotEmpty;
+    final showNotesToggle = hasNotes && _notesOverflow;
+    final visibleAttachments = _attachmentsExpanded
+        ? attachments
+        : attachments
+            .take(_NotesAndAttachmentsSection._attachmentPreviewCount)
+            .toList();
+    final showAttachmentsToggle = attachments.length >
+        _NotesAndAttachmentsSection._attachmentPreviewCount;
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasNotes) ...[
+            Text(
+              notes,
+              style: const TextStyle(fontSize: 15),
+              maxLines: _notesExpanded
+                  ? null
+                  : _NotesAndAttachmentsSection._notesClampLines,
+              overflow: _notesExpanded ? null : TextOverflow.ellipsis,
             ),
-          ),
-        ),
-        if (hasLiveSession) ...[
-          const SizedBox(height: 8),
-          _LiveSetlistButton(eventKey: eventKey),
+            if (showNotesToggle)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  onPressed: () =>
+                      setState(() => _notesExpanded = !_notesExpanded),
+                  child: Text(_notesExpanded ? 'Show less' : 'Show more'),
+                ),
+              ),
+          ],
+          if (hasNotes && hasAttachments)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: _Divider(),
+            ),
+          if (hasAttachments) ...[
+            for (int i = 0; i < visibleAttachments.length; i++) ...[
+              if (i > 0) const _Divider(),
+              _AttachmentRow(
+                attachment: visibleAttachments[i],
+                imageAttachments: attachments
+                    .where((a) => a.mimeType.startsWith('image/'))
+                    .toList(),
+              ),
+            ],
+            if (showAttachmentsToggle && !_attachmentsExpanded)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  onPressed: () => setState(() => _attachmentsExpanded = true),
+                  child: Text('Show all (${attachments.length})'),
+                ),
+              ),
+          ],
         ],
-      ],
+      ),
+    );
+  }
+}
+
+class _Divider extends StatelessWidget {
+  const _Divider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 0.5,
+      color: CupertinoColors.separator.resolveFrom(context),
     );
   }
 }
@@ -930,11 +1004,16 @@ class _LiveSetlistButton extends StatelessWidget {
       child: CupertinoButton.filled(
         onPressed: () => context.push('/events/$eventKey/setlist/live'),
         child: const Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(CupertinoIcons.music_note, size: 18),
             SizedBox(width: 8),
-            Text('Join Live Setlist'),
+            Flexible(
+              child: Text(
+                'Join Live Setlist',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
       ),
@@ -1713,37 +1792,8 @@ class _MediaGridCell extends StatelessWidget {
 }
 
 // ── Attachments ───────────────────────────────────────────────────────────────
-
-class _AttachmentsSection extends StatelessWidget {
-  const _AttachmentsSection({required this.attachments});
-  final List<EventAttachment> attachments;
-
-  @override
-  Widget build(BuildContext context) {
-    // Collect image-only attachments so we can pass the correct PageView index.
-    final imageAttachments = attachments
-        .where((a) => a.mimeType.startsWith('image/'))
-        .toList();
-
-    return _Card(
-      child: Column(
-        children: [
-          for (int i = 0; i < attachments.length; i++) ...[
-            if (i > 0)
-              Container(
-                height: 0.5,
-                color: CupertinoColors.separator.resolveFrom(context),
-              ),
-            _AttachmentRow(
-              attachment: attachments[i],
-              imageAttachments: imageAttachments,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
+// (Rendered inline inside _NotesAndAttachmentsSection above — no standalone
+// card wrapper needed since both live in the same "Notes" section card.)
 
 class _AttachmentRow extends StatelessWidget {
   const _AttachmentRow({

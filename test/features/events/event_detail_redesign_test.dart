@@ -200,8 +200,10 @@ void main() {
 
       expect(find.text('Black tie'), findsOneWidget);
 
-      // Lodging row present with the stay's name.
-      expect(find.text('Grand Hotel'), findsOneWidget);
+      // Lodging row present with the stay's name. Task 4's reorder keeps
+      // both the glance card's summary row AND the full Lodging section
+      // visible in the same body, so the name legitimately appears twice.
+      expect(find.text('Grand Hotel'), findsWidgets);
     });
 
     testWidgets('card is hidden entirely when there is no glance data',
@@ -243,7 +245,170 @@ void main() {
       expect(find.text('Production'), findsOneWidget);
     });
   });
+
+  // Task 4: bundle Notes + Attachments into one section, and reorder the
+  // body logistics-first: glance card → Notes(+attachments) → Timeline →
+  // Lodging → Contacts → Roster → Performance → Wedding → Media.
+  group('notes+attachments bundle', () {
+    testWidgets('long note is clamped with a Show more/less toggle',
+        (tester) async {
+      final longNote = List.generate(20, (i) => 'Line $i of notes text here')
+          .join('\n');
+      final event = _baseEvent().copyWithNotes(longNote);
+      await _pump(tester, event);
+
+      expect(find.text('Show more'), findsOneWidget);
+      expect(find.text('Show less'), findsNothing);
+
+      await tester.tap(find.text('Show more'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Show less'), findsOneWidget);
+      expect(find.text('Show more'), findsNothing);
+    });
+
+    testWidgets('short note has no toggle', (tester) async {
+      final event = _baseEvent().copyWithNotes('Short note, one line.');
+      await _pump(tester, event);
+
+      expect(find.text('Show more'), findsNothing);
+      expect(find.text('Show less'), findsNothing);
+      expect(find.text('Short note, one line.'), findsOneWidget);
+    });
+
+    testWidgets('attachments capped at 3 rows with a Show all (N) toggle',
+        (tester) async {
+      final event = _baseEvent().copyWithAttachments([
+        for (int i = 1; i <= 5; i++)
+          {
+            'id': i,
+            'filename': 'file_$i.pdf',
+            'mime_type': 'application/pdf',
+            'file_size': 1024,
+          },
+      ]);
+      await _pump(tester, event);
+
+      for (int i = 1; i <= 3; i++) {
+        expect(find.text('file_$i.pdf'), findsOneWidget);
+      }
+      expect(find.text('file_4.pdf'), findsNothing);
+      expect(find.text('file_5.pdf'), findsNothing);
+      expect(find.text('Show all (5)'), findsOneWidget);
+
+      await tester.tap(find.text('Show all (5)'));
+      await tester.pumpAndSettle();
+
+      for (int i = 1; i <= 5; i++) {
+        expect(find.text('file_$i.pdf'), findsOneWidget);
+      }
+    });
+
+    testWidgets('Notes header renders once for the combined section',
+        (tester) async {
+      final event = _baseEvent()
+          .copyWithNotes('Some notes')
+          .copyWithAttachments([
+        {
+          'id': 1,
+          'filename': 'file_1.pdf',
+          'mime_type': 'application/pdf',
+          'file_size': 1024,
+        },
+      ]);
+      await _pump(tester, event);
+
+      expect(find.text('Notes'), findsOneWidget);
+      expect(find.text('Attachments'), findsNothing);
+    });
+  });
+
+  group('body section order', () {
+    testWidgets('Notes appears above Timeline', (tester) async {
+      final event = _baseEvent().copyWithNotes('Some notes').copyWithTimeline([
+        {'title': 'Load in', 'time': '18:00'},
+      ]);
+      await _pump(tester, event);
+
+      final notesTop = tester.getTopLeft(find.text('Notes')).dy;
+      final timelineTop = tester.getTopLeft(find.text('Timeline')).dy;
+
+      expect(notesTop, lessThan(timelineTop));
+    });
+
+    testWidgets('Attire section header findsNothing (attire lives in glance card)',
+        (tester) async {
+      final event = _baseEvent(attire: 'Black tie');
+      await _pump(tester, event);
+
+      expect(find.text('Attire'), findsOneWidget); // glance card row label
+      // No standalone card-style _SectionHeader titled "Attire".
+      final headers = find.text('Attire');
+      expect(tester.widgetList(headers).length, 1);
+    });
+
+    testWidgets('plain Setlist row absent from body', (tester) async {
+      final event = _baseEvent();
+      await _pump(tester, event);
+
+      expect(find.text('Setlist'), findsNothing);
+    });
+
+    testWidgets('Join Live Setlist button stays in body when live session active',
+        (tester) async {
+      final event = _baseEvent().copyWithLiveSession(42);
+      await _pump(tester, event);
+
+      expect(find.text('Join Live Setlist'), findsOneWidget);
+    });
+  });
 }
+
+extension _EventDetailTestExtensions on EventDetail {
+  EventDetail copyWithNotes(String notes) => EventDetail.fromJson({
+        ..._toJsonForTest(this),
+        'notes': notes,
+      });
+
+  EventDetail copyWithAttachments(List<Map<String, dynamic>> attachments) =>
+      EventDetail.fromJson({
+        ..._toJsonForTest(this),
+        'attachments': attachments,
+      });
+
+  EventDetail copyWithTimeline(List<Map<String, dynamic>> timeline) =>
+      EventDetail.fromJson({
+        ..._toJsonForTest(this),
+        'timeline': timeline,
+      });
+
+  EventDetail copyWithLiveSession(int liveSessionId) => EventDetail.fromJson({
+        ..._toJsonForTest(this),
+        'live_session_id': liveSessionId,
+      });
+}
+
+// Rebuilds a minimal JSON map carrying forward the fields the fixtures in
+// this file set, so the copyWith* helpers above can layer one extra field
+// on without re-deriving the whole payload. Only fields exercised by these
+// tests need round-tripping.
+Map<String, dynamic> _toJsonForTest(EventDetail event) => {
+      'id': event.id,
+      'key': event.key,
+      'title': event.title,
+      'date': event.date,
+      'time': event.time,
+      'end_time': event.endTime,
+      'can_write': event.canWrite,
+      'status': event.status,
+      'eventable_type': event.eventableType,
+      'eventable_id': event.eventableId,
+      'attire': event.attire,
+      'members': const [],
+      'lodgings': const [],
+      'notes': event.notes,
+      'live_session_id': event.liveSessionId,
+    };
 
 class _FakeSelectedBand extends SelectedBandNotifier {
   _FakeSelectedBand(this._id);

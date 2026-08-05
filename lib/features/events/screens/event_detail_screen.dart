@@ -10,7 +10,6 @@ import 'package:intl/intl.dart';
 import 'package:timelines_plus/timelines_plus.dart';
 import 'package:map_launcher/map_launcher.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../shared/cache/cache_invalidator.dart';
 import '../../../shared/providers/selected_band_provider.dart';
 import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
@@ -22,14 +21,12 @@ import '../../contacts/contact_detail_screen.dart';
 import '../../contacts/contact_ref.dart';
 import '../../media/providers/upload_queue_provider.dart';
 import '../../media/widgets/upload_queue_sheet.dart';
-import '../data/events_repository.dart';
 import '../data/models/event_detail.dart';
-import '../data/models/event_member.dart';
 import '../../lodging/data/models/lodging.dart';
-import '../data/models/sub_entry.dart';
 import '../providers/events_provider.dart';
 import '../../../shared/widgets/attachment_widgets.dart';
-import '../widgets/part_of_booking_row.dart';
+import '../widgets/event_glance_card.dart';
+import 'roster_sheet.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class EventDetailScreen extends ConsumerWidget {
@@ -72,7 +69,7 @@ class EventDetailScreen extends ConsumerWidget {
   }
 }
 
-class _EventDetailView extends ConsumerWidget {
+class _EventDetailView extends ConsumerStatefulWidget {
   const _EventDetailView({
     required this.event,
     this.parentBookingName,
@@ -86,51 +83,147 @@ class _EventDetailView extends ConsumerWidget {
   final int? parentBandId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_EventDetailView> createState() => _EventDetailViewState();
+}
+
+class _EventDetailViewState extends ConsumerState<_EventDetailView> {
+  final _timelineKey = GlobalKey();
+
+  EventDetail get event => widget.event;
+
+  void _scrollToKey(GlobalKey key) {
+    final keyContext = key.currentContext;
+    if (keyContext == null) return;
+    Scrollable.ensureVisible(
+      keyContext,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _openTimeline() => _scrollToKey(_timelineKey);
+
+  /// Pushes the full-screen roster sheet.
+  void _openRoster() {
+    Navigator.of(context).push(
+      CupertinoPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => RosterSheet(event: event),
+      ),
+    );
+  }
+
+  void _openMenu(
+    BuildContext context, {
+    required bool showBookingLink,
+    required int? bookingBandId,
+    required int? bookingId,
+  }) {
+    final container = ProviderScope.containerOf(context);
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (sheetContext) => UncontrolledProviderScope(
+        container: container,
+        child: CupertinoActionSheet(
+          actions: [
+            if (showBookingLink)
+              CupertinoActionSheetAction(
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  context.push('/bookings/$bookingBandId/$bookingId');
+                },
+                child: const Text('Go to booking'),
+              ),
+            CupertinoActionSheetAction(
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                _openRoster();
+              },
+              child: const Text('Go to roster'),
+            ),
+            CupertinoActionSheetAction(
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                context.push('/events/${event.key}/setlist');
+              },
+              child: const Text('Setlist'),
+            ),
+            if (event.canWrite)
+              CupertinoActionSheetAction(
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  context.push('/events/${event.key}/edit', extra: event);
+                },
+                child: const Text('Edit event'),
+              ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.pop(sheetContext),
+            child: const Text('Cancel'),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // Resolve the booking backlink. When opened from a booking, the parent
     // params carry the name + ids. Otherwise, derive it from the event's own
     // eventable fields (booking-backed events only) plus the active band.
     final selectedBandId = ref.watch(selectedBandProvider).value;
     final bool fromBooking =
-        parentBookingId != null && parentBandId != null;
+        widget.parentBookingId != null && widget.parentBandId != null;
     final bool isBookingBacked = event.eventableType == 'Bookings' &&
         event.eventableId != null &&
         selectedBandId != null;
 
-    final int? bookingBandId = fromBooking ? parentBandId : selectedBandId;
-    final int? bookingId = fromBooking ? parentBookingId : event.eventableId;
+    final int? bookingBandId =
+        fromBooking ? widget.parentBandId : selectedBandId;
+    final int? bookingId =
+        fromBooking ? widget.parentBookingId : event.eventableId;
     final bool showBookingLink = fromBooking || isBookingBacked;
 
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
-        middle: Text(event.title),
-        trailing: event.canWrite
-            ? CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: () =>
-                    context.push('/events/${event.key}/edit', extra: event),
-                child: const Icon(CupertinoIcons.pencil),
-              )
-            : null,
+        middle: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (event.status != null) ...[
+              Semantics(
+                label: 'Status: ${event.status}',
+                child: Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: statusColor(context, event.status!),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+            ],
+            Flexible(
+              child: Text(event.title, overflow: TextOverflow.ellipsis),
+            ),
+          ],
+        ),
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: () => _openMenu(
+            context,
+            showBookingLink: showBookingLink,
+            bookingBandId: bookingBandId,
+            bookingId: bookingId,
+          ),
+          child: const Icon(CupertinoIcons.ellipsis_circle),
+        ),
       ),
       child: CommentBarBody(
         topic: TopicRef(kind: 'events', idOrKey: event.key),
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Booking backlink. Shows "Part of: <name>" when opened from the
-            // booking, or a generic "Go to booking" for booking-backed events
-            // opened any other way.
-            if (showBookingLink) ...[
-              PartOfBookingRow(
-                bookingName: parentBookingName,
-                onTap: () => context.push(
-                  '/bookings/$bookingBandId/$bookingId',
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-
             // Date / Time
             _InfoRow(
               icon: CupertinoIcons.calendar,
@@ -147,26 +240,38 @@ class _EventDetailView extends ConsumerWidget {
               ),
             ],
 
-            // Status
-            if (event.status != null) ...[
-              const SizedBox(height: 12),
-              _InfoRow(
-                icon: CupertinoIcons.info_circle,
-                label: 'Status',
-                value: '',
-                trailing: StatusChip(status: event.status!),
-              ),
-            ],
-
             // Event type + flags row
             if (_hasFlags) ...[
               const SizedBox(height: 16),
               _FlagsRow(event: event),
             ],
 
+            // At-a-glance card
+            if (EventGlanceCard.hasContent(event)) ...[
+              const SizedBox(height: 12),
+              EventGlanceCard(
+                event: event,
+                onShowTimeTap: _openTimeline,
+                onLodgingTap: (lodgingId) =>
+                    context.push('/lodging/$lodgingId'),
+              ),
+            ],
+
+            // Notes + Attachments (combined — band-internal files, read-only)
+            if (_NotesAndAttachmentsSection.hasContent(
+                event.notes, event.attachments)) ...[
+              const SizedBox(height: 20),
+              const _SectionHeader(title: 'Notes'),
+              const SizedBox(height: 8),
+              _NotesAndAttachmentsSection(
+                notesHtml: event.notes,
+                attachments: event.attachments,
+              ),
+            ],
+
             // Timeline
             if (event.timeline.isNotEmpty || event.time != null) ...[
-              const SizedBox(height: 20),
+              SizedBox(height: 20, key: _timelineKey),
               const _SectionHeader(title: 'Timeline'),
               const SizedBox(height: 8),
               _TimelineSection(
@@ -175,68 +280,6 @@ class _EventDetailView extends ConsumerWidget {
                 showTime: event.time,
                 eventDateStr: event.date,
               ),
-            ],
-
-            // Notes
-            if (event.notes != null && event.notes!.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              const _SectionHeader(title: 'Notes'),
-              const SizedBox(height: 8),
-              _NotesBox(html: event.notes!),
-            ],
-
-            // Attachments (band-internal files — read-only)
-            if (event.attachments.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              const _SectionHeader(title: 'Attachments'),
-              const SizedBox(height: 8),
-              _AttachmentsSection(attachments: event.attachments),
-            ],
-
-            // Media (client-shared photos/files — writers can upload)
-            if (event.media.isNotEmpty || event.canWrite) ...[
-              const SizedBox(height: 20),
-              _MediaSection(
-                media: event.media,
-                eventKey: event.key,
-                eventId: event.id,
-                canWrite: event.canWrite,
-              ),
-            ],
-
-            // Attire
-            if (event.attire != null && event.attire!.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              const _SectionHeader(title: 'Attire'),
-              const SizedBox(height: 8),
-              _Card(child: Text(event.attire!, style: const TextStyle(fontSize: 15))),
-            ],
-
-            // Setlist (always available — editor; plus live mode when active)
-            const SizedBox(height: 20),
-            _SetlistRow(
-              eventKey: event.key,
-              hasLiveSession: event.liveSessionId != null,
-            ),
-
-            // Performance (songs / charts)
-            if (event.performance != null &&
-                (event.performance!.notes?.isNotEmpty == true ||
-                    event.performance!.songs.isNotEmpty ||
-                    event.performance!.charts.isNotEmpty)) ...[
-              const SizedBox(height: 20),
-              const _SectionHeader(title: 'Performance'),
-              const SizedBox(height: 8),
-              _PerformanceSection(performance: event.performance!),
-            ],
-
-            // Wedding details
-            if (event.wedding != null &&
-                (event.wedding!.onsite != null || event.wedding!.dances.isNotEmpty)) ...[
-              const SizedBox(height: 20),
-              const _SectionHeader(title: 'Wedding Details'),
-              const SizedBox(height: 8),
-              _WeddingSection(wedding: event.wedding!),
             ],
 
             // Lodging
@@ -258,7 +301,45 @@ class _EventDetailView extends ConsumerWidget {
             // Roster
             if (event.members.isNotEmpty) ...[
               const SizedBox(height: 20),
-              _RosterSection(event: event),
+              _RosterSummaryRow(event: event, onTap: _openRoster),
+            ],
+
+            // Performance (songs / charts)
+            if (event.performance != null &&
+                (event.performance!.notes?.isNotEmpty == true ||
+                    event.performance!.songs.isNotEmpty ||
+                    event.performance!.charts.isNotEmpty)) ...[
+              const SizedBox(height: 20),
+              const _SectionHeader(title: 'Performance'),
+              const SizedBox(height: 8),
+              _PerformanceSection(performance: event.performance!),
+            ],
+
+            // Wedding details
+            if (event.wedding != null &&
+                (event.wedding!.onsite != null || event.wedding!.dances.isNotEmpty)) ...[
+              const SizedBox(height: 20),
+              const _SectionHeader(title: 'Wedding Details'),
+              const SizedBox(height: 8),
+              _WeddingSection(wedding: event.wedding!),
+            ],
+
+            // Live setlist join (state-driven CTA — shown only during an
+            // active live session; the plain Setlist row lives in the ⋯ menu)
+            if (event.liveSessionId != null) ...[
+              const SizedBox(height: 20),
+              _LiveSetlistButton(eventKey: event.key),
+            ],
+
+            // Media (client-shared photos/files — writers can upload)
+            if (event.media.isNotEmpty || event.canWrite) ...[
+              const SizedBox(height: 20),
+              _MediaSection(
+                media: event.media,
+                eventKey: event.key,
+                eventId: event.id,
+                canWrite: event.canWrite,
+              ),
             ],
 
             const SizedBox(height: 32),
@@ -450,12 +531,10 @@ class _InfoRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
-    this.trailing,
   });
   final IconData icon;
   final String label;
   final String value;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -485,7 +564,6 @@ class _InfoRow extends StatelessWidget {
                   ),
                 ),
               ],
-              if (trailing != null) trailing!,
             ],
           ),
         ),
@@ -533,7 +611,17 @@ class _FlagsRow extends StatelessWidget {
       ));
     }
 
-    return Wrap(spacing: 8, runSpacing: 8, children: chips);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (int i = 0; i < chips.length; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            chips[i],
+          ],
+        ],
+      ),
+    );
   }
 }
 
@@ -553,7 +641,7 @@ class _FlagChip extends StatelessWidget {
         : CupertinoColors.systemGrey5.resolveFrom(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -764,16 +852,41 @@ class _TimelineSectionState extends State<_TimelineSection> {
   }
 }
 
-// ── Notes ─────────────────────────────────────────────────────────────────────
+// ── Notes + Attachments (combined section) ────────────────────────────────────
 
-class _NotesBox extends StatelessWidget {
-  const _NotesBox({required this.html});
-  final String html;
+/// Bundles the free-text notes and band-internal file attachments into a
+/// single "Notes" section. Long notes are clamped to 6 lines with a
+/// "Show more"/"Show less" toggle, and attachments beyond the first 3 are
+/// hidden behind a "Show all (N)" toggle. Both toggles are local state so
+/// expanding one doesn't affect the other.
+class _NotesAndAttachmentsSection extends StatefulWidget {
+  const _NotesAndAttachmentsSection({
+    this.notesHtml,
+    this.attachments = const [],
+  });
+
+  final String? notesHtml;
+  final List<EventAttachment> attachments;
+
+  static const int _attachmentPreviewCount = 3;
+  static const int _notesClampLines = 6;
+
+  static bool hasContent(String? notesHtml, List<EventAttachment> attachments) =>
+      (notesHtml != null && notesHtml.isNotEmpty) || attachments.isNotEmpty;
 
   @override
-  Widget build(BuildContext context) {
-    // Strip basic HTML tags for display
-    final plain = html
+  State<_NotesAndAttachmentsSection> createState() =>
+      _NotesAndAttachmentsSectionState();
+}
+
+class _NotesAndAttachmentsSectionState
+    extends State<_NotesAndAttachmentsSection> {
+  bool _notesExpanded = false;
+  bool _attachmentsExpanded = false;
+
+  String get _plainNotes {
+    final html = widget.notesHtml ?? '';
+    return html
         .replaceAll(RegExp(r'<br\s*/?>'), '\n')
         .replaceAll(RegExp(r'<p[^>]*>'), '')
         .replaceAll('</p>', '\n')
@@ -783,46 +896,99 @@ class _NotesBox extends StatelessWidget {
         .replaceAll('&lt;', '<')
         .replaceAll('&gt;', '>')
         .trim();
-    return _Card(child: Text(plain, style: const TextStyle(fontSize: 15)));
   }
-}
 
-// ── Setlist ───────────────────────────────────────────────────────────────────
-
-class _SetlistRow extends StatelessWidget {
-  const _SetlistRow({required this.eventKey, required this.hasLiveSession});
-  final String eventKey;
-  final bool hasLiveSession;
+  /// Cheap heuristic for "would this overflow 6 lines" without a
+  /// LayoutBuilder/TextPainter measure pass: count explicit newlines plus
+  /// an estimate of wrapped lines from character count.
+  bool get _notesOverflow {
+    final notes = _plainNotes;
+    if (notes.isEmpty) return false;
+    final estimatedLines =
+        '\n'.allMatches(notes).length + notes.length ~/ 40;
+    return estimatedLines > _NotesAndAttachmentsSection._notesClampLines;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          child: CupertinoButton(
-            color: CupertinoColors.systemGrey5.resolveFrom(context),
-            onPressed: () => context.push('/events/$eventKey/setlist'),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(CupertinoIcons.music_note_list, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  'Setlist',
-                  style: TextStyle(
-                    color: context.primaryText,
-                  ),
-                ),
-              ],
+    final notes = _plainNotes;
+    final hasNotes = notes.isNotEmpty;
+    final attachments = widget.attachments;
+    final hasAttachments = attachments.isNotEmpty;
+    final showNotesToggle = hasNotes && _notesOverflow;
+    final visibleAttachments = _attachmentsExpanded
+        ? attachments
+        : attachments
+            .take(_NotesAndAttachmentsSection._attachmentPreviewCount)
+            .toList();
+    final showAttachmentsToggle = attachments.length >
+        _NotesAndAttachmentsSection._attachmentPreviewCount;
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasNotes) ...[
+            Text(
+              notes,
+              style: const TextStyle(fontSize: 15),
+              maxLines: _notesExpanded
+                  ? null
+                  : _NotesAndAttachmentsSection._notesClampLines,
+              overflow: _notesExpanded ? null : TextOverflow.ellipsis,
             ),
-          ),
-        ),
-        if (hasLiveSession) ...[
-          const SizedBox(height: 8),
-          _LiveSetlistButton(eventKey: eventKey),
+            if (showNotesToggle)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  onPressed: () =>
+                      setState(() => _notesExpanded = !_notesExpanded),
+                  child: Text(_notesExpanded ? 'Show less' : 'Show more'),
+                ),
+              ),
+          ],
+          if (hasNotes && hasAttachments)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: _Divider(),
+            ),
+          if (hasAttachments) ...[
+            for (int i = 0; i < visibleAttachments.length; i++) ...[
+              if (i > 0) const _Divider(),
+              _AttachmentRow(
+                attachment: visibleAttachments[i],
+                imageAttachments: attachments
+                    .where((a) => a.mimeType.startsWith('image/'))
+                    .toList(),
+              ),
+            ],
+            if (showAttachmentsToggle && !_attachmentsExpanded)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  onPressed: () => setState(() => _attachmentsExpanded = true),
+                  child: Text('Show all (${attachments.length})'),
+                ),
+              ),
+          ],
         ],
-      ],
+      ),
+    );
+  }
+}
+
+class _Divider extends StatelessWidget {
+  const _Divider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 0.5,
+      color: CupertinoColors.separator.resolveFrom(context),
     );
   }
 }
@@ -840,11 +1006,16 @@ class _LiveSetlistButton extends StatelessWidget {
       child: CupertinoButton.filled(
         onPressed: () => context.push('/events/$eventKey/setlist/live'),
         child: const Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(CupertinoIcons.music_note, size: 18),
             SizedBox(width: 8),
-            Text('Join Live Setlist'),
+            Flexible(
+              child: Text(
+                'Join Live Setlist',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
       ),
@@ -1623,37 +1794,8 @@ class _MediaGridCell extends StatelessWidget {
 }
 
 // ── Attachments ───────────────────────────────────────────────────────────────
-
-class _AttachmentsSection extends StatelessWidget {
-  const _AttachmentsSection({required this.attachments});
-  final List<EventAttachment> attachments;
-
-  @override
-  Widget build(BuildContext context) {
-    // Collect image-only attachments so we can pass the correct PageView index.
-    final imageAttachments = attachments
-        .where((a) => a.mimeType.startsWith('image/'))
-        .toList();
-
-    return _Card(
-      child: Column(
-        children: [
-          for (int i = 0; i < attachments.length; i++) ...[
-            if (i > 0)
-              Container(
-                height: 0.5,
-                color: CupertinoColors.separator.resolveFrom(context),
-              ),
-            _AttachmentRow(
-              attachment: attachments[i],
-              imageAttachments: imageAttachments,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
+// (Rendered inline inside _NotesAndAttachmentsSection above — no standalone
+// card wrapper needed since both live in the same "Notes" section card.)
 
 class _AttachmentRow extends StatelessWidget {
   const _AttachmentRow({
@@ -1756,511 +1898,71 @@ class _AttachmentRow extends StatelessWidget {
   }
 }
 
-// ── Roster ────────────────────────────────────────────────────────────────────
+// ── Roster summary row ─────────────────────────────────────────────────────
 
-/// Groups members by role and provides sub-assignment actions.
-/// Must be a ConsumerWidget because it reads providers for sub assignment.
-class _RosterSection extends ConsumerStatefulWidget {
-  const _RosterSection({required this.event});
+/// One-line roster summary replacing the old inline grouped section (Task 5).
+/// Tapping it pushes the full [RosterSheet] with the grouped list + controls.
+class _RosterSummaryRow extends StatelessWidget {
+  const _RosterSummaryRow({required this.event, required this.onTap});
+
   final EventDetail event;
-
-  @override
-  ConsumerState<_RosterSection> createState() => _RosterSectionState();
-}
-
-class _RosterSectionState extends ConsumerState<_RosterSection> {
-  @override
-  Widget build(BuildContext context) {
-    final event = widget.event;
-
-    // Group members by section (BandRole), preserving insertion order.
-    final grouped = <String, List<EventMember>>{};
-    for (final m in event.members) {
-      (grouped[m.groupKey] ??= []).add(m);
-    }
-
-    final statusColor = switch (event.rosterStatus) {
-      'green' => CupertinoColors.systemGreen,
-      'yellow' => CupertinoColors.systemOrange,
-      'red' => CupertinoColors.systemRed,
-      _ => CupertinoColors.systemGrey,
-    };
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Section header with roster status dot
-        Row(
-          children: [
-            const Text(
-              'Roster',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(width: 8),
-            if (event.rosterStatus != null &&
-                event.rosterStatus != 'none' &&
-                event.rosterStatus!.isNotEmpty)
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: statusColor.resolveFrom(context),
-                  shape: BoxShape.circle,
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ...grouped.entries.map(
-          (entry) => _RoleGroup(
-            role: entry.key,
-            members: entry.value,
-            event: event,
-            onAssignSub: (member) => _showSubPicker(member),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _showSubPicker(EventMember member) async {
-    if (member.bandRoleId == null) return;
-    final event = widget.event;
-
-    final result = await showCupertinoModalPopup<_SubPickerResult>(
-      context: context,
-      builder: (_) => _SubPickerSheet(event: event, member: member),
-    );
-
-    if (result == null || !mounted) return;
-
-    final repo = ref.read(eventsRepositoryProvider);
-    // For synthetic slots (no EventMember row yet), memberId = 0 triggers creation.
-    final memberId = member.id ?? 0;
-
-    if (result.clear) {
-      await repo.assignSub(event.key, memberId, slotId: member.slotId, clear: true);
-    } else if (result.sub != null) {
-      final sub = result.sub!;
-      await repo.assignSub(
-        event.key,
-        memberId,
-        slotId: member.slotId,
-        rosterMemberId: sub.rosterMemberId,
-        name: sub.rosterMemberId == null ? sub.name : null,
-        email: sub.rosterMemberId == null ? sub.email : null,
-      );
-    }
-
-    if (mounted) {
-      ref.read(cacheInvalidatorProvider).onEventChanged(eventKey: event.key);
-    }
-  }
-}
-
-class _RoleGroup extends StatelessWidget {
-  const _RoleGroup({
-    required this.role,
-    required this.members,
-    required this.event,
-    required this.onAssignSub,
-  });
-  final String role;
-  final List<EventMember> members;
-  final EventDetail event;
-  final void Function(EventMember) onAssignSub;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 12, bottom: 4),
-          child: Text(
-            role.toUpperCase(),
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.8,
-              color: context.secondaryText,
-            ),
-          ),
-        ),
-        ...members.map(
-          (m) => _MemberTile(
-            member: m,
-            canWrite: event.canWrite,
-            onTap: event.canWrite ? () => onAssignSub(m) : null,
-          ),
-        ),
-      ],
-    );
-  }
-}
+    final members = event.members;
+    final total = members.length;
+    final subCount = members.where((m) => m.isSub).length;
+    final pendingCount = members.where((m) {
+      final status = m.attendanceStatus?.toLowerCase();
+      return !m.isFilled || status == null || status.isEmpty || status == 'pending';
+    }).length;
 
-class _MemberTile extends StatelessWidget {
-  const _MemberTile({
-    required this.member,
-    required this.canWrite,
-    this.onTap,
-  });
-  final EventMember member;
-  final bool canWrite;
-  final VoidCallback? onTap;
+    final countLabel = subCount > 0 ? '$total + $subCount sub' : '$total members';
 
-  @override
-  Widget build(BuildContext context) {
-    final slotLabel = member.slotName;
-
-    if (!member.isFilled) {
-      // Unfilled slot — placeholder row with instrument label + add button
-      return GestureDetector(
-        onTap: canWrite ? onTap : null,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: CupertinoColors.systemRed
-                      .resolveFrom(context)
-                      .withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: CupertinoColors.systemRed
-                        .resolveFrom(context)
-                        .withValues(alpha: 0.4),
-                    width: 1.5,
-                  ),
-                ),
-                child: Icon(
-                  CupertinoIcons.question_circle,
-                  size: 18,
-                  color: CupertinoColors.systemRed.resolveFrom(context),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (slotLabel != null)
-                      Text(
-                        slotLabel,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: context.secondaryText,
-                        ),
-                      ),
-                    Text(
-                      '— Needed',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontStyle: FontStyle.italic,
-                        color: CupertinoColors.systemRed.resolveFrom(context),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (canWrite)
-                Icon(
-                  CupertinoIcons.add_circled,
-                  size: 22,
-                  color: CupertinoColors.systemBlue.resolveFrom(context),
-                ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Filled slot
-    final (icon, iconColor) = switch (member.attendanceStatus?.toLowerCase()) {
-      'confirmed' => (
-          CupertinoIcons.checkmark_circle_fill,
-          CupertinoColors.systemGreen
-        ),
-      'absent' => (CupertinoIcons.xmark_circle_fill, CupertinoColors.systemRed),
-      _ => (CupertinoIcons.circle, CupertinoColors.systemGrey),
-    };
-
-    return GestureDetector(
-      onTap: canWrite ? onTap : null,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
+    return _Card(
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        minimumSize: Size.zero,
+        onPressed: onTap,
         child: Row(
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: CupertinoColors.tertiarySystemBackground
-                    .resolveFrom(context),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  member.name.isNotEmpty ? member.name[0].toUpperCase() : '?',
-                  style:
-                      const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
+            Icon(CupertinoIcons.person_2, size: 18, color: context.secondaryText),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (slotLabel != null)
-                    Text(
-                      slotLabel,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: context.secondaryText,
-                      ),
-                    ),
                   Row(
                     children: [
-                      Flexible(
-                        child: Text(
-                          member.name,
-                          style: const TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w500),
-                        ),
+                      Text(
+                        countLabel,
+                        style: TextStyle(fontSize: 15, color: context.primaryText),
                       ),
-                      if (member.isSub) ...[
+                      if (pendingCount > 0) ...[
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                          width: 8,
+                          height: 8,
                           decoration: BoxDecoration(
-                            color: CupertinoColors.systemOrange
-                                .resolveFrom(context)
-                                .withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: CupertinoColors.systemOrange
-                                  .resolveFrom(context)
-                                  .withValues(alpha: 0.5),
-                            ),
-                          ),
-                          child: Text(
-                            'Sub',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: CupertinoColors.systemOrange
-                                  .resolveFrom(context),
-                            ),
+                            color: CupertinoColors.systemOrange.resolveFrom(context),
+                            shape: BoxShape.circle,
                           ),
                         ),
                       ],
                     ],
                   ),
+                  if (pendingCount > 0)
+                    Text(
+                      '$pendingCount awaiting confirmation',
+                      style: TextStyle(fontSize: 13, color: context.secondaryText),
+                    ),
                 ],
               ),
             ),
-            Icon(icon, size: 20, color: iconColor.resolveFrom(context)),
+            Icon(CupertinoIcons.chevron_right, size: 16, color: context.tertiaryText),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ── Sub picker sheet ──────────────────────────────────────────────────────────
-
-/// Return value from [_SubPickerSheet].
-/// [sub] is set when a sub was selected; [clear] is true when the slot should
-/// be cleared. Both null / false means the user dismissed without acting.
-class _SubPickerResult {
-  const _SubPickerResult({this.sub, this.clear = false});
-  final SubEntry? sub;
-  final bool clear;
-}
-
-/// Bottom sheet showing the substitute call list for a roster slot.
-/// Pops with a [_SubPickerResult] so the caller controls all async work.
-class _SubPickerSheet extends ConsumerWidget {
-  const _SubPickerSheet({required this.event, required this.member});
-
-  final EventDetail event;
-  final EventMember member;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final subsAsync = ref.watch(
-      eventSubsProvider(
-          (eventKey: event.key, bandRoleId: member.bandRoleId!)),
-    );
-
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.65,
-      decoration: BoxDecoration(
-        color: CupertinoColors.systemBackground.resolveFrom(context),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      child: Column(
-        children: [
-          // Drag handle
-          Padding(
-            padding: const EdgeInsets.only(top: 8, bottom: 4),
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: CupertinoColors.systemGrey3.resolveFrom(context),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          // Sheet title row
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Add Sub \u2014 ${member.slotName ?? member.role ?? 'Member'}',
-                    style: const TextStyle(
-                        fontSize: 17, fontWeight: FontWeight.w600),
-                  ),
-                ),
-                if (member.isFilled)
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: () => Navigator.of(context)
-                        .pop(const _SubPickerResult(clear: true)),
-                    child: Text(
-                      'Clear',
-                      style: TextStyle(
-                          color: CupertinoColors.systemRed.resolveFrom(context)),
-                    ),
-                  ),
-                CupertinoButton(
-                  padding: const EdgeInsets.only(left: 8),
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Icon(CupertinoIcons.xmark_circle_fill, size: 24),
-                ),
-              ],
-            ),
-          ),
-          Container(
-              height: 0.5,
-              color: CupertinoColors.separator.resolveFrom(context)),
-          // Sub list
-          Expanded(
-            child: subsAsync.when(
-              loading: () =>
-                  const Center(child: CupertinoActivityIndicator()),
-              error: (e, _) => Center(
-                child: Text(
-                  ErrorView.friendlyMessage(e),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: context.secondaryText),
-                ),
-              ),
-              data: (subs) {
-                if (subs.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        'No substitutes on call list for this role.',
-                        textAlign: TextAlign.center,
-                        style:
-                            TextStyle(color: context.secondaryText),
-                      ),
-                    ),
-                  );
-                }
-                return ListView.separated(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: subs.length,
-                  separatorBuilder: (_, __) => Container(
-                    height: 0.5,
-                    margin: const EdgeInsets.only(left: 16),
-                    color: CupertinoColors.separator.resolveFrom(context),
-                  ),
-                  itemBuilder: (context, index) {
-                    final sub = subs[index];
-                    return CupertinoButton(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      onPressed: () => Navigator.of(context)
-                          .pop(_SubPickerResult(sub: sub)),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Text(
-                                      sub.name,
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500,
-                                        color: context.primaryText,
-                                      ),
-                                    ),
-                                    if (sub.isCustom) ...[
-                                      const SizedBox(width: 6),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 5, vertical: 1),
-                                        decoration: BoxDecoration(
-                                          color: CupertinoColors.systemOrange
-                                              .resolveFrom(context)
-                                              .withValues(alpha: 0.15),
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          'Sub',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w600,
-                                            color: CupertinoColors.systemOrange
-                                                .resolveFrom(context),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                                if (sub.email != null && sub.email!.isNotEmpty)
-                                  Text(
-                                    sub.email!,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: context.secondaryText,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            CupertinoIcons.add,
-                            size: 20,
-                            color:
-                                CupertinoColors.systemGreen.resolveFrom(context),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
       ),
     );
   }

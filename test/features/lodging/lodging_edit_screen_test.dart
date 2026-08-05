@@ -8,6 +8,7 @@ import 'package:tts_bandmate/features/bookings/data/models/booking_summary.dart'
 import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
 import 'package:tts_bandmate/features/events/data/events_repository.dart';
 import 'package:tts_bandmate/features/events/data/models/event_detail.dart';
+import 'package:tts_bandmate/features/events/data/models/event_summary.dart';
 import 'package:tts_bandmate/features/events/providers/events_provider.dart';
 import 'package:tts_bandmate/features/lodging/data/lodging_repository.dart';
 import 'package:tts_bandmate/features/lodging/data/models/lodging.dart';
@@ -17,9 +18,10 @@ import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 final _throwingDio = Dio();
 
 class _FakeBookingsRepository extends BookingsRepository {
-  _FakeBookingsRepository() : super(_throwingDio);
+  _FakeBookingsRepository({this.bookings = const []}) : super(_throwingDio);
 
   int getBookingDetailCalls = 0;
+  final List<BookingSummary> bookings;
 
   @override
   Future<List<BookingSummary>> getBandBookings(
@@ -28,7 +30,7 @@ class _FakeBookingsRepository extends BookingsRepository {
     bool upcomingOnly = false,
     int? year,
   }) async {
-    return const [];
+    return bookings;
   }
 
   @override
@@ -387,5 +389,65 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byIcon(CupertinoIcons.minus_circle), findsNothing);
+  });
+
+  testWidgets(
+      'booking picker: a booking whose only event has a malformed '
+      '(non-empty, unparseable) date sorts undated, not as "today"',
+      (tester) async {
+    // Non-empty but unparseable — the bug this regression guards against is
+    // treating this as `DateTime.now()` via EventSummary.parsedDate's silent
+    // fallback, which would wrongly sort it into "During your stay"/"Nearby"
+    // for a fresh lodging (whose default check-in is today).
+    const malformedEvent = EventSummary(
+      id: 1,
+      key: 'evt-1',
+      title: 'Mystery Gig',
+      date: 'not-a-date',
+      eventSource: 'booking',
+    );
+    const booking = BookingSummary(
+      id: 7,
+      name: 'Malformed Booking',
+      startDate: '',
+      endDate: '',
+      eventCount: 1,
+      isMultiEvent: false,
+      isPaid: false,
+      contacts: [],
+      events: [malformedEvent],
+    );
+    final bookingsRepo = _FakeBookingsRepository(bookings: const [booking]);
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        lodgingRepositoryProvider.overrideWithValue(_FakeLodgingRepository()),
+        bookingsRepositoryProvider.overrideWithValue(bookingsRepo),
+        selectedBandProvider.overrideWith(() => _FakeBand(1)),
+      ],
+      child: const CupertinoApp(home: LodgingEditScreen(lodgingId: null)),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Booking'));
+    await tester.pumpAndSettle();
+
+    // The booking tile renders — but with no date subtitle beneath its
+    // label, proving `_bookingDate` returned null (undated) rather than
+    // `DateTime.now()`. A non-null date would render an
+    // "EEE, MMM d, yyyy"-formatted line under the label.
+    final tile = find.ancestor(
+      of: find.text('Malformed Booking'),
+      matching: find.byType(Column),
+    );
+    expect(tile, findsWidgets);
+    final dateTexts = tester
+        .widgetList<Text>(find.descendant(
+          of: tile.first,
+          matching: find.byType(Text),
+        ))
+        .where((t) => t.data != 'Malformed Booking');
+    expect(dateTexts, isEmpty,
+        reason: 'undated booking must not render a date subtitle');
   });
 }

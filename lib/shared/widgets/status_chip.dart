@@ -24,6 +24,39 @@ class NextDayBadge extends StatelessWidget {
   }
 }
 
+/// Returns the (label, background, foreground) style triple for a status
+/// value, shared by [StatusChip] and any other status indicator (e.g. the
+/// event-detail nav bar's status dot).
+(String, Color, Color) _statusStyle(BuildContext context, String status) {
+  return switch (status.toLowerCase()) {
+    'confirmed' => (
+        'Confirmed',
+        CupertinoColors.systemGreen.resolveFrom(context).withValues(alpha: 0.15),
+        CupertinoColors.systemGreen.resolveFrom(context),
+      ),
+    'pending' => (
+        'Pending',
+        CupertinoColors.systemOrange.resolveFrom(context).withValues(alpha: 0.15),
+        CupertinoColors.systemOrange.resolveFrom(context),
+      ),
+    'cancelled' || 'canceled' => (
+        'Cancelled',
+        CupertinoColors.systemRed.resolveFrom(context).withValues(alpha: 0.15),
+        CupertinoColors.systemRed.resolveFrom(context),
+      ),
+    _ => (
+        status,
+        CupertinoColors.systemGrey5.resolveFrom(context),
+        CupertinoColors.systemGrey.resolveFrom(context),
+      ),
+  };
+}
+
+/// The foreground/accent color for a status value (e.g. for a status dot).
+/// Mirrors [StatusChip]'s color mapping.
+Color statusColor(BuildContext context, String status) =>
+    _statusStyle(context, status).$3;
+
 class StatusChip extends StatelessWidget {
   const StatusChip({super.key, required this.status});
 
@@ -31,28 +64,7 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, bg, fg) = switch (status.toLowerCase()) {
-      'confirmed' => (
-          'Confirmed',
-          CupertinoColors.systemGreen.resolveFrom(context).withValues(alpha: 0.15),
-          CupertinoColors.systemGreen.resolveFrom(context),
-        ),
-      'pending' => (
-          'Pending',
-          CupertinoColors.systemOrange.resolveFrom(context).withValues(alpha: 0.15),
-          CupertinoColors.systemOrange.resolveFrom(context),
-        ),
-      'cancelled' || 'canceled' => (
-          'Cancelled',
-          CupertinoColors.systemRed.resolveFrom(context).withValues(alpha: 0.15),
-          CupertinoColors.systemRed.resolveFrom(context),
-        ),
-      _ => (
-          status,
-          CupertinoColors.systemGrey5.resolveFrom(context),
-          CupertinoColors.systemGrey.resolveFrom(context),
-        ),
-    };
+    final (label, bg, fg) = _statusStyle(context, status);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

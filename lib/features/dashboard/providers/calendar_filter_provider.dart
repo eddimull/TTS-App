@@ -10,6 +10,7 @@ class CalendarFilterState {
   const CalendarFilterState({
     this.hiddenBandIds = const {},
     this.hiddenEventTypes = const {},
+    this.hideLodging = false,
   });
 
   /// Band ids the user has chosen to hide.
@@ -19,10 +20,17 @@ class CalendarFilterState {
   /// `'booking'`, `'rehearsal'`, or `'band_event'`.
   final Set<String> hiddenEventTypes;
 
-  bool get isActive =>
-      hiddenBandIds.isNotEmpty || hiddenEventTypes.isNotEmpty;
+  /// Whether lodging stays are hidden from the calendar (markers + agenda).
+  final bool hideLodging;
 
-  int get activeCount => hiddenBandIds.length + hiddenEventTypes.length;
+  bool get isActive =>
+      hiddenBandIds.isNotEmpty || hiddenEventTypes.isNotEmpty || hideLodging;
+
+  int get activeCount =>
+      hiddenBandIds.length + hiddenEventTypes.length + (hideLodging ? 1 : 0);
+
+  /// Whether lodging stays should currently be shown on the calendar.
+  bool get isLodgingVisible => !hideLodging;
 
   bool isEventVisible(EventSummary event) {
     final band = event.band;
@@ -37,21 +45,25 @@ class CalendarFilterState {
       other is CalendarFilterState &&
           const SetEquality<int>().equals(hiddenBandIds, other.hiddenBandIds) &&
           const SetEquality<String>()
-              .equals(hiddenEventTypes, other.hiddenEventTypes);
+              .equals(hiddenEventTypes, other.hiddenEventTypes) &&
+          hideLodging == other.hideLodging;
 
   @override
   int get hashCode => Object.hash(
         const SetEquality<int>().hash(hiddenBandIds),
         const SetEquality<String>().hash(hiddenEventTypes),
+        hideLodging,
       );
 
   CalendarFilterState copyWith({
     Set<int>? hiddenBandIds,
     Set<String>? hiddenEventTypes,
+    bool? hideLodging,
   }) =>
       CalendarFilterState(
         hiddenBandIds: hiddenBandIds ?? this.hiddenBandIds,
         hiddenEventTypes: hiddenEventTypes ?? this.hiddenEventTypes,
+        hideLodging: hideLodging ?? this.hideLodging,
       );
 }
 
@@ -70,6 +82,8 @@ class CalendarFilterNotifier extends Notifier<CalendarFilterState> {
     if (!next.add(source)) next.remove(source);
     state = state.copyWith(hiddenEventTypes: next);
   }
+
+  void toggleLodging() => state = state.copyWith(hideLodging: !state.hideLodging);
 
   void clear() => state = const CalendarFilterState();
 }

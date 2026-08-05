@@ -121,8 +121,20 @@ to events), so each booking option gains `date` = its nearest event date
   screenshots the note refers to). The note text renders clamped, with
   the attachment rows below it inside the same section (their 3-row
   collapse intact). Then: Timeline, Attire, Setlist button, Lodging,
-  Contacts, Roster, Performance, Wedding Details, Media. There is no
+  Contacts, Roster row, Performance, Wedding Details, Media. There is no
   standalone Attachments section anymore.
+- **Roster collapses to a row + full-screen sheet** (modeled on the web
+  dashboard's roster modal): the inline grouped roster is replaced by a
+  one-line summary row — member count + sub count, an attention dot when
+  any slot is unconfirmed/empty, subtitle like "2 awaiting confirmation"
+  — opening a full-screen Cupertino modal. The sheet shows the roster
+  grouped by section (RHYTHM/HORNS/…) with role labels, SUB badges, and
+  status chips; tapping a member exposes the existing status/sub
+  controls (canWrite gated), and empty slots show a ＋ to fill them. The
+  sheet reuses the existing roster/status/sub-picker plumbing (including
+  the UncontrolledProviderScope re-attach for modals) — this is a
+  relocation of the section's UI, not new capability. The ⋯ menu's "Go
+  to roster" now opens this sheet instead of scrolling.
 - Verbose-content collapsing (the real screen-length culprits):
   - Notes taller than ~6 lines render clamped with a "Show more" /
     "Show less" toggle.

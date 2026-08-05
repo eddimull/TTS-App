@@ -32,6 +32,11 @@ class _FakeLodgingRepository extends LodgingRepository {
   Map<String, dynamic>? lastUpdatePatch;
   bool deleted = false;
 
+  /// When true, [getLodging] returns a lodging with one pre-existing room
+  /// (id: 42) and a non-null `notes` field, so save-path tests can exercise
+  /// "keep the existing room + add a new one" and "clear an optional field".
+  bool withExistingRoomAndNotes = false;
+
   @override
   Future<({Lodging lodging, bool canWrite})> getLodging(
       int bandId, int lodgingId) async {
@@ -41,7 +46,10 @@ class _FakeLodgingRepository extends LodgingRepository {
         name: 'Existing Hotel',
         checkInAt: DateTime(2026, 9, 1, 15).toIso8601String(),
         checkOutAt: DateTime(2026, 9, 2, 11).toIso8601String(),
-        rooms: const [],
+        notes: withExistingRoomAndNotes ? 'Original notes' : null,
+        rooms: withExistingRoomAndNotes
+            ? const [LodgingRoom(id: 42, label: 'Room 214')]
+            : const [],
         attachments: const [],
       ),
       canWrite: true,
@@ -121,8 +129,8 @@ void main() {
 
     expect(find.text('New Lodging'), findsOneWidget);
 
-    // Save should be disabled until a name is entered (default dates are
-    // already valid, but name is required).
+    // Default dates are already valid; entering a name is what's needed to
+    // exercise the create-and-save path below.
     await tester.enterText(find.byType(CupertinoTextField).first, 'Marriott Downtown');
     await tester.pumpAndSettle();
 
@@ -166,6 +174,88 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(lodgingRepo.deleted, isTrue);
+  });
+
+  testWidgets(
+      'edit mode: save sends renamed name, wired dates, full rooms list '
+      '(existing id kept + new room without id), and a cleared notes field',
+      (tester) async {
+    final lodgingRepo = _FakeLodgingRepository()
+      ..withExistingRoomAndNotes = true;
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        lodgingRepositoryProvider.overrideWithValue(lodgingRepo),
+        bookingsRepositoryProvider.overrideWithValue(_FakeBookingsRepository()),
+        selectedBandProvider.overrideWith(() => _FakeBand(1)),
+      ],
+      child: const CupertinoApp(home: LodgingEditScreen(lodgingId: 5)),
+    ));
+    await tester.pumpAndSettle();
+
+    // Prefill sanity check: the existing room's label made it into the form.
+    expect(find.text('Room 214'), findsOneWidget);
+
+    // Rename.
+    await tester.enterText(
+        find.byType(CupertinoTextField).first, 'Renamed Hotel');
+    await tester.pumpAndSettle();
+
+    // Clear the prefilled top-level notes field (was "Original notes") — it
+    // sits below the fold in the ListView, so scroll it into view first.
+    final notesField =
+        find.widgetWithText(CupertinoTextField, 'Original notes');
+    await tester.dragUntilVisible(
+      notesField,
+      find.byType(ListView),
+      const Offset(0, -200),
+    );
+    await tester.enterText(notesField, '');
+    await tester.pumpAndSettle();
+
+    // Add a second room (no id — a fresh insert) and give it a label so it
+    // survives the "drop empty rows" filter on save.
+    await tester.dragUntilVisible(
+      find.text('Add room'),
+      find.byType(ListView),
+      const Offset(0, -200),
+    );
+    await tester.tap(find.text('Add room'));
+    await tester.pumpAndSettle();
+
+    // Two fields share this placeholder (the prefilled "Room 214" row and
+    // the new empty row) since CupertinoTextField's text finder matches on
+    // placeholder as well as content — narrow to the one with empty content.
+    final newRoomLabelField = find.byWidgetPredicate((w) =>
+        w is CupertinoTextField &&
+        w.placeholder == 'Room label (e.g. Room 214)' &&
+        (w.controller?.text.isEmpty ?? true));
+    expect(newRoomLabelField, findsOneWidget);
+    await tester.enterText(newRoomLabelField, 'Room 305');
+    await tester.pumpAndSettle();
+
+    await tester.dragUntilVisible(
+      find.text('Save'),
+      find.byType(ListView),
+      const Offset(0, -200),
+    );
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    final patch = lodgingRepo.lastUpdatePatch;
+    expect(patch, isNotNull);
+    expect(patch!['name'], 'Renamed Hotel');
+    expect(patch['check_in_at'], '2026-09-01 15:00:00');
+    expect(patch['check_out_at'], '2026-09-02 11:00:00');
+    expect(patch['notes'], isNull); // cleared field sent as explicit null
+    expect(patch['booking_id'], isNull); // no booking picked -> None -> null
+    expect(patch['event_id'], isNull); // no event picked -> None -> null
+
+    final rooms = (patch['rooms'] as List).cast<Map<String, dynamic>>();
+    expect(rooms, hasLength(2));
+    expect(rooms[0]['id'], 42); // existing room keeps its id (update)
+    expect(rooms[0]['label'], 'Room 214');
+    expect(rooms[1].containsKey('id'), isFalse); // new room has no id (insert)
+    expect(rooms[1]['label'], 'Room 305');
   });
 
   testWidgets('room draft: Add room then remove it drops the empty row',

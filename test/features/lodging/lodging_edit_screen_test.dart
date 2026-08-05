@@ -3,7 +3,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/bookings/data/bookings_repository.dart';
+import 'package:tts_bandmate/features/bookings/data/models/booking_detail.dart';
 import 'package:tts_bandmate/features/bookings/data/models/booking_summary.dart';
+import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
+import 'package:tts_bandmate/features/events/data/events_repository.dart';
+import 'package:tts_bandmate/features/events/data/models/event_detail.dart';
+import 'package:tts_bandmate/features/events/providers/events_provider.dart';
 import 'package:tts_bandmate/features/lodging/data/lodging_repository.dart';
 import 'package:tts_bandmate/features/lodging/data/models/lodging.dart';
 import 'package:tts_bandmate/features/lodging/screens/lodging_edit_screen.dart';
@@ -14,6 +19,8 @@ final _throwingDio = Dio();
 class _FakeBookingsRepository extends BookingsRepository {
   _FakeBookingsRepository() : super(_throwingDio);
 
+  int getBookingDetailCalls = 0;
+
   @override
   Future<List<BookingSummary>> getBandBookings(
     int bandId, {
@@ -22,6 +29,44 @@ class _FakeBookingsRepository extends BookingsRepository {
     int? year,
   }) async {
     return const [];
+  }
+
+  @override
+  Future<BookingDetail> getBookingDetail(int bandId, int bookingId) async {
+    getBookingDetailCalls++;
+    return BookingDetail(
+      id: bookingId,
+      name: 'Test Booking',
+      startDate: '2026-09-01',
+      endDate: '2026-09-01',
+      eventCount: 1,
+      isMultiEvent: false,
+      isPaid: false,
+      contacts: const [],
+      events: const [],
+    );
+  }
+}
+
+class _FakeEventsRepository extends EventsRepository {
+  _FakeEventsRepository() : super(_throwingDio);
+
+  int getEventDetailCalls = 0;
+
+  @override
+  Future<EventDetail> getEventDetail(String key) async {
+    getEventDetailCalls++;
+    return EventDetail(
+      id: 1,
+      key: key,
+      title: 'Test Event',
+      date: '2026-09-01',
+      canWrite: false,
+      members: const [],
+      timeline: const [],
+      contacts: const [],
+      attachments: const [],
+    );
   }
 }
 
@@ -113,6 +158,21 @@ class _FakeBand extends SelectedBandNotifier {
   Future<int?> build() async => _id;
 }
 
+/// Keeps [bookingDetailProvider] and [eventDetailProvider] watched (as the
+/// real booking/event detail screens do), so a test can observe whether
+/// `ref.invalidate(...)` elsewhere actually triggers a refetch.
+class _DetailWatchers extends ConsumerWidget {
+  const _DetailWatchers({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(bookingDetailProvider((bandId: 1, bookingId: 1)));
+    ref.watch(eventDetailProvider('evt-1'));
+    return child;
+  }
+}
+
 void main() {
   testWidgets('create mode: entering a name enables Save and calls createLodging',
       (tester) async {
@@ -174,6 +234,54 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(lodgingRepo.deleted, isTrue);
+  });
+
+  testWidgets(
+      'edit mode: delete invalidates bookingDetailProvider and '
+      'eventDetailProvider (same full set as save), so a booking/event '
+      'detail screen that already loaded this lodging refetches instead of '
+      'showing a stale card', (tester) async {
+    final lodgingRepo = _FakeLodgingRepository();
+    final bookingsRepo = _FakeBookingsRepository();
+    final eventsRepo = _FakeEventsRepository();
+
+    // _Watchers keeps bookingDetailProvider/eventDetailProvider "warm" (an
+    // active listener), exactly like the booking/event detail screens do in
+    // the real app. Without an active watcher, invalidate() would have
+    // nothing to refetch and this test couldn't observe anything.
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        lodgingRepositoryProvider.overrideWithValue(lodgingRepo),
+        bookingsRepositoryProvider.overrideWithValue(bookingsRepo),
+        eventsRepositoryProvider.overrideWithValue(eventsRepo),
+        selectedBandProvider.overrideWith(() => _FakeBand(1)),
+      ],
+      child: const CupertinoApp(
+        home: _DetailWatchers(
+          child: LodgingEditScreen(lodgingId: 5),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(bookingsRepo.getBookingDetailCalls, 1);
+    expect(eventsRepo.getEventDetailCalls, 1);
+
+    await tester.dragUntilVisible(
+      find.text('Delete Lodging'),
+      find.byType(ListView),
+      const Offset(0, -200),
+    );
+    await tester.tap(find.text('Delete Lodging'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete').last);
+    await tester.pumpAndSettle();
+
+    expect(lodgingRepo.deleted, isTrue);
+    expect(bookingsRepo.getBookingDetailCalls, 2,
+        reason: 'delete must invalidate bookingDetailProvider, same as save');
+    expect(eventsRepo.getEventDetailCalls, 2,
+        reason: 'delete must invalidate eventDetailProvider, same as save');
   });
 
   testWidgets(

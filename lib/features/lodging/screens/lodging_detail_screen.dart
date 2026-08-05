@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,8 +16,17 @@ import '../data/models/lodging.dart';
 import '../providers/lodging_provider.dart';
 
 class LodgingDetailScreen extends ConsumerWidget {
-  const LodgingDetailScreen({super.key, required this.lodgingId});
+  const LodgingDetailScreen({
+    super.key,
+    required this.lodgingId,
+    @visibleForTesting this.pickImages,
+  });
   final int lodgingId;
+
+  /// Test-only override for the "Add photo" picker seam. Production leaves
+  /// this null, which uses the real [ImagePicker].
+  @visibleForTesting
+  final ImagePickCallback? pickImages;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -27,17 +37,34 @@ class LodgingDetailScreen extends ConsumerWidget {
         navigationBar: CupertinoNavigationBar(),
         child: Center(child: CupertinoActivityIndicator()),
       ),
-      error: (e, _) => CupertinoPageScaffold(
-        navigationBar: const CupertinoNavigationBar(),
-        child: ErrorView(
-          message: ErrorView.friendlyMessage(e),
-          onRetry: () => ref.invalidate(lodgingDetailProvider(lodgingId)),
-        ),
-      ),
+      error: (e, _) {
+        // The lodging id is route-model-bound server-side, so a deleted (or
+        // never-existed) lodging 404s with Laravel's raw ModelNotFoundException
+        // text ("No query results for model [App\Models\Lodging] 3") — that
+        // leaks internals and reads as a crash, not a normal "this went away"
+        // state. This is the state a stale booking/event lodging card lands
+        // on if it's tapped before its own invalidation catches up. Retrying
+        // can never succeed here (the lodging is gone), so skip the Retry
+        // button too — the screen's own back chevron is the only useful
+        // action, and it already works.
+        final isNotFound = e is DioException && e.response?.statusCode == 404;
+        return CupertinoPageScaffold(
+          navigationBar: const CupertinoNavigationBar(),
+          child: ErrorView(
+            message: isNotFound
+                ? 'This lodging is no longer available.'
+                : ErrorView.friendlyMessage(e),
+            onRetry: isNotFound
+                ? null
+                : () => ref.invalidate(lodgingDetailProvider(lodgingId)),
+          ),
+        );
+      },
       data: (state) => _LodgingDetailView(
         lodgingId: lodgingId,
         lodging: state.lodging,
         canWrite: state.canWrite,
+        pickImages: pickImages,
       ),
     );
   }
@@ -48,11 +75,13 @@ class _LodgingDetailView extends ConsumerWidget {
     required this.lodgingId,
     required this.lodging,
     required this.canWrite,
+    this.pickImages,
   });
 
   final int lodgingId;
   final Lodging lodging;
   final bool canWrite;
+  final ImagePickCallback? pickImages;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -167,6 +196,7 @@ class _LodgingDetailView extends ConsumerWidget {
             lodgingId: lodgingId,
             attachments: lodging.attachments,
             canWrite: canWrite,
+            pickImages: pickImages ?? _defaultPickImages,
           ),
 
           if (lodging.booking != null || lodging.event != null) ...[
@@ -351,16 +381,26 @@ class _Card extends StatelessWidget {
 
 // ── Attachments ───────────────────────────────────────────────────────────────
 
+/// Launches the system multi-image picker. Extracted to a field (rather than
+/// calling `ImagePicker()` inline) so tests can inject a fake picker — the
+/// real [ImagePicker] talks to a platform channel that has no seam otherwise.
+typedef ImagePickCallback = Future<List<XFile>> Function();
+
+Future<List<XFile>> _defaultPickImages() =>
+    ImagePicker().pickMultiImage(imageQuality: 100);
+
 class _AttachmentsSection extends ConsumerStatefulWidget {
   const _AttachmentsSection({
     required this.lodgingId,
     required this.attachments,
     required this.canWrite,
+    this.pickImages = _defaultPickImages,
   });
 
   final int lodgingId;
   final List<LodgingAttachment> attachments;
   final bool canWrite;
+  final ImagePickCallback pickImages;
 
   @override
   ConsumerState<_AttachmentsSection> createState() =>
@@ -371,14 +411,21 @@ class _AttachmentsSectionState extends ConsumerState<_AttachmentsSection> {
   bool _uploading = false;
 
   Future<void> _addPhotos() async {
-    final picked = await ImagePicker().pickMultiImage(imageQuality: 100);
-    if (picked.isEmpty || !mounted) return;
-
-    final bandId = ref.read(selectedBandProvider).value;
-    if (bandId == null) return;
-
+    // The picker call itself must be inside the try/catch: if the native side
+    // throws (e.g. a PlatformException because a previous pick is still
+    // "active", or the picker Activity fails to launch), an exception thrown
+    // here before setState(_uploading = true) would otherwise propagate
+    // unhandled out of this async callback — no dialog, no indicator change,
+    // no crash, nothing visible. That is indistinguishable from the picker
+    // never having been tapped at all.
     setState(() => _uploading = true);
     try {
+      final picked = await widget.pickImages();
+      if (picked.isEmpty || !mounted) return;
+
+      final bandId = ref.read(selectedBandProvider).value;
+      if (bandId == null) return;
+
       final repo = ref.read(lodgingRepositoryProvider);
       for (final x in picked) {
         final bytes = await x.readAsBytes();

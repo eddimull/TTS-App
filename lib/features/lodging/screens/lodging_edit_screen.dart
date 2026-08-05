@@ -452,9 +452,11 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
       try {
         ref.read(lodgingsProvider(bandId).notifier).remove(widget.lodgingId!);
       } catch (_) {}
-      try {
-        ref.invalidate(lodgingDetailProvider(widget.lodgingId!));
-      } catch (_) {}
+      // Same full invalidation set as save: without this, a booking/event
+      // detail screen that already loaded this lodging keeps showing its
+      // (now-deleted) card until the app is restarted or another edit
+      // happens to invalidate it.
+      _invalidate(bandId, widget.lodgingId!);
       if (mounted) {
         // /lodging routes live outside the ShellRoute (no bottom nav), so
         // context.go('/lodging') would collapse the whole navigation stack

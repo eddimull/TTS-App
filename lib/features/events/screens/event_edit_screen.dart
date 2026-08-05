@@ -8,6 +8,7 @@ import 'package:flutter/material.dart' show DefaultMaterialLocalizations, Reorde
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timelines_plus/timelines_plus.dart';
 import '../../../shared/cache/cache_invalidator.dart';
+import '../../../shared/utils/maps_launch.dart';
 import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
 import '../../../shared/widgets/status_chip.dart';
@@ -16,7 +17,6 @@ import '../data/models/event_detail.dart';
 import '../data/events_repository.dart';
 import '../providers/attire_chips_provider.dart';
 import 'attachment_widgets.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../bookings/widgets/venue_picker.dart';
 import '../../bookings/data/venue_search_service.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
@@ -1348,25 +1348,12 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     });
   }
 
-  Future<void> _openVenueInMapsFromEdit() async {
-    final name = _venueName;
-    final address = _venueAddress;
-    final Uri uri;
-    if (_venueLat != null && _venueLng != null) {
-      uri = Uri.parse('https://maps.google.com/?q=$_venueLat,$_venueLng');
-    } else if (address.isNotEmpty) {
-      uri = Uri.parse(
-          'https://maps.google.com/?q=${Uri.encodeComponent(address)}');
-    } else if (name.isNotEmpty) {
-      uri = Uri.parse(
-          'https://maps.google.com/?q=${Uri.encodeComponent(name)}');
-    } else {
-      return;
-    }
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
+  Future<void> _openVenueInMapsFromEdit() => openInMaps(
+        lat: _venueLat,
+        lng: _venueLng,
+        address: _venueAddress,
+        name: _venueName,
+      );
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 

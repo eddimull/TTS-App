@@ -1,4 +1,4 @@
-import '../../../../shared/widgets/attachment_widgets.dart';
+import '../../../../shared/models/displayable_attachment.dart';
 
 class LodgingLinkedBooking {
   const LodgingLinkedBooking({required this.id, required this.name});

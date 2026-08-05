@@ -1,4 +1,4 @@
-import '../../../../shared/widgets/attachment_widgets.dart';
+import '../../../../shared/models/displayable_attachment.dart';
 import '../../../lodging/data/models/lodging.dart';
 import 'event_member.dart';
 

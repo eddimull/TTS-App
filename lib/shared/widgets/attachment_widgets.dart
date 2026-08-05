@@ -5,18 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/config/app_config.dart';
 import '../../core/storage/secure_storage.dart';
+import '../models/displayable_attachment.dart';
 
-// ── Shared attachment interface ─────────────────────────────────────────────
-
-/// Minimal shape shared by any attachment model that can be shown in
-/// [AttachmentLightbox] — implemented by both `EventAttachment` and
-/// `LodgingAttachment` so the lightbox/URL/icon helpers stay model-agnostic.
-abstract class DisplayableAttachment {
-  int get id;
-  String get url;
-  String get mimeType;
-  String get filename;
-}
+export '../models/displayable_attachment.dart' show DisplayableAttachment;
 
 // ── URL + icon helpers ────────────────────────────────────────────────────────
 

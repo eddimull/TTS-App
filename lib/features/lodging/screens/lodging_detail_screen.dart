@@ -443,7 +443,7 @@ class _AttachmentsSectionState extends ConsumerState<_AttachmentsSection> {
           context: context,
           builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Upload Failed'),
-            content: Text(e.toString()),
+            content: Text(ErrorView.friendlyMessage(e)),
             actions: [
               CupertinoDialogAction(
                 isDefaultAction: true,
@@ -494,7 +494,7 @@ class _AttachmentsSectionState extends ConsumerState<_AttachmentsSection> {
           context: context,
           builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Delete Failed'),
-            content: Text(e.toString()),
+            content: Text(ErrorView.friendlyMessage(e)),
             actions: [
               CupertinoDialogAction(
                 isDefaultAction: true,

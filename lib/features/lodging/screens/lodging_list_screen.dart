@@ -31,6 +31,14 @@ class _LodgingListBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(lodgingsProvider(bandId));
+    // Derive canWrite from the data branch only — async.value falls back to
+    // the last-known data even while in an error state (e.g. a reload that
+    // failed after an earlier success), which would let a stale "add" button
+    // linger on screen after the list itself starts showing an error.
+    final canWrite = async.maybeWhen(
+      data: (state) => state.canWrite,
+      orElse: () => false,
+    );
 
     return CupertinoPageScaffold(
       child: CustomScrollView(
@@ -40,7 +48,7 @@ class _LodgingListBody extends ConsumerWidget {
           ),
           CupertinoSliverNavigationBar(
             largeTitle: const Text('Lodging'),
-            trailing: async.value?.canWrite == true
+            trailing: canWrite
                 ? CupertinoButton(
                     padding: EdgeInsets.zero,
                     onPressed: () => context.push('/lodging/new'),

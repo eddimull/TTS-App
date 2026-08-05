@@ -27,7 +27,19 @@ class RosterSheet extends ConsumerStatefulWidget {
 class _RosterSheetState extends ConsumerState<RosterSheet> {
   @override
   Widget build(BuildContext context) {
-    final event = widget.event;
+    // widget.event is a frozen snapshot from push time. After a sub
+    // assignment, cacheInvalidator.onEventChanged invalidates
+    // eventDetailProvider — the screen behind refetches and rebuilds, but
+    // this sheet is a separate pushed route and would otherwise keep
+    // rendering the stale member list until it's popped and reopened (a
+    // second assignment to the same just-filled slot could then reuse the
+    // stale null-id member and re-create it). Watching the provider here
+    // keeps the sheet live, matching how the old inline roster section
+    // re-rendered under the detail screen's own watch. Falls back to
+    // widget.event while the refetch is in flight / on error.
+    final event =
+        ref.watch(eventDetailProvider(widget.event.key)).value ??
+            widget.event;
 
     // Group members by section (BandRole), preserving insertion order.
     final grouped = <String, List<EventMember>>{};
@@ -72,7 +84,12 @@ class _RosterSheetState extends ConsumerState<RosterSheet> {
 
   Future<void> _showSubPicker(EventMember member) async {
     if (member.bandRoleId == null) return;
-    final event = widget.event;
+    // Same live-or-fallback read as build() — a stale widget.event here
+    // would let a second assignment to the same just-filled slot reuse a
+    // stale null-id member and re-create it instead of updating.
+    final event =
+        ref.read(eventDetailProvider(widget.event.key)).value ??
+            widget.event;
 
     // showCupertinoModalPopup creates a new route with a fresh widget tree,
     // so the ProviderScope ancestor is lost. Re-attach the existing

@@ -170,7 +170,7 @@ void main() {
   });
 
   group('at-a-glance card', () {
-    testWidgets('shows show time, attire expands inline, lodging navigates',
+    testWidgets('shows show time, attire expands inline, lodging row renders',
         (tester) async {
       final event = _baseEvent(
         time: '19:30',

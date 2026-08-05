@@ -315,4 +315,15 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/questionnaire-instances/$instanceId/apply-all';
   static String mobileBandQuestionnaireInstanceAppendToNotes(int bandId, int instanceId) =>
       '/api/mobile/bands/$bandId/questionnaire-instances/$instanceId/append-to-notes';
+
+  // ── Lodging ─────────────────────────────────────────────────────────
+  static String mobileBandLodgings(int bandId) =>
+      '/api/mobile/bands/$bandId/lodgings';
+  static String mobileBandLodging(int bandId, int lodgingId) =>
+      '/api/mobile/bands/$bandId/lodgings/$lodgingId';
+  static String mobileLodgingAttachments(int bandId, int lodgingId) =>
+      '/api/mobile/bands/$bandId/lodgings/$lodgingId/attachments';
+  static String mobileLodgingAttachment(
+          int bandId, int lodgingId, int attachmentId) =>
+      '/api/mobile/bands/$bandId/lodgings/$lodgingId/attachments/$attachmentId';
 }

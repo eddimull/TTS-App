@@ -54,7 +54,6 @@ class FakeEventsRepository implements EventsRepository {
     bool? outside,
     bool? backlineProvided,
     bool? productionNeeded,
-    List<Map<String, dynamic>>? lodging,
     Map<String, dynamic>? wedding,
   }) async {}
 

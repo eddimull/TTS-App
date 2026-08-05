@@ -8,6 +8,7 @@ import 'package:flutter/material.dart' show DefaultMaterialLocalizations, Reorde
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timelines_plus/timelines_plus.dart';
 import '../../../shared/cache/cache_invalidator.dart';
+import '../../../shared/utils/maps_launch.dart';
 import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/auth_thumbnail.dart';
 import '../../../shared/widgets/status_chip.dart';
@@ -15,8 +16,7 @@ import '../data/models/attire_chip.dart';
 import '../data/models/event_detail.dart';
 import '../data/events_repository.dart';
 import '../providers/attire_chips_provider.dart';
-import 'attachment_widgets.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../../../shared/widgets/attachment_widgets.dart';
 import '../../bookings/widgets/venue_picker.dart';
 import '../../bookings/data/venue_search_service.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
@@ -73,12 +73,6 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
   bool? _weddingOnsite;
   List<_WeddingDance>? _weddingDances;
 
-  // Lodging (fixed structure)
-  late bool _lodgingProvided;
-  late final TextEditingController _lodgingLocation;
-  late final TextEditingController _lodgingCheckIn;
-  late final TextEditingController _lodgingCheckOut;
-
   // Attachments (managed immediately via separate API calls)
   late List<EventAttachment> _attachments;
   bool _uploading = false;
@@ -99,10 +93,6 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
   List<_WeddingDance>? _initWeddingDances;
   bool? _initWeddingOnsite;
   late List<_TimelineEntry> _initTimeline;
-  late bool _initLodgingProvided;
-  late String _initLodgingLocation;
-  late String _initLodgingCheckIn;
-  late String _initLodgingCheckOut;
 
   bool _saving = false;
   String? _error;
@@ -140,21 +130,6 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
 
     _attachments = List.of(e.attachments);
 
-    String lodgingVal(String key, {bool isBool = false}) {
-      final item = e.lodging.where((l) => l.title == key).firstOrNull;
-      if (isBool) return '';
-      final v = item?.data?.toString() ?? '';
-      return v == 'TBD' ? '' : v;
-    }
-    bool lodgingBool(String key) {
-      final item = e.lodging.where((l) => l.title == key).firstOrNull;
-      return item?.data == true;
-    }
-    _lodgingProvided = lodgingBool('Provided');
-    _lodgingLocation = TextEditingController(text: lodgingVal('location'));
-    _lodgingCheckIn = TextEditingController(text: lodgingVal('check_in'));
-    _lodgingCheckOut = TextEditingController(text: lodgingVal('check_out'));
-
     // Snapshot for dirty check
     _initTitle = _title.text;
     _initVenueName = _venueName;
@@ -175,10 +150,6 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     _initTimeline = _timeline
         .map((t) => _TimelineEntry(title: t.title, time: t.time))
         .toList();
-    _initLodgingProvided = _lodgingProvided;
-    _initLodgingLocation = _lodgingLocation.text;
-    _initLodgingCheckIn = _lodgingCheckIn.text;
-    _initLodgingCheckOut = _lodgingCheckOut.text;
   }
 
   @override
@@ -186,9 +157,6 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     _title.dispose();
     _notes.dispose();
     _attire.dispose();
-    _lodgingLocation.dispose();
-    _lodgingCheckIn.dispose();
-    _lodgingCheckOut.dispose();
     super.dispose();
   }
 
@@ -240,10 +208,6 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
         if (curr[i].title != init[i].title || curr[i].data != init[i].data) return true;
       }
     }
-    if (_lodgingProvided != _initLodgingProvided) return true;
-    if (_lodgingLocation.text != _initLodgingLocation) return true;
-    if (_lodgingCheckIn.text != _initLodgingCheckIn) return true;
-    if (_lodgingCheckOut.text != _initLodgingCheckOut) return true;
     if (_timeline.length != _initTimeline.length) return true;
     for (int i = 0; i < _timeline.length; i++) {
       if (_timeline[i].title != _initTimeline[i].title ||
@@ -316,15 +280,6 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
         outside: _outside,
         backlineProvided: _backlineProvided,
         productionNeeded: _productionNeeded,
-        // Lodging: canonical 4-row shape that mirrors the seed in
-        // BookingsController. The screen always knows all four values, so
-        // send them all on every save.
-        lodging: [
-          {'title': 'Provided', 'type': 'checkbox', 'data': _lodgingProvided},
-          {'title': 'location', 'type': 'text', 'data': _lodgingLocation.text},
-          {'title': 'check_in', 'type': 'text', 'data': _lodgingCheckIn.text},
-          {'title': 'check_out', 'type': 'text', 'data': _lodgingCheckOut.text},
-        ],
         // Wedding: send only when the event has a wedding block at all
         // (_weddingDances is null for non-wedding events). Shape matches
         // the backend's UpdateEventRequest: onsite + dances list.
@@ -1348,25 +1303,12 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     });
   }
 
-  Future<void> _openVenueInMapsFromEdit() async {
-    final name = _venueName;
-    final address = _venueAddress;
-    final Uri uri;
-    if (_venueLat != null && _venueLng != null) {
-      uri = Uri.parse('https://maps.google.com/?q=$_venueLat,$_venueLng');
-    } else if (address.isNotEmpty) {
-      uri = Uri.parse(
-          'https://maps.google.com/?q=${Uri.encodeComponent(address)}');
-    } else if (name.isNotEmpty) {
-      uri = Uri.parse(
-          'https://maps.google.com/?q=${Uri.encodeComponent(name)}');
-    } else {
-      return;
-    }
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
+  Future<void> _openVenueInMapsFromEdit() => openInMaps(
+        lat: _venueLat,
+        lng: _venueLng,
+        address: _venueAddress,
+        name: _venueName,
+      );
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1959,45 +1901,6 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
               ),
             ]),
           ],
-
-          const SizedBox(height: 20),
-
-          // ── Lodging ─────────────────────────────────────────────────────────
-          const _SectionHeader(title: 'Lodging'),
-          _FormCard(children: [
-            _ToggleRow(
-              label: 'Lodging Provided',
-              value: _lodgingProvided,
-              onChanged: (v) => setState(() => _lodgingProvided = v),
-            ),
-            if (_lodgingProvided) ...[
-              _Divider(),
-              _LabeledField(
-                label: 'Location',
-                child: CupertinoTextField.borderless(
-                  controller: _lodgingLocation,
-                  placeholder: 'TBD',
-                  textCapitalization: TextCapitalization.words,
-                ),
-              ),
-              _Divider(),
-              _LabeledField(
-                label: 'Check In',
-                child: CupertinoTextField.borderless(
-                  controller: _lodgingCheckIn,
-                  placeholder: 'TBD',
-                ),
-              ),
-              _Divider(),
-              _LabeledField(
-                label: 'Check Out',
-                child: CupertinoTextField.borderless(
-                  controller: _lodgingCheckOut,
-                  placeholder: 'TBD',
-                ),
-              ),
-            ],
-          ]),
 
           const SizedBox(height: 40),
         ],

@@ -4,7 +4,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../data/models/booking_date_status.dart';
 import '../data/models/event_draft.dart';
@@ -12,6 +11,7 @@ import '../data/venue_search_service.dart';
 import '../providers/bookings_provider.dart';
 import 'booking_calendar_picker.dart';
 import 'venue_picker.dart';
+import '../../../shared/utils/maps_launch.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 // ── Date/time formatting helpers ──────────────────────────────────────────────
@@ -527,26 +527,12 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
     });
   }
 
-  Future<void> _openInMaps() async {
-    final address = widget.draft.venueAddress ?? '';
-    final name = widget.draft.venueName ?? '';
-    final Uri uri;
-    if (_venueLat != null && _venueLng != null) {
-      uri = Uri.parse('https://maps.google.com/?q=$_venueLat,$_venueLng');
-    } else if (address.isNotEmpty) {
-      uri = Uri.parse(
-          'https://maps.google.com/?q=${Uri.encodeComponent(address)}');
-    } else if (name.isNotEmpty) {
-      // Free-typed venue with no address — search Maps by name.
-      uri =
-          Uri.parse('https://maps.google.com/?q=${Uri.encodeComponent(name)}');
-    } else {
-      return;
-    }
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
+  Future<void> _openInMaps() => openInMaps(
+        lat: _venueLat,
+        lng: _venueLng,
+        address: widget.draft.venueAddress ?? '',
+        name: widget.draft.venueName ?? '',
+      );
 
   // ── End-before-start validation ─────────────────────────────────────────────
 

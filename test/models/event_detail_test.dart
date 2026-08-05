@@ -90,6 +90,30 @@ void main() {
       final detail = EventDetail.fromJson(fullJson());
       expect(detail.parsedDate, DateTime(2026, 5, 20));
     });
+
+    test('lodgings defaults to empty when key missing', () {
+      final detail = EventDetail.fromJson(fullJson());
+      expect(detail.lodgings, isEmpty);
+    });
+
+    test('parses lodgings summary list', () {
+      final json = fullJson()
+        ..['lodgings'] = [
+          {
+            'id': 4,
+            'name': 'Gig Hotel',
+            'check_in_at': '2030-05-01 15:00:00',
+            'check_out_at': '2030-05-02 11:00:00',
+            'room_count': 2,
+            'attachment_count': 0,
+          }
+        ];
+      final detail = EventDetail.fromJson(json);
+
+      expect(detail.lodgings, hasLength(1));
+      expect(detail.lodgings.single.name, 'Gig Hotel');
+      expect(detail.lodgings.single.roomCount, 2);
+    });
   });
 
   group('EventMember.fromJson', () {

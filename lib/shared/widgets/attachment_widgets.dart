@@ -3,9 +3,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/config/app_config.dart';
-import '../../../core/storage/secure_storage.dart';
-import '../data/models/event_detail.dart';
+import '../../core/config/app_config.dart';
+import '../../core/storage/secure_storage.dart';
+import '../models/displayable_attachment.dart';
+
+export '../models/displayable_attachment.dart' show DisplayableAttachment;
 
 // ── URL + icon helpers ────────────────────────────────────────────────────────
 
@@ -13,11 +15,6 @@ import '../data/models/event_detail.dart';
 /// If [raw] is already absolute (starts with http) it is used as-is.
 /// If it starts with `/` the app's base URL is prepended.
 String resolveAttachmentUrl(String raw) {
-  assert(() {
-    // ignore: avoid_print
-    print('[AttachUrl] raw url from API: "$raw"');
-    return true;
-  }());
   if (raw.isEmpty) return raw;
   if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
   if (raw.startsWith('/')) return '${AppConfig.baseUrl}$raw';
@@ -77,7 +74,7 @@ class AttachmentLightbox extends ConsumerStatefulWidget {
   });
 
   /// Image-only attachments to display in the PageView.
-  final List<EventAttachment> attachments;
+  final List<DisplayableAttachment> attachments;
   final int startIndex;
 
   @override
@@ -201,7 +198,7 @@ class _AttachmentLightboxState extends ConsumerState<AttachmentLightbox> {
 /// Shown in the lightbox for non-image attachment types.
 class _NonImageLightboxPage extends StatelessWidget {
   const _NonImageLightboxPage({required this.attachment});
-  final EventAttachment attachment;
+  final DisplayableAttachment attachment;
 
   @override
   Widget build(BuildContext context) {

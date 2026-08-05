@@ -28,6 +28,7 @@ EventDetail _baseEvent({
   String? time = '19:30',
   String? endTime = '22:00',
   List<Map<String, dynamic>> lodgings = const [],
+  List<Map<String, dynamic>> members = const [],
 }) =>
     EventDetail.fromJson({
       'id': 1,
@@ -41,7 +42,7 @@ EventDetail _baseEvent({
       'eventable_type': eventableType,
       'eventable_id': eventableId,
       'attire': attire,
-      'members': [],
+      'members': members,
       'lodgings': lodgings,
     });
 
@@ -320,6 +321,104 @@ void main() {
 
       expect(find.text('Notes'), findsOneWidget);
       expect(find.text('Attachments'), findsNothing);
+    });
+  });
+
+  // Task 5: the inline grouped roster collapses into a one-line summary row
+  // that opens a full-screen RosterSheet with the grouped list relocated
+  // verbatim. The ⋯ menu's "Go to roster" pushes the same sheet.
+  group('roster summary row + sheet', () {
+    final pendingMembers = [
+      {
+        'id': 10,
+        'user_id': 3,
+        'name': 'John Smith',
+        'attendance_status': 'confirmed',
+        'section_name': 'RHYTHM',
+        'slot_name': 'Bass',
+      },
+      {
+        'id': 11,
+        'user_id': 4,
+        'name': 'Sub Player',
+        'attendance_status': 'pending',
+        'section_name': 'RHYTHM',
+        'slot_name': 'Drums',
+        'is_sub': true,
+      },
+      {
+        'id': 12,
+        'user_id': 5,
+        'name': 'Jane Doe',
+        'attendance_status': 'pending',
+        'section_name': 'HORNS',
+        'slot_name': 'Trumpet',
+      },
+    ];
+
+    testWidgets(
+        'summary row shows member+sub counts and awaiting-confirmation subtitle',
+        (tester) async {
+      final event = _baseEvent(members: pendingMembers);
+      await _pump(tester, event);
+
+      expect(find.text('3 + 1 sub'), findsOneWidget);
+      expect(find.text('2 awaiting confirmation'), findsOneWidget);
+    });
+
+    testWidgets('no inline grouped roster remains in the body', (tester) async {
+      final event = _baseEvent(members: pendingMembers);
+      await _pump(tester, event);
+
+      // The grouped member names/role headers no longer render inline —
+      // they only appear once the sheet is opened.
+      expect(find.text('John Smith'), findsNothing);
+      expect(find.text('RHYTHM'), findsNothing);
+    });
+
+    testWidgets('tapping the summary row opens the full-screen roster sheet',
+        (tester) async {
+      final event = _baseEvent(members: pendingMembers);
+      await _pump(tester, event);
+
+      await tester.tap(find.text('3 + 1 sub'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Event Roster'), findsOneWidget);
+      expect(find.textContaining('Summer Gala'), findsWidgets);
+      expect(find.text('John Smith'), findsOneWidget);
+      expect(find.text('RHYTHM'), findsOneWidget);
+    });
+
+    testWidgets('menu "Go to roster" opens the same sheet', (tester) async {
+      final event = _baseEvent(members: pendingMembers);
+      await _pump(tester, event);
+
+      await tester.tap(find.byIcon(CupertinoIcons.ellipsis_circle));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Go to roster'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Event Roster'), findsOneWidget);
+      expect(find.text('John Smith'), findsOneWidget);
+    });
+
+    testWidgets('no attention dot or subtitle when nothing is pending',
+        (tester) async {
+      final event = _baseEvent(members: [
+        {
+          'id': 10,
+          'user_id': 3,
+          'name': 'John Smith',
+          'attendance_status': 'confirmed',
+          'section_name': 'RHYTHM',
+          'slot_name': 'Bass',
+        },
+      ]);
+      await _pump(tester, event);
+
+      expect(find.text('1 members'), findsOneWidget);
+      expect(find.textContaining('awaiting confirmation'), findsNothing);
     });
   });
 

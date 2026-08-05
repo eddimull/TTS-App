@@ -16,6 +16,7 @@ import '../../features/chat/providers/conversations_provider.dart';
 import '../../features/chat/providers/topic_thread_provider.dart';
 import '../../features/dashboard/providers/dashboard_provider.dart';
 import '../../features/library/providers/library_provider.dart';
+import '../../features/lodging/providers/lodging_provider.dart';
 import '../../features/media/providers/media_provider.dart';
 import '../../features/search/providers/music_provider.dart';
 import '../../features/events/providers/events_provider.dart';
@@ -87,6 +88,11 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
         rehearsalDetailByKeyProvider,
         dashboardProvider,
       ];
+    case 'lodging':
+      return [
+        lodgingsProvider,
+        lodgingDetailProvider,
+      ];
     case 'payments':
     case 'payout':
     case 'payout_adjustment':
@@ -148,6 +154,7 @@ const List<String> _allRegisteredModels = [
   'bookings',
   'events',
   'rehearsal',
+  'lodging',
   'roster',
   'payments',
   'payout',

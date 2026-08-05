@@ -172,6 +172,7 @@ void main() {
     expect(invalidationTargetsFor('events'), contains(bandEventsProvider));
     expect(invalidationTargetsFor('event_member'), contains(eventDetailProvider));
     expect(invalidationTargetsFor('rehearsal'), isNotEmpty);
+    expect(invalidationTargetsFor('lodging'), isNotEmpty);
     expect(invalidationTargetsFor('unknown'), isEmpty);
   });
 

@@ -81,6 +81,14 @@ class CalendarFilterSheet extends ConsumerWidget {
                 notifier.toggleEventType('band_event');
               },
             ),
+            _EventTypeSwitch(
+              label: 'Lodging',
+              hidden: filter.hideLodging,
+              onToggle: () {
+                HapticFeedback.selectionClick();
+                notifier.toggleLodging();
+              },
+            ),
             const SizedBox(height: 12),
           ],
         ),

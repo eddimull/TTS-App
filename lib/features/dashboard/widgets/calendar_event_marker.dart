@@ -59,6 +59,7 @@ class CalendarDayMarkers extends StatelessWidget {
     super.key,
     required this.events,
     this.avatarSize = 14,
+    this.hasLodging = false,
   });
 
   final List<EventSummary> events;
@@ -67,9 +68,16 @@ class CalendarDayMarkers extends StatelessWidget {
   /// comfortably).
   final double avatarSize;
 
+  /// Whether at least one lodging stay covers this day — renders an extra
+  /// indigo bed-icon dot alongside the event markers.
+  final bool hasLodging;
+
   @override
   Widget build(BuildContext context) {
-    if (events.isEmpty) return const SizedBox.shrink();
+    if (events.isEmpty) {
+      if (!hasLodging) return const SizedBox.shrink();
+      return const _LodgingDot();
+    }
 
     // Sort by time (earliest first). Null times go last; ties preserve order.
     final sorted = [...events];
@@ -82,12 +90,11 @@ class CalendarDayMarkers extends StatelessWidget {
       return at.compareTo(bt);
     });
 
+    Widget eventMarkers;
     if (sorted.length == 1) {
-      return CalendarEventMarker(event: sorted.first, size: avatarSize);
-    }
-
-    if (sorted.length == 2) {
-      return Row(
+      eventMarkers = CalendarEventMarker(event: sorted.first, size: avatarSize);
+    } else if (sorted.length == 2) {
+      eventMarkers = Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           CalendarEventMarker(event: sorted[0], size: avatarSize),
@@ -97,34 +104,62 @@ class CalendarDayMarkers extends StatelessWidget {
           ),
         ],
       );
-    }
-
-    // 3+ events → first avatar + "+N" pill.
-    final overflow = sorted.length - 1;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        CalendarEventMarker(event: sorted[0], size: avatarSize),
-        const SizedBox(width: 2),
-        Semantics(
-          label: '$overflow more events',
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-            decoration: BoxDecoration(
-              color: CupertinoColors.systemGrey5.resolveFrom(context),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              '+$overflow',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: context.primaryText,
+    } else {
+      // 3+ events → first avatar + "+N" pill.
+      final overflow = sorted.length - 1;
+      eventMarkers = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CalendarEventMarker(event: sorted[0], size: avatarSize),
+          const SizedBox(width: 2),
+          Semantics(
+            label: '$overflow more events',
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: CupertinoColors.systemGrey5.resolveFrom(context),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '+$overflow',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: context.primaryText,
+                ),
               ),
             ),
           ),
-        ),
+        ],
+      );
+    }
+
+    if (!hasLodging) return eventMarkers;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        eventMarkers,
+        const SizedBox(width: 2),
+        const _LodgingDot(),
       ],
+    );
+  }
+}
+
+/// Small indigo bed-icon dot indicating a lodging stay covers this day.
+class _LodgingDot extends StatelessWidget {
+  const _LodgingDot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Lodging',
+      child: Icon(
+        CupertinoIcons.bed_double,
+        size: 7,
+        color: CupertinoColors.systemIndigo.resolveFrom(context),
+      ),
     );
   }
 }

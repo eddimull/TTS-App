@@ -16,6 +16,8 @@ import '../../auth/data/models/band_summary.dart';
 import '../../bookings/utils/new_booking_navigation.dart';
 import '../../bookings/widgets/create_booking_sheet.dart';
 import '../../events/data/models/event_summary.dart';
+import '../../lodging/providers/lodging_provider.dart';
+import '../../lodging/utils/lodging_by_day.dart';
 import '../dashboard_list_filter.dart';
 import '../providers/calendar_filter_provider.dart';
 import '../providers/dashboard_provider.dart';
@@ -330,6 +332,16 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
       eventsByDay.putIfAbsent(_normalise(e.parsedDate), () => []).add(e);
     }
 
+    // A 403/error from lodgingsProvider must never break the dashboard —
+    // `.value` on the AsyncValue is null on error, which the null-check
+    // below already handles (feature-hidden semantics).
+    final bandId = ref.watch(selectedBandProvider).value;
+    final lodgingState =
+        bandId == null ? null : ref.watch(lodgingsProvider(bandId)).value;
+    final lodgingDays = (filterState.hideLodging || lodgingState == null)
+        ? const <DateTime, List<LodgingDayEntry>>{}
+        : lodgingByDay(lodgingState.lodgings);
+
     final filtered = _filterByDayOrMonth(visibleEvents);
     // `filterIsHidingEvents` is true when the filter is the reason the list is
     // empty — i.e. there are events in the current range that are being hidden.
@@ -340,6 +352,13 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     final focusedDay = widget.focusedDay;
     final selectedDay = widget.selectedDay;
     final currentEvent = widget.currentEvent;
+
+    // Lodging rows only append to the agenda in day mode (a specific day is
+    // selected) — in month mode the list spans many days and there's no
+    // single day to anchor "Check-in"/"Staying at" rows to.
+    final selectedDayLodging = selectedDay == null
+        ? const <LodgingDayEntry>[]
+        : (lodgingDays[_normalise(selectedDay)] ?? const []);
 
     final eventsKey = ValueKey(
         '${focusedDay.year}-${focusedDay.month}-${selectedDay?.day ?? ''}-${filterState.activeCount}');
@@ -356,6 +375,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
           focusedDay: focusedDay,
           selectedDay: selectedDay,
           eventsByDay: eventsByDay,
+          lodgingByDay: lodgingDays,
           onDaySelected: widget.onDaySelected,
           onPageChanged: widget.onPageChanged,
           onHeaderTapped: widget.onHeaderTapped,
@@ -383,7 +403,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
               ),
             );
           },
-          child: filtered.isEmpty
+          child: filtered.isEmpty && selectedDayLodging.isEmpty
               ? _EmptyState(
                   key: eventsKey,
                   selectedDay: selectedDay,
@@ -396,6 +416,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
                   key: eventsKey,
                   events: filtered,
                   focusedDay: focusedDay,
+                  lodgingEntries: selectedDayLodging,
                 ),
         ),
         // Extra bottom padding so the floating filter button doesn't cover
@@ -423,6 +444,7 @@ class _CalendarSection extends StatelessWidget {
     required this.focusedDay,
     required this.selectedDay,
     required this.eventsByDay,
+    required this.lodgingByDay,
     required this.onDaySelected,
     this.onPageChanged,
     this.onHeaderTapped,
@@ -431,6 +453,7 @@ class _CalendarSection extends StatelessWidget {
   final DateTime focusedDay;
   final DateTime? selectedDay;
   final Map<DateTime, List<EventSummary>> eventsByDay;
+  final Map<DateTime, List<LodgingDayEntry>> lodgingByDay;
   final void Function(DateTime selected, DateTime focused) onDaySelected;
   final void Function(DateTime focusedDay)? onPageChanged;
   final void Function(DateTime focusedDay)? onHeaderTapped;
@@ -469,10 +492,15 @@ class _CalendarSection extends StatelessWidget {
           ),
           calendarBuilders: CalendarBuilders<EventSummary>(
             markerBuilder: (context, day, dayEvents) {
-              if (dayEvents.isEmpty) return null;
+              final hasLodging =
+                  lodgingByDay[_normalise(day)]?.isNotEmpty ?? false;
+              if (dayEvents.isEmpty && !hasLodging) return null;
               return Padding(
                 padding: const EdgeInsets.only(top: 28),
-                child: CalendarDayMarkers(events: dayEvents),
+                child: CalendarDayMarkers(
+                  events: dayEvents,
+                  hasLodging: hasLodging,
+                ),
               );
             },
           ),
@@ -483,10 +511,19 @@ class _CalendarSection extends StatelessWidget {
 }
 
 class _EventsList extends StatelessWidget {
-  const _EventsList({super.key, required this.events, required this.focusedDay});
+  const _EventsList({
+    super.key,
+    required this.events,
+    required this.focusedDay,
+    this.lodgingEntries = const [],
+  });
 
   final List<EventSummary> events;
   final DateTime focusedDay;
+
+  /// Lodging stays covering the selected day, appended below the event
+  /// cards. Empty in month mode (no single day is selected).
+  final List<LodgingDayEntry> lodgingEntries;
 
   String get _monthLabel {
     final now = DateTime.now();
@@ -526,7 +563,68 @@ class _EventsList extends StatelessWidget {
             onTap: () => _navigateToEvent(context, event),
           ),
         ),
+        ...lodgingEntries.map(
+          (entry) => _LodgingAgendaRow(entry: entry),
+        ),
       ],
+    );
+  }
+}
+
+/// Agenda row for a lodging stay covering the selected day: "Check-in"/
+/// "Check-out" on boundary days (with the parsed time), "Staying at" on
+/// middle days. Tapping opens the lodging detail screen.
+class _LodgingAgendaRow extends StatelessWidget {
+  const _LodgingAgendaRow({required this.entry});
+
+  final LodgingDayEntry entry;
+
+  String _label() {
+    final lodging = entry.lodging;
+    if (entry.isCheckIn) {
+      final checkIn = DateTime.tryParse(lodging.checkInAt);
+      final time = checkIn != null ? DateFormat('h:mm a').format(checkIn) : null;
+      return time != null
+          ? 'Check-in $time · ${lodging.name}'
+          : 'Check-in · ${lodging.name}';
+    }
+    if (entry.isCheckOut) {
+      final checkOut = DateTime.tryParse(lodging.checkOutAt);
+      final time = checkOut != null ? DateFormat('h:mm a').format(checkOut) : null;
+      return time != null
+          ? 'Check-out $time · ${lodging.name}'
+          : 'Check-out · ${lodging.name}';
+    }
+    return 'Staying at ${lodging.name}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push('/lodging/${entry.lodging.id}'),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: CupertinoColors.tertiarySystemBackground.resolveFrom(context),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(CupertinoIcons.bed_double, size: 20, color: context.secondaryText),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                _label(),
+                style: TextStyle(fontSize: 14, color: context.primaryText),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Icon(CupertinoIcons.chevron_right, size: 16, color: context.tertiaryText),
+          ],
+        ),
+      ),
     );
   }
 }

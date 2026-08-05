@@ -6,6 +6,8 @@ import 'package:tts_bandmate/core/network/geocoding.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 import 'package:tts_bandmate/features/bookings/data/bookings_repository.dart';
 import 'package:tts_bandmate/features/bookings/data/models/booking_summary.dart';
+import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
+import 'package:tts_bandmate/features/events/providers/events_provider.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 import 'package:tts_bandmate/shared/widgets/address_autocomplete_field.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
@@ -450,7 +452,18 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
       try {
         ref.read(lodgingsProvider(bandId).notifier).remove(widget.lodgingId!);
       } catch (_) {}
-      if (mounted) context.go('/lodging');
+      try {
+        ref.invalidate(lodgingDetailProvider(widget.lodgingId!));
+      } catch (_) {}
+      if (mounted) {
+        // /lodging routes live outside the ShellRoute (no bottom nav), so
+        // context.go('/lodging') would collapse the whole navigation stack
+        // and strand the user without a way back. Pop twice instead: once
+        // to close this edit screen, once to close the detail screen
+        // beneath it, landing on the list with its normal stack intact.
+        context.pop();
+        if (context.canPop()) context.pop();
+      }
     } catch (e) {
       if (mounted) {
         showCupertinoDialog<void>(
@@ -483,6 +496,10 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
     try {
       ref.invalidate(lodgingsProvider(bandId));
       ref.invalidate(lodgingDetailProvider(lodgingId));
+      // Event/booking detail payloads embed their lodgings — refresh those
+      // families too so their lodging cards don't go stale after a save.
+      ref.invalidate(bookingDetailProvider);
+      ref.invalidate(eventDetailProvider);
     } catch (_) {}
   }
 

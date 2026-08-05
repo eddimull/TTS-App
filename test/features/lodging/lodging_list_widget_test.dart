@@ -47,6 +47,20 @@ class _FakeLodgingRepository extends LodgingRepository {
   }
 }
 
+class _ForbiddenLodgingRepository extends LodgingRepository {
+  _ForbiddenLodgingRepository() : super(_throwingDio);
+
+  @override
+  Future<({List<LodgingSummary> lodgings, bool canWrite})> getLodgings(
+      int bandId) async {
+    final options = RequestOptions(path: '/api/mobile/lodging');
+    throw DioException(
+      requestOptions: options,
+      response: Response(requestOptions: options, statusCode: 403),
+    );
+  }
+}
+
 class _FakeBand extends SelectedBandNotifier {
   _FakeBand(this._id);
   final int? _id;
@@ -73,5 +87,25 @@ void main() {
     expect(find.text('Upcoming Hotel'), findsOneWidget);
     expect(find.text('Past Hotel'), findsNothing);
     expect(find.textContaining('past stay'), findsOneWidget);
+  });
+
+  testWidgets(
+      'shows empty state (not an error) with no add button on a 403',
+      (tester) async {
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        lodgingRepositoryProvider
+            .overrideWithValue(_ForbiddenLodgingRepository()),
+        selectedBandProvider.overrideWith(() => _FakeBand(1)),
+      ],
+      child: const CupertinoApp(home: LodgingListScreen()),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No lodging yet'), findsOneWidget);
+    expect(find.text('Add lodging'), findsNothing);
+    expect(find.byIcon(CupertinoIcons.add), findsNothing);
+    expect(find.textContaining('Try Again'), findsNothing);
+    expect(find.byType(CupertinoButton), findsNothing);
   });
 }

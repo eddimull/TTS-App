@@ -92,6 +92,10 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
       return [
         lodgingsProvider,
         lodgingDetailProvider,
+        // Event/booking detail payloads now embed their lodgings, so those
+        // cards need to refresh alongside the lodging screens themselves.
+        bookingDetailProvider,
+        eventDetailProvider,
       ];
     case 'payments':
     case 'payout':

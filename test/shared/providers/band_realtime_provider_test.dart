@@ -14,6 +14,7 @@ import 'package:tts_bandmate/features/chat/providers/topic_thread_provider.dart'
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
 import 'package:tts_bandmate/features/events/providers/events_provider.dart';
 import 'package:tts_bandmate/features/library/providers/library_provider.dart';
+import 'package:tts_bandmate/features/lodging/providers/lodging_provider.dart';
 import 'package:tts_bandmate/features/media/providers/media_provider.dart';
 import 'package:tts_bandmate/features/search/providers/music_provider.dart';
 import 'package:tts_bandmate/features/personnel/providers/rosters_provider.dart';
@@ -172,8 +173,17 @@ void main() {
     expect(invalidationTargetsFor('events'), contains(bandEventsProvider));
     expect(invalidationTargetsFor('event_member'), contains(eventDetailProvider));
     expect(invalidationTargetsFor('rehearsal'), isNotEmpty);
-    expect(invalidationTargetsFor('lodging'), isNotEmpty);
     expect(invalidationTargetsFor('unknown'), isEmpty);
+  });
+
+  test(
+      'registry maps lodging signals to lodging providers plus booking/event detail',
+      () {
+    final targets = invalidationTargetsFor('lodging');
+    expect(targets, contains(lodgingsProvider));
+    expect(targets, contains(lodgingDetailProvider));
+    expect(targets, contains(bookingDetailProvider));
+    expect(targets, contains(eventDetailProvider));
   });
 
   test('registry maps payments/payout signals to booking payout providers',

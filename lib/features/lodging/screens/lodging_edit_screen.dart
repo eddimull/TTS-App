@@ -581,13 +581,18 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
               onResolved: (components) {
                 setState(() {
                   // Address text has already been narrowed to the street by
-                  // the field; compose the full address for geocoding.
+                  // the field; compose the full address and persist it —
+                  // the controller's text is what gets saved, so it must
+                  // carry city/state/zip, not just the street.
                   final full = [
                     _addressController.text,
                     components.city,
                     components.stateShort,
                     components.zip,
                   ].where((s) => s.trim().isNotEmpty).join(', ');
+                  if (full.isNotEmpty) {
+                    _addressController.text = full;
+                  }
                   _lat = null;
                   _lng = null;
                   if (full.isNotEmpty) {

@@ -10,6 +10,7 @@ import '../../../core/storage/hint_storage.dart';
 import '../../../core/theme/context_colors.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../../shared/providers/selected_band_provider.dart';
+import '../../../shared/utils/day_key.dart';
 import '../../../shared/widgets/empty_state_view.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../auth/data/models/band_summary.dart';
@@ -293,8 +294,6 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     }
   }
 
-  DateTime _normalise(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
-
   bool _isInCurrentRange(EventSummary event) {
     final selectedDay = widget.selectedDay;
     if (selectedDay != null) {
@@ -329,7 +328,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
 
     final eventsByDay = <DateTime, List<EventSummary>>{};
     for (final e in visibleEvents) {
-      eventsByDay.putIfAbsent(_normalise(e.parsedDate), () => []).add(e);
+      eventsByDay.putIfAbsent(dayKey(e.parsedDate), () => []).add(e);
     }
 
     // A 403/error from lodgingsProvider must never break the dashboard —
@@ -358,7 +357,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     // single day to anchor "Check-in"/"Staying at" rows to.
     final selectedDayLodging = selectedDay == null
         ? const <LodgingDayEntry>[]
-        : (lodgingDays[_normalise(selectedDay)] ?? const []);
+        : (lodgingDays[dayKey(selectedDay)] ?? const []);
 
     final eventsKey = ValueKey(
         '${focusedDay.year}-${focusedDay.month}-${selectedDay?.day ?? ''}-${filterState.activeCount}');
@@ -458,8 +457,6 @@ class _CalendarSection extends StatelessWidget {
   final void Function(DateTime focusedDay)? onPageChanged;
   final void Function(DateTime focusedDay)? onHeaderTapped;
 
-  DateTime _normalise(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
-
   @override
   Widget build(BuildContext context) {
     final brightness = MediaQuery.platformBrightnessOf(context);
@@ -474,7 +471,7 @@ class _CalendarSection extends StatelessWidget {
           lastDay: DateTime.now().add(const Duration(days: 365 * 5)),
           focusedDay: focusedDay,
           selectedDayPredicate: (day) => isSameDay(selectedDay, day),
-          eventLoader: (day) => eventsByDay[_normalise(day)] ?? const [],
+          eventLoader: (day) => eventsByDay[dayKey(day)] ?? const [],
           onDaySelected: onDaySelected,
           onPageChanged: onPageChanged,
           onHeaderTapped: onHeaderTapped,
@@ -493,7 +490,7 @@ class _CalendarSection extends StatelessWidget {
           calendarBuilders: CalendarBuilders<EventSummary>(
             markerBuilder: (context, day, dayEvents) {
               final hasLodging =
-                  lodgingByDay[_normalise(day)]?.isNotEmpty ?? false;
+                  lodgingByDay[dayKey(day)]?.isNotEmpty ?? false;
               if (dayEvents.isEmpty && !hasLodging) return null;
               return Padding(
                 padding: const EdgeInsets.only(top: 28),
@@ -579,18 +576,22 @@ class _LodgingAgendaRow extends StatelessWidget {
 
   final LodgingDayEntry entry;
 
+  /// Formats a raw ISO time string as "h:mm a", or null if unparseable.
+  String? _time(String raw) {
+    final parsed = DateTime.tryParse(raw);
+    return parsed != null ? DateFormat('h:mm a').format(parsed) : null;
+  }
+
   String _label() {
     final lodging = entry.lodging;
     if (entry.isCheckIn) {
-      final checkIn = DateTime.tryParse(lodging.checkInAt);
-      final time = checkIn != null ? DateFormat('h:mm a').format(checkIn) : null;
+      final time = _time(lodging.checkInAt);
       return time != null
           ? 'Check-in $time · ${lodging.name}'
           : 'Check-in · ${lodging.name}';
     }
     if (entry.isCheckOut) {
-      final checkOut = DateTime.tryParse(lodging.checkOutAt);
-      final time = checkOut != null ? DateFormat('h:mm a').format(checkOut) : null;
+      final time = _time(lodging.checkOutAt);
       return time != null
           ? 'Check-out $time · ${lodging.name}'
           : 'Check-out · ${lodging.name}';

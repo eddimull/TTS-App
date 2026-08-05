@@ -15,14 +15,7 @@ import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/lodging_repository.dart';
 import '../data/models/lodging.dart';
 import '../providers/lodging_provider.dart';
-
-/// A single option in the booking/event picker sheets. `id == null`
-/// represents "None".
-class _PickerOption {
-  const _PickerOption(this.id, this.label);
-  final int? id;
-  final String label;
-}
+import '../utils/link_picker_options.dart';
 
 /// Mutable draft for a room row being edited. `id == null` means the room
 /// will be inserted on save; a non-null `id` means it's an existing room
@@ -219,22 +212,38 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
 
   // ── Booking / event pickers ──────────────────────────────────────────────
 
-  List<_PickerOption> get _bookingOptions => [
-        const _PickerOption(null, 'None'),
-        for (final b in _bookings) _PickerOption(b.id, b.name),
+  List<LinkOption> get _bookingOptions => [
+        const LinkOption(null, 'None'),
+        for (final b in _bookings) LinkOption(b.id, b.name, _bookingDate(b)),
       ];
 
-  List<_PickerOption> get _eventOptions {
-    final dateFmt = DateFormat('MMM d, yyyy');
-    final options = <_PickerOption>[const _PickerOption(null, 'None')];
+  /// A booking's picker-sort date: the earliest upcoming (>= today) event
+  /// date, or — if every event is in the past — the latest event date.
+  /// Bookings with no events (or none with a parseable date) sort as
+  /// undated.
+  DateTime? _bookingDate(BookingSummary b) {
+    final today = DateTime.now();
+    final todayDay = DateTime(today.year, today.month, today.day);
+    final dates = [
+      for (final e in b.events)
+        if (e.date.isNotEmpty) e.parsedDate,
+    ];
+    if (dates.isEmpty) return null;
+    final upcoming = dates.where((d) => !d.isBefore(todayDay)).toList();
+    if (upcoming.isNotEmpty) {
+      return upcoming.reduce((a, b) => a.isBefore(b) ? a : b);
+    }
+    return dates.reduce((a, b) => a.isAfter(b) ? a : b);
+  }
+
+  List<LinkOption> get _eventOptions {
+    final options = <LinkOption>[const LinkOption(null, 'None')];
     for (final b in _bookings) {
       for (final e in b.events) {
         final id = e.id;
         if (id == null) continue;
-        final label = e.date.isEmpty
-            ? e.title
-            : '${e.title} · ${dateFmt.format(e.parsedDate)}';
-        options.add(_PickerOption(id, label));
+        options
+            .add(LinkOption(id, e.title, e.date.isEmpty ? null : e.parsedDate));
       }
     }
     return options;
@@ -256,58 +265,29 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
 
   Future<void> _showOptionPicker({
     required String title,
-    required List<_PickerOption> options,
+    required List<LinkOption> options,
     required int? selectedId,
     required ValueChanged<int?> onSelected,
   }) async {
     final container = ProviderScope.containerOf(context);
-    int index = options.indexWhere((o) => o.id == selectedId);
-    if (index < 0) index = 0;
+    // "None" is pinned outside the date-based groups; the rest are grouped
+    // relative to the stay dates.
+    final rest = options.where((o) => o.id != null).toList();
 
     await showCupertinoModalPopup<void>(
       context: context,
       builder: (sheetContext) => UncontrolledProviderScope(
         container: container,
-        child: Container(
-          height: 300,
-          color: CupertinoColors.systemBackground.resolveFrom(sheetContext),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16),
-                    child: Text(title,
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
-                  ),
-                  CupertinoButton(
-                    onPressed: () {
-                      onSelected(options[index].id);
-                      Navigator.of(sheetContext).pop();
-                    },
-                    child: const Text('Done'),
-                  ),
-                ],
-              ),
-              Expanded(
-                child: CupertinoPicker(
-                  scrollController:
-                      FixedExtentScrollController(initialItem: index),
-                  itemExtent: 40,
-                  onSelectedItemChanged: (i) => index = i,
-                  children: options
-                      .map((o) => Center(
-                            child: Text(o.label,
-                                style: const TextStyle(fontSize: 16),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis),
-                          ))
-                      .toList(),
-                ),
-              ),
-            ],
-          ),
+        child: _LinkOptionSheet(
+          title: title,
+          options: rest,
+          checkIn: _checkIn,
+          checkOut: _checkOut,
+          selectedId: selectedId,
+          onSelected: (id) {
+            onSelected(id);
+            Navigator.of(sheetContext).pop();
+          },
         ),
       ),
     );
@@ -359,8 +339,7 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
                 confirmationNumber: r.confirmation.text.trim().isEmpty
                     ? null
                     : r.confirmation.text.trim(),
-                notes:
-                    r.notes.text.trim().isEmpty ? null : r.notes.text.trim(),
+                notes: r.notes.text.trim().isEmpty ? null : r.notes.text.trim(),
               ))
           .toList();
 
@@ -536,13 +515,13 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
 
     final dateFmt = DateFormat('EEE, MMM d, yyyy');
     final timeFmt = DateFormat('h:mm a');
-    final bookingLabel =
-        _bookingOptions.firstWhere((o) => o.id == _bookingId,
-                orElse: () => const _PickerOption(null, 'None'))
-            .label;
+    final bookingLabel = _bookingOptions
+        .firstWhere((o) => o.id == _bookingId,
+            orElse: () => const LinkOption(null, 'None'))
+        .label;
     final eventLabel = _eventOptions
         .firstWhere((o) => o.id == _eventId,
-            orElse: () => const _PickerOption(null, 'None'))
+            orElse: () => const LinkOption(null, 'None'))
         .label;
 
     final canSave = _nameController.text.trim().isNotEmpty &&
@@ -556,9 +535,8 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
           onPressed: canSave ? _save : null,
-          child: _saving
-              ? const CupertinoActivityIndicator()
-              : const Text('Save'),
+          child:
+              _saving ? const CupertinoActivityIndicator() : const Text('Save'),
         ),
       ),
       child: SafeArea(
@@ -574,7 +552,6 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 16),
-
             AddressAutocompleteField(
               label: 'Address',
               controller: _addressController,
@@ -612,7 +589,6 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
               }),
             ),
             const SizedBox(height: 8),
-
             const _SectionLabel('Dates'),
             const SizedBox(height: 8),
             _Card(
@@ -649,7 +625,6 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
               ),
             ],
             const SizedBox(height: 16),
-
             const _SectionLabel('Rooms'),
             const SizedBox(height: 8),
             for (int i = 0; i < _rooms.length; i++) ...[
@@ -665,7 +640,6 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
               child: const Text('Add room'),
             ),
             const SizedBox(height: 16),
-
             const _SectionLabel('Linked to'),
             const SizedBox(height: 8),
             _Card(
@@ -690,7 +664,6 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
             const _SectionLabel('Notes'),
             const SizedBox(height: 8),
             CupertinoTextField(
@@ -699,7 +672,6 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
               maxLines: 5,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
-
             if (_isEditing) ...[
               const SizedBox(height: 32),
               CupertinoButton(
@@ -714,6 +686,186 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
               ),
             ],
             const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Booking / event link picker sheet ───────────────────────────────────────
+
+/// Searchable, proximity-grouped replacement for the old [CupertinoPicker]
+/// wheel. Filters by label, groups the remainder via [groupLinkOptions], and
+/// selects immediately on tap (no Done button) — `onSelected` is expected to
+/// pop the sheet itself so it can also drive the setState update in one place.
+class _LinkOptionSheet extends StatefulWidget {
+  const _LinkOptionSheet({
+    required this.title,
+    required this.options,
+    required this.checkIn,
+    required this.checkOut,
+    required this.selectedId,
+    required this.onSelected,
+  });
+
+  final String title;
+
+  /// All non-"None" options — "None" is rendered as a pinned row above the
+  /// grouped list.
+  final List<LinkOption> options;
+  final DateTime? checkIn;
+  final DateTime? checkOut;
+  final int? selectedId;
+  final ValueChanged<int?> onSelected;
+
+  @override
+  State<_LinkOptionSheet> createState() => _LinkOptionSheetState();
+}
+
+class _LinkOptionSheetState extends State<_LinkOptionSheet> {
+  String _query = '';
+
+  List<LinkOption> get _filtered {
+    if (_query.isEmpty) return widget.options;
+    final q = _query.toLowerCase();
+    return widget.options
+        .where((o) => o.label.toLowerCase().contains(q))
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = groupLinkOptions(_filtered, widget.checkIn, widget.checkOut);
+    final dateFmt = DateFormat('EEE, MMM d, yyyy');
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.75,
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemBackground.resolveFrom(context),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Text(
+              widget.title,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+            child: CupertinoSearchTextField(
+              placeholder: 'Search…',
+              onChanged: (v) => setState(() => _query = v),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              children: [
+                _LinkOptionTile(
+                  label: 'None',
+                  date: null,
+                  selected: widget.selectedId == null,
+                  onTap: () => widget.onSelected(null),
+                ),
+                for (final group in groups) ...[
+                  if (group.label.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                      child: Text(
+                        group.label.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: context.secondaryText,
+                        ),
+                      ),
+                    ),
+                  for (final o in group.options)
+                    _LinkOptionTile(
+                      label: o.label,
+                      date: o.date == null ? null : dateFmt.format(o.date!),
+                      selected: widget.selectedId == o.id,
+                      onTap: () => widget.onSelected(o.id),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Single tappable row in the link picker sheet: label + optional date, with
+/// a trailing checkmark when this row is the current selection.
+class _LinkOptionTile extends StatelessWidget {
+  const _LinkOptionTile({
+    required this.label,
+    required this.date,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String? date;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      onPressed: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: CupertinoColors.separator.resolveFrom(context),
+              width: 0.5,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 15, color: context.primaryText),
+                  ),
+                  if (date != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        date!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 13, color: context.secondaryText),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (selected)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Icon(CupertinoIcons.check_mark,
+                    size: 18,
+                    color: CupertinoColors.activeBlue.resolveFrom(context)),
+              ),
           ],
         ),
       ),

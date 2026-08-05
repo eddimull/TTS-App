@@ -114,15 +114,18 @@ to events), so each booking option gains `date` = its nearest event date
     exist; tap → `/lodging/<id>`, first stay if several).
   Rows render only when their data exists — the card collapses to
   whatever is known. Every glance row is tappable: show time scrolls to
-  the Timeline section, attire scrolls to the Attire section, lodging
-  navigates to `/lodging/<id>`. All rows carry a chevron affordance.
+  the Timeline section, **attire expands inline** (the full attire text
+  unfolds inside the glance card — there is NO standalone Attire section
+  anymore; attire is usually concise), lodging navigates to
+  `/lodging/<id>`. Rows carry a chevron affordance (attire's rotates
+  when expanded).
 - Section reorder below: **Notes & Attachments first** — one combined
   section (attachments are contextually part of the notes: itineraries,
   screenshots the note refers to). The note text renders clamped, with
   the attachment rows below it inside the same section (their 3-row
-  collapse intact). Then: Timeline, Attire, Setlist button, Lodging,
-  Contacts, Roster row, Performance, Wedding Details, Media. There is no
-  standalone Attachments section anymore.
+  collapse intact). Then: Timeline, Setlist button, Lodging, Contacts,
+  Roster row, Performance, Wedding Details, Media. There are no
+  standalone Attachments or Attire sections anymore.
 - **Roster collapses to a row + full-screen sheet** (modeled on the web
   dashboard's roster modal): the inline grouped roster is replaced by a
   one-line summary row — member count + sub count, an attention dot when

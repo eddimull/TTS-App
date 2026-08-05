@@ -29,7 +29,7 @@ import '../../lodging/data/models/lodging.dart';
 import '../data/models/sub_entry.dart';
 import '../providers/events_provider.dart';
 import '../../../shared/widgets/attachment_widgets.dart';
-import '../widgets/part_of_booking_row.dart';
+import '../widgets/event_glance_card.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class EventDetailScreen extends ConsumerWidget {
@@ -72,7 +72,7 @@ class EventDetailScreen extends ConsumerWidget {
   }
 }
 
-class _EventDetailView extends ConsumerWidget {
+class _EventDetailView extends ConsumerStatefulWidget {
   const _EventDetailView({
     required this.event,
     this.parentBookingName,
@@ -86,51 +86,142 @@ class _EventDetailView extends ConsumerWidget {
   final int? parentBandId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_EventDetailView> createState() => _EventDetailViewState();
+}
+
+class _EventDetailViewState extends ConsumerState<_EventDetailView> {
+  final _timelineKey = GlobalKey();
+  final _rosterKey = GlobalKey();
+
+  EventDetail get event => widget.event;
+
+  void _scrollToKey(GlobalKey key) {
+    final keyContext = key.currentContext;
+    if (keyContext == null) return;
+    Scrollable.ensureVisible(
+      keyContext,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _openTimeline() => _scrollToKey(_timelineKey);
+
+  /// Scrolls to the Roster section. Task 5 swaps this for a push to a
+  /// dedicated roster sheet.
+  void _openRoster() => _scrollToKey(_rosterKey);
+
+  void _openMenu(
+    BuildContext context, {
+    required bool showBookingLink,
+    required int? bookingBandId,
+    required int? bookingId,
+  }) {
+    final container = ProviderScope.containerOf(context);
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (sheetContext) => UncontrolledProviderScope(
+        container: container,
+        child: CupertinoActionSheet(
+          actions: [
+            if (showBookingLink)
+              CupertinoActionSheetAction(
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  context.push('/bookings/$bookingBandId/$bookingId');
+                },
+                child: const Text('Go to booking'),
+              ),
+            CupertinoActionSheetAction(
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                _openRoster();
+              },
+              child: const Text('Go to roster'),
+            ),
+            CupertinoActionSheetAction(
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                context.push('/events/${event.key}/setlist');
+              },
+              child: const Text('Setlist'),
+            ),
+            if (event.canWrite)
+              CupertinoActionSheetAction(
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  context.push('/events/${event.key}/edit', extra: event);
+                },
+                child: const Text('Edit event'),
+              ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.pop(sheetContext),
+            child: const Text('Cancel'),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // Resolve the booking backlink. When opened from a booking, the parent
     // params carry the name + ids. Otherwise, derive it from the event's own
     // eventable fields (booking-backed events only) plus the active band.
     final selectedBandId = ref.watch(selectedBandProvider).value;
     final bool fromBooking =
-        parentBookingId != null && parentBandId != null;
+        widget.parentBookingId != null && widget.parentBandId != null;
     final bool isBookingBacked = event.eventableType == 'Bookings' &&
         event.eventableId != null &&
         selectedBandId != null;
 
-    final int? bookingBandId = fromBooking ? parentBandId : selectedBandId;
-    final int? bookingId = fromBooking ? parentBookingId : event.eventableId;
+    final int? bookingBandId =
+        fromBooking ? widget.parentBandId : selectedBandId;
+    final int? bookingId =
+        fromBooking ? widget.parentBookingId : event.eventableId;
     final bool showBookingLink = fromBooking || isBookingBacked;
 
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
-        middle: Text(event.title),
-        trailing: event.canWrite
-            ? CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: () =>
-                    context.push('/events/${event.key}/edit', extra: event),
-                child: const Icon(CupertinoIcons.pencil),
-              )
-            : null,
+        middle: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (event.status != null) ...[
+              Semantics(
+                label: 'Status: ${event.status}',
+                child: Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: statusColor(context, event.status!),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+            ],
+            Flexible(
+              child: Text(event.title, overflow: TextOverflow.ellipsis),
+            ),
+          ],
+        ),
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: () => _openMenu(
+            context,
+            showBookingLink: showBookingLink,
+            bookingBandId: bookingBandId,
+            bookingId: bookingId,
+          ),
+          child: const Icon(CupertinoIcons.ellipsis_circle),
+        ),
       ),
       child: CommentBarBody(
         topic: TopicRef(kind: 'events', idOrKey: event.key),
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Booking backlink. Shows "Part of: <name>" when opened from the
-            // booking, or a generic "Go to booking" for booking-backed events
-            // opened any other way.
-            if (showBookingLink) ...[
-              PartOfBookingRow(
-                bookingName: parentBookingName,
-                onTap: () => context.push(
-                  '/bookings/$bookingBandId/$bookingId',
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-
             // Date / Time
             _InfoRow(
               icon: CupertinoIcons.calendar,
@@ -147,26 +238,26 @@ class _EventDetailView extends ConsumerWidget {
               ),
             ],
 
-            // Status
-            if (event.status != null) ...[
-              const SizedBox(height: 12),
-              _InfoRow(
-                icon: CupertinoIcons.info_circle,
-                label: 'Status',
-                value: '',
-                trailing: StatusChip(status: event.status!),
-              ),
-            ],
-
             // Event type + flags row
             if (_hasFlags) ...[
               const SizedBox(height: 16),
               _FlagsRow(event: event),
             ],
 
+            // At-a-glance card
+            if (EventGlanceCard.hasContent(event)) ...[
+              const SizedBox(height: 12),
+              EventGlanceCard(
+                event: event,
+                onShowTimeTap: _openTimeline,
+                onLodgingTap: (lodgingId) =>
+                    context.push('/lodging/$lodgingId'),
+              ),
+            ],
+
             // Timeline
             if (event.timeline.isNotEmpty || event.time != null) ...[
-              const SizedBox(height: 20),
+              SizedBox(height: 20, key: _timelineKey),
               const _SectionHeader(title: 'Timeline'),
               const SizedBox(height: 8),
               _TimelineSection(
@@ -202,14 +293,6 @@ class _EventDetailView extends ConsumerWidget {
                 eventId: event.id,
                 canWrite: event.canWrite,
               ),
-            ],
-
-            // Attire
-            if (event.attire != null && event.attire!.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              const _SectionHeader(title: 'Attire'),
-              const SizedBox(height: 8),
-              _Card(child: Text(event.attire!, style: const TextStyle(fontSize: 15))),
             ],
 
             // Setlist (always available — editor; plus live mode when active)
@@ -257,7 +340,7 @@ class _EventDetailView extends ConsumerWidget {
 
             // Roster
             if (event.members.isNotEmpty) ...[
-              const SizedBox(height: 20),
+              SizedBox(height: 20, key: _rosterKey),
               _RosterSection(event: event),
             ],
 
@@ -450,12 +533,10 @@ class _InfoRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
-    this.trailing,
   });
   final IconData icon;
   final String label;
   final String value;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -485,7 +566,6 @@ class _InfoRow extends StatelessWidget {
                   ),
                 ),
               ],
-              if (trailing != null) trailing!,
             ],
           ),
         ),
@@ -533,7 +613,17 @@ class _FlagsRow extends StatelessWidget {
       ));
     }
 
-    return Wrap(spacing: 8, runSpacing: 8, children: chips);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (int i = 0; i < chips.length; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            chips[i],
+          ],
+        ],
+      ),
+    );
   }
 }
 
@@ -553,7 +643,7 @@ class _FlagChip extends StatelessWidget {
         : CupertinoColors.systemGrey5.resolveFrom(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
       child: Row(
         mainAxisSize: MainAxisSize.min,

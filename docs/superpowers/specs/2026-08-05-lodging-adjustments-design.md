@@ -116,9 +116,13 @@ to events), so each booking option gains `date` = its nearest event date
   whatever is known. Every glance row is tappable: show time scrolls to
   the Timeline section, attire scrolls to the Attire section, lodging
   navigates to `/lodging/<id>`. All rows carry a chevron affordance.
-- Section reorder below: **Notes first** (clamped — see below), then
-  Timeline, Attire, Setlist button, Lodging, Contacts, Roster,
-  Performance, Wedding Details, Attachments, Media.
+- Section reorder below: **Notes & Attachments first** — one combined
+  section (attachments are contextually part of the notes: itineraries,
+  screenshots the note refers to). The note text renders clamped, with
+  the attachment rows below it inside the same section (their 3-row
+  collapse intact). Then: Timeline, Attire, Setlist button, Lodging,
+  Contacts, Roster, Performance, Wedding Details, Media. There is no
+  standalone Attachments section anymore.
 - Verbose-content collapsing (the real screen-length culprits):
   - Notes taller than ~6 lines render clamped with a "Show more" /
     "Show less" toggle.

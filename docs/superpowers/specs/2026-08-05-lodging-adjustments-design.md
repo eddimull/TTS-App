@@ -89,6 +89,11 @@ to events), so each booking option gains `date` = its nearest event date
 
 ## 5. Mobile event detail: at-a-glance card + logistics-first reorder
 
+- Nav actions consolidate into a ⋯ overflow menu replacing the edit
+  pencil: **Go to booking** (→ booking detail, replacing the body row,
+  which is removed), **Go to roster** (scrolls to the Roster section),
+  **Edit event** (→ edit screen, canWrite only). CupertinoActionSheet or
+  pulldown, matching existing idioms.
 - Header tightening:
   - The labeled Status row ("Status" + Confirmed pill) is removed; status
     becomes a small colored dot beside the event title (same idiom as the
@@ -108,10 +113,12 @@ to events), so each booking option gains `date` = its nearest event date
   - lodging one-liner "🛏 <name> · check-in <time>" (when linked stays
     exist; tap → `/lodging/<id>`, first stay if several).
   Rows render only when their data exists — the card collapses to
-  whatever is known.
-- Section reorder below: Timeline, Attire, Setlist button, Lodging,
-  Contacts, Roster, Performance, Wedding Details, Notes, Attachments,
-  Media — reference material moves below the people/logistics sections.
+  whatever is known. Every glance row is tappable: show time scrolls to
+  the Timeline section, attire scrolls to the Attire section, lodging
+  navigates to `/lodging/<id>`. All rows carry a chevron affordance.
+- Section reorder below: **Notes first** (clamped — see below), then
+  Timeline, Attire, Setlist button, Lodging, Contacts, Roster,
+  Performance, Wedding Details, Attachments, Media.
 - Verbose-content collapsing (the real screen-length culprits):
   - Notes taller than ~6 lines render clamped with a "Show more" /
     "Show less" toggle.

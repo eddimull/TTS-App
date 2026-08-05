@@ -1,8 +1,9 @@
+import '../../../../shared/widgets/attachment_widgets.dart';
 import 'event_member.dart';
 
 // ── Supporting types ──────────────────────────────────────────────────────────
 
-class EventAttachment {
+class EventAttachment implements DisplayableAttachment {
   const EventAttachment({
     required this.id,
     required this.filename,
@@ -10,10 +11,14 @@ class EventAttachment {
     required this.fileSize,
     this.url = '',
   });
+  @override
   final int id;
+  @override
   final String filename;
+  @override
   final String mimeType;
   final int fileSize;
+  @override
   final String url;
 
   factory EventAttachment.fromJson(Map<String, dynamic> json) => EventAttachment(

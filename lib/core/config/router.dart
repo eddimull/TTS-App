@@ -33,6 +33,9 @@ import '../../features/auth/data/models/band_summary.dart';
 import '../../features/library/screens/chart_detail_screen.dart';
 import '../../features/library/screens/create_chart_screen.dart';
 import '../../features/library/screens/library_tab_screen.dart';
+import '../../features/lodging/screens/lodging_detail_screen.dart';
+import '../../features/lodging/screens/lodging_edit_screen.dart';
+import '../../features/lodging/screens/lodging_list_screen.dart';
 import '../../features/media/screens/media_screen.dart';
 import '../../features/songs/data/models/song.dart';
 import '../../features/songs/screens/song_detail_screen.dart';
@@ -496,6 +499,29 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/media',
         builder: (_, __) => const MediaScreen(),
+      ),
+      // Lodging — no bottom nav, pushed from Operations screen. Literal
+      // segments ('new', ':id/edit') before the bare :id route to avoid
+      // GoRouter treating them as an id.
+      GoRoute(
+        path: '/lodging',
+        builder: (_, __) => const LodgingListScreen(),
+      ),
+      GoRoute(
+        path: '/lodging/new',
+        builder: (_, __) => const LodgingEditScreen(lodgingId: null),
+      ),
+      GoRoute(
+        path: '/lodging/:id/edit',
+        builder: (_, state) => LodgingEditScreen(
+          lodgingId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/lodging/:id',
+        builder: (_, state) => LodgingDetailScreen(
+          lodgingId: int.parse(state.pathParameters['id']!),
+        ),
       ),
       // Calendar subscription — no bottom nav, pushed from Settings screen
       GoRoute(

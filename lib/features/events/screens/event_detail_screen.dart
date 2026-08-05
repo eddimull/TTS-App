@@ -26,7 +26,7 @@ import '../data/models/event_detail.dart';
 import '../data/models/event_member.dart';
 import '../data/models/sub_entry.dart';
 import '../providers/events_provider.dart';
-import 'attachment_widgets.dart';
+import '../../../shared/widgets/attachment_widgets.dart';
 import '../widgets/part_of_booking_row.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 

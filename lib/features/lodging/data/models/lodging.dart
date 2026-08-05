@@ -1,3 +1,5 @@
+import '../../../../shared/widgets/attachment_widgets.dart';
+
 class LodgingLinkedBooking {
   const LodgingLinkedBooking({required this.id, required this.name});
   final int id;
@@ -52,7 +54,7 @@ class LodgingRoom {
       };
 }
 
-class LodgingAttachment {
+class LodgingAttachment implements DisplayableAttachment {
   const LodgingAttachment({
     required this.id,
     required this.filename,
@@ -61,10 +63,14 @@ class LodgingAttachment {
     required this.url,
   });
 
+  @override
   final int id;
+  @override
   final String filename;
+  @override
   final String mimeType;
   final int fileSize;
+  @override
   final String url;
 
   factory LodgingAttachment.fromJson(Map<String, dynamic> json) =>

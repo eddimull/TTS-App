@@ -59,6 +59,12 @@ class OperationsScreen extends ConsumerWidget {
               onTap: () => context.push('/personnel'),
             ),
           NavRow(
+            title: 'Lodging',
+            leading: Icon(CupertinoIcons.bed_double,
+                size: 22, color: context.secondaryText),
+            onTap: () => context.push('/lodging'),
+          ),
+          NavRow(
             title: 'Media',
             leading: Icon(CupertinoIcons.photo_on_rectangle,
                 size: 22, color: context.secondaryText),

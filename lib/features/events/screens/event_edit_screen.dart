@@ -16,7 +16,7 @@ import '../data/models/attire_chip.dart';
 import '../data/models/event_detail.dart';
 import '../data/events_repository.dart';
 import '../providers/attire_chips_provider.dart';
-import 'attachment_widgets.dart';
+import '../../../shared/widgets/attachment_widgets.dart';
 import '../../bookings/widgets/venue_picker.dart';
 import '../../bookings/data/venue_search_service.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';

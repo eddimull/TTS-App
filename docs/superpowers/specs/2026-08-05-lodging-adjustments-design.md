@@ -89,18 +89,23 @@ to events), so each booking option gains `date` = its nearest event date
 
 ## 5. Mobile event detail: at-a-glance card + logistics-first reorder
 
-- New compact summary card directly under the header block:
-  - show time (from timeline/start time),
-  - venue line (tap → maps via the shared `openInMaps` helper),
-  - attire one-liner (when set),
+- New compact summary card directly under the existing header block
+  (Go-to-booking / date / venue-map card / status chips — all unchanged;
+  the map card already covers venue, so the summary does NOT repeat it):
+  - show time (same source as the Timeline's injected Show Time row),
+  - attire one-liner (first line, ellipsized),
   - lodging one-liner "🛏 <name> · check-in <time>" (when linked stays
     exist; tap → `/lodging/<id>`, first stay if several).
   Rows render only when their data exists — the card collapses to
   whatever is known.
-- Section reorder below: Timeline, Attire, Lodging, Performance,
-  Contacts, Wedding Details, Notes, Attachments, Media. ("Show Time" is
-  not a section — it is a row injected into the Timeline; it stays there,
-  and the summary card reads the same show-time source.)
+- Section reorder below: Timeline, Attire, Setlist button, Lodging,
+  Contacts, Roster, Performance, Wedding Details, Notes, Attachments,
+  Media — reference material moves below the people/logistics sections.
+- Verbose-content collapsing (the real screen-length culprits):
+  - Notes taller than ~6 lines render clamped with a "Show more" /
+    "Show less" toggle.
+  - Attachments beyond the first 3 collapse behind "Show all (N)".
+  Both default collapsed on entry; state is per-visit (not persisted).
 - Pure presentation change: no payload or provider changes. 320pt-safe.
 
 ## Testing
@@ -116,7 +121,8 @@ to events), so each booking option gains `date` = its nearest event date
   boundaries, multi-stay overlap) and picker grouping; widget tests at
   `Size(320, 568)` for the summary card (rows collapse when data absent)
   and a calendar day with a lodging marker + agenda row; filter-toggle
-  test.
+  test; notes-clamp toggle test (long note collapsed by default, expands
+  on tap) and attachments show-all test.
 
 ## Rollout
 

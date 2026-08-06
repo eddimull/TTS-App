@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.23.0](https://github.com/eddimull/TTS-App/compare/v1.22.0...v1.23.0) (2026-08-05)
+
+
+### Features
+
+* **events:** bundle notes+attachments, logistics-first section order ([60986dd](https://github.com/eddimull/TTS-App/commit/60986dd1fcafc7617f1dd7f8d59faa3f2f813fcf))
+* **events:** overflow menu, status dot, one-line chips, at-a-glance card ([7f7283e](https://github.com/eddimull/TTS-App/commit/7f7283e367b4e92b26288db32e8385522cf60687))
+* **events:** roster summary row + full-screen roster sheet ([f6d89b8](https://github.com/eddimull/TTS-App/commit/f6d89b805eefd0cbf6d793953e872152d77b5399))
+* lodging — standalone stays with rooms, photos, and maps navigation ([883dd6a](https://github.com/eddimull/TTS-App/commit/883dd6a791b1bf523e794f226e2a6b09a4e96f5e))
+* lodging surfaces + event detail redesign ([e500006](https://github.com/eddimull/TTS-App/commit/e500006d8377b0ce10bbb3d7c3e87201238c9ed5))
+* **lodging:** create/edit screen with rooms, address, datetime pickers ([3e63105](https://github.com/eddimull/TTS-App/commit/3e631057d9b6ff08f950feee8d8185b1976d089b))
+* **lodging:** list/detail screens, routes, operations entry, shared attachment widgets ([46244b2](https://github.com/eddimull/TTS-App/commit/46244b2306ba70ce09d6f323948e6d917214b6ee))
+* **lodging:** lodging cards on event/booking detail, remove legacy lodging UI ([2e05038](https://github.com/eddimull/TTS-App/commit/2e05038bf9a1cc411b57786d6c2f7e2efd715579))
+* **lodging:** models, endpoints, repository ([79f8a11](https://github.com/eddimull/TTS-App/commit/79f8a11ff9ce72bad3a14fa09a104aabaf57ff7c))
+* **lodging:** proximity-grouped searchable link pickers ([d200b86](https://github.com/eddimull/TTS-App/commit/d200b862db4a1667f24f359729aee18c961a216c))
+* **lodging:** riverpod providers + realtime invalidation ([ded31c6](https://github.com/eddimull/TTS-App/commit/ded31c6c1b54031bc596bfdd2ee5369907c80b2a))
+* **lodging:** stays on the dashboard calendar with filter toggle ([b6ea01f](https://github.com/eddimull/TTS-App/commit/b6ea01f995bc5979a8551c28af0875f789a3a05d))
+
+
+### Bug Fixes
+
+* **events:** keep RosterSheet live against eventDetailProvider after a sub assignment ([fd82cc8](https://github.com/eddimull/TTS-App/commit/fd82cc812d383c99283af1d6c6048cd75cf11882))
+* **lodging:** actually persist the full resolved address ([51ab621](https://github.com/eddimull/TTS-App/commit/51ab6217ce6f33c5df112fc1cfcc07eedb086c89))
+* **lodging:** address Copilot review — full resolved address, friendly upload errors, UI-agnostic DisplayableAttachment ([ea33508](https://github.com/eddimull/TTS-App/commit/ea33508da846b2d09942f0648127bf759456a2ba))
+* **lodging:** delete navigation, detail-card invalidation, 403-hidden test ([604e923](https://github.com/eddimull/TTS-App/commit/604e9233ccccd0025d4bee37571dcab8cc88948a))
+* **lodging:** photo picker no-op + stale booking card / raw 404 after delete ([67db6ae](https://github.com/eddimull/TTS-App/commit/67db6aef87b6dd235bdf07e3ab5fc30ecb052125))
+* **lodging:** skip malformed event dates in picker, de-flake calendar test anchors ([459c682](https://github.com/eddimull/TTS-App/commit/459c68246f223e528152347993b609ce76aa5875))
+
 ## [1.22.0](https://github.com/eddimull/TTS-App/compare/v1.21.0...v1.22.0) (2026-08-02)
 
 

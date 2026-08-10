@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class _Keys {
   static const String bookingsMovedDismissed = 'hint_bookings_moved_dismissed';
+  static const String helpPointerDismissed = 'hint_help_pointer_dismissed';
 }
 
 /// One-time UI hints, persisted so a dismissal sticks across launches.
@@ -15,6 +16,12 @@ class HintStorage {
 
   Future<void> dismissBookingsMoved() =>
       _prefs.setBool(_Keys.bookingsMovedDismissed, true);
+
+  bool get helpPointerDismissed =>
+      _prefs.getBool(_Keys.helpPointerDismissed) ?? false;
+
+  Future<void> dismissHelpPointer() =>
+      _prefs.setBool(_Keys.helpPointerDismissed, true);
 }
 
 final hintStorageProvider = FutureProvider<HintStorage>((ref) async {

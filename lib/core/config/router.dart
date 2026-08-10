@@ -535,9 +535,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/stats',
         builder: (_, __) => const UserStatsScreen(),
       ),
-      // Help center — no bottom nav, pushed from Settings screen. Article
-      // route must come after the index so '/help' itself doesn't get
-      // captured as a :slug.
+      // Help center — no bottom nav, pushed from Settings screen.
       GoRoute(
         path: '/help',
         builder: (_, __) => const HelpScreen(),

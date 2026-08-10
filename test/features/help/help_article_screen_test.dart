@@ -59,6 +59,55 @@ Future<void> _pumpArticleScreen(
 }
 
 void main() {
+  group('decideLinkAction', () {
+    test('scheme-bearing hrefs (mailto) launch externally', () {
+      final action = decideLinkAction('mailto:support@tts.band');
+
+      expect(action, isA<HelpLinkActionLaunch>());
+      expect(
+        (action as HelpLinkActionLaunch).uri,
+        Uri.parse('mailto:support@tts.band'),
+      );
+    });
+
+    test('scheme-bearing hrefs (tel) launch externally', () {
+      final action = decideLinkAction('tel:+15551234567');
+
+      expect(action, isA<HelpLinkActionLaunch>());
+      expect(
+        (action as HelpLinkActionLaunch).uri,
+        Uri.parse('tel:+15551234567'),
+      );
+    });
+
+    test('http(s) hrefs launch externally', () {
+      final action = decideLinkAction('https://example.com/terms');
+
+      expect(action, isA<HelpLinkActionLaunch>());
+      expect(
+        (action as HelpLinkActionLaunch).uri,
+        Uri.parse('https://example.com/terms'),
+      );
+    });
+
+    test('bare scheme-less slugs navigate in-app', () {
+      final action = decideLinkAction('finances');
+
+      expect(action, isA<HelpLinkActionNavigate>());
+      expect((action as HelpLinkActionNavigate).slug, 'finances');
+    });
+
+    test('hyphenated bare slugs navigate in-app', () {
+      final action = decideLinkAction('faq-delete-account');
+
+      expect(action, isA<HelpLinkActionNavigate>());
+      expect(
+        (action as HelpLinkActionNavigate).slug,
+        'faq-delete-account',
+      );
+    });
+  });
+
   testWidgets(
       'HelpArticleScreen shows the friendly not-available state on a 404',
       (tester) async {

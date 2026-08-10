@@ -8,6 +8,39 @@ import 'package:tts_bandmate/core/theme/context_colors.dart';
 import '../data/models/help_article.dart';
 import '../providers/help_providers.dart';
 
+/// What tapping a markdown link inside a help article should do: launch it
+/// externally (any href with a URI scheme — http(s), mailto, tel, ...) or
+/// navigate to another article (bare, scheme-less slugs from backend
+/// cross-links).
+sealed class HelpLinkAction {
+  const HelpLinkAction();
+}
+
+class HelpLinkActionLaunch extends HelpLinkAction {
+  const HelpLinkActionLaunch(this.uri);
+
+  final Uri uri;
+}
+
+class HelpLinkActionNavigate extends HelpLinkAction {
+  const HelpLinkActionNavigate(this.slug);
+
+  final String slug;
+}
+
+/// Decides what a tapped markdown link href should do. Scheme-bearing hrefs
+/// (http(s):, mailto:, tel:, ...) are launched externally; scheme-less hrefs
+/// are treated as bare article slugs from backend cross-links and navigated
+/// to in-app. Pulled out as a pure function so the branch can be unit tested
+/// without mocking url_launcher — see help_article_screen_test.dart.
+HelpLinkAction decideLinkAction(String href) {
+  final uri = Uri.tryParse(href);
+  if (uri != null && uri.hasScheme) {
+    return HelpLinkActionLaunch(uri);
+  }
+  return HelpLinkActionNavigate(href);
+}
+
 /// A single help article, rendered from server-provided markdown. Pushed
 /// from HelpScreen (or another article's cross-link) via GoRouter
 /// (/help/:slug).
@@ -81,14 +114,16 @@ class _ArticleBody extends StatelessWidget {
 
   void _handleLinkTap(BuildContext context, String? href) {
     if (href == null || href.isEmpty) return;
-    if (href.startsWith('http')) {
-      launchUrl(Uri.parse(href), mode: LaunchMode.externalApplication);
-      return;
+    final action = decideLinkAction(href);
+    switch (action) {
+      case HelpLinkActionLaunch(:final uri):
+        launchUrl(uri, mode: LaunchMode.externalApplication);
+      case HelpLinkActionNavigate(:final slug):
+        // Backend cross-links use bare slugs (e.g. "finances", "get-paid") —
+        // some point at web-only articles the mobile API 404s on. The pushed
+        // screen's own error state handles that gracefully.
+        context.push('/help/$slug');
     }
-    // Backend cross-links use bare slugs (e.g. "finances", "get-paid") — some
-    // point at web-only articles the mobile API 404s on. The pushed screen's
-    // own error state handles that gracefully.
-    context.push('/help/$href');
   }
 }
 

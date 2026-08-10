@@ -72,7 +72,7 @@ class _HelpIndexList extends StatelessWidget {
             label: index.categoryLabels[category] ?? category,
           ),
           for (final article in byCategory[category]!)
-            NavRowArticle(article: article),
+            _NavRowArticle(article: article),
         ],
       ],
     );
@@ -154,8 +154,8 @@ class _CategoryHeader extends StatelessWidget {
 /// Plain article row for non-"getting started" categories. A thin wrapper
 /// around the shared NavRow so titles wrap (not ellipsize) at narrow widths —
 /// help article titles can run long and shouldn't be truncated in the index.
-class NavRowArticle extends StatelessWidget {
-  const NavRowArticle({super.key, required this.article});
+class _NavRowArticle extends StatelessWidget {
+  const _NavRowArticle({required this.article});
 
   final HelpArticle article;
 

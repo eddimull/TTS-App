@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
@@ -117,7 +118,10 @@ class _ArticleBody extends StatelessWidget {
     final action = decideLinkAction(href);
     switch (action) {
       case HelpLinkActionLaunch(:final uri):
-        launchUrl(uri, mode: LaunchMode.externalApplication);
+        unawaited(
+          launchUrl(uri, mode: LaunchMode.externalApplication)
+              .catchError((_) => false),
+        );
       case HelpLinkActionNavigate(:final slug):
         // Backend cross-links use bare slugs (e.g. "finances", "get-paid") —
         // some point at web-only articles the mobile API 404s on. The pushed

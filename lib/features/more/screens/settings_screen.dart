@@ -55,6 +55,12 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => context.push('/calendar-feed'),
           ),
           NavRow(
+            title: 'Help & Support',
+            leading: Icon(CupertinoIcons.question_circle,
+                size: 22, color: context.secondaryText),
+            onTap: () => context.push('/help'),
+          ),
+          NavRow(
             title: 'Account',
             leading: Icon(CupertinoIcons.person_crop_circle,
                 size: 22, color: context.secondaryText),

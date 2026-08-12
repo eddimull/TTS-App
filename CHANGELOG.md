@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.24.0](https://github.com/eddimull/TTS-App/compare/v1.23.0...v1.24.0) (2026-08-12)
+
+
+### Features
+
+* **help:** first-run help pointer on dashboard ([fe90309](https://github.com/eddimull/TTS-App/commit/fe90309e6add614a29c211d4bc3eb0deb11bf992))
+* **help:** help center screens, routes, settings entry ([8e1dba6](https://github.com/eddimull/TTS-App/commit/8e1dba6477a252f411c5758f527f3430311c1a48))
+* **help:** help models, endpoints, repository ([28efe3c](https://github.com/eddimull/TTS-App/commit/28efe3c8d147963c26da29cabcc84b74d290803a))
+* **help:** in-app help center with getting-started guides ([8da0f2b](https://github.com/eddimull/TTS-App/commit/8da0f2bde121b8386c2b4d6c1dad4194806bfe41))
+* **help:** riverpod providers for help content ([3ca7244](https://github.com/eddimull/TTS-App/commit/3ca7244b0a13f5d16ba9f2513b6cbcf965b7c8f0))
+
+
+### Bug Fixes
+
+* **help:** launch scheme links externally instead of misrouting as slugs ([4f89ab5](https://github.com/eddimull/TTS-App/commit/4f89ab58be257a82a6271f213b76fea7bdabb6b6))
+* **help:** make external link launch explicitly fire-and-forget ([2184697](https://github.com/eddimull/TTS-App/commit/21846977ab1e5395e3e1249a3c9f57a1f332e8ca))
+
 ## [1.23.0](https://github.com/eddimull/TTS-App/compare/v1.22.0...v1.23.0) (2026-08-05)
 
 

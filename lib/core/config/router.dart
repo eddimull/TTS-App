@@ -42,6 +42,8 @@ import '../../features/songs/screens/song_detail_screen.dart';
 import '../../features/songs/screens/song_form_screen.dart';
 import '../../features/songs/screens/song_list_screen.dart';
 import '../../features/finances/screens/finances_screen.dart';
+import '../../features/help/screens/help_article_screen.dart';
+import '../../features/help/screens/help_screen.dart';
 import '../../features/finances/payout_editor/screens/payout_configs_screen.dart';
 import '../../features/finances/payout_editor/screens/payout_flow_editor_screen.dart';
 import '../../features/more/screens/operations_screen.dart';
@@ -532,6 +534,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/stats',
         builder: (_, __) => const UserStatsScreen(),
+      ),
+      // Help center — no bottom nav, pushed from Settings screen.
+      GoRoute(
+        path: '/help',
+        builder: (_, __) => const HelpScreen(),
+      ),
+      GoRoute(
+        path: '/help/:slug',
+        builder: (_, state) => HelpArticleScreen(
+          slug: state.pathParameters['slug']!,
+        ),
       ),
       // Chat threads & new-DM picker — pushed over the Messages tab
       GoRoute(

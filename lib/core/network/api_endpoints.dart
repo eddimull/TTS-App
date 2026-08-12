@@ -326,4 +326,8 @@ class ApiEndpoints {
   static String mobileLodgingAttachment(
           int bandId, int lodgingId, int attachmentId) =>
       '/api/mobile/bands/$bandId/lodgings/$lodgingId/attachments/$attachmentId';
+
+  // ── Help Center ─────────────────────────────────────────────────────
+  static const String mobileHelp = '/api/mobile/help';
+  static String mobileHelpArticle(String slug) => '/api/mobile/help/$slug';
 }

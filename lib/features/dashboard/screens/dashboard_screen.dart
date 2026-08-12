@@ -158,6 +158,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
               const SliverToBoxAdapter(child: _BookingsMovedHint()),
+              const SliverToBoxAdapter(child: _HelpPointerHint()),
               dashboardAsync.when(
                 loading: () => const SliverFillRemaining(
                   child: Center(child: CupertinoActivityIndicator()),
@@ -723,6 +724,78 @@ class _BookingsMovedHintState extends ConsumerState<_BookingsMovedHint> {
               onPressed: () {
                 setState(() => _dismissedNow = true);
                 storage.dismissBookingsMoved();
+              },
+              child: Semantics(
+                label: 'Dismiss',
+                button: true,
+                child: Icon(CupertinoIcons.xmark,
+                    size: 16, color: context.secondaryText),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// First-run pointer to the Help Center, shown until dismissed.
+class _HelpPointerHint extends ConsumerStatefulWidget {
+  const _HelpPointerHint();
+
+  @override
+  ConsumerState<_HelpPointerHint> createState() => _HelpPointerHintState();
+}
+
+class _HelpPointerHintState extends ConsumerState<_HelpPointerHint> {
+  bool _dismissedNow = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final storage = ref.watch(hintStorageProvider).value;
+    if (storage == null || _dismissedNow || storage.helpPointerDismissed) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: CupertinoColors.secondarySystemBackground.resolveFrom(context),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(CupertinoIcons.info_circle,
+                size: 18,
+                color: CupertinoColors.activeBlue.resolveFrom(context)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'New here? The getting-started guide walks you through '
+                'bookings, setlists, and inviting your band.',
+                style: TextStyle(fontSize: 13, color: context.primaryText),
+              ),
+            ),
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(34, 34),
+              onPressed: () => context.push('/help'),
+              child: Text(
+                'Open Help',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: CupertinoColors.activeBlue.resolveFrom(context),
+                ),
+              ),
+            ),
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(34, 34),
+              onPressed: () {
+                setState(() => _dismissedNow = true);
+                storage.dismissHelpPointer();
               },
               child: Semantics(
                 label: 'Dismiss',

@@ -58,6 +58,14 @@ void main() {
             );
           },
         ),
+        GoRoute(
+          path: '/help',
+          builder: (context, state) {
+            return const CupertinoPageScaffold(
+              child: Center(child: Text('Help Stub')),
+            );
+          },
+        ),
       ],
     );
 
@@ -131,8 +139,16 @@ void main() {
     // Verify hint is visible
     expect(find.textContaining('Bookings has moved'), findsOneWidget);
 
-    // Tap the close button (xmark icon)
-    final closeButton = find.byIcon(CupertinoIcons.xmark);
+    // Tap the close button (xmark icon) on the bookings-moved hint. The
+    // help-pointer hint also renders its own xmark, so scope to the
+    // ancestor Row containing the bookings-moved text.
+    final closeButton = find.descendant(
+      of: find.ancestor(
+        of: find.textContaining('Bookings has moved'),
+        matching: find.byType(Row),
+      ),
+      matching: find.byIcon(CupertinoIcons.xmark),
+    );
     expect(closeButton, findsOneWidget);
 
     await tester.tap(closeButton);
@@ -150,5 +166,76 @@ void main() {
 
     // Hint should still be gone
     expect(find.textContaining('Bookings has moved'), findsNothing);
+  });
+
+  testWidgets('help pointer hint is visible when not dismissed', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(host(
+      prefs: prefs,
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('New here?'), findsOneWidget);
+  });
+
+  testWidgets('tapping Open Help on the help pointer navigates to /help',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(host(
+      prefs: prefs,
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Open Help'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Help Stub'), findsOneWidget);
+  });
+
+  testWidgets(
+      'tapping close button on help pointer dismisses it and persists, '
+      'independent of the bookings-moved hint', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(host(
+      prefs: prefs,
+    ));
+    await tester.pumpAndSettle();
+
+    // Both hints visible.
+    expect(find.textContaining('Bookings has moved'), findsOneWidget);
+    expect(find.textContaining('New here?'), findsOneWidget);
+
+    // Dismiss only the help-pointer hint.
+    final closeButton = find.descendant(
+      of: find.ancestor(
+        of: find.textContaining('New here?'),
+        matching: find.byType(Row),
+      ),
+      matching: find.byIcon(CupertinoIcons.xmark),
+    );
+    expect(closeButton, findsOneWidget);
+
+    await tester.tap(closeButton);
+    await tester.pumpAndSettle();
+
+    // Help pointer is gone; bookings-moved hint remains.
+    expect(find.textContaining('New here?'), findsNothing);
+    expect(find.textContaining('Bookings has moved'), findsOneWidget);
+
+    // Rebuild with a fresh provider scope but same prefs instance
+    // to verify the dismissal was persisted independently.
+    await tester.pumpWidget(host(
+      prefs: prefs,
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('New here?'), findsNothing);
+    expect(find.textContaining('Bookings has moved'), findsOneWidget);
   });
 }

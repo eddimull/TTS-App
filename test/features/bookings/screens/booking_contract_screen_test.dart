@@ -6,6 +6,17 @@ import 'package:tts_bandmate/features/bookings/data/models/booking_detail.dart';
 import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
 import 'package:tts_bandmate/features/bookings/screens/booking_contract_screen.dart';
 
+/// Test-only [BookingDetailNotifier] replacement that resolves immediately
+/// to a fixed [BookingDetail], bypassing SWR/cache/repository entirely.
+class _FixedDetailNotifier extends BookingDetailNotifier {
+  _FixedDetailNotifier(this._detail) : super((bandId: 1, bookingId: 1));
+
+  final BookingDetail _detail;
+
+  @override
+  Future<BookingDetail> build() async => _detail;
+}
+
 // Minimal BookingDetail with only the fields the contract screen reads.
 // We use status='pending' for the default branch so ContractDefaultView routes
 // to its locked (preview/history) path rather than ContractEditor, which would
@@ -41,7 +52,7 @@ Future<void> _pumpScreen(
     ProviderScope(
       overrides: [
         bookingDetailProvider
-            .overrideWith((ref, args) async => detail),
+            .overrideWith(() => _FixedDetailNotifier(detail)),
       ],
       child: const CupertinoApp(
         home: BookingContractScreen(bandId: bandId, bookingId: bookingId),

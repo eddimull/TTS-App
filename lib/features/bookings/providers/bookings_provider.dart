@@ -6,6 +6,7 @@ import '../data/models/booking_history_entry.dart';
 import '../data/models/booking_summary.dart';
 import '../data/models/contact_library_item.dart';
 import '../data/models/event_type.dart';
+import '../../../shared/cache/swr.dart';
 
 // ── Band bookings (list) ──────────────────────────────────────────────────────
 
@@ -50,11 +51,33 @@ final bandBookingsProvider = FutureProvider.family<List<BookingSummary>, BandBoo
 
 // ── Booking detail (single) ───────────────────────────────────────────────────
 
-final bookingDetailProvider = FutureProvider.family<BookingDetail,
-    ({int bandId, int bookingId})>((ref, args) async {
-  final repo = ref.watch(bookingsRepositoryProvider);
-  return repo.getBookingDetail(args.bandId, args.bookingId);
-});
+class BookingDetailNotifier extends AsyncNotifier<BookingDetail>
+    with SwrSupport<BookingDetail> {
+  BookingDetailNotifier(this._args);
+  final ({int bandId, int bookingId}) _args;
+
+  Future<({BookingDetail value, Map<String, dynamic> raw})> _fetch() async {
+    final result = await ref
+        .read(bookingsRepositoryProvider)
+        .getBookingDetailRaw(_args.bandId, _args.bookingId);
+    return (value: result.parsed, raw: result.raw);
+  }
+
+  @override
+  Future<BookingDetail> build() {
+    ref.watch(bookingsRepositoryProvider);
+    return swrBuild(
+      name: 'booking:${_args.bookingId}',
+      decode: BookingsRepository.parseBookingDetail,
+      fetch: _fetch,
+    );
+  }
+}
+
+final bookingDetailProvider = AsyncNotifierProvider.family<
+    BookingDetailNotifier, BookingDetail, ({int bandId, int bookingId})>(
+  (args) => BookingDetailNotifier(args),
+);
 
 // ── Event types ───────────────────────────────────────────────────────────────
 

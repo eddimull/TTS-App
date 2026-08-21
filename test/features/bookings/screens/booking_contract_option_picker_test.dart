@@ -48,6 +48,17 @@ class _NoopInvalidator extends CacheInvalidator {
       String? contractEnvelopeId}) {}
 }
 
+/// Test-only [BookingDetailNotifier] replacement that resolves immediately
+/// to a fixed [BookingDetail], bypassing SWR/cache/repository entirely.
+class _FixedDetailNotifier extends BookingDetailNotifier {
+  _FixedDetailNotifier(this._detail) : super((bandId: 1, bookingId: 1));
+
+  final BookingDetail _detail;
+
+  @override
+  Future<BookingDetail> build() async => _detail;
+}
+
 BookingDetail _detail({String contractOption = 'none'}) => BookingDetail(
       id: 1,
       name: 'Test Booking',
@@ -68,7 +79,7 @@ Future<_FakeRepo> _pumpNoneScreen(WidgetTester tester) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        bookingDetailProvider.overrideWith((ref, args) async => _detail()),
+        bookingDetailProvider.overrideWith(() => _FixedDetailNotifier(_detail())),
         bookingsRepositoryProvider.overrideWithValue(repo),
         cacheInvalidatorProvider.overrideWith(_NoopInvalidator.new),
       ],

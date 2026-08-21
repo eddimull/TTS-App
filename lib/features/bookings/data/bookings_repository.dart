@@ -109,14 +109,24 @@ class BookingsRepository {
     return '${d.year}-$m-$day';
   }
 
-  /// Fetches the full detail for the booking identified by [bookingId].
-  Future<BookingDetail> getBookingDetail(int bandId, int bookingId) async {
+  /// Parses the booking-detail payload. Shared by live fetches and the
+  /// offline cache so both go through identical decoding.
+  static BookingDetail parseBookingDetail(Map<String, dynamic> data) =>
+      BookingDetail.fromJson(data['booking'] as Map<String, dynamic>);
+
+  Future<BookingDetail> getBookingDetail(int bandId, int bookingId) async =>
+      (await getBookingDetailRaw(bandId, bookingId)).parsed;
+
+  /// Like [getBookingDetail] but also returns the raw response JSON so
+  /// callers can persist it verbatim (the models have no `toJson`).
+  Future<({BookingDetail parsed, Map<String, dynamic> raw})>
+      getBookingDetailRaw(int bandId, int bookingId) async {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiEndpoints.mobileBookingDetail(bandId, bookingId),
     );
 
     final data = response.data!;
-    return BookingDetail.fromJson(data['booking'] as Map<String, dynamic>);
+    return (parsed: parseBookingDetail(data), raw: data);
   }
 
   /// Create a new booking with at least one initial event.

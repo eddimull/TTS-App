@@ -46,19 +46,38 @@ class _FakeBookingsRepository extends BookingsRepository {
     return bookings;
   }
 
+  BookingDetail _detail(int bookingId) => BookingDetail(
+        id: bookingId,
+        name: 'Test Booking',
+        startDate: '2026-09-01',
+        endDate: '2026-09-01',
+        eventCount: 1,
+        isMultiEvent: false,
+        isPaid: false,
+        contacts: const [],
+        events: const [],
+      );
+
   @override
   Future<BookingDetail> getBookingDetail(int bandId, int bookingId) async {
     getBookingDetailCalls++;
-    return BookingDetail(
-      id: bookingId,
-      name: 'Test Booking',
-      startDate: '2026-09-01',
-      endDate: '2026-09-01',
-      eventCount: 1,
-      isMultiEvent: false,
-      isPaid: false,
-      contacts: const [],
-      events: const [],
+    return _detail(bookingId);
+  }
+
+  @override
+  Future<({BookingDetail parsed, Map<String, dynamic> raw})>
+      getBookingDetailRaw(int bandId, int bookingId) async {
+    getBookingDetailCalls++;
+    return (
+      parsed: _detail(bookingId),
+      raw: {
+        'booking': {
+          'id': bookingId,
+          'name': 'Test Booking',
+          'contacts': <Map<String, dynamic>>[],
+          'events': <Map<String, dynamic>>[],
+        },
+      },
     );
   }
 }

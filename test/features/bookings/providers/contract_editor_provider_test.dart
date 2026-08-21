@@ -72,6 +72,17 @@ BookingDetail _detailWithTerms(List<ContractTerm> terms) {
   );
 }
 
+/// Test-only [BookingDetailNotifier] replacement that resolves immediately
+/// to a fixed [BookingDetail], bypassing SWR/cache/repository entirely.
+class _FixedDetailNotifier extends BookingDetailNotifier {
+  _FixedDetailNotifier(this._detail) : super((bandId: 1, bookingId: 1));
+
+  final BookingDetail _detail;
+
+  @override
+  Future<BookingDetail> build() async => _detail;
+}
+
 BookingDetail _detailWithOverride(String? override) {
   return BookingDetail(
     id: 1,
@@ -142,7 +153,7 @@ void main() {
       final container = ProviderContainer(overrides: [
         bookingsRepositoryProvider.overrideWithValue(repo),
         bookingDetailProvider.overrideWith(
-          (ref, args) async => _detailWithTerms(seededTerms),
+          () => _FixedDetailNotifier(_detailWithTerms(seededTerms)),
         ),
       ]);
       addTearDown(container.dispose);
@@ -179,7 +190,7 @@ void main() {
       final container = ProviderContainer(overrides: [
         bookingsRepositoryProvider.overrideWithValue(repo),
         bookingDetailProvider.overrideWith(
-          (ref, args) async => _detailWithOverride('The City of Scott'),
+          () => _FixedDetailNotifier(_detailWithOverride('The City of Scott')),
         ),
       ]);
       addTearDown(container.dispose);
@@ -195,9 +206,9 @@ void main() {
       final container = ProviderContainer(overrides: [
         bookingsRepositoryProvider.overrideWithValue(repo),
         bookingDetailProvider.overrideWith(
-          (ref, args) async => _detailWithTerms(
+          () => _FixedDetailNotifier(_detailWithTerms(
             [const ContractTerm(id: -1, title: 'A', content: 'B')],
-          ),
+          )),
         ),
       ]);
       addTearDown(container.dispose);
@@ -220,7 +231,7 @@ void main() {
       final container = ProviderContainer(overrides: [
         bookingsRepositoryProvider.overrideWithValue(repo),
         bookingDetailProvider.overrideWith(
-          (ref, args) async => _detailWithOverride('The City of Scott'),
+          () => _FixedDetailNotifier(_detailWithOverride('The City of Scott')),
         ),
       ]);
       addTearDown(container.dispose);

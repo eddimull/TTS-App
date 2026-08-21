@@ -178,11 +178,6 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
 
   static const String _cacheName = 'dashboard';
 
-  String? _cacheKey() {
-    final bandId = ref.read(selectedBandProvider).value;
-    return bandId == null ? null : '$bandId:$_cacheName';
-  }
-
   bool get _isOffline => ref.read(connectivityProvider).value == false;
 
   @override
@@ -244,6 +239,13 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
   /// the attempt entirely. Only from an empty/error state does it show a
   /// loading spinner (the explicit user retry path).
   Future<void> refresh() async {
+    // Capture the band (and its cache key) BEFORE the fetch: if the user
+    // switches bands mid-flight, we must not write band A's payload under
+    // band B's key nor clobber band B's state with it.
+    final bandIdAtStart = ref.read(selectedBandProvider).value;
+    final keyAtStart =
+        bandIdAtStart == null ? null : '$bandIdAtStart:$_cacheName';
+
     final hadValue = state.hasValue;
     if (!hadValue) state = const AsyncValue.loading();
     try {
@@ -255,9 +257,13 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       final repo = ref.read(dashboardRepositoryProvider);
       final result = await repo.getDashboardRaw(to: _ymd(initialTo));
       if (!ref.mounted) return;
-      final key = _cacheKey();
-      if (key != null) {
-        ref.read(apiCacheStorageProvider).write(key, result.raw);
+      // Abort entirely — no cache write, no state assignment — if the
+      // selected band changed while the fetch was in flight. Otherwise band
+      // A's payload would be written under band B's cache key and clobber
+      // band B's on-screen state, persisting the poisoning across restarts.
+      if (ref.read(selectedBandProvider).value != bandIdAtStart) return;
+      if (keyAtStart != null) {
+        ref.read(apiCacheStorageProvider).write(keyAtStart, result.raw);
       }
       state = AsyncValue.data(DashboardState(
         events: result.events,

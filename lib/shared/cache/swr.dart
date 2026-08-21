@@ -73,12 +73,22 @@ mixin SwrSupport<T> on AsyncNotifier<T> {
     final key = _swrKey(name);
     final cached = key == null ? null : ref.read(apiCacheStorageProvider).read(key);
     if (cached != null) {
-      // Defer the background refresh until after the framework commits this
-      // build's returned value — otherwise revalidate's `state = …` lands
-      // first and is immediately overwritten by build's own result.
-      // ignore: unawaited_futures
-      Future<void>(() => swrRevalidate(name: name, fetch: fetch));
-      return decode(cached.payload);
+      try {
+        final decoded = decode(cached.payload);
+        // Defer the background refresh until after the framework commits
+        // this build's returned value — otherwise revalidate's `state = …`
+        // lands first and is immediately overwritten by build's own result.
+        // ignore: unawaited_futures
+        Future<void>(() => swrRevalidate(name: name, fetch: fetch));
+        return decoded;
+      } catch (_) {
+        // Corrupt/undecodable cached payload (e.g. a stale shape from before
+        // a schema change): drop the bad entry and fall through to the cold
+        // path below instead of permanently erroring. Do NOT schedule a
+        // revalidate for this failed entry — the cold-path fetch already
+        // covers it.
+        ref.read(apiCacheStorageProvider).remove(key!);
+      }
     }
 
     // Cold path. Offline with nothing cached: fail fast with a friendly
@@ -91,19 +101,32 @@ mixin SwrSupport<T> on AsyncNotifier<T> {
 
   /// Background revalidation, also used as the non-destructive `refresh()`.
   /// Keeps existing data on ANY failure; only surfaces an error when there is
-  /// nothing on screen. Never emits `AsyncLoading`.
+  /// nothing on screen. Never emits `AsyncLoading` when data is present.
   Future<void> swrRevalidate({
     required String name,
     required Future<({T value, Map<String, dynamic> raw})> Function() fetch,
   }) async {
+    // The deferred `Future<void>(...)` scheduling in `swrBuild` can fire
+    // after this notifier has been disposed (e.g. the screen navigated away
+    // before the microtask ran) — guard at entry, before touching `state`.
+    if (!ref.mounted) return;
+
+    // Capture the band (and its cache key) BEFORE the fetch: if the user
+    // switches bands mid-flight, band A's payload must never be written
+    // under band B's key nor clobber band B's on-screen state.
+    final keyAtStart = _swrKey(name);
+
     if (_isOffline && state.hasValue) return; // keep data, skip the attempt
+    if (!state.hasValue) state = const AsyncValue.loading();
     try {
       if (_isOffline) throw const OfflineException();
       final result = await fetch();
       if (!ref.mounted) return;
-      final key = _swrKey(name);
-      if (key != null) {
-        ref.read(apiCacheStorageProvider).write(key, result.raw);
+      // Abort entirely — no cache write, no state assignment — if the
+      // selected band changed while the fetch was in flight.
+      if (_swrKey(name) != keyAtStart) return;
+      if (keyAtStart != null) {
+        ref.read(apiCacheStorageProvider).write(keyAtStart, result.raw);
       }
       state = AsyncData(result.value);
     } catch (e, st) {

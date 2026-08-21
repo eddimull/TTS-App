@@ -103,6 +103,22 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     await storage.writeBands(jsonEncode([for (final b in bands) b.toJson()]));
   }
 
+  /// Drops the offline API and bookings disk caches on a successful fresh
+  /// login/social login. A 401-forced sign-out (Dio's interceptor routes
+  /// straight to /login without calling [logout]) and a bare token-storage
+  /// clear both bypass logout()'s cache wipe, so a different user signing in
+  /// afterwards on this device would otherwise warm-paint the previous
+  /// user's cached data. Login/social login always requires network, so the
+  /// caches repopulate immediately — mirrors the logout() wipe, best-effort.
+  void _clearOfflineCachesForNewSession() {
+    try {
+      ref.read(apiCacheStorageProvider).clearAll();
+    } catch (_) {}
+    try {
+      ref.read(bookingsCacheStorageProvider).clear();
+    } catch (_) {}
+  }
+
   /// Rebuild an [AuthAuthenticated] from the cached user/bands JSON, or null
   /// when nothing usable is cached (never written, or corrupt).
   Future<AuthAuthenticated?> _restoreCachedSession(SecureStorage storage) async {
@@ -135,6 +151,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       final result = await _repository.login(email, password, 'tts_bandmate_app');
       await storage.writeToken(result.token);
       await _cacheSession(storage, result.user, result.bands);
+      _clearOfflineCachesForNewSession();
       return AuthAuthenticated(user: result.user, bands: result.bands);
     });
 
@@ -183,6 +200,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       );
       await storage.writeToken(result.token);
       await _cacheSession(storage, result.user, result.bands);
+      _clearOfflineCachesForNewSession();
       return AuthAuthenticated(user: result.user, bands: result.bands);
     });
 

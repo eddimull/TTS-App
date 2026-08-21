@@ -24,6 +24,12 @@ class ApiCacheStorage {
 
   final SharedPreferences _prefs;
 
+  // Bump this version suffix whenever a cached payload's SHAPE changes (a
+  // model's fromJson expects new/renamed/restructured fields) — old entries
+  // under a stale prefix are simply never read again rather than crashing
+  // decode(). The SWR/dashboard cold-path fallback (swrBuild's decode()
+  // try/catch, and the read()-level try/catch below) softens an unbumped
+  // mismatch too, but bumping is the cheap, deliberate fix.
   static const String _prefix = 'api_cache_v1:';
 
   /// Returns the cached entry, or null if absent or unparseable. A malformed

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,6 +16,52 @@ import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 class _FakeBandNotifier extends SelectedBandNotifier {
   @override
   Future<int?> build() async => 7;
+}
+
+/// A [SelectedBandNotifier] whose value can be changed mid-test via
+/// [switchTo] — used to simulate a band switch that lands WHILE a
+/// `refresh()` fetch is in flight.
+class _SwitchableBandNotifier extends SelectedBandNotifier {
+  _SwitchableBandNotifier(this._initial);
+  final int _initial;
+
+  @override
+  Future<int?> build() async => _initial;
+
+  void switchTo(int? bandId) {
+    state = AsyncValue.data(bandId);
+  }
+}
+
+/// A repo whose response only resolves once [gate] completes — lets a test
+/// switch bands after `refresh()` has captured the pre-fetch band but before
+/// the fetch itself resolves.
+class _GatedDashboardRepo implements DashboardRepository {
+  _GatedDashboardRepo(this.response, this.gate);
+
+  final Map<String, dynamic> response;
+  final Completer<void> gate;
+  int calls = 0;
+
+  @override
+  Future<
+      ({
+        List<EventSummary> events,
+        List<UpcomingChart> upcomingCharts,
+        Map<String, dynamic> raw
+      })> getDashboardRaw({String? to}) async {
+    calls++;
+    await gate.future;
+    final parsed = DashboardRepository.parseDashboard(response);
+    return (
+      events: parsed.events,
+      upcomingCharts: parsed.upcomingCharts,
+      raw: response
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 Map<String, dynamic> _dashboardJson(String title) => {
@@ -154,5 +202,71 @@ void main() {
     await _flushMicrotasks();
     expect(gotError, isTrue);
     expect(repo.calls, 0); // failed fast, no timeout wait
+  });
+
+  test(
+      'refresh mid-flight band switch writes nothing under either band\'s key '
+      'and does not clobber the new band\'s state', () async {
+    SharedPreferences.setMockInitialValues({});
+    storage = ApiCacheStorage(await SharedPreferences.getInstance());
+    final gate = Completer<void>();
+    final gatedRepo =
+        _GatedDashboardRepo(_dashboardJson('Band A payload'), gate);
+
+    final container = ProviderContainer(overrides: [
+      apiCacheStorageProvider.overrideWithValue(storage),
+      selectedBandProvider.overrideWith(() => _SwitchableBandNotifier(7)),
+      connectivityProvider.overrideWithValue(const AsyncValue.data(true)),
+      dashboardRepositoryProvider.overrideWithValue(gatedRepo),
+    ]);
+    addTearDown(container.dispose);
+
+    // Seed band 7's cache too, so build() takes the warm path (instant paint
+    // from disk) rather than itself awaiting the gated repo — isolating the
+    // in-flight switch to the refresh() call under test, exactly like a real
+    // screen's deferred background refresh racing a band switch.
+    storage.write('7:dashboard', _dashboardJson('Band A cached'));
+    // Seed band 8's cache with its own data so we can prove it survives
+    // untouched by band A's in-flight fetch.
+    storage.write('8:dashboard', _dashboardJson('Band B cached'));
+
+    await container.read(selectedBandProvider.future);
+    await _flushMicrotasks();
+
+    final first = await container.read(dashboardProvider.future);
+    expect(first.events.single.title, 'Band A cached');
+    // build()'s warm path schedules a deferred refresh() via
+    // `Future<void>(refresh)` — let it start and suspend on `gate.future`.
+    await _flushMicrotasks();
+    expect(gatedRepo.calls, 1);
+
+    // Switch bands WHILE the fetch is in flight — mimics the user picking a
+    // different band mid-refresh.
+    final bandNotifier =
+        container.read(selectedBandProvider.notifier) as _SwitchableBandNotifier;
+    bandNotifier.switchTo(8);
+    await _flushMicrotasks();
+
+    // Now let the gated fetch resolve with band A's payload.
+    gate.complete();
+    await _flushMicrotasks();
+    await _flushMicrotasks();
+
+    // Band A's payload must NOT have overwritten band 7's original cache
+    // entry, must NOT have been written under band 8's key, and band 8's
+    // pre-existing cache must be completely untouched.
+    expect(storage.read('7:dashboard')!.payload['events'][0]['title'],
+        'Band A cached',
+        reason: 'the in-flight fetch must not overwrite band 7\'s cache '
+            'entry after the switch away from it');
+    expect(storage.read('8:dashboard')!.payload['events'][0]['title'],
+        'Band B cached',
+        reason: "band B's cache must survive untouched — band A's in-flight "
+            'payload must never be written under it');
+    // Band 8's on-screen state (dashboardProvider is not band-family-scoped)
+    // must not have been clobbered with band A's payload either.
+    expect(container.read(dashboardProvider).value!.events.single.title,
+        'Band A cached',
+        reason: 'aborted refresh must leave state exactly as it was');
   });
 }

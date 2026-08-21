@@ -65,11 +65,16 @@ Generalizes `BookingsCacheStorage`. Backed by shared_preferences.
 - Key: `cache_v1:<bandId>:<logical-name>`
   (`dashboard`, `events:<params>`, `event:<key>`, `setlist_session:<eventKey>`,
   `booking:<id>`).
-- Value: `{"savedAt": "<ISO8601>", "payload": <raw JSON>}`.
-- API: `Future<CachedEntry?> read(key)`, `Future<void> write(key, json)`,
-  `Future<void> clearBand(bandId)`, `Future<void> clearAll()`.
-- `clearBand`/`clearAll` are called on band switch and logout so a user never
-  sees another band's (or another user's) cached data.
+- Value: `{"savedAt": <epoch millis>, "payload": <raw JSON>}` — `savedAt` is
+  `DateTime.now().millisecondsSinceEpoch`, not an ISO8601 string.
+- API: `CachedEntry? read(key)`, `void write(key, json)`, `void remove(key)`,
+  `void clearAll()`.
+- There is no `clearBand`: a band switch keeps every band's cache on disk —
+  keys are band-scoped (`<bandId>:<logical-name>`), so one band's entries can
+  never collide with or be overwritten by another's. `clearAll()` is called
+  on logout AND on a successful fresh login/social login (a different user
+  signing in on the same device must never warm-paint the previous user's
+  data — logout alone doesn't cover a 401-forced sign-out that skips it).
 
 ### 2. `lib/shared/cache/swr.dart` — reusable SWR helper
 

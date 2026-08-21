@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import '../../../core/providers/core_providers.dart';
 import '../../../core/storage/route_storage.dart';
+import '../../../shared/cache/api_cache_storage.dart';
 import '../../bookings/data/bookings_cache_storage.dart';
 import '../../chat/providers/conversations_provider.dart';
 import '../../chat/providers/topic_thread_provider.dart';
@@ -267,6 +268,12 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     // device never sees the previous user's bookings.
     try {
       ref.read(bookingsCacheStorageProvider).clear();
+    } catch (_) {}
+
+    // Drop the offline API cache so a different user signing in on this
+    // device never sees the previous user's data.
+    try {
+      ref.read(apiCacheStorageProvider).clearAll();
     } catch (_) {}
 
     // Drop the in-memory chat caches too — chatConversationsProvider and

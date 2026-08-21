@@ -1,8 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tts_bandmate/features/bookings/data/bookings_cache_storage.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
+import 'package:tts_bandmate/shared/cache/api_cache_storage.dart';
 import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
+import 'package:tts_bandmate/shared/providers/connectivity_provider.dart';
+import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 
 /// Records whether the bookings disk cache was cleared.
 class _RecordingCache implements BookingsCacheStorage {
@@ -31,8 +35,34 @@ class _NoopDashboardNotifier extends DashboardNotifier {
   Future<void> refresh() async {}
 }
 
+/// Fake band selection so `_removeCache`'s `selectedBandProvider` read
+/// resolves to band 7 synchronously, matching the `7:...` cache keys used
+/// throughout this file.
+class _FakeBandNotifier extends SelectedBandNotifier {
+  @override
+  Future<int?> build() async => 7;
+}
+
 void main() {
-  test('onBookingChanged clears the bookings disk cache', () {
+  late ApiCacheStorage storage;
+
+  Future<ProviderContainer> makeContainer() async {
+    SharedPreferences.setMockInitialValues({});
+    storage = ApiCacheStorage(await SharedPreferences.getInstance());
+    final cache = _RecordingCache();
+    final container = ProviderContainer(overrides: [
+      bookingsCacheStorageProvider.overrideWithValue(cache),
+      dashboardProvider.overrideWith(_NoopDashboardNotifier.new),
+      apiCacheStorageProvider.overrideWithValue(storage),
+      selectedBandProvider.overrideWith(_FakeBandNotifier.new),
+      connectivityProvider.overrideWithValue(const AsyncValue.data(true)),
+    ]);
+    addTearDown(container.dispose);
+    await container.read(selectedBandProvider.future);
+    return container;
+  }
+
+  test('onBookingChanged clears the bookings disk cache', () async {
     final cache = _RecordingCache();
     final container = ProviderContainer(overrides: [
       bookingsCacheStorageProvider.overrideWithValue(cache),
@@ -47,5 +77,29 @@ void main() {
     // The disk cache must be dropped so the window provider's rebuild takes the
     // cold path (fresh fetch) rather than painting stale pre-mutation data.
     expect(cache.clearCount, 1);
+  });
+
+  test('onEventChanged drops the event cache entry before invalidating',
+      () async {
+    final container = await makeContainer();
+    storage.write('7:event:evt-1', {
+      'event': {'id': 1}
+    });
+
+    container.read(cacheInvalidatorProvider).onEventChanged(eventKey: 'evt-1');
+
+    expect(storage.read('7:event:evt-1'), isNull);
+  });
+
+  test('onBookingDetailChanged drops the booking cache entry', () async {
+    final container = await makeContainer();
+    storage.write('7:booking:42', {
+      'booking': {'id': 42}
+    });
+
+    container.read(cacheInvalidatorProvider).onBookingDetailChanged(
+        bandId: 7, bookingId: 42);
+
+    expect(storage.read('7:booking:42'), isNull);
   });
 }

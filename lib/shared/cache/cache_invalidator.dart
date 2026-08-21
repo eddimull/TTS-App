@@ -8,6 +8,8 @@ import '../../features/bookings/providers/contract_history_provider.dart';
 import '../../features/dashboard/providers/dashboard_provider.dart';
 import '../../features/events/providers/events_provider.dart';
 import '../../features/rehearsals/providers/rehearsals_provider.dart';
+import '../../shared/providers/selected_band_provider.dart';
+import 'api_cache_storage.dart';
 
 /// Single source of truth for cache invalidation after server-side mutations.
 ///
@@ -31,6 +33,7 @@ class CacheInvalidator {
   void onBookingChanged({required int bandId, int? bookingId}) {
     _invalidateBookingCollections(bandId);
     if (bookingId != null) {
+      _removeCache('booking:$bookingId');
       _ref.invalidate(
         bookingDetailProvider((bandId: bandId, bookingId: bookingId)),
       );
@@ -41,6 +44,7 @@ class CacheInvalidator {
   /// in case any screen still references it during navigation teardown.
   void onBookingDeleted({required int bandId, required int bookingId}) {
     _invalidateBookingCollections(bandId);
+    _removeCache('booking:$bookingId');
     _ref.invalidate(
       bookingDetailProvider((bandId: bandId, bookingId: bookingId)),
     );
@@ -58,6 +62,7 @@ class CacheInvalidator {
     required int bookingId,
     String? contractEnvelopeId,
   }) {
+    _removeCache('booking:$bookingId');
     _ref.invalidate(
       bookingDetailProvider((bandId: bandId, bookingId: bookingId)),
     );
@@ -76,10 +81,20 @@ class CacheInvalidator {
   /// Refreshes the booking's detail cache and the band's bookings list
   /// (the list subtitle / event count depend on the events).
   void onBookingEventsChanged({required int bandId, required int bookingId}) {
+    _removeCache('booking:$bookingId');
     _ref.invalidate(
       bookingDetailProvider((bandId: bandId, bookingId: bookingId)),
     );
     _invalidateBookingCollections(bandId);
+  }
+
+  /// Drops one band-scoped `ApiCacheStorage` entry so the next provider
+  /// rebuild takes the cold path instead of warm-painting pre-mutation data
+  /// (same reasoning as the `bookingsCacheStorageProvider.clear()` below).
+  void _removeCache(String name) {
+    final bandId = _ref.read(selectedBandProvider).value;
+    if (bandId == null) return;
+    _ref.read(apiCacheStorageProvider).remove('$bandId:$name');
   }
 
   void _invalidateBookingCollections(int bandId) {
@@ -111,6 +126,7 @@ class CacheInvalidator {
   // ── Events ──────────────────────────────────────────────────────────────────
 
   void onEventChanged({required String eventKey}) {
+    _removeCache('event:$eventKey');
     _ref.invalidate(eventDetailProvider(eventKey));
     _ref.read(dashboardProvider.notifier).refresh();
   }
@@ -124,6 +140,20 @@ class CacheInvalidator {
     if (eventKey != null) {
       _ref.invalidate(rehearsalDetailByKeyProvider(eventKey));
     }
+  }
+
+  // ── Connectivity ────────────────────────────────────────────────────────────
+
+  /// Call on the offline→online edge (see `app_scaffold.dart`). Revalidates
+  /// the offline-cached providers so stale data refreshes without user
+  /// action. Every target warm-paints from cache during rebuild, so this
+  /// never blanks a screen.
+  void onReconnected() {
+    _ref.read(dashboardProvider.notifier).refresh();
+    _ref.invalidate(bandEventsProvider);
+    _ref.invalidate(eventDetailProvider);
+    _ref.invalidate(bookingDetailProvider);
+    _ref.invalidate(bookingsWindowProvider);
   }
 }
 

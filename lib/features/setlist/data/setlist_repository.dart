@@ -10,11 +10,15 @@ class SetlistRepository {
 
   // ── Session lifecycle ──────────────────────────────────────────────────────
 
-  Future<({LiveSession? session, List<BandSong> songs, bool isCaptain, bool canWrite, int currentUserId})>
-      getSession(String eventKey) async {
-    final resp = await _dio.get('/api/mobile/setlist/events/$eventKey/session');
-    final data = resp.data as Map<String, dynamic>;
-
+  /// Parses the session payload. Shared by live fetches and the offline
+  /// cache so both go through identical decoding.
+  static ({
+    LiveSession? session,
+    List<BandSong> songs,
+    bool isCaptain,
+    bool canWrite,
+    int currentUserId
+  }) parseSession(Map<String, dynamic> data) {
     final sessionJson = data['session'] as Map<String, dynamic>?;
     final songs = (data['songs'] as List<dynamic>? ?? [])
         .map((e) => BandSong.fromJson(e as Map<String, dynamic>))
@@ -26,6 +30,42 @@ class SetlistRepository {
       isCaptain: data['is_captain'] as bool? ?? false,
       canWrite: data['can_write'] as bool? ?? false,
       currentUserId: data['current_user_id'] as int,
+    );
+  }
+
+  Future<({LiveSession? session, List<BandSong> songs, bool isCaptain, bool canWrite, int currentUserId})>
+      getSession(String eventKey) async {
+    final result = await getSessionRaw(eventKey);
+    return (
+      session: result.session,
+      songs: result.songs,
+      isCaptain: result.isCaptain,
+      canWrite: result.canWrite,
+      currentUserId: result.currentUserId,
+    );
+  }
+
+  /// Like [getSession] but also returns the raw response JSON so callers can
+  /// persist it verbatim (the models have no `toJson`).
+  Future<
+      ({
+        LiveSession? session,
+        List<BandSong> songs,
+        bool isCaptain,
+        bool canWrite,
+        int currentUserId,
+        Map<String, dynamic> raw
+      })> getSessionRaw(String eventKey) async {
+    final resp = await _dio.get('/api/mobile/setlist/events/$eventKey/session');
+    final data = resp.data as Map<String, dynamic>;
+    final parsed = parseSession(data);
+    return (
+      session: parsed.session,
+      songs: parsed.songs,
+      isCaptain: parsed.isCaptain,
+      canWrite: parsed.canWrite,
+      currentUserId: parsed.currentUserId,
+      raw: data
     );
   }
 

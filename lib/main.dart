@@ -14,6 +14,7 @@ import 'core/storage/hint_storage.dart';
 import 'core/storage/route_storage.dart';
 import 'features/bookings/data/bookings_cache_storage.dart';
 import 'features/media/data/upload_queue_storage.dart';
+import 'shared/cache/api_cache_storage.dart';
 import 'features/notifications/data/push_payload.dart';
 import 'firebase_options.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
@@ -139,6 +140,7 @@ Future<void> main() async {
   final routeStorage = RouteStorage(prefs);
   final hintStorage = HintStorage(prefs);
   final bookingsCacheStorage = BookingsCacheStorage(prefs);
+  final apiCacheStorage = ApiCacheStorage(prefs);
   final uploadQueueStorage = UploadQueueStorage(prefs);
   final initialLocation = _resolveInitialLocation(routeStorage);
 
@@ -173,6 +175,7 @@ Future<void> main() async {
           routeStorageProvider.overrideWith((_) async => routeStorage),
           hintStorageProvider.overrideWithValue(AsyncValue.data(hintStorage)),
           bookingsCacheStorageProvider.overrideWithValue(bookingsCacheStorage),
+          apiCacheStorageProvider.overrideWithValue(apiCacheStorage),
           uploadQueueStorageProvider.overrideWithValue(uploadQueueStorage),
           initialLocationProvider.overrideWithValue(initialLocation),
         ],

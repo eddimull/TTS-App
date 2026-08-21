@@ -6,6 +6,7 @@ import '../data/models/live_session.dart';
 import '../data/models/queue_entry.dart';
 import '../providers/live_session_provider.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
+import 'package:tts_bandmate/shared/providers/connectivity_provider.dart';
 
 class LiveSessionScreen extends ConsumerStatefulWidget {
   const LiveSessionScreen({super.key, required this.eventKey});
@@ -28,6 +29,19 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(liveSessionProvider(widget.eventKey));
+
+    // Reconnect revalidation: after the offline cached fallback (error
+    // cleared, controls disabled — see LiveSessionNotifier.load's catch
+    // branch), nothing re-fetches on its own when connectivity returns. Mirror
+    // the offline→online edge detection in AppScaffold's connectivityProvider
+    // listener so the captain regains write access without leaving the screen.
+    ref.listen(connectivityProvider, (previous, next) {
+      final wasOffline = previous?.value == false;
+      final isOnline = next.value == true;
+      if (wasOffline && isOnline) {
+        ref.read(liveSessionProvider(widget.eventKey).notifier).load();
+      }
+    });
 
     if (state.isLoading) {
       return const CupertinoPageScaffold(

@@ -2,6 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/dashboard_repository.dart';
 import '../data/models/upcoming_chart.dart';
 import '../../events/data/models/event_summary.dart';
+import '../../../shared/cache/api_cache_storage.dart';
+import '../../../shared/cache/swr.dart';
+import '../../../shared/providers/connectivity_provider.dart';
 import '../../../shared/providers/selected_band_provider.dart';
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -173,6 +176,10 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
   static DateTime _initialTo() => _dateOnly(
       DateTime.now().add(const Duration(days: _initialForwardWindowDays)));
 
+  static const String _cacheName = 'dashboard';
+
+  bool get _isOffline => ref.read(connectivityProvider).value == false;
+
   @override
   Future<DashboardState> build() async {
     final initialFrom = _dateOnly(
@@ -193,7 +200,32 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     }
 
     final repo = ref.watch(dashboardRepositoryProvider);
-    final result = await repo.getDashboard(to: _ymd(initialTo));
+    final cache = ref.read(apiCacheStorageProvider);
+
+    final cached = cache.read('$bandId:$_cacheName');
+    if (cached != null) {
+      // Instant paint from disk, then refresh in the background. Watermarks
+      // are computed fresh from now — the cached events fill whatever slice
+      // of the window they cover until revalidation lands.
+      final parsed = DashboardRepository.parseDashboard(cached.payload);
+      // Defer the background refresh until after the framework commits this
+      // build's returned value — otherwise refresh's `state = …` lands first
+      // and is immediately overwritten by build's own result.
+      // ignore: unawaited_futures
+      Future<void>(refresh);
+      return DashboardState(
+        events: parsed.events,
+        upcomingCharts: parsed.upcomingCharts,
+        loadedFrom: initialFrom,
+        loadedTo: initialTo,
+      );
+    }
+
+    // Cold path. Offline with nothing cached: fail fast with a friendly
+    // error instead of waiting out the connect timeout.
+    if (_isOffline) throw const OfflineException();
+    final result = await repo.getDashboardRaw(to: _ymd(initialTo));
+    cache.write('$bandId:$_cacheName', result.raw);
     return DashboardState(
       events: result.events,
       upcomingCharts: result.upcomingCharts,
@@ -202,22 +234,50 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
     );
   }
 
-  /// Re-fetches the dashboard from the server.
+  /// Re-fetches the dashboard from the server, in place. NEVER discards
+  /// on-screen data: with data present, a failure is silent and offline skips
+  /// the attempt entirely. Only from an empty/error state does it show a
+  /// loading spinner (the explicit user retry path).
   Future<void> refresh() async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
+    // Capture the band (and its cache key) BEFORE the fetch: if the user
+    // switches bands mid-flight, we must not write band A's payload under
+    // band B's key nor clobber band B's state with it.
+    final bandIdAtStart = ref.read(selectedBandProvider).value;
+    final keyAtStart =
+        bandIdAtStart == null ? null : '$bandIdAtStart:$_cacheName';
+
+    final hadValue = state.hasValue;
+    if (!hadValue) state = const AsyncValue.loading();
+    try {
+      if (_isOffline) {
+        if (hadValue) return; // keep data, skip the attempt
+        throw const OfflineException();
+      }
       final initialTo = _initialTo();
       final repo = ref.read(dashboardRepositoryProvider);
-      final result = await repo.getDashboard(to: _ymd(initialTo));
-      return DashboardState(
+      final result = await repo.getDashboardRaw(to: _ymd(initialTo));
+      if (!ref.mounted) return;
+      // Abort entirely — no cache write, no state assignment — if the
+      // selected band changed while the fetch was in flight. Otherwise band
+      // A's payload would be written under band B's cache key and clobber
+      // band B's on-screen state, persisting the poisoning across restarts.
+      if (ref.read(selectedBandProvider).value != bandIdAtStart) return;
+      if (keyAtStart != null) {
+        ref.read(apiCacheStorageProvider).write(keyAtStart, result.raw);
+      }
+      state = AsyncValue.data(DashboardState(
         events: result.events,
         upcomingCharts: result.upcomingCharts,
         loadedFrom: _dateOnly(
           DateTime.now().subtract(const Duration(days: _initialPastWindowDays)),
         ),
         loadedTo: initialTo,
-      );
-    });
+      ));
+    } catch (e, st) {
+      if (!ref.mounted) return;
+      if (state.hasValue) return; // never discard on-screen data
+      state = AsyncValue.error(e, st);
+    }
   }
 
   /// Fetches the next-older 30-day window of events and merges them into the

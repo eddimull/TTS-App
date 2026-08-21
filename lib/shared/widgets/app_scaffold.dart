@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../cache/cache_invalidator.dart';
 import '../providers/connectivity_provider.dart';
 import '../providers/band_realtime_provider.dart';
 import '../providers/user_realtime_provider.dart';
@@ -135,6 +136,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       final wasOnline = previous?.value ?? true;
       final isOnline = next.value ?? true;
       if (!wasOnline && isOnline) {
+        ref.read(cacheInvalidatorProvider).onReconnected();
         setState(() => _showBackOnline = true);
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted) setState(() => _showBackOnline = false);

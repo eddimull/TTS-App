@@ -9,11 +9,15 @@ import 'package:tts_bandmate/features/auth/data/models/auth_user.dart';
 import 'package:tts_bandmate/features/auth/data/models/band_summary.dart';
 import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
 import 'package:tts_bandmate/core/network/api_client.dart';
+import 'package:tts_bandmate/core/network/api_endpoints.dart';
+import 'package:tts_bandmate/features/auth/data/social_sign_in_service.dart';
+import 'package:tts_bandmate/features/auth/providers/social_sign_in_provider.dart';
 import 'package:tts_bandmate/features/bookings/data/bookings_cache_storage.dart';
 import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
 import 'package:tts_bandmate/features/chat/providers/conversations_provider.dart';
 import 'package:tts_bandmate/features/chat/providers/topic_thread_provider.dart';
 import 'package:tts_bandmate/features/notifications/providers/notifications_provider.dart';
+import 'package:tts_bandmate/shared/cache/api_cache_storage.dart';
 
 import 'helpers/test_harness.dart' show StubAdapter, json;
 
@@ -82,6 +86,17 @@ class RecordingPushRegistrar extends PushRegistrar {
   }
 }
 
+/// Returns a fixed credential (or null for a cancelled sheet) instead of
+/// invoking the real native social sign-in flow.
+class _FakeSocialSignIn implements SocialSignInService {
+  _FakeSocialSignIn(this.credential);
+  final SocialCredential? credential;
+
+  @override
+  Future<SocialCredential?> signIn(SocialProvider provider) async =>
+      credential;
+}
+
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const _fakeUser = AuthUser(id: 1, name: 'Eddie', email: 'eddie@example.com');
@@ -97,12 +112,14 @@ void main() {
 
   late RouteStorage fakeRouteStorage;
   late BookingsCacheStorage fakeBookingsCache;
+  late ApiCacheStorage fakeApiCache;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     fakeRouteStorage = RouteStorage(prefs);
     fakeBookingsCache = BookingsCacheStorage(prefs);
+    fakeApiCache = ApiCacheStorage(prefs);
   });
 
   group('AuthNotifier', () {
@@ -120,6 +137,7 @@ void main() {
             (ref) async => fakeRouteStorage,
           ),
           bookingsCacheStorageProvider.overrideWithValue(fakeBookingsCache),
+          apiCacheStorageProvider.overrideWithValue(fakeApiCache),
         ],
       );
     }
@@ -406,6 +424,122 @@ void main() {
         expect(topicCalls, 2,
             reason: 'topicThreadProvider must refetch after logout');
         expect(afterLogoutConversations.single.title, 'refetched');
+      },
+    );
+
+    test(
+      'test_login_clears_both_offline_caches_so_a_different_user_never_'
+      'warm_paints_the_previous_users_data',
+      () async {
+        // Regression test for F3: a 401-forced sign-out (Dio's interceptor
+        // routes straight to /login without calling logout()) bypasses the
+        // cache wipe. A DIFFERENT user then logging in on this device must
+        // not warm-paint the previous user's data — so login() itself must
+        // also drop both offline caches on success.
+        final storage = FakeSecureStorage();
+
+        final apiClient = ApiClient(storage: storage);
+        apiClient.dio.httpClientAdapter = StubAdapter((options) async {
+          expect(options.path, ApiEndpoints.mobileToken);
+          return json(200, {
+            'token': 'new-user-token',
+            'user': {'id': 2, 'name': 'Newbie', 'email': 'newbie@example.com'},
+            'bands': <dynamic>[],
+          });
+        });
+
+        final container = ProviderContainer(overrides: [
+          secureStorageProvider.overrideWithValue(storage),
+          apiClientProvider.overrideWithValue(apiClient),
+          routeStorageProvider.overrideWith((ref) async => fakeRouteStorage),
+          bookingsCacheStorageProvider.overrideWithValue(fakeBookingsCache),
+          apiCacheStorageProvider.overrideWithValue(fakeApiCache),
+        ]);
+        addTearDown(container.dispose);
+        await container.read(authProvider.future);
+
+        // Seed both offline caches with "previous user"'s data, as if a
+        // 401-forced sign-out had skipped logout()'s wipe.
+        fakeApiCache.write('10:dashboard', {'events': <dynamic>[]});
+        fakeBookingsCache.write(BookingsWindowCache(
+          from: DateTime(2026, 2, 1),
+          to: DateTime(2027, 2, 28),
+          cachedAt: DateTime(2026, 5, 15),
+          rawBookings: const [
+            {'id': 1, 'name': 'Old User Gala', 'date': '2026-06-01'},
+          ],
+        ));
+        expect(fakeApiCache.read('10:dashboard'), isNotNull);
+        expect(fakeBookingsCache.read(), isNotNull);
+
+        await container
+            .read(authProvider.notifier)
+            .login('newbie@example.com', 'password');
+
+        final state = container.read(authProvider).value;
+        expect(state, isA<AuthAuthenticated>(),
+            reason: 'login must succeed given the stubbed 200 response');
+        expect(fakeApiCache.read('10:dashboard'), isNull,
+            reason: 'the offline API cache must be cleared on a successful '
+                'login so the new user never sees the previous user\'s data');
+        expect(fakeBookingsCache.read(), isNull,
+            reason: 'the bookings disk cache must be cleared on a '
+                'successful login for the same reason');
+      },
+    );
+
+    test(
+      'test_social_login_clears_both_offline_caches_on_success',
+      () async {
+        // Same guarantee as login() above, for the socialLogin() path.
+        final storage = FakeSecureStorage();
+
+        final apiClient = ApiClient(storage: storage);
+        apiClient.dio.httpClientAdapter = StubAdapter((options) async {
+          expect(options.path, ApiEndpoints.mobileSocial);
+          return json(200, {
+            'token': 'new-user-token',
+            'user': {'id': 3, 'name': 'Social', 'email': 'social@example.com'},
+            'bands': <dynamic>[],
+          });
+        });
+
+        final container = ProviderContainer(overrides: [
+          secureStorageProvider.overrideWithValue(storage),
+          apiClientProvider.overrideWithValue(apiClient),
+          routeStorageProvider.overrideWith((ref) async => fakeRouteStorage),
+          bookingsCacheStorageProvider.overrideWithValue(fakeBookingsCache),
+          apiCacheStorageProvider.overrideWithValue(fakeApiCache),
+          socialSignInServiceProvider.overrideWithValue(
+            _FakeSocialSignIn(const SocialCredential(
+                provider: SocialProvider.google, token: 'id-tok')),
+          ),
+        ]);
+        addTearDown(container.dispose);
+        await container.read(authProvider.future);
+
+        fakeApiCache.write('10:dashboard', {'events': <dynamic>[]});
+        fakeBookingsCache.write(BookingsWindowCache(
+          from: DateTime(2026, 2, 1),
+          to: DateTime(2027, 2, 28),
+          cachedAt: DateTime(2026, 5, 15),
+          rawBookings: const [
+            {'id': 1, 'name': 'Old User Gala', 'date': '2026-06-01'},
+          ],
+        ));
+
+        await container
+            .read(authProvider.notifier)
+            .socialLogin(SocialProvider.google);
+
+        final state = container.read(authProvider).value;
+        expect(state, isA<AuthAuthenticated>());
+        expect(fakeApiCache.read('10:dashboard'), isNull,
+            reason: 'the offline API cache must be cleared on a successful '
+                'social login too');
+        expect(fakeBookingsCache.read(), isNull,
+            reason: 'the bookings disk cache must be cleared on a '
+                'successful social login too');
       },
     );
   });

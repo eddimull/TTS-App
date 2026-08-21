@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import '../../../core/providers/core_providers.dart';
 import '../../../core/storage/route_storage.dart';
+import '../../../shared/cache/api_cache_storage.dart';
 import '../../bookings/data/bookings_cache_storage.dart';
 import '../../chat/providers/conversations_provider.dart';
 import '../../chat/providers/topic_thread_provider.dart';
@@ -102,6 +103,22 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     await storage.writeBands(jsonEncode([for (final b in bands) b.toJson()]));
   }
 
+  /// Drops the offline API and bookings disk caches on a successful fresh
+  /// login/social login. A 401-forced sign-out (Dio's interceptor routes
+  /// straight to /login without calling [logout]) and a bare token-storage
+  /// clear both bypass logout()'s cache wipe, so a different user signing in
+  /// afterwards on this device would otherwise warm-paint the previous
+  /// user's cached data. Login/social login always requires network, so the
+  /// caches repopulate immediately — mirrors the logout() wipe, best-effort.
+  void _clearOfflineCachesForNewSession() {
+    try {
+      ref.read(apiCacheStorageProvider).clearAll();
+    } catch (_) {}
+    try {
+      ref.read(bookingsCacheStorageProvider).clear();
+    } catch (_) {}
+  }
+
   /// Rebuild an [AuthAuthenticated] from the cached user/bands JSON, or null
   /// when nothing usable is cached (never written, or corrupt).
   Future<AuthAuthenticated?> _restoreCachedSession(SecureStorage storage) async {
@@ -134,6 +151,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       final result = await _repository.login(email, password, 'tts_bandmate_app');
       await storage.writeToken(result.token);
       await _cacheSession(storage, result.user, result.bands);
+      _clearOfflineCachesForNewSession();
       return AuthAuthenticated(user: result.user, bands: result.bands);
     });
 
@@ -182,6 +200,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       );
       await storage.writeToken(result.token);
       await _cacheSession(storage, result.user, result.bands);
+      _clearOfflineCachesForNewSession();
       return AuthAuthenticated(user: result.user, bands: result.bands);
     });
 
@@ -267,6 +286,12 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     // device never sees the previous user's bookings.
     try {
       ref.read(bookingsCacheStorageProvider).clear();
+    } catch (_) {}
+
+    // Drop the offline API cache so a different user signing in on this
+    // device never sees the previous user's data.
+    try {
+      ref.read(apiCacheStorageProvider).clearAll();
     } catch (_) {}
 
     // Drop the in-memory chat caches too — chatConversationsProvider and

@@ -50,6 +50,11 @@ class _FakeEventsRepository extends EventsRepository {
   Future<EventDetail> getEventDetail(String key) async => current;
 
   @override
+  Future<({EventDetail parsed, Map<String, dynamic> raw})> getEventDetailRaw(
+          String key) async =>
+      (parsed: current, raw: const <String, dynamic>{});
+
+  @override
   Future<List<SubEntry>> fetchSubs(String eventKey, int bandRoleId) async => [
         const SubEntry(id: 1, name: 'Jamie Sub', bandRoleId: 5, rosterMemberId: 77),
       ];

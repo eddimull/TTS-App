@@ -12,7 +12,10 @@ import 'package:tts_bandmate/features/dashboard/data/models/upcoming_chart.dart'
 import 'package:tts_bandmate/features/dashboard/screens/dashboard_screen.dart';
 import 'package:tts_bandmate/features/dashboard/widgets/month_year_picker_sheet.dart';
 import 'package:tts_bandmate/features/events/data/models/event_summary.dart';
+import 'package:tts_bandmate/shared/cache/api_cache_storage.dart';
+import 'package:tts_bandmate/shared/providers/connectivity_provider.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final _throwingDio = Dio();
 const _itemExtent = 32.0;
@@ -35,9 +38,16 @@ class _FakeDashboardRepository extends DashboardRepository {
   final List<(String, String)> requestedNewerWindows = [];
 
   @override
-  Future<({List<EventSummary> events, List<UpcomingChart> upcomingCharts})>
-      getDashboard({String? to}) async =>
-          (events: const <EventSummary>[], upcomingCharts: const <UpcomingChart>[]);
+  Future<
+      ({
+        List<EventSummary> events,
+        List<UpcomingChart> upcomingCharts,
+        Map<String, dynamic> raw
+      })> getDashboardRaw({String? to}) async => (
+        events: const <EventSummary>[],
+        upcomingCharts: const <UpcomingChart>[],
+        raw: const <String, dynamic>{'events': [], 'upcoming_charts': []},
+      );
 
   @override
   Future<List<EventSummary>> loadOlderEvents(String beforeDate) async => const [];
@@ -53,7 +63,7 @@ class _FakeDashboardRepository extends DashboardRepository {
 void main() {
   const band = BandSummary(id: 1, name: 'Alpha', isOwner: true);
 
-  Widget host(_FakeDashboardRepository repo) {
+  Widget host(_FakeDashboardRepository repo, ApiCacheStorage storage) {
     return ProviderScope(
       overrides: [
         authProvider.overrideWith(() => _FixedAuthNotifier(
@@ -64,6 +74,8 @@ void main() {
             )),
         selectedBandProvider.overrideWith(() => _StubBand()),
         dashboardRepositoryProvider.overrideWithValue(repo),
+        apiCacheStorageProvider.overrideWithValue(storage),
+        connectivityProvider.overrideWithValue(const AsyncValue.data(true)),
       ],
       child: const CupertinoApp(home: Material(child: DashboardScreen())),
     );
@@ -73,9 +85,11 @@ void main() {
 
   Future<void> pumpDashboard(WidgetTester tester,
       _FakeDashboardRepository repo) async {
+    SharedPreferences.setMockInitialValues({});
+    final storage = ApiCacheStorage(await SharedPreferences.getInstance());
     await tester.binding.setSurfaceSize(const Size(400, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(host(repo));
+    await tester.pumpWidget(host(repo, storage));
     await tester.pumpAndSettle();
   }
 

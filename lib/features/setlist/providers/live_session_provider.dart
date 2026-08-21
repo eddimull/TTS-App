@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/pusher_connection.dart';
 import '../../../core/providers/core_providers.dart';
+import '../../../shared/cache/api_cache_storage.dart';
+import '../../../shared/cache/swr.dart';
+import '../../../shared/providers/selected_band_provider.dart';
 import '../data/models/band_song.dart';
 import '../data/models/live_session.dart';
 import '../data/models/queue_entry.dart';
@@ -73,8 +76,13 @@ class LiveSessionNotifier extends Notifier<LiveSessionState> {
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true, error: () => null);
+    final bandId = ref.read(selectedBandProvider).value;
+    final cacheKey =
+        bandId == null ? null : '$bandId:setlist_session:$_eventKey';
+    final cache = ref.read(apiCacheStorageProvider);
     try {
-      final result = await _repository.getSession(_eventKey);
+      final result = await _repository.getSessionRaw(_eventKey);
+      if (cacheKey != null) cache.write(cacheKey, result.raw);
       state = state.copyWith(
         session: () => result.session,
         songs: result.songs,
@@ -88,9 +96,27 @@ class LiveSessionNotifier extends Notifier<LiveSessionState> {
         await _connectPusher(result.session!.id);
       }
     } catch (e) {
+      // Offline fallback: paint the cached song list read-only so the band
+      // can still see the set with no signal. Controls stay disabled
+      // (isCaptain/canWrite false) — session actions are server-driven, and
+      // no Pusher connect is attempted.
+      final cached = cacheKey == null ? null : cache.read(cacheKey);
+      if (cached != null && isOfflineError(e)) {
+        final parsed = SetlistRepository.parseSession(cached.payload);
+        state = state.copyWith(
+          session: () => parsed.session,
+          songs: parsed.songs,
+          isCaptain: false,
+          canWrite: false,
+          currentUserId: parsed.currentUserId,
+          isLoading: false,
+          error: () => null,
+        );
+        return;
+      }
       state = state.copyWith(
         isLoading: false,
-        error: () => e.toString(),
+        error: () => isOfflineError(e) ? kOfflineMessage : e.toString(),
       );
     }
   }

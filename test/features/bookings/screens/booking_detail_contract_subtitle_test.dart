@@ -60,7 +60,7 @@ Future<void> _pump(WidgetTester tester, BookingDetail detail) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        bookingDetailProvider.overrideWith(() => _FixedDetailNotifier(detail)),
+        bookingDetailProvider.overrideWith2((_) => _FixedDetailNotifier(detail)),
         topicThreadProvider.overrideWith((ref, topic) => _emptyThread()),
       ],
       child: const CupertinoApp(

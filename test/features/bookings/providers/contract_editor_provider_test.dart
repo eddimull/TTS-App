@@ -152,8 +152,8 @@ void main() {
 
       final container = ProviderContainer(overrides: [
         bookingsRepositoryProvider.overrideWithValue(repo),
-        bookingDetailProvider.overrideWith(
-          () => _FixedDetailNotifier(_detailWithTerms(seededTerms)),
+        bookingDetailProvider.overrideWith2(
+          (_) => _FixedDetailNotifier(_detailWithTerms(seededTerms)),
         ),
       ]);
       addTearDown(container.dispose);
@@ -189,8 +189,8 @@ void main() {
       final repo = _CapturingSaveRepo();
       final container = ProviderContainer(overrides: [
         bookingsRepositoryProvider.overrideWithValue(repo),
-        bookingDetailProvider.overrideWith(
-          () => _FixedDetailNotifier(_detailWithOverride('The City of Scott')),
+        bookingDetailProvider.overrideWith2(
+          (_) => _FixedDetailNotifier(_detailWithOverride('The City of Scott')),
         ),
       ]);
       addTearDown(container.dispose);
@@ -205,8 +205,8 @@ void main() {
       final repo = _CapturingSaveRepo();
       final container = ProviderContainer(overrides: [
         bookingsRepositoryProvider.overrideWithValue(repo),
-        bookingDetailProvider.overrideWith(
-          () => _FixedDetailNotifier(_detailWithTerms(
+        bookingDetailProvider.overrideWith2(
+          (_) => _FixedDetailNotifier(_detailWithTerms(
             [const ContractTerm(id: -1, title: 'A', content: 'B')],
           )),
         ),
@@ -230,8 +230,8 @@ void main() {
       final repo = _CapturingSaveRepo();
       final container = ProviderContainer(overrides: [
         bookingsRepositoryProvider.overrideWithValue(repo),
-        bookingDetailProvider.overrideWith(
-          () => _FixedDetailNotifier(_detailWithOverride('The City of Scott')),
+        bookingDetailProvider.overrideWith2(
+          (_) => _FixedDetailNotifier(_detailWithOverride('The City of Scott')),
         ),
       ]);
       addTearDown(container.dispose);

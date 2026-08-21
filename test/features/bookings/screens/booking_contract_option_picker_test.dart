@@ -79,7 +79,7 @@ Future<_FakeRepo> _pumpNoneScreen(WidgetTester tester) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        bookingDetailProvider.overrideWith(() => _FixedDetailNotifier(_detail())),
+        bookingDetailProvider.overrideWith2((_) => _FixedDetailNotifier(_detail())),
         bookingsRepositoryProvider.overrideWithValue(repo),
         cacheInvalidatorProvider.overrideWith(_NoopInvalidator.new),
       ],

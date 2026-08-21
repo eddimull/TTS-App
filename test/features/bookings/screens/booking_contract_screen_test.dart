@@ -52,7 +52,7 @@ Future<void> _pumpScreen(
     ProviderScope(
       overrides: [
         bookingDetailProvider
-            .overrideWith(() => _FixedDetailNotifier(detail)),
+            .overrideWith2((_) => _FixedDetailNotifier(detail)),
       ],
       child: const CupertinoApp(
         home: BookingContractScreen(bandId: bandId, bookingId: bookingId),

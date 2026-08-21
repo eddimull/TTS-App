@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 
+import '../cache/swr.dart';
+
 class ErrorView extends StatelessWidget {
   const ErrorView({
     super.key,
@@ -12,9 +14,11 @@ class ErrorView extends StatelessWidget {
   final VoidCallback? onRetry;
 
   /// Extracts a human-readable message from an error.
-  /// For [DioException], checks the response body for a `message` field first.
-  /// Falls back to [e.toString()] for all other error types.
+  /// Offline/connection failures map to [kOfflineMessage]. For [DioException]
+  /// with a response, the body's `message` field wins. Falls back to
+  /// [e.toString()] for all other error types.
   static String friendlyMessage(Object e) {
+    if (isOfflineError(e)) return kOfflineMessage;
     if (e is DioException) {
       final data = e.response?.data;
       if (data is Map) {

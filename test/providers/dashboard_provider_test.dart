@@ -4,7 +4,23 @@ import 'package:tts_bandmate/features/dashboard/data/dashboard_repository.dart';
 import 'package:tts_bandmate/features/dashboard/data/models/upcoming_chart.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
 import 'package:tts_bandmate/features/events/data/models/event_summary.dart';
+import 'package:tts_bandmate/shared/cache/api_cache_storage.dart';
+import 'package:tts_bandmate/shared/providers/connectivity_provider.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// Shared overrides every dashboardProvider container needs: a resolvable
+/// (empty) cache and an online connectivity signal, so build() takes its
+/// cold-fetch path instead of throwing UnimplementedError or hitting the
+/// real connectivity_plus plugin.
+Future<List<dynamic>> _infraOverrides() async {
+  SharedPreferences.setMockInitialValues({});
+  final storage = ApiCacheStorage(await SharedPreferences.getInstance());
+  return [
+    apiCacheStorageProvider.overrideWithValue(storage),
+    connectivityProvider.overrideWithValue(const AsyncValue.data(true)),
+  ];
+}
 
 // ── Fake repository ───────────────────────────────────────────────────────────
 
@@ -20,10 +36,25 @@ class FakeDashboardRepository implements DashboardRepository {
   int callCount = 0;
 
   @override
+  Future<
+      ({
+        List<EventSummary> events,
+        List<UpcomingChart> upcomingCharts,
+        Map<String, dynamic> raw
+      })> getDashboardRaw({String? to}) async {
+    callCount++;
+    return (
+      events: _events,
+      upcomingCharts: _charts,
+      raw: const <String, dynamic>{'events': [], 'upcoming_charts': []},
+    );
+  }
+
+  @override
   Future<({List<EventSummary> events, List<UpcomingChart> upcomingCharts})>
       getDashboard({String? to}) async {
-    callCount++;
-    return (events: _events, upcomingCharts: _charts);
+    final result = await getDashboardRaw(to: to);
+    return (events: result.events, upcomingCharts: result.upcomingCharts);
   }
 
   @override
@@ -56,12 +87,13 @@ UpcomingChart _makeChart(String title) => UpcomingChart.fromJson({
 
 void main() {
   group('DashboardNotifier', () {
-    ProviderContainer makeContainer(FakeDashboardRepository repo) {
+    Future<ProviderContainer> makeContainer(FakeDashboardRepository repo) async {
       return ProviderContainer(
         overrides: [
           // Bypass SecureStorage / FlutterSecureStorage in unit tests.
           selectedBandProvider.overrideWith(() => _FakeSelectedBandNotifier()),
           dashboardRepositoryProvider.overrideWithValue(repo),
+          ...await _infraOverrides(),
         ],
       );
     }
@@ -71,7 +103,7 @@ void main() {
         events: [_makeEvent('e1'), _makeEvent('e2')],
         charts: [_makeChart('My Way')],
       );
-      final container = makeContainer(repo);
+      final container = await makeContainer(repo);
       addTearDown(container.dispose);
 
       final state = await container.read(dashboardProvider.future);
@@ -84,7 +116,7 @@ void main() {
 
     test('test_build_returns_empty_lists_when_no_data', () async {
       final repo = FakeDashboardRepository(events: [], charts: []);
-      final container = makeContainer(repo);
+      final container = await makeContainer(repo);
       addTearDown(container.dispose);
 
       final state = await container.read(dashboardProvider.future);
@@ -98,7 +130,7 @@ void main() {
         events: [_makeEvent('e1')],
         charts: [],
       );
-      final container = makeContainer(repo);
+      final container = await makeContainer(repo);
       addTearDown(container.dispose);
 
       // First load via build()
@@ -118,6 +150,7 @@ void main() {
           dashboardRepositoryProvider.overrideWith((ref) {
             return _ThrowingDashboardRepository();
           }),
+          ...await _infraOverrides(),
         ],
       );
       addTearDown(container.dispose);
@@ -147,6 +180,16 @@ class _ThrowingDashboardRepository implements DashboardRepository {
   @override
   Future<({List<EventSummary> events, List<UpcomingChart> upcomingCharts})>
       getDashboard({String? to}) async {
+    throw Exception('Network error');
+  }
+
+  @override
+  Future<
+      ({
+        List<EventSummary> events,
+        List<UpcomingChart> upcomingCharts,
+        Map<String, dynamic> raw
+      })> getDashboardRaw({String? to}) async {
     throw Exception('Network error');
   }
 

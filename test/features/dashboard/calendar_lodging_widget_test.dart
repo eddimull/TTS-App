@@ -13,7 +13,10 @@ import 'package:tts_bandmate/features/dashboard/screens/dashboard_screen.dart';
 import 'package:tts_bandmate/features/events/data/models/event_summary.dart';
 import 'package:tts_bandmate/features/lodging/data/lodging_repository.dart';
 import 'package:tts_bandmate/features/lodging/data/models/lodging.dart';
+import 'package:tts_bandmate/shared/cache/api_cache_storage.dart';
+import 'package:tts_bandmate/shared/providers/connectivity_provider.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final _throwingDio = Dio();
 
@@ -33,9 +36,16 @@ class _FakeDashboardRepository extends DashboardRepository {
   _FakeDashboardRepository() : super(_throwingDio);
 
   @override
-  Future<({List<EventSummary> events, List<UpcomingChart> upcomingCharts})>
-      getDashboard({String? to}) async =>
-          (events: const <EventSummary>[], upcomingCharts: const <UpcomingChart>[]);
+  Future<
+      ({
+        List<EventSummary> events,
+        List<UpcomingChart> upcomingCharts,
+        Map<String, dynamic> raw
+      })> getDashboardRaw({String? to}) async => (
+        events: const <EventSummary>[],
+        upcomingCharts: const <UpcomingChart>[],
+        raw: const <String, dynamic>{'events': [], 'upcoming_charts': []},
+      );
 
   @override
   Future<List<EventSummary>> loadOlderEvents(String beforeDate) async => const [];
@@ -85,7 +95,7 @@ class _FakeLodgingRepository extends LodgingRepository {
 void main() {
   const band = BandSummary(id: 1, name: 'Alpha', isOwner: true);
 
-  Widget host(_FakeLodgingRepository lodgingRepo) {
+  Widget host(_FakeLodgingRepository lodgingRepo, ApiCacheStorage storage) {
     return ProviderScope(
       overrides: [
         authProvider.overrideWith(() => _FixedAuthNotifier(
@@ -98,6 +108,8 @@ void main() {
         dashboardRepositoryProvider
             .overrideWithValue(_FakeDashboardRepository()),
         lodgingRepositoryProvider.overrideWithValue(lodgingRepo),
+        apiCacheStorageProvider.overrideWithValue(storage),
+        connectivityProvider.overrideWithValue(const AsyncValue.data(true)),
       ],
       child: const CupertinoApp(home: Material(child: DashboardScreen())),
     );
@@ -105,9 +117,17 @@ void main() {
 
   Future<void> pumpDashboard(
       WidgetTester tester, _FakeLodgingRepository repo) async {
+    // Pre-dismiss both dashboard hint banners (bookings-moved, help-pointer)
+    // so they don't consume vertical space on this narrow 320x640 surface —
+    // this test is about the lodging agenda row, not the hints.
+    SharedPreferences.setMockInitialValues({
+      'hint_bookings_moved_dismissed': true,
+      'hint_help_pointer_dismissed': true,
+    });
+    final storage = ApiCacheStorage(await SharedPreferences.getInstance());
     await tester.binding.setSurfaceSize(const Size(320, 640));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(host(repo));
+    await tester.pumpWidget(host(repo, storage));
     await tester.pumpAndSettle();
   }
 

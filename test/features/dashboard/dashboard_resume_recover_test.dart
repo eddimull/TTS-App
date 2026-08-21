@@ -26,9 +26,25 @@ import 'package:tts_bandmate/features/dashboard/data/models/upcoming_chart.dart'
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
 import 'package:tts_bandmate/features/dashboard/screens/dashboard_screen.dart';
 import 'package:tts_bandmate/features/events/data/models/event_summary.dart';
+import 'package:tts_bandmate/shared/cache/api_cache_storage.dart';
+import 'package:tts_bandmate/shared/providers/connectivity_provider.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final _throwingDio = Dio();
+
+/// Shared overrides every dashboardProvider container needs: a resolvable
+/// (empty) cache and an online connectivity signal, so build() takes its
+/// cold-fetch path instead of throwing UnimplementedError or hitting the
+/// real connectivity_plus plugin.
+Future<List<dynamic>> _infraOverrides() async {
+  SharedPreferences.setMockInitialValues({});
+  final storage = ApiCacheStorage(await SharedPreferences.getInstance());
+  return [
+    apiCacheStorageProvider.overrideWithValue(storage),
+    connectivityProvider.overrideWithValue(const AsyncValue.data(true)),
+  ];
+}
 
 class _FixedAuthNotifier extends AuthNotifier {
   _FixedAuthNotifier(this._fixed);
@@ -52,10 +68,18 @@ class _FakeDashboardRepository extends DashboardRepository {
   int getDashboardCallCount = 0;
 
   @override
-  Future<({List<EventSummary> events, List<UpcomingChart> upcomingCharts})>
-      getDashboard({String? to}) async {
+  Future<
+      ({
+        List<EventSummary> events,
+        List<UpcomingChart> upcomingCharts,
+        Map<String, dynamic> raw
+      })> getDashboardRaw({String? to}) async {
     getDashboardCallCount++;
-    return (events: const <EventSummary>[], upcomingCharts: const <UpcomingChart>[]);
+    return (
+      events: const <EventSummary>[],
+      upcomingCharts: const <UpcomingChart>[],
+      raw: const <String, dynamic>{'events': [], 'upcoming_charts': []},
+    );
   }
 
   @override
@@ -89,10 +113,18 @@ class _ThrowingNewerDashboardRepository extends DashboardRepository {
   int getDashboardCallCount = 0;
 
   @override
-  Future<({List<EventSummary> events, List<UpcomingChart> upcomingCharts})>
-      getDashboard({String? to}) async {
+  Future<
+      ({
+        List<EventSummary> events,
+        List<UpcomingChart> upcomingCharts,
+        Map<String, dynamic> raw
+      })> getDashboardRaw({String? to}) async {
     getDashboardCallCount++;
-    return (events: const <EventSummary>[], upcomingCharts: const <UpcomingChart>[]);
+    return (
+      events: const <EventSummary>[],
+      upcomingCharts: const <UpcomingChart>[],
+      raw: const <String, dynamic>{'events': [], 'upcoming_charts': []},
+    );
   }
 
   @override
@@ -151,7 +183,7 @@ void _wireResumeRecoverListener(
 void main() {
   const band = BandSummary(id: 1, name: 'Alpha', isOwner: true);
 
-  Widget host(_FakeDashboardRepository repo) {
+  Widget host(_FakeDashboardRepository repo, List<dynamic> infraOverrides) {
     return ProviderScope(
       overrides: [
         authProvider.overrideWith(() => _FixedAuthNotifier(
@@ -162,6 +194,7 @@ void main() {
             )),
         selectedBandProvider.overrideWith(() => _StubBand()),
         dashboardRepositoryProvider.overrideWithValue(repo),
+        ...infraOverrides,
       ],
       child: const CupertinoApp(home: Material(child: DashboardScreen())),
     );
@@ -174,7 +207,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final repo = _FakeDashboardRepository();
-    await tester.pumpWidget(host(repo));
+    await tester.pumpWidget(host(repo, await _infraOverrides()));
     await tester.pumpAndSettle();
 
     final container = ProviderScope.containerOf(
@@ -264,11 +297,12 @@ void main() {
     late _ThrowingNewerDashboardRepository repo;
     late DateTime focusedDay;
 
-    setUp(() {
+    setUp(() async {
       repo = _ThrowingNewerDashboardRepository();
       container = ProviderContainer(overrides: [
         dashboardRepositoryProvider.overrideWithValue(repo),
         selectedBandProvider.overrideWith(() => _StubBand()),
+        ...await _infraOverrides(),
       ]);
       addTearDown(container.dispose);
     });

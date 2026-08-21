@@ -21,6 +21,7 @@ import 'package:tts_bandmate/core/deeplink/deep_link_service.dart';
 import 'package:tts_bandmate/core/network/api_client.dart';
 import 'package:tts_bandmate/core/storage/route_storage.dart';
 import 'package:tts_bandmate/core/storage/secure_storage.dart';
+import 'package:tts_bandmate/shared/cache/api_cache_storage.dart';
 
 /// In-memory replacement for [SecureStorage]. Bypasses [FlutterSecureStorage]
 /// entirely — the super constructor receives a real instance but every method
@@ -270,6 +271,7 @@ Future<Harness> bootstrapApp({
   final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
     ..httpClientAdapter = StubAdapter(handler, capturedBodies: capturedBodies);
   final apiClient = StubApiClient(storage: storage, dio: dio);
+  final apiCacheStorage = ApiCacheStorage(prefs);
 
   final widget = ProviderScope(
     overrides: [
@@ -278,6 +280,7 @@ Future<Harness> bootstrapApp({
       routeStorageProvider.overrideWith((_) async => routeStorage),
       initialLocationProvider.overrideWithValue(initialLocation),
       deepLinkServiceProvider.overrideWithValue(FakeDeepLinkService()),
+      apiCacheStorageProvider.overrideWithValue(apiCacheStorage),
     ],
     child: const BandmateApp(),
   );

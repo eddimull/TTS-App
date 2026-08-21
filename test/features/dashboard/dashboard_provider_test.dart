@@ -7,9 +7,25 @@ import 'package:tts_bandmate/features/dashboard/data/dashboard_repository.dart';
 import 'package:tts_bandmate/features/dashboard/data/models/upcoming_chart.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
 import 'package:tts_bandmate/features/events/data/models/event_summary.dart';
+import 'package:tts_bandmate/shared/cache/api_cache_storage.dart';
+import 'package:tts_bandmate/shared/providers/connectivity_provider.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final _throwingDio = Dio();
+
+/// Shared overrides every dashboardProvider container needs: a resolvable
+/// (empty) cache and an online connectivity signal, so build() takes its
+/// cold-fetch path instead of throwing UnimplementedError or hitting the
+/// real connectivity_plus plugin.
+Future<List<dynamic>> _infraOverrides() async {
+  SharedPreferences.setMockInitialValues({});
+  final storage = ApiCacheStorage(await SharedPreferences.getInstance());
+  return [
+    apiCacheStorageProvider.overrideWithValue(storage),
+    connectivityProvider.overrideWithValue(const AsyncValue.data(true)),
+  ];
+}
 
 // EventSummary.fromJson does non-null casts on 'key' and 'title' — both required.
 EventSummary _event(int id, String date) => EventSummary.fromJson({
@@ -45,10 +61,18 @@ class _FakeDashboardRepository extends DashboardRepository {
   int _newerIndex = 0;
 
   @override
-  Future<({List<EventSummary> events, List<UpcomingChart> upcomingCharts})>
-      getDashboard({String? to}) async {
+  Future<
+      ({
+        List<EventSummary> events,
+        List<UpcomingChart> upcomingCharts,
+        Map<String, dynamic> raw
+      })> getDashboardRaw({String? to}) async {
     requestedTos.add(to);
-    return (events: initialEvents, upcomingCharts: const <UpcomingChart>[]);
+    return (
+      events: initialEvents,
+      upcomingCharts: const <UpcomingChart>[],
+      raw: const <String, dynamic>{'events': [], 'upcoming_charts': []},
+    );
   }
 
   @override
@@ -88,9 +112,17 @@ class _RaceDashboardRepository extends DashboardRepository {
   final List<EventSummary> newerResult;
 
   @override
-  Future<({List<EventSummary> events, List<UpcomingChart> upcomingCharts})>
-      getDashboard({String? to}) async {
-    return (events: initialEvents, upcomingCharts: const <UpcomingChart>[]);
+  Future<
+      ({
+        List<EventSummary> events,
+        List<UpcomingChart> upcomingCharts,
+        Map<String, dynamic> raw
+      })> getDashboardRaw({String? to}) async {
+    return (
+      events: initialEvents,
+      upcomingCharts: const <UpcomingChart>[],
+      raw: const <String, dynamic>{'events': [], 'upcoming_charts': []},
+    );
   }
 
   @override
@@ -228,17 +260,18 @@ void main() {
       return notifier;
     }
 
-    void setUpContainer(_FakeDashboardRepository repo) {
+    Future<void> setUpContainer(_FakeDashboardRepository repo) async {
       fakeRepo = repo;
       container = ProviderContainer(overrides: [
         dashboardRepositoryProvider.overrideWithValue(repo),
         selectedBandProvider.overrideWith(() => _StubBand()),
+        ...await _infraOverrides(),
       ]);
       addTearDown(container.dispose);
     }
 
     test('merges and dedups older events by id', () async {
-      setUpContainer(_FakeDashboardRepository(
+      await setUpContainer(_FakeDashboardRepository(
         initialEvents: [_event(1, '2026-06-20')],
         olderBatches: [
           [_event(1, '2026-06-20'), _event(2, '2026-05-15')],
@@ -264,7 +297,7 @@ void main() {
             'event_source': 'rehearsal',
           });
 
-      setUpContainer(_FakeDashboardRepository(
+      await setUpContainer(_FakeDashboardRepository(
         initialEvents: [nullIdEvent('a', '2026-06-20')],
         olderBatches: [
           [nullIdEvent('b', '2026-05-15'), nullIdEvent('c', '2026-05-16')],
@@ -281,7 +314,7 @@ void main() {
     });
 
     test('loadedFrom decrements by 30 days per fetch', () async {
-      setUpContainer(_FakeDashboardRepository(
+      await setUpContainer(_FakeDashboardRepository(
         initialEvents: const [],
         olderBatches: [
           [_event(2, '2026-05-15')],
@@ -297,7 +330,7 @@ void main() {
     });
 
     test('sets hasReachedStart when a fetch returns no events', () async {
-      setUpContainer(_FakeDashboardRepository(
+      await setUpContainer(_FakeDashboardRepository(
         initialEvents: const [],
         olderBatches: const [],
       ));
@@ -310,7 +343,7 @@ void main() {
     });
 
     test('does not fetch again once hasReachedStart is set', () async {
-      setUpContainer(_FakeDashboardRepository(
+      await setUpContainer(_FakeDashboardRepository(
         initialEvents: const [],
         olderBatches: const [],
       ));
@@ -333,11 +366,12 @@ void main() {
       return notifier;
     }
 
-    void setUpContainer(_FakeDashboardRepository repo) {
+    Future<void> setUpContainer(_FakeDashboardRepository repo) async {
       fakeRepo = repo;
       container = ProviderContainer(overrides: [
         dashboardRepositoryProvider.overrideWithValue(repo),
         selectedBandProvider.overrideWith(() => _StubBand()),
+        ...await _infraOverrides(),
       ]);
       addTearDown(container.dispose);
     }
@@ -346,7 +380,7 @@ void main() {
         '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
     test('initial fetch sends to = today + 90d', () async {
-      setUpContainer(_FakeDashboardRepository(
+      await setUpContainer(_FakeDashboardRepository(
         initialEvents: [], olderBatches: [],
       ));
       await buildNotifier();
@@ -356,7 +390,7 @@ void main() {
     });
 
     test('forward ensureMonthLoaded fetches one window to the month start after target', () async {
-      setUpContainer(_FakeDashboardRepository(
+      await setUpContainer(_FakeDashboardRepository(
         initialEvents: [], olderBatches: [],
         newerBatches: [
           [_event(5, '2028-03-10')],
@@ -381,7 +415,7 @@ void main() {
     });
 
     test('already-covered months trigger no fetch and empty windows do not stop future fetches', () async {
-      setUpContainer(_FakeDashboardRepository(
+      await setUpContainer(_FakeDashboardRepository(
         initialEvents: [], olderBatches: [],
         newerBatches: [], // every loadNewer returns empty
       ));
@@ -409,7 +443,7 @@ void main() {
             'event_source': 'rehearsal',
           });
 
-      setUpContainer(_FakeDashboardRepository(
+      await setUpContainer(_FakeDashboardRepository(
         initialEvents: [_event(1, '2026-08-01'), nullIdEvent('vr-a', '2026-08-05')],
         olderBatches: [],
         newerBatches: [
@@ -430,7 +464,7 @@ void main() {
     });
 
     test('refresh resets the forward watermark', () async {
-      setUpContainer(_FakeDashboardRepository(
+      await setUpContainer(_FakeDashboardRepository(
         initialEvents: [], olderBatches: [], newerBatches: [],
       ));
       final notifier = await buildNotifier();
@@ -457,6 +491,7 @@ void main() {
       container = ProviderContainer(overrides: [
         dashboardRepositoryProvider.overrideWithValue(repo),
         selectedBandProvider.overrideWith(() => _StubBand()),
+        ...await _infraOverrides(),
       ]);
       addTearDown(container.dispose);
       final notifier = container.read(dashboardProvider.notifier);
@@ -573,6 +608,7 @@ void main() {
       final container = ProviderContainer(overrides: [
         dashboardRepositoryProvider.overrideWithValue(repo),
         selectedBandProvider.overrideWith(() => _StubBand()),
+        ...await _infraOverrides(),
       ]);
       addTearDown(container.dispose);
 

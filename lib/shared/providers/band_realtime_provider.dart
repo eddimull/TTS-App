@@ -282,7 +282,16 @@ class BandRealtimeNotifier extends Notifier<int?> {
   /// The socket dies while backgrounded; signals are pure invalidation, so
   /// instead of replaying we refetch everything band-scoped once and
   /// resubscribe (spec: Resilience).
-  void _onResume() {
+  void _onResume() => refreshAll();
+
+  /// Refetch everything band-scoped and resubscribe. Called on app resume and
+  /// when connectivity comes back — both are moments where the socket was down
+  /// and signals were missed, and where screens may be showing data replayed
+  /// from the offline cache that now needs to be brought up to date.
+  ///
+  /// A no-op when no band channel is subscribed: there is nothing band-scoped
+  /// to refresh, and `_resubscribe(null)` would only tear down.
+  void refreshAll() {
     if (_disposed) return;
     final bandId = state;
     if (bandId == null) return;

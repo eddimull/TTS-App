@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import '../../../core/network/api_response_cache.dart';
 import '../../../core/providers/core_providers.dart';
 import '../../../core/storage/route_storage.dart';
 import '../../bookings/data/bookings_cache_storage.dart';
@@ -267,6 +268,12 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     // device never sees the previous user's bookings.
     try {
       ref.read(bookingsCacheStorageProvider).clear();
+    } catch (_) {}
+
+    // Same for the API client's offline response cache, which holds the last
+    // successful GET for every endpoint this account touched.
+    try {
+      ref.read(apiResponseCacheProvider)?.clear();
     } catch (_) {}
 
     // Drop the in-memory chat caches too — chatConversationsProvider and

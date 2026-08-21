@@ -135,6 +135,10 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       final wasOnline = previous?.value ?? true;
       final isOnline = next.value ?? true;
       if (!wasOnline && isOnline) {
+        // Screens may be showing data the API client replayed from its offline
+        // cache, and any realtime signal sent while we were dark was missed.
+        // Same recovery the app does on resume.
+        ref.read(bandRealtimeProvider.notifier).refreshAll();
         setState(() => _showBackOnline = true);
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted) setState(() => _showBackOnline = false);

@@ -9,7 +9,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'app.dart';
 import 'core/config/router.dart';
+import 'core/network/api_response_cache.dart';
 import 'core/network/dev_http_overrides.dart';
+import 'core/network/network_failure.dart';
 import 'core/storage/hint_storage.dart';
 import 'core/storage/route_storage.dart';
 import 'features/bookings/data/bookings_cache_storage.dart';
@@ -20,10 +22,23 @@ import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 
+/// How many times Riverpod may re-run a failed provider before giving up and
+/// leaving the error on screen for the user to retry deliberately.
+///
+/// Bounded on purpose. An unbounded policy kept every provider in a
+/// loading/error churn for as long as the network stayed down, which is what
+/// turned a bad connection into a spinner that never resolved.
+const int _kMaxProviderRetries = 3;
+
 // Don't retry on definitive server errors (4xx). Only retry on network
 // failures or 5xx where a retry might succeed.
 Duration? _retryPolicy(int retryCount, Object error) {
   if (error is DioException && error.response != null) return null;
+  // The client already knows the server is unreachable and said so without
+  // sending anything. Retrying can only produce the same instant rejection —
+  // the offline UI (and the reachability probe behind it) takes over.
+  if (isOfflineShortCircuit(error)) return null;
+  if (retryCount >= _kMaxProviderRetries) return null;
   // Exponential backoff: 200ms, 400ms, 800ms, …
   return Duration(milliseconds: 200 * (1 << retryCount));
 }
@@ -140,6 +155,7 @@ Future<void> main() async {
   final hintStorage = HintStorage(prefs);
   final bookingsCacheStorage = BookingsCacheStorage(prefs);
   final uploadQueueStorage = UploadQueueStorage(prefs);
+  final apiResponseCache = ApiResponseCache(prefs);
   final initialLocation = _resolveInitialLocation(routeStorage);
 
   // Push notifications are only supported on iOS/Android. Guard so the Linux
@@ -173,6 +189,7 @@ Future<void> main() async {
           routeStorageProvider.overrideWith((_) async => routeStorage),
           hintStorageProvider.overrideWithValue(AsyncValue.data(hintStorage)),
           bookingsCacheStorageProvider.overrideWithValue(bookingsCacheStorage),
+          apiResponseCacheProvider.overrideWithValue(apiResponseCache),
           uploadQueueStorageProvider.overrideWithValue(uploadQueueStorage),
           initialLocationProvider.overrideWithValue(initialLocation),
         ],

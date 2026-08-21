@@ -33,7 +33,7 @@ class CacheInvalidator {
   void onBookingChanged({required int bandId, int? bookingId}) {
     _invalidateBookingCollections(bandId);
     if (bookingId != null) {
-      _removeCache('booking:$bookingId');
+      _removeCache('booking:$bookingId', bandId: bandId);
       _ref.invalidate(
         bookingDetailProvider((bandId: bandId, bookingId: bookingId)),
       );
@@ -44,7 +44,7 @@ class CacheInvalidator {
   /// in case any screen still references it during navigation teardown.
   void onBookingDeleted({required int bandId, required int bookingId}) {
     _invalidateBookingCollections(bandId);
-    _removeCache('booking:$bookingId');
+    _removeCache('booking:$bookingId', bandId: bandId);
     _ref.invalidate(
       bookingDetailProvider((bandId: bandId, bookingId: bookingId)),
     );
@@ -62,7 +62,7 @@ class CacheInvalidator {
     required int bookingId,
     String? contractEnvelopeId,
   }) {
-    _removeCache('booking:$bookingId');
+    _removeCache('booking:$bookingId', bandId: bandId);
     _ref.invalidate(
       bookingDetailProvider((bandId: bandId, bookingId: bookingId)),
     );
@@ -81,7 +81,7 @@ class CacheInvalidator {
   /// Refreshes the booking's detail cache and the band's bookings list
   /// (the list subtitle / event count depend on the events).
   void onBookingEventsChanged({required int bandId, required int bookingId}) {
-    _removeCache('booking:$bookingId');
+    _removeCache('booking:$bookingId', bandId: bandId);
     _ref.invalidate(
       bookingDetailProvider((bandId: bandId, bookingId: bookingId)),
     );
@@ -91,10 +91,14 @@ class CacheInvalidator {
   /// Drops one band-scoped `ApiCacheStorage` entry so the next provider
   /// rebuild takes the cold path instead of warm-painting pre-mutation data
   /// (same reasoning as the `bookingsCacheStorageProvider.clear()` below).
-  void _removeCache(String name) {
-    final bandId = _ref.read(selectedBandProvider).value;
-    if (bandId == null) return;
-    _ref.read(apiCacheStorageProvider).remove('$bandId:$name');
+  ///
+  /// Pass [bandId] when the mutation handler knows it (booking mutations do)
+  /// so the correct band-scoped key is removed even if a different band were
+  /// somehow selected; falls back to the selected band otherwise.
+  void _removeCache(String name, {int? bandId}) {
+    final resolvedBandId = bandId ?? _ref.read(selectedBandProvider).value;
+    if (resolvedBandId == null) return;
+    _ref.read(apiCacheStorageProvider).remove('$resolvedBandId:$name');
   }
 
   void _invalidateBookingCollections(int bandId) {

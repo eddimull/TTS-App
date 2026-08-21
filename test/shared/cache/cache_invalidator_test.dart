@@ -102,4 +102,17 @@ void main() {
 
     expect(storage.read('7:booking:42'), isNull);
   });
+
+  test('booking cache drop uses the mutation bandId, not the selected band',
+      () async {
+    // Selected band is 7 (makeContainer default); mutate band 9's booking.
+    final container = await makeContainer();
+    storage.write('9:booking:42', {
+      'booking': {'id': 42},
+    });
+    container
+        .read(cacheInvalidatorProvider)
+        .onBookingDetailChanged(bandId: 9, bookingId: 42);
+    expect(storage.read('9:booking:42'), isNull);
+  });
 }

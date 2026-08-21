@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.25.0](https://github.com/eddimull/TTS-App/compare/v1.24.0...v1.25.0) (2026-08-21)
+
+
+### Features
+
+* cached read-only setlist view when offline ([63ce938](https://github.com/eddimull/TTS-App/commit/63ce93841f99353ac94c89e56844b3b1e8f35901))
+* dashboard offline warm-paint + non-destructive refresh ([0778b8b](https://github.com/eddimull/TTS-App/commit/0778b8b14c2d657d354417d8078d69f20412f81d))
+* offline support — cached viewing, graceful degradation, reconnect revalidation ([8f33670](https://github.com/eddimull/TTS-App/commit/8f33670c36cead061a11f0639d582f4e2da06e8b))
+* offline SWR caching for booking detail ([aed5926](https://github.com/eddimull/TTS-App/commit/aed5926c07fa28cfd774565a2194572092ee44c7))
+* offline SWR caching for events list and event detail ([0c10a98](https://github.com/eddimull/TTS-App/commit/0c10a981dd768cbf8b3560ff40d967003546a2ec))
+* reconnect revalidation, logout cache wipe, post-mutation cache drops ([6aeecbc](https://github.com/eddimull/TTS-App/commit/6aeecbca9a4328e764bae005da81500d25da0c5b))
+* seed connectivity state; friendly offline error copy ([9525493](https://github.com/eddimull/TTS-App/commit/9525493f5ba53f2eddb7acb7d621e12259779157))
+* shared ApiCacheStorage for offline raw-JSON caching ([a07dc5d](https://github.com/eddimull/TTS-App/commit/a07dc5db5232f55ac7efc07129f4fab99d448e99))
+* SwrSupport mixin + offline error helpers ([b7b36a6](https://github.com/eddimull/TTS-App/commit/b7b36a67c504f49485cc52e69f76230eb1e7b9ae))
+
+
+### Bug Fixes
+
+* drop booking cache entries by mutation bandId, not selected band ([f5c3803](https://github.com/eddimull/TTS-App/commit/f5c380387d8de0d85e270497ad7cd152cc7afe3a))
+* offline-support review fixes — band-switch races, reconnect revalidate, login cache wipe ([6a7d568](https://github.com/eddimull/TTS-App/commit/6a7d5681aa0aa29d623466737f41996e891b1514))
+
 ## [1.24.0](https://github.com/eddimull/TTS-App/compare/v1.23.0...v1.24.0) (2026-08-12)
 
 

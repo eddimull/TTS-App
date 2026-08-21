@@ -10,11 +10,35 @@ class EventsRepository {
 
   final Dio _dio;
 
+  /// Parses the events-list payload. Shared by live fetches and the offline
+  /// cache so both go through identical decoding.
+  static List<EventSummary> parseBandEvents(Map<String, dynamic> data) {
+    final rawList = data['events'] as List<dynamic>? ?? [];
+    return rawList
+        .cast<Map<String, dynamic>>()
+        .map(EventSummary.fromJson)
+        .toList();
+  }
+
+  /// Parses the event-detail payload (same sharing rationale).
+  static EventDetail parseEventDetail(Map<String, dynamic> data) =>
+      EventDetail.fromJson(data['event'] as Map<String, dynamic>);
+
   /// Fetches the list of events for [bandId].
   ///
   /// Optional [from] and [to] are ISO date strings used to filter the range,
   /// e.g. "2026-04-01".
   Future<List<EventSummary>> getBandEvents(
+    int bandId, {
+    String? from,
+    String? to,
+  }) async =>
+      (await getBandEventsRaw(bandId, from: from, to: to)).parsed;
+
+  /// Like [getBandEvents] but also returns the raw response JSON so callers
+  /// can persist it verbatim (the models have no `toJson`).
+  Future<({List<EventSummary> parsed, Map<String, dynamic> raw})>
+      getBandEventsRaw(
     int bandId, {
     String? from,
     String? to,
@@ -29,21 +53,22 @@ class EventsRepository {
     );
 
     final data = response.data!;
-    final rawList = data['events'] as List<dynamic>;
-    return rawList
-        .cast<Map<String, dynamic>>()
-        .map(EventSummary.fromJson)
-        .toList();
+    return (parsed: parseBandEvents(data), raw: data);
   }
 
   /// Fetches the full detail for the event identified by [key].
-  Future<EventDetail> getEventDetail(String key) async {
+  Future<EventDetail> getEventDetail(String key) async =>
+      (await getEventDetailRaw(key)).parsed;
+
+  /// Like [getEventDetail] but also returns the raw response JSON.
+  Future<({EventDetail parsed, Map<String, dynamic> raw})> getEventDetailRaw(
+      String key) async {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiEndpoints.mobileEventDetail(key),
     );
 
     final data = response.data!;
-    return EventDetail.fromJson(data['event'] as Map<String, dynamic>);
+    return (parsed: parseEventDetail(data), raw: data);
   }
 
   /// Update an existing event's fields. All parameters are optional;

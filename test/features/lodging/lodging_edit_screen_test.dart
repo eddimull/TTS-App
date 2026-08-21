@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tts_bandmate/features/bookings/data/bookings_repository.dart';
 import 'package:tts_bandmate/features/bookings/data/models/booking_detail.dart';
 import 'package:tts_bandmate/features/bookings/data/models/booking_summary.dart';
@@ -13,9 +14,21 @@ import 'package:tts_bandmate/features/events/providers/events_provider.dart';
 import 'package:tts_bandmate/features/lodging/data/lodging_repository.dart';
 import 'package:tts_bandmate/features/lodging/data/models/lodging.dart';
 import 'package:tts_bandmate/features/lodging/screens/lodging_edit_screen.dart';
+import 'package:tts_bandmate/shared/cache/api_cache_storage.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 
 final _throwingDio = Dio();
+
+/// `eventDetailProvider` now uses the shared SWR mixin, which reads
+/// `apiCacheStorageProvider` whenever a band is selected. Without this
+/// override the provider throws `UnimplementedError` on any rebuild that
+/// happens after `selectedBandProvider` has resolved (e.g. the invalidate
+/// triggered by save/delete below).
+Future<ApiCacheStorage> _fakeCacheStorage() async {
+  SharedPreferences.setMockInitialValues({});
+  return ApiCacheStorage(await SharedPreferences.getInstance());
+}
+
 
 class _FakeBookingsRepository extends BookingsRepository {
   _FakeBookingsRepository({this.bookings = const []}) : super(_throwingDio);
@@ -55,20 +68,32 @@ class _FakeEventsRepository extends EventsRepository {
 
   int getEventDetailCalls = 0;
 
+  Map<String, dynamic> _eventJson(String key) => {
+        'event': {
+          'id': 1,
+          'key': key,
+          'title': 'Test Event',
+          'date': '2026-09-01',
+          'can_write': false,
+          'members': [],
+          'timeline': [],
+          'contacts': [],
+          'attachments': [],
+        },
+      };
+
   @override
   Future<EventDetail> getEventDetail(String key) async {
     getEventDetailCalls++;
-    return EventDetail(
-      id: 1,
-      key: key,
-      title: 'Test Event',
-      date: '2026-09-01',
-      canWrite: false,
-      members: const [],
-      timeline: const [],
-      contacts: const [],
-      attachments: const [],
-    );
+    return EventsRepository.parseEventDetail(_eventJson(key));
+  }
+
+  @override
+  Future<({EventDetail parsed, Map<String, dynamic> raw})> getEventDetailRaw(
+      String key) async {
+    getEventDetailCalls++;
+    final data = _eventJson(key);
+    return (parsed: EventsRepository.parseEventDetail(data), raw: data);
   }
 }
 
@@ -184,6 +209,7 @@ void main() {
         lodgingRepositoryProvider.overrideWithValue(lodgingRepo),
         bookingsRepositoryProvider.overrideWithValue(_FakeBookingsRepository()),
         selectedBandProvider.overrideWith(() => _FakeBand(1)),
+        apiCacheStorageProvider.overrideWithValue(await _fakeCacheStorage()),
       ],
       child: const CupertinoApp(home: LodgingEditScreen(lodgingId: null)),
     ));
@@ -211,6 +237,7 @@ void main() {
         lodgingRepositoryProvider.overrideWithValue(lodgingRepo),
         bookingsRepositoryProvider.overrideWithValue(_FakeBookingsRepository()),
         selectedBandProvider.overrideWith(() => _FakeBand(1)),
+        apiCacheStorageProvider.overrideWithValue(await _fakeCacheStorage()),
       ],
       child: const CupertinoApp(home: LodgingEditScreen(lodgingId: 5)),
     ));
@@ -257,6 +284,7 @@ void main() {
         bookingsRepositoryProvider.overrideWithValue(bookingsRepo),
         eventsRepositoryProvider.overrideWithValue(eventsRepo),
         selectedBandProvider.overrideWith(() => _FakeBand(1)),
+        apiCacheStorageProvider.overrideWithValue(await _fakeCacheStorage()),
       ],
       child: const CupertinoApp(
         home: _DetailWatchers(
@@ -297,6 +325,7 @@ void main() {
         lodgingRepositoryProvider.overrideWithValue(lodgingRepo),
         bookingsRepositoryProvider.overrideWithValue(_FakeBookingsRepository()),
         selectedBandProvider.overrideWith(() => _FakeBand(1)),
+        apiCacheStorageProvider.overrideWithValue(await _fakeCacheStorage()),
       ],
       child: const CupertinoApp(home: LodgingEditScreen(lodgingId: 5)),
     ));
@@ -375,6 +404,7 @@ void main() {
         lodgingRepositoryProvider.overrideWithValue(_FakeLodgingRepository()),
         bookingsRepositoryProvider.overrideWithValue(_FakeBookingsRepository()),
         selectedBandProvider.overrideWith(() => _FakeBand(1)),
+        apiCacheStorageProvider.overrideWithValue(await _fakeCacheStorage()),
       ],
       child: const CupertinoApp(home: LodgingEditScreen(lodgingId: null)),
     ));
@@ -424,6 +454,7 @@ void main() {
         lodgingRepositoryProvider.overrideWithValue(_FakeLodgingRepository()),
         bookingsRepositoryProvider.overrideWithValue(bookingsRepo),
         selectedBandProvider.overrideWith(() => _FakeBand(1)),
+        apiCacheStorageProvider.overrideWithValue(await _fakeCacheStorage()),
       ],
       child: const CupertinoApp(home: LodgingEditScreen(lodgingId: null)),
     ));

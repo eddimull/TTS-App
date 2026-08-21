@@ -43,6 +43,17 @@ ThreadPage _emptyThread() => (
       hasMore: false,
     );
 
+/// Fixed-value stand-in for [EventDetailNotifier] — `eventDetailProvider` is
+/// an `AsyncNotifierProvider.family`, so `overrideWith` needs a notifier
+/// factory rather than a bare async callback.
+class _FakeEventDetailNotifier extends EventDetailNotifier {
+  _FakeEventDetailNotifier(this._value) : super(_eventKey);
+  final EventDetail _value;
+
+  @override
+  Future<EventDetail> build() async => _value;
+}
+
 void main() {
   testWidgets(
     'tapping an event contact opens the shared ContactDetailScreen',
@@ -51,7 +62,7 @@ void main() {
         ProviderScope(
           overrides: [
             eventDetailProvider(_eventKey).overrideWith(
-              (ref) async => _eventWithContact(),
+              () => _FakeEventDetailNotifier(_eventWithContact()),
             ),
             topicThreadProvider.overrideWith((ref, topic) => _emptyThread()),
           ],

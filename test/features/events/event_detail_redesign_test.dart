@@ -56,6 +56,17 @@ ThreadPage _emptyThread() => (
       hasMore: false,
     );
 
+/// Fixed-value stand-in for [EventDetailNotifier] — `eventDetailProvider` is
+/// an `AsyncNotifierProvider.family`, so `overrideWith` needs a notifier
+/// factory rather than a bare async callback.
+class _FakeEventDetailNotifier extends EventDetailNotifier {
+  _FakeEventDetailNotifier(this._value) : super(_eventKey);
+  final EventDetail _value;
+
+  @override
+  Future<EventDetail> build() async => _value;
+}
+
 Future<void> _pump(
   WidgetTester tester,
   EventDetail event, {
@@ -74,7 +85,8 @@ Future<void> _pump(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        eventDetailProvider(_eventKey).overrideWith((ref) async => event),
+        eventDetailProvider(_eventKey)
+            .overrideWith(() => _FakeEventDetailNotifier(event)),
         topicThreadProvider.overrideWith((ref, topic) => _emptyThread()),
         uploadQueueStorageProvider.overrideWithValue(UploadQueueStorage(prefs)),
         if (selectedBandId != null)

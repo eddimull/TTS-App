@@ -31,10 +31,29 @@ class FakeEventsRepository implements EventsRepository {
   }
 
   @override
+  Future<({List<EventSummary> parsed, Map<String, dynamic> raw})>
+      getBandEventsRaw(
+    int bandId, {
+    String? from,
+    String? to,
+  }) async {
+    listCallCount++;
+    return (parsed: _events, raw: const <String, dynamic>{});
+  }
+
+  @override
   Future<EventDetail> getEventDetail(String key) async {
     detailCallCount++;
     if (_detail == null) throw Exception('Not found');
     return _detail;
+  }
+
+  @override
+  Future<({EventDetail parsed, Map<String, dynamic> raw})> getEventDetailRaw(
+      String key) async {
+    detailCallCount++;
+    if (_detail == null) throw Exception('Not found');
+    return (parsed: _detail, raw: const <String, dynamic>{});
   }
 
   @override

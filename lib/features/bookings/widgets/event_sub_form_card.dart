@@ -783,11 +783,15 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
                   const Spacer(),
                   CupertinoButton(
                     padding: EdgeInsets.zero,
-                    minimumSize: const Size(32, 32),
+                    minimumSize: const Size(44, 44),
                     onPressed: _durationHours > 1
                         ? () => _setDuration(_durationHours - 1)
                         : null,
-                    child: const Icon(CupertinoIcons.minus_circle, size: 22),
+                    child: const Icon(
+                      CupertinoIcons.minus_circle,
+                      size: 22,
+                      semanticLabel: 'Decrease duration',
+                    ),
                   ),
                   SizedBox(
                     width: 52,
@@ -799,11 +803,15 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
                   ),
                   CupertinoButton(
                     padding: EdgeInsets.zero,
-                    minimumSize: const Size(32, 32),
+                    minimumSize: const Size(44, 44),
                     onPressed: _durationHours < 24
                         ? () => _setDuration(_durationHours + 1)
                         : null,
-                    child: const Icon(CupertinoIcons.plus_circle, size: 22),
+                    child: const Icon(
+                      CupertinoIcons.plus_circle,
+                      size: 22,
+                      semanticLabel: 'Increase duration',
+                    ),
                   ),
                 ],
               ),

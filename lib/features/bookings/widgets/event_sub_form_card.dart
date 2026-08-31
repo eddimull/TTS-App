@@ -237,6 +237,7 @@ class EventSubFormCard extends ConsumerStatefulWidget {
     required this.onChange,
     required this.onDelete,
     this.onRetryRow,
+    this.streamlined = false,
   });
 
   /// Band whose existing bookings mark reserved dates in the date picker.
@@ -252,6 +253,11 @@ class EventSubFormCard extends ConsumerStatefulWidget {
   final ValueChanged<EventDraft> onChange;
   final VoidCallback onDelete;
   final VoidCallback? onRetryRow;
+
+  /// Web-parity create mode: no title (it inherits the booking name at save),
+  /// no header/delete, and a duration stepper instead of an end-time picker —
+  /// the end time is derived as start + duration.
+  final bool streamlined;
 
   @override
   ConsumerState<EventSubFormCard> createState() => _EventSubFormCardState();
@@ -270,10 +276,14 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
   // double-tap pushing two VenueSearchSheet routes before the first settles.
   bool _venueFlowOpen = false;
 
+  // Streamlined mode only: hours between start and derived end time.
+  late int _durationHours;
+
   @override
   void initState() {
     super.initState();
     _title = TextEditingController(text: widget.draft.title);
+    _durationHours = _initialDurationHours();
     // An existing booking opens with venueAddress but no session coordinates
     // (EventDraft carries no lat/lng). Geocode it once so the map thumbnail
     // shows for already-saved venues, not just ones picked this session.
@@ -327,6 +337,34 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
   void dispose() {
     _title.dispose();
     super.dispose();
+  }
+
+  // ── Streamlined duration handling ───────────────────────────────────────────
+
+  static const int _kDefaultDurationHours = 4;
+
+  /// Seed the duration from an existing start/end pair (wrapping past
+  /// midnight), else default.
+  int _initialDurationHours() {
+    final start = _parseHhMm(widget.draft.startTime);
+    final end = _parseHhMm(widget.draft.endTime);
+    if (start == null || end == null) return _kDefaultDurationHours;
+    final diffMins = (end.hour * 60 + end.minute) -
+        (start.hour * 60 + start.minute);
+    final hours = diffMins ~/ 60;
+    return (hours <= 0 ? hours + 24 : hours).clamp(1, 24);
+  }
+
+  String _deriveEndFromStart(int startHour, int startMinute) =>
+      _formatHhMm((startHour + _durationHours) % 24, startMinute);
+
+  void _setDuration(int hours) {
+    setState(() => _durationHours = hours);
+    final start = _parseHhMm(widget.draft.startTime);
+    if (start != null) {
+      widget.onChange(
+          _copyWith(endTime: _deriveEndFromStart(start.hour, start.minute)));
+    }
   }
 
   // ── Picker launchers ────────────────────────────────────────────────────────
@@ -403,6 +441,15 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
       builder: (_) => _PickerSheet(
         onDone: () {
           final hhmm = _formatHhMm(selectedDt.hour, selectedDt.minute);
+          if (isStartTime && widget.streamlined) {
+            // End time is derived, not user-set — keep it pinned to
+            // start + duration whenever the start moves.
+            widget.onChange(_copyWith(
+              startTime: hhmm,
+              endTime: _deriveEndFromStart(selectedDt.hour, selectedDt.minute),
+            ));
+            return;
+          }
           widget.onChange(isStartTime
               ? _copyWith(startTime: hhmm)
               : _copyWith(endTime: hhmm));
@@ -618,29 +665,30 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Card header: title preview + delete ───────────────────────────
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  draft.title.isEmpty ? 'Untitled event' : draft.title,
-                  style:
-                      CupertinoTheme.of(context).textTheme.textStyle.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+          if (!widget.streamlined)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    draft.title.isEmpty ? 'Untitled event' : draft.title,
+                    style:
+                        CupertinoTheme.of(context).textTheme.textStyle.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                  ),
                 ),
-              ),
-              CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: widget.canDelete ? widget.onDelete : null,
-                child: Icon(
-                  CupertinoIcons.trash,
-                  color: widget.canDelete
-                      ? CupertinoColors.destructiveRed
-                      : CupertinoColors.inactiveGray,
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: widget.canDelete ? widget.onDelete : null,
+                  child: Icon(
+                    CupertinoIcons.trash,
+                    color: widget.canDelete
+                        ? CupertinoColors.destructiveRed
+                        : CupertinoColors.inactiveGray,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
 
           // ── Save-failure banner ───────────────────────────────────────────
           if (widget.saveError != null)
@@ -668,23 +716,25 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
               ),
             ),
 
-          const SizedBox(height: 8),
+          if (!widget.streamlined) ...[
+            const SizedBox(height: 8),
 
-          // ── Title text field ──────────────────────────────────────────────
-          CupertinoTextField(
-            placeholder: 'Title',
-            controller: _title,
-            onChanged: (v) => widget.onChange(_copyWith(title: v)),
-          ),
-
-          // ── Thin divider between text fields and picker rows ──────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Container(
-              height: 0.5,
-              color: CupertinoColors.separator.resolveFrom(context),
+            // ── Title text field ────────────────────────────────────────────
+            CupertinoTextField(
+              placeholder: 'Title',
+              controller: _title,
+              onChanged: (v) => widget.onChange(_copyWith(title: v)),
             ),
-          ),
+
+            // ── Thin divider between text fields and picker rows ────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Container(
+                height: 0.5,
+                color: CupertinoColors.separator.resolveFrom(context),
+              ),
+            ),
+          ],
 
           // ── Date picker row ───────────────────────────────────────────────
           _PickerRow(
@@ -717,21 +767,85 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
             color: CupertinoColors.separator.resolveFrom(context),
           ),
 
-          // ── End time picker row ───────────────────────────────────────────
-          _PickerRow(
-            label: 'End time',
-            value: friendlyEnd,
-            placeholder: 'Set time',
-            onTap: () => _pickTime(context, isStartTime: false),
-            onClear: draft.endTime != null
-                ? () => widget.onChange(_copyWith(endTime: null))
-                : null,
-            // Highlight red when end is before start.
-            isWarning: endBeforeStart,
-          ),
+          // ── End time picker row (full mode) / duration stepper (streamlined)
+          if (widget.streamlined)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Text(
+                    'Duration',
+                    style: CupertinoTheme.of(context)
+                        .textTheme
+                        .textStyle
+                        .copyWith(fontSize: 14),
+                  ),
+                  const Spacer(),
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(44, 44),
+                    onPressed: _durationHours > 1
+                        ? () => _setDuration(_durationHours - 1)
+                        : null,
+                    child: const Icon(
+                      CupertinoIcons.minus_circle,
+                      size: 22,
+                      semanticLabel: 'Decrease duration',
+                    ),
+                  ),
+                  SizedBox(
+                    width: 52,
+                    child: Text(
+                      '$_durationHours hr',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(44, 44),
+                    onPressed: _durationHours < 24
+                        ? () => _setDuration(_durationHours + 1)
+                        : null,
+                    child: const Icon(
+                      CupertinoIcons.plus_circle,
+                      size: 22,
+                      semanticLabel: 'Increase duration',
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            _PickerRow(
+              label: 'End time',
+              value: friendlyEnd,
+              placeholder: 'Set time',
+              onTap: () => _pickTime(context, isStartTime: false),
+              onClear: draft.endTime != null
+                  ? () => widget.onChange(_copyWith(endTime: null))
+                  : null,
+              // Highlight red when end is before start.
+              isWarning: endBeforeStart,
+            ),
+
+          // ── Derived end time hint (streamlined) ──────────────────────────
+          if (widget.streamlined && friendlyEnd != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                endBeforeStart || draft.endTime == draft.startTime
+                    ? 'Ends at $friendlyEnd (next day)'
+                    : 'Ends at $friendlyEnd',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: context.secondaryText,
+                ),
+              ),
+            ),
 
           // ── End-before-start inline warning ──────────────────────────────
-          if (endBeforeStart)
+          if (!widget.streamlined && endBeforeStart)
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Row(

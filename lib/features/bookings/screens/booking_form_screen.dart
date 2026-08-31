@@ -751,7 +751,9 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
-                      'EVENTS',
+                      // Create mode is a single web-parity schedule, not an
+                      // event list; more events can be added after creation.
+                      _isEdit ? 'EVENTS' : 'SCHEDULE',
                       style: TextStyle(
                         fontSize: 13,
                         color: context.secondaryText,
@@ -779,6 +781,7 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
                       bandId: widget.bandId,
                       excludeBookingId: widget.existing?.id,
                       draft: row.draft,
+                      streamlined: !_isEdit,
                       canDelete: _eventRows.length > 1,
                       saveError: err,
                       onChange: (newDraft) {
@@ -793,6 +796,7 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
                       onRetryRow: _onSavePressed,
                     );
                   }),
+                  if (_isEdit)
                   CupertinoButton(
                     padding: EdgeInsets.zero,
                     child: const Text('+ Add event'),

@@ -71,6 +71,11 @@ class PushRegistrar {
     await push.requestPermission();
     push.listenForeground();
     push.listenTaps((route) => _ref.read(routerProvider).go(route));
+    // iOS terminated-state taps never surface through getInitialMessage /
+    // onMessageOpenedApp (UIScene initial-notification gap) — pull the
+    // natively stashed launch tap now that a route handler exists.
+    unawaited(push
+        .consumeLaunchNotification((route) => _ref.read(routerProvider).go(route)));
     push.onDeparturePush = (payload) async {
       final firstTime = payload.firstItemTime;
       if (firstTime == null) return;

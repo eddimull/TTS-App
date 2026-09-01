@@ -32,6 +32,42 @@ void main() {
     expect(find.text('2'), findsOneWidget); // unread badge
   });
 
+  testWidgets('topic rows render item-type icons', (tester) async {
+    final container = ProviderContainer(overrides: [
+      chatConversationsProvider.overrideWith((ref) async => [
+            const Conversation(
+                id: 3,
+                type: 'topic',
+                title: 'Summer Gala',
+                topicType: 'booking'),
+            const Conversation(
+                id: 4,
+                type: 'topic',
+                title: 'Festival Set',
+                topicType: 'event'),
+            const Conversation(
+                id: 5,
+                type: 'topic',
+                title: 'Tuesday practice',
+                topicType: 'rehearsal'),
+            const Conversation(id: 6, type: 'topic', title: 'Thread'),
+          ]),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const CupertinoApp(home: MessagesScreen()),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(CupertinoIcons.briefcase), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.calendar), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.music_note_2), findsOneWidget);
+    // Unknown/missing topic_type falls back to a generic thread icon.
+    expect(find.byIcon(CupertinoIcons.chat_bubble_2), findsOneWidget);
+  });
+
   testWidgets('shows empty state when no conversations', (tester) async {
     final container = ProviderContainer(overrides: [
       chatConversationsProvider.overrideWith((ref) async => []),

@@ -258,7 +258,7 @@ class PushService implements LocalScheduler {
       return;
     }
     if (data == null) return;
-    final route = routeForPushData({
+    final route = routeForPushData(<String, dynamic>{
       for (final entry in data.entries)
         if (entry.key is String) entry.key as String: entry.value,
     });

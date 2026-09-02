@@ -2,6 +2,7 @@ import 'dart:async' show unawaited;
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show MethodChannel, MissingPluginException, PlatformException;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -230,6 +231,39 @@ class PushService implements LocalScheduler {
     FirebaseMessaging.instance.getInitialMessage().then((message) {
       if (message != null) handle('fcm_initial_message', message);
     });
+  }
+
+  /// iOS-only side channel for the notification tap that launched the app
+  /// from a terminated state. Under the UIScene lifecycle firebase_messaging
+  /// never gathers its initial notification (its DidFinishLaunching observer
+  /// registers too late to ever fire), so `getInitialMessage()` NEVER
+  /// resolves; the plugin instead fires `onMessageOpenedApp` during launch,
+  /// before [listenTaps] has attached a listener, and the event is dropped.
+  /// The AppDelegate stashes the tap's userInfo natively and this channel
+  /// pulls it once the Dart side is ready — same pull semantics that make the
+  /// Android cold-start path (getInitialMessage) work.
+  static const _launchChannel = MethodChannel('tts.band/launch_notification');
+
+  /// Pull-and-clear the natively stashed cold-start tap, routing it like any
+  /// other tap. Safe everywhere: Android and old binaries have no channel
+  /// (MissingPluginException) and that must never break startup.
+  Future<void> consumeLaunchNotification(
+      void Function(String route) onRoute) async {
+    Map<Object?, Object?>? data;
+    try {
+      data = await _launchChannel.invokeMethod<Map<Object?, Object?>>('get');
+    } on MissingPluginException {
+      return;
+    } on PlatformException {
+      return;
+    }
+    if (data == null) return;
+    final route = routeForPushData(<String, dynamic>{
+      for (final entry in data.entries)
+        if (entry.key is String) entry.key as String: entry.value,
+    });
+    _tapBreadcrumb('ios_launch_stash', route);
+    if (route != null) onRoute(route);
   }
 
   /// Handler for `FirebaseMessaging.onMessage` (foreground pushes). Public

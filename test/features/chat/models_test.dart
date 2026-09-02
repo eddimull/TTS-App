@@ -30,6 +30,25 @@ void main() {
     expect(dm.lastMessageAt, isNull);
   });
 
+  test('Conversation parses topic_type for item threads, null elsewhere', () {
+    final topic = Conversation.fromJson({
+      'id': 9,
+      'type': 'topic',
+      'band_id': 1,
+      'title': 'Summer Gala',
+      'topic_type': 'booking',
+    });
+    expect(topic.topicType, 'booking');
+
+    final band = Conversation.fromJson({
+      'id': 5,
+      'type': 'band',
+      'title': 'Three Thirty Seven',
+      'topic_type': null,
+    });
+    expect(band.topicType, isNull);
+  });
+
   test('ChatMessage parses attachments, edited/deleted flags', () {
     final m = ChatMessage.fromJson({
       'id': 10,

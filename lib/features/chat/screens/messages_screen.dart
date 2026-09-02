@@ -63,6 +63,19 @@ class MessagesScreen extends ConsumerWidget {
   }
 }
 
+IconData _rowIcon(Conversation c) {
+  if (c.type == 'dm') return CupertinoIcons.person_crop_circle;
+  if (c.type == 'topic') {
+    return switch (c.topicType) {
+      'booking' => CupertinoIcons.briefcase,
+      'event' => CupertinoIcons.calendar,
+      'rehearsal' => CupertinoIcons.music_note_2,
+      _ => CupertinoIcons.chat_bubble_2,
+    };
+  }
+  return CupertinoIcons.person_3_fill;
+}
+
 class _ConversationRow extends StatelessWidget {
   const _ConversationRow({required this.conversation, required this.onTap});
   final Conversation conversation;
@@ -87,9 +100,7 @@ class _ConversationRow extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              conversation.type == 'dm'
-                  ? CupertinoIcons.person_crop_circle
-                  : CupertinoIcons.person_3_fill,
+              _rowIcon(conversation),
               size: 34,
               color: context.secondaryText,
             ),

@@ -8,6 +8,7 @@ class Conversation {
     this.lastMessageAt,
     this.unreadCount = 0,
     this.canModerate = false,
+    this.topicType,
   });
 
   final int id;
@@ -18,6 +19,11 @@ class Conversation {
   final DateTime? lastMessageAt;
   final int unreadCount;
   final bool canModerate;
+
+  /// For type 'topic': what kind of item the thread hangs off —
+  /// 'booking' | 'event' | 'rehearsal' (null for dm/band rows, or when an
+  /// older backend omits the field).
+  final String? topicType;
 
   factory Conversation.fromJson(Map<String, dynamic> json) => Conversation(
         id: (json['id'] as num).toInt(),
@@ -30,5 +36,6 @@ class Conversation {
             : null,
         unreadCount: (json['unread_count'] as num?)?.toInt() ?? 0,
         canModerate: json['can_moderate'] as bool? ?? false,
+        topicType: json['topic_type'] as String?,
       );
 }

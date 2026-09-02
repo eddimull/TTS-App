@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.26.0](https://github.com/eddimull/TTS-App/compare/v1.25.0...v1.26.0) (2026-09-02)
+
+
+### Features
+
+* **chat:** show item topic threads in the Messages list ([df955f5](https://github.com/eddimull/TTS-App/commit/df955f5ca123b37dfcb32c7d5e87f5d7430bf8ed))
+* **chat:** show item topic threads in the Messages list ([c879c17](https://github.com/eddimull/TTS-App/commit/c879c179615cd502e8f138925aeb73e1e2734f45))
+* streamline booking create to web parity (date + start + duration) ([3075813](https://github.com/eddimull/TTS-App/commit/307581350b2d16d70dad471e5095aa387463190f))
+* streamline booking create to web parity (date + start + duration) ([0326b2a](https://github.com/eddimull/TTS-App/commit/0326b2ada8d9d0b43d1a89f46c537bde569de913))
+
+
+### Bug Fixes
+
+* 44pt tap targets + semantic labels on duration stepper ([8dbc212](https://github.com/eddimull/TTS-App/commit/8dbc212da3a556f2b4f59372407c766ecbb35307))
+* **ios:** correct Swift argument label for notification response override ([b2dc936](https://github.com/eddimull/TTS-App/commit/b2dc93620632d4a30481e1dcef20e58e78cea080))
+* **ios:** correct Swift argument label for notification response override ([c8db2b0](https://github.com/eddimull/TTS-App/commit/c8db2b01e7f0eae98a0ca5706c82c865a547fd88))
+* **ios:** deliver terminated-state notification tap routes via native stash ([a19178a](https://github.com/eddimull/TTS-App/commit/a19178a66a4e0ba8d7b750b751b48b3645b8b652))
+* **ios:** deliver terminated-state notification tap routes via native stash ([1a462fc](https://github.com/eddimull/TTS-App/commit/1a462fc0122b073a7c588798ea7bde31ec775464))
+
 ## [1.25.0](https://github.com/eddimull/TTS-App/compare/v1.24.0...v1.25.0) (2026-08-21)
 
 

@@ -98,9 +98,13 @@ import UserNotifications
   /// replay an already-handled tap as a stale navigation.
   private var launchStashConsumed = false
 
+  // ObjC selector userNotificationCenter:didReceiveNotificationResponse:
+  // withCompletionHandler: imports into Swift as `didReceive` — the shortened
+  // label is required or the override doesn't match FlutterAppDelegate's
+  // implementation (and doesn't compile).
   override func userNotificationCenter(
     _ center: UNUserNotificationCenter,
-    didReceiveNotificationResponse response: UNNotificationResponse,
+    didReceive response: UNNotificationResponse,
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
     if !launchStashConsumed {
@@ -110,7 +114,7 @@ import UserNotifications
     // flutter_local_notifications) exactly as before this override existed.
     super.userNotificationCenter(
       center,
-      didReceiveNotificationResponse: response,
+      didReceive: response,
       withCompletionHandler: completionHandler)
   }
 

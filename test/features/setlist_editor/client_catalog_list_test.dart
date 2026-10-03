@@ -50,6 +50,22 @@ void main() {
     expect(find.textContaining('Wedding Questionnaire'), findsOneWidget);
   });
 
+  testWidgets('header has no stray comma when picks match no listed song',
+      (tester) async {
+    await tester.pumpWidget(_wrap(
+      ClientCatalogList(
+        songs: _songs,
+        requests: const ClientSongRequests(
+          mustPlayIds: {99},
+          doNotPlayIds: {},
+          sourceName: 'Wedding Questionnaire',
+        ),
+      ),
+    ));
+
+    expect(find.text('from Wedding Questionnaire'), findsOneWidget);
+  });
+
   testWidgets('must-play row shows a star and caption', (tester) async {
     await tester.pumpWidget(_wrap(
       ClientCatalogList(songs: _songs, requests: _requests),

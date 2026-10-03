@@ -46,12 +46,11 @@ class _SummaryHeader extends StatelessWidget {
     final must = requests.mustPlayIds.where(ids.contains).length;
     final skip = requests.doNotPlayIds.where(ids.contains).length;
 
-    final counts = <String>[
+    // Join only the non-empty parts so a missing count or source never
+    // leaves a stray comma.
+    final summary = <String>[
       if (must > 0) '$must must play',
       if (skip > 0) '$skip do not play',
-    ].join(', ');
-
-    final source = <String>[
       if ((requests.sourceName ?? '').isNotEmpty) 'from ${requests.sourceName}',
       if (requests.submittedAt != null)
         'submitted ${DateFormat('MMM d').format(requests.submittedAt!.toLocal())}',
@@ -82,7 +81,7 @@ class _SummaryHeader extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            source.isEmpty ? counts : '$counts, $source',
+            summary,
             style: TextStyle(fontSize: 14, color: context.primaryText),
           ),
         ],

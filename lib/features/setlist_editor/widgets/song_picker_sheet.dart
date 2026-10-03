@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import '../data/models/event_setlist.dart';
+import 'client_request_marker.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 // ── Public result type ────────────────────────────────────────────────────────
@@ -61,19 +62,22 @@ class SongPickerResult {
 Future<SongPickerResult?> showSongPickerSheet(
   BuildContext context, {
   required List<BandSongSummary> songs,
+  ClientSongRequests? clientRequests,
 }) {
   return showCupertinoModalPopup<SongPickerResult>(
     context: context,
-    builder: (_) => _SongPickerSheet(songs: songs),
+    builder: (_) =>
+        _SongPickerSheet(songs: songs, clientRequests: clientRequests),
   );
 }
 
 // ── Private sheet implementation ──────────────────────────────────────────────
 
 class _SongPickerSheet extends StatefulWidget {
-  const _SongPickerSheet({required this.songs});
+  const _SongPickerSheet({required this.songs, this.clientRequests});
 
   final List<BandSongSummary> songs;
+  final ClientSongRequests? clientRequests;
 
   @override
   State<_SongPickerSheet> createState() => _SongPickerSheetState();
@@ -168,6 +172,7 @@ class _SongPickerSheetState extends State<_SongPickerSheet> {
             ) : _LibraryList(
               songs: _filtered,
               query: _query,
+              clientRequests: widget.clientRequests,
               onQueryChanged: (v) => setState(() => _query = v),
               onPick: _pickLibrarySong,
             ),
@@ -255,10 +260,12 @@ class _LibraryList extends StatelessWidget {
     required this.query,
     required this.onQueryChanged,
     required this.onPick,
+    this.clientRequests,
   });
 
   final List<BandSongSummary> songs;
   final String query;
+  final ClientSongRequests? clientRequests;
   final ValueChanged<String> onQueryChanged;
   final ValueChanged<BandSongSummary> onPick;
 
@@ -282,8 +289,12 @@ class _LibraryList extends StatelessWidget {
                   // search field may have raised, improving the browse UX.
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
-                  itemBuilder: (context, i) =>
-                      _SongTile(song: songs[i], onTap: () => onPick(songs[i])),
+                  itemBuilder: (context, i) => _SongTile(
+                    song: songs[i],
+                    clientStatus: clientRequests?.statusFor(songs[i].id) ??
+                        ClientSongStatus.none,
+                    onTap: () => onPick(songs[i]),
+                  ),
                 ),
         ),
       ],
@@ -293,10 +304,15 @@ class _LibraryList extends StatelessWidget {
 
 /// Single tappable row for a library song.
 class _SongTile extends StatelessWidget {
-  const _SongTile({required this.song, required this.onTap});
+  const _SongTile({
+    required this.song,
+    required this.onTap,
+    this.clientStatus = ClientSongStatus.none,
+  });
 
   final BandSongSummary song;
   final VoidCallback onTap;
+  final ClientSongStatus clientStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -323,24 +339,48 @@ class _SongTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      song.title,
-                      style: TextStyle(
-                        fontSize: 15,
-                        // label resolves correctly in light/dark mode.
-                        color: context.primaryText,
-                      ),
+                    Row(
+                      children: [
+                        if (clientStatus == ClientSongStatus.mustPlay)
+                          const Padding(
+                            padding: EdgeInsets.only(right: 4),
+                            child: ClientRequestStar(size: 14),
+                          ),
+                        Flexible(
+                          child: Text(
+                            song.title,
+                            style: clientRequestTextStyle(
+                              context,
+                              clientStatus,
+                              TextStyle(
+                                fontSize: 15,
+                                // label resolves correctly in light/dark mode.
+                                color: context.primaryText,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     if ((song.artist ?? '').isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
                           song.artist!,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: context.secondaryText,
+                          style: clientRequestTextStyle(
+                            context,
+                            clientStatus,
+                            TextStyle(
+                              fontSize: 13,
+                              color: context.secondaryText,
+                            ),
                           ),
                         ),
+                      ),
+                    if (clientStatus != ClientSongStatus.none)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: ClientRequestCaption(clientStatus),
                       ),
                   ],
                 ),

@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import '../data/models/event_setlist.dart';
+import 'client_request_marker.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// A row representing a single song in the setlist editor.
@@ -25,6 +26,7 @@ class SetlistSongRow extends StatelessWidget {
     required this.onEdit,
     required this.onRemove,
     this.dragIndex,
+    this.clientStatus = ClientSongStatus.none,
   });
 
   final SetlistEntry entry;
@@ -32,6 +34,8 @@ class SetlistSongRow extends StatelessWidget {
   final bool canWrite;
   final VoidCallback onEdit;
   final VoidCallback onRemove;
+  /// Client must-play / do-not-play flag for this entry's song, if any.
+  final ClientSongStatus clientStatus;
   /// When non-null and [canWrite] is true, wraps the leading number area in a
   /// [ReorderableDragStartListener] so the row can be dragged by its number.
   final int? dragIndex;
@@ -75,23 +79,50 @@ class SetlistSongRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  entry.displayTitle,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
+                Row(
+                  children: [
+                    if (clientStatus == ClientSongStatus.mustPlay)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 4),
+                        child: ClientRequestStar(size: 14),
+                      ),
+                    Flexible(
+                      child: Text(
+                        entry.displayTitle,
+                        style: clientRequestTextStyle(
+                          context,
+                          clientStatus,
+                          TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            // Explicit: the enclosing Material's default text
+                            // style is light-theme black, dim on dark mode.
+                            color: context.primaryText,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 if ((entry.displayArtist ?? '').isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
                       entry.displayArtist!,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: context.secondaryText,
+                      style: clientRequestTextStyle(
+                        context,
+                        clientStatus,
+                        TextStyle(
+                          fontSize: 13,
+                          color: context.secondaryText,
+                        ),
                       ),
                     ),
+                  ),
+                if (clientStatus == ClientSongStatus.doNotPlay)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: ClientRequestCaption(ClientSongStatus.doNotPlay),
                   ),
                 // Metadata tags — only rendered when there is at least one tag
                 // to show, avoiding an empty Wrap with wasted vertical space.

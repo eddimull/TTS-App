@@ -32,6 +32,7 @@ SetlistEntry _songEntry({
     );
 
 void main() {
+  _clientMarkerTests();
   group('SetlistSongRow', () {
     testWidgets('renders title, artist, and BPM tag for a populated song entry',
         (tester) async {
@@ -155,6 +156,64 @@ void main() {
 
       expect(find.text('— SET BREAK —'), findsOneWidget);
       expect(find.byIcon(CupertinoIcons.delete), findsNothing);
+    });
+  });
+}
+
+// ── Client request markers ─────────────────────────────────────────────────────
+
+void _clientMarkerTests() {
+  group('SetlistSongRow client markers', () {
+    testWidgets('must-play entry shows a star', (tester) async {
+      await tester.pumpWidget(_wrap(
+        SetlistSongRow(
+          entry: _songEntry(),
+          songNumber: 1,
+          canWrite: false,
+          onEdit: () {},
+          onRemove: () {},
+          clientStatus: ClientSongStatus.mustPlay,
+        ),
+      ));
+
+      expect(find.byIcon(CupertinoIcons.star_fill), findsOneWidget);
+      final style = tester.widget<Text>(find.text('Brown Eyed Girl')).style!;
+      expect(style.decoration, isNot(TextDecoration.lineThrough));
+    });
+
+    testWidgets('do-not-play entry is struck through', (tester) async {
+      await tester.pumpWidget(_wrap(
+        SetlistSongRow(
+          entry: _songEntry(),
+          songNumber: 1,
+          canWrite: false,
+          onEdit: () {},
+          onRemove: () {},
+          clientStatus: ClientSongStatus.doNotPlay,
+        ),
+      ));
+
+      final title = tester.widget<Text>(find.text('Brown Eyed Girl')).style!;
+      final artist = tester.widget<Text>(find.text('Van Morrison')).style!;
+      expect(title.decoration, TextDecoration.lineThrough);
+      expect(artist.decoration, TextDecoration.lineThrough);
+      expect(find.text('Do not play'), findsOneWidget);
+      expect(find.byIcon(CupertinoIcons.star_fill), findsNothing);
+    });
+
+    testWidgets('default status renders no marker', (tester) async {
+      await tester.pumpWidget(_wrap(
+        SetlistSongRow(
+          entry: _songEntry(),
+          songNumber: 1,
+          canWrite: false,
+          onEdit: () {},
+          onRemove: () {},
+        ),
+      ));
+
+      expect(find.byIcon(CupertinoIcons.star_fill), findsNothing);
+      expect(find.text('Do not play'), findsNothing);
     });
   });
 }

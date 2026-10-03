@@ -92,9 +92,12 @@ class SetlistSongRow extends StatelessWidget {
                         style: clientRequestTextStyle(
                           context,
                           clientStatus,
-                          const TextStyle(
+                          TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
+                            // Explicit: the enclosing Material's default text
+                            // style is light-theme black, dim on dark mode.
+                            color: context.primaryText,
                           ),
                         ),
                       ),

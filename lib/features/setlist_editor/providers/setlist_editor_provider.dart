@@ -36,10 +36,13 @@ class SetlistEditorState {
     this.isDirty = false,
     this.generationSteps = const [],
     this.error,
+    this.clientRequests,
   });
 
   final EventSetlist? setlist;
   final List<BandSongSummary> bandSongs;
+  /// Client must-play / do-not-play picks from submitted questionnaires.
+  final ClientSongRequests? clientRequests;
   final bool canWrite;
   final bool isLoading;
   final bool isSaving;
@@ -62,9 +65,12 @@ class SetlistEditorState {
     bool? isDirty,
     List<GenerationStep>? generationSteps,
     String? Function()? error,
+    ClientSongRequests? Function()? clientRequests,
   }) =>
       SetlistEditorState(
         setlist: setlist != null ? setlist() : this.setlist,
+        clientRequests:
+            clientRequests != null ? clientRequests() : this.clientRequests,
         bandSongs: bandSongs ?? this.bandSongs,
         canWrite: canWrite ?? this.canWrite,
         isLoading: isLoading ?? this.isLoading,
@@ -98,6 +104,7 @@ class SetlistEditorNotifier extends Notifier<SetlistEditorState> {
         setlist: () => payload.setlist,
         bandSongs: payload.bandSongs,
         canWrite: payload.canWrite,
+        clientRequests: () => payload.clientRequests,
         isLoading: false,
         isDirty: false,
       );

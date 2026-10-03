@@ -109,6 +109,7 @@ class _FakeBandNotifier extends SelectedBandNotifier {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 void main() {
+  clientRequestsTests();
   const eventKey = 'test-event-key';
 
   // ── (1) Loading shows spinner ────────────────────────────────────────────────
@@ -311,4 +312,96 @@ class _SlowRepo extends SetlistEditorRepository {
   @override
   Future<SetlistEditorPayload> getSetlist(String eventKey) =>
       Completer<SetlistEditorPayload>().future; // never completes
+}
+
+// ── Client requests / Catalog segment ─────────────────────────────────────────
+
+void clientRequestsTests() {
+  const eventKey = 'test-event-key';
+
+  const bandSongs = [
+    BandSongSummary(id: 10, title: 'Alpha', artist: 'A'),
+    BandSongSummary(id: 11, title: 'Beta', artist: 'B'),
+    BandSongSummary(id: 12, title: 'Gamma', artist: 'G'),
+  ];
+
+  SetlistEditorPayload payload({ClientSongRequests? requests}) =>
+      SetlistEditorPayload(
+        setlist: const EventSetlist(
+          id: 1,
+          status: 'draft',
+          songs: [
+            SetlistEntry(type: 'song', position: 1, songId: 10, title: 'Alpha'),
+          ],
+        ),
+        bandSongs: bandSongs,
+        canWrite: true,
+        clientRequests: requests,
+      );
+
+  testWidgets('no segmented control when there are no client requests',
+      (tester) async {
+    final repo = _FakeRepo(payload());
+    await tester.pumpWidget(_app(
+      const SetlistEditorScreen(eventKey: eventKey),
+      repo: repo,
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CupertinoSlidingSegmentedControl<SetlistEditorSegment>),
+        findsNothing);
+    // Catalog-only songs are not listed.
+    expect(find.text('Gamma'), findsNothing);
+  });
+
+  testWidgets('Catalog segment lists whole band catalog with markers',
+      (tester) async {
+    final repo = _FakeRepo(payload(
+      requests: const ClientSongRequests(
+        mustPlayIds: {11},
+        doNotPlayIds: {12},
+        sourceName: 'Wedding Questionnaire',
+      ),
+    ));
+    await tester.pumpWidget(_app(
+      const SetlistEditorScreen(eventKey: eventKey),
+      repo: repo,
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CupertinoSlidingSegmentedControl<SetlistEditorSegment>),
+        findsOneWidget);
+    // Setlist tab is the default: only the setlist entry shows.
+    expect(find.text('Alpha'), findsOneWidget);
+    expect(find.text('Gamma'), findsNothing);
+
+    await tester.tap(find.text('Catalog'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Alpha'), findsOneWidget);
+    expect(find.text('Beta'), findsOneWidget);
+    expect(find.text('Gamma'), findsOneWidget);
+    expect(find.byIcon(CupertinoIcons.star_fill), findsOneWidget);
+    final gamma = tester.widget<Text>(find.text('Gamma')).style!;
+    expect(gamma.decoration, TextDecoration.lineThrough);
+    // Setlist-only chrome is hidden on the Catalog tab.
+    expect(find.text('1 songs'), findsNothing);
+  });
+
+  testWidgets('setlist rows carry client markers', (tester) async {
+    final repo = _FakeRepo(payload(
+      requests: const ClientSongRequests(
+        mustPlayIds: {},
+        doNotPlayIds: {10},
+      ),
+    ));
+    await tester.pumpWidget(_app(
+      const SetlistEditorScreen(eventKey: eventKey),
+      repo: repo,
+    ));
+    await tester.pumpAndSettle();
+
+    final alpha = tester.widget<Text>(find.text('Alpha')).style!;
+    expect(alpha.decoration, TextDecoration.lineThrough);
+  });
 }

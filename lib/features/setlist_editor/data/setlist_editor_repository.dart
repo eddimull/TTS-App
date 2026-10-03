@@ -10,11 +10,15 @@ class SetlistEditorPayload {
     required this.setlist,
     required this.bandSongs,
     required this.canWrite,
+    this.clientRequests,
   });
 
   final EventSetlist? setlist;
   final List<BandSongSummary> bandSongs;
   final bool canWrite;
+
+  /// Client must-play / do-not-play picks; null when none were submitted.
+  final ClientSongRequests? clientRequests;
 }
 
 class RefineResult {
@@ -38,10 +42,14 @@ class SetlistEditorRepository {
         .map((e) => BandSongSummary.fromJson(e as Map<String, dynamic>))
         .toList();
 
+    final requestsJson = data['client_requests'] as Map<String, dynamic>?;
+
     return SetlistEditorPayload(
       setlist: setlistJson != null ? EventSetlist.fromJson(setlistJson) : null,
       bandSongs: songs,
       canWrite: data['can_write'] as bool? ?? false,
+      clientRequests:
+          requestsJson != null ? ClientSongRequests.fromJson(requestsJson) : null,
     );
   }
 

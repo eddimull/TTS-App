@@ -182,3 +182,50 @@ class BandSongSummary {
         leadSinger: json['lead_singer'] as String?,
       );
 }
+
+/// How a client has flagged a catalog song via a submitted questionnaire.
+enum ClientSongStatus { none, mustPlay, doNotPlay }
+
+/// Must-play / do-not-play song picks gathered from submitted questionnaires
+/// on the event's booking. Null on the payload when the client made no picks.
+class ClientSongRequests {
+  const ClientSongRequests({
+    required this.mustPlayIds,
+    required this.doNotPlayIds,
+    this.sourceName,
+    this.recipientName,
+    this.submittedAt,
+  });
+
+  final Set<int> mustPlayIds;
+  final Set<int> doNotPlayIds;
+
+  /// Name of the most recently submitted questionnaire carrying picks.
+  final String? sourceName;
+  final String? recipientName;
+  final DateTime? submittedAt;
+
+  ClientSongStatus statusFor(int? songId) {
+    if (songId == null) return ClientSongStatus.none;
+    if (doNotPlayIds.contains(songId)) return ClientSongStatus.doNotPlay;
+    if (mustPlayIds.contains(songId)) return ClientSongStatus.mustPlay;
+    return ClientSongStatus.none;
+  }
+
+  static Set<int> _ids(Object? raw) => ((raw as List<dynamic>?) ?? const [])
+      .map((e) => e is num ? e.toInt() : int.tryParse('$e'))
+      .whereType<int>()
+      .toSet();
+
+  factory ClientSongRequests.fromJson(Map<String, dynamic> json) {
+    final source = json['source'] as Map<String, dynamic>?;
+    final submitted = source?['submitted_at'] as String?;
+    return ClientSongRequests(
+      mustPlayIds: _ids(json['must_play']),
+      doNotPlayIds: _ids(json['do_not_play']),
+      sourceName: source?['name'] as String?,
+      recipientName: source?['recipient_name'] as String?,
+      submittedAt: submitted == null ? null : DateTime.tryParse(submitted),
+    );
+  }
+}

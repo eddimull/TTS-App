@@ -4,11 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/providers/selected_band_provider.dart';
 import '../data/models/event_setlist.dart';
 import '../providers/setlist_editor_provider.dart';
+import '../widgets/client_catalog_list.dart';
 import '../widgets/generate_sheet.dart';
 import '../widgets/refine_sheet.dart';
 import '../widgets/setlist_row.dart';
 import '../widgets/song_picker_sheet.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
+
+/// Top-level segments of the editor. The Catalog segment only exists when a
+/// submitted questionnaire carries client must-play / do-not-play picks.
+enum SetlistEditorSegment { setlist, catalog }
 
 class SetlistEditorScreen extends ConsumerStatefulWidget {
   const SetlistEditorScreen({super.key, required this.eventKey});
@@ -21,6 +26,8 @@ class SetlistEditorScreen extends ConsumerStatefulWidget {
 }
 
 class _SetlistEditorScreenState extends ConsumerState<SetlistEditorScreen> {
+  SetlistEditorSegment _segment = SetlistEditorSegment.setlist;
+
   @override
   void initState() {
     super.initState();
@@ -73,6 +80,11 @@ class _SetlistEditorScreenState extends ConsumerState<SetlistEditorScreen> {
     }
 
     // ── Loaded state ──────────────────────────────────────────────────────────
+    final requests = state.clientRequests;
+    // Fall back to the setlist if requests vanished on a reload.
+    final showCatalog =
+        requests != null && _segment == SetlistEditorSegment.catalog;
+
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
         middle: const Text('Setlist'),
@@ -103,16 +115,42 @@ class _SetlistEditorScreenState extends ConsumerState<SetlistEditorScreen> {
             // Error banner for save/generate failures on an already-loaded
             // setlist. Distinct from the full-screen error (setlist == null).
             if (state.error != null) _ErrorBanner(message: state.error!),
-            _StatusBar(
-              eventKey: widget.eventKey,
-              state: state,
-            ),
-            Expanded(child: _Body(
-              eventKey: widget.eventKey,
-              state: state,
-              notifier: notifier,
-            )),
-            if (state.canWrite)
+            if (requests != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: CupertinoSlidingSegmentedControl<SetlistEditorSegment>(
+                    groupValue: _segment,
+                    onValueChanged: (v) {
+                      if (v != null) setState(() => _segment = v);
+                    },
+                    children: const {
+                      SetlistEditorSegment.setlist: Text('Setlist'),
+                      SetlistEditorSegment.catalog: Text('Catalog'),
+                    },
+                  ),
+                ),
+              ),
+            if (showCatalog)
+              Expanded(
+                child: ClientCatalogList(
+                  songs: state.bandSongs,
+                  requests: requests,
+                ),
+              )
+            else ...[
+              _StatusBar(
+                eventKey: widget.eventKey,
+                state: state,
+              ),
+              Expanded(child: _Body(
+                eventKey: widget.eventKey,
+                state: state,
+                notifier: notifier,
+              )),
+            ],
+            if (state.canWrite && !showCatalog)
               _BottomToolbar(
                 eventKey: widget.eventKey,
                 state: state,
@@ -288,6 +326,8 @@ class _Body extends StatelessWidget {
             onEdit: () => _editEntry(context, i, entry, notifier),
             onRemove: () => notifier.removeAt(i),
             dragIndex: i,
+            clientStatus: state.clientRequests?.statusFor(entry.songId) ??
+                ClientSongStatus.none,
           );
         },
       ),
@@ -421,6 +461,7 @@ class _BottomToolbar extends ConsumerWidget {
                   final result = await showSongPickerSheet(
                     context,
                     songs: state.bandSongs,
+                    clientRequests: state.clientRequests,
                   );
                   if (result == null) return;
                   if (result.isLibrary) {

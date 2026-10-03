@@ -49,6 +49,11 @@ void main() {
           {'id': 10, 'title': 'A'},
         ],
         'can_write': true,
+        'client_requests': {
+          'must_play': [10],
+          'do_not_play': [],
+          'source': {'instance_id': 1, 'name': 'Q', 'submitted_at': null},
+        },
       });
     });
 
@@ -58,6 +63,8 @@ void main() {
     expect(result.setlist?.songs.length, 1);
     expect(result.bandSongs.first.title, 'A');
     expect(result.canWrite, true);
+    expect(result.clientRequests?.mustPlayIds, {10});
+    expect(result.clientRequests?.sourceName, 'Q');
   });
 
   test('getSetlist handles null setlist', () async {
@@ -76,6 +83,7 @@ void main() {
     expect(result.setlist, isNull);
     expect(result.bandSongs, isEmpty);
     expect(result.canWrite, false);
+    expect(result.clientRequests, isNull);
   });
 
   test('updateSetlist serialises entries correctly', () async {

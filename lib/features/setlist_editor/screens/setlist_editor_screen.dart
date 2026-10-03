@@ -1,5 +1,10 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' show ReorderableListView, Material, MaterialType;
+import 'package:flutter/material.dart'
+    show
+        DefaultMaterialLocalizations,
+        ReorderableListView,
+        Material,
+        MaterialType;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/providers/selected_band_provider.dart';
 import '../data/models/event_setlist.dart';
@@ -39,8 +44,7 @@ class _SetlistEditorScreenState extends ConsumerState<SetlistEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(setlistEditorProvider(widget.eventKey));
-    final notifier =
-        ref.read(setlistEditorProvider(widget.eventKey).notifier);
+    final notifier = ref.read(setlistEditorProvider(widget.eventKey).notifier);
 
     // ── Loading state ─────────────────────────────────────────────────────────
     if (state.isLoading) {
@@ -100,10 +104,8 @@ class _SetlistEditorScreenState extends ConsumerState<SetlistEditorScreen> {
                         'Save',
                         style: TextStyle(
                           color: state.isDirty
-                              ? CupertinoColors.activeBlue
-                                  .resolveFrom(context)
-                              : CupertinoColors.systemGrey
-                                  .resolveFrom(context),
+                              ? CupertinoColors.activeBlue.resolveFrom(context)
+                              : CupertinoColors.systemGrey.resolveFrom(context),
                         ),
                       ),
               )
@@ -144,7 +146,8 @@ class _SetlistEditorScreenState extends ConsumerState<SetlistEditorScreen> {
                 eventKey: widget.eventKey,
                 state: state,
               ),
-              Expanded(child: _Body(
+              Expanded(
+                  child: _Body(
                 eventKey: widget.eventKey,
                 state: state,
                 notifier: notifier,
@@ -250,7 +253,8 @@ class _StatusBar extends ConsumerWidget {
           if (state.canWrite && !setlist.isReady)
             CupertinoButton(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: Size.zero, // Flutter 3.41: use minimumSize, not minSize
+              minimumSize:
+                  Size.zero, // Flutter 3.41: use minimumSize, not minSize
               onPressed: setlist.songs.isEmpty
                   ? null
                   : () => ref
@@ -292,44 +296,50 @@ class _Body extends StatelessWidget {
       songNumbers.add(e.isBreak ? 0 : ++counter);
     }
 
-    // ReorderableListView is Material-only; wrap with transparent Material
-    // so no ink splashes bleed onto the Cupertino background.
-    return Material(
-      type: MaterialType.transparency,
-      child: ReorderableListView.builder(
-        // Disable the default trailing drag handle — it collides with the
-        // edit/remove action buttons. Instead, the rows' leading number column
-        // is wrapped in a ReorderableDragStartListener (see SetlistSongRow and
-        // SetlistBreakRow's dragIndex parameter) when canWrite is true.
-        buildDefaultDragHandles: false,
-        itemCount: setlist.songs.length,
-        onReorder: notifier.reorder,
-        itemBuilder: (_, i) {
-          final entry = setlist.songs[i];
+    // ReorderableListView is Material-only: it needs MaterialLocalizations
+    // (the app is a bare CupertinoApp, so supply the default delegate here)
+    // and a transparent Material so no ink splashes bleed onto the Cupertino
+    // background.
+    return Localizations.override(
+      context: context,
+      delegates: const [DefaultMaterialLocalizations.delegate],
+      child: Material(
+        type: MaterialType.transparency,
+        child: ReorderableListView.builder(
+          // Disable the default trailing drag handle — it collides with the
+          // edit/remove action buttons. Instead, the rows' leading number column
+          // is wrapped in a ReorderableDragStartListener (see SetlistSongRow and
+          // SetlistBreakRow's dragIndex parameter) when canWrite is true.
+          buildDefaultDragHandles: false,
+          itemCount: setlist.songs.length,
+          onReorder: notifier.reorder,
+          itemBuilder: (_, i) {
+            final entry = setlist.songs[i];
 
-          if (entry.isBreak) {
-            return SetlistBreakRow(
-              key: ValueKey('break-$i'),
+            if (entry.isBreak) {
+              return SetlistBreakRow(
+                key: ValueKey('break-$i'),
+                canWrite: state.canWrite,
+                onRemove: () => notifier.removeAt(i),
+                dragIndex: i,
+              );
+            }
+
+            return SetlistSongRow(
+              // Stable key: prefer persisted entry id; fall back to title+index
+              // for locally-added songs not yet saved.
+              key: ValueKey('song-${entry.id ?? entry.displayTitle}-$i'),
+              entry: entry,
+              songNumber: songNumbers[i],
               canWrite: state.canWrite,
+              onEdit: () => _editEntry(context, i, entry, notifier),
               onRemove: () => notifier.removeAt(i),
               dragIndex: i,
+              clientStatus: state.clientRequests?.statusFor(entry.songId) ??
+                  ClientSongStatus.none,
             );
-          }
-
-          return SetlistSongRow(
-            // Stable key: prefer persisted entry id; fall back to title+index
-            // for locally-added songs not yet saved.
-            key: ValueKey('song-${entry.id ?? entry.displayTitle}-$i'),
-            entry: entry,
-            songNumber: songNumbers[i],
-            canWrite: state.canWrite,
-            onEdit: () => _editEntry(context, i, entry, notifier),
-            onRemove: () => notifier.removeAt(i),
-            dragIndex: i,
-            clientStatus: state.clientRequests?.statusFor(entry.songId) ??
-                ClientSongStatus.none,
-          );
-        },
+          },
+        ),
       ),
     );
   }
@@ -509,7 +519,9 @@ class _BottomToolbar extends ConsumerWidget {
           // ── Generate ──────────────────────────────────────────────────────
           Expanded(
             child: Semantics(
-              label: state.isGenerating ? 'Generating setlist' : 'Generate setlist with AI',
+              label: state.isGenerating
+                  ? 'Generating setlist'
+                  : 'Generate setlist with AI',
               // Hint surfaces when the button is disabled due to no band.
               hint: bandId == null ? 'Select a band first' : null,
               child: CupertinoButton(

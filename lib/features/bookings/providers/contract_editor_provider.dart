@@ -59,7 +59,12 @@ class ContractEditorNotifier extends AsyncNotifier<ContractEditorState> {
       _debounce?.cancel();
     });
 
-    final detail = await ref.watch(bookingDetailProvider(_key).future);
+    // Seed ONCE per editor lifetime (the provider is autoDispose, so each
+    // visit to the contract screen re-seeds). Deliberately `read`, not
+    // `watch`: the editor's own autosave refreshes bookingDetailProvider, and
+    // watching it would re-run this build on every save — flashing the UI to
+    // loading and replacing the in-progress terms with the server copy.
+    final detail = await ref.read(bookingDetailProvider(_key).future);
     final stored = detail.contract?.customTerms;
     final terms = stored ?? await loadInitialTermsForTest();
     final withIds = _assignStableIds(terms);
@@ -189,13 +194,17 @@ class ContractEditorNotifier extends AsyncNotifier<ContractEditorState> {
         current.terms,
         buyerNameOverride: current.buyerNameOverride,
       );
+      // Edits may have landed while the request was in flight. Build the
+      // post-save state from the LATEST value so those keystrokes survive;
+      // they remain unsaved (their own debounce timer is already pending).
+      final latest = state.value ?? current;
       state = AsyncData(
-        current.copyWith(
-          unsavedChanges: false,
+        latest.copyWith(
+          unsavedChanges: identical(latest, current) ? false : latest.unsavedChanges,
           lastSavedAt: DateTime.now(),
         ),
       );
-      ref.read(cacheInvalidatorProvider).onBookingDetailChanged(
+      ref.read(cacheInvalidatorProvider).onContractTermsAutosaved(
             bandId: _key.bandId,
             bookingId: _key.bookingId,
           );

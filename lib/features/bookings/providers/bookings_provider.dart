@@ -63,15 +63,23 @@ class BookingDetailNotifier extends AsyncNotifier<BookingDetail>
     return (value: result.parsed, raw: result.raw);
   }
 
+  String get _cacheName => 'booking:${_args.bookingId}';
+
   @override
   Future<BookingDetail> build() {
     ref.watch(bookingsRepositoryProvider);
     return swrBuild(
-      name: 'booking:${_args.bookingId}',
+      name: _cacheName,
       decode: BookingsRepository.parseBookingDetail,
       fetch: _fetch,
     );
   }
+
+  /// Background refetch that keeps the current data on screen (no
+  /// `AsyncLoading`, no spinner). Use after writes that must not tear down
+  /// whatever is currently showing this booking — e.g. the contract editor's
+  /// keystroke-driven autosave.
+  Future<void> refresh() => swrRevalidate(name: _cacheName, fetch: _fetch);
 }
 
 final bookingDetailProvider = AsyncNotifierProvider.family<

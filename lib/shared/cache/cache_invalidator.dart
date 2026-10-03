@@ -72,6 +72,25 @@ class CacheInvalidator {
     }
   }
 
+  /// Call after the contract editor's debounced autosave. Unlike
+  /// [onBookingDetailChanged] this must NOT invalidate the detail provider:
+  /// the editor is still on screen with the keyboard up, and a full
+  /// invalidation flashes the hosting screen to a spinner and re-seeds the
+  /// editor from the server, dropping keystrokes typed during the save.
+  /// A non-destructive background refresh keeps the detail cache (and the
+  /// SWR disk entry) current for the next visit without disturbing the UI.
+  void onContractTermsAutosaved({
+    required int bandId,
+    required int bookingId,
+  }) {
+    // Fire-and-forget: swrRevalidate swallows failures when data is present.
+    // ignore: unawaited_futures
+    _ref
+        .read(bookingDetailProvider((bandId: bandId, bookingId: bookingId))
+            .notifier)
+        .refresh();
+  }
+
   /// Call after editing the contact library (adding/removing a saved contact).
   void onContactLibraryChanged({required int bandId}) {
     _ref.invalidate(contactLibraryProvider);

@@ -13,6 +13,7 @@ import 'contract_send_sheet.dart';
 import 'contract_signature_block.dart';
 import 'contract_terms_list.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
+import 'package:tts_bandmate/shared/widgets/synced_text_field.dart';
 
 class ContractEditor extends ConsumerStatefulWidget {
   const ContractEditor({
@@ -264,12 +265,8 @@ class _ContractEditorState extends ConsumerState<ContractEditor> {
                                 ),
                           ),
                           const SizedBox(height: 6),
-                          CupertinoTextField(
-                            controller: TextEditingController(
-                              text: state.buyerNameOverride ?? '',
-                            )..selection = TextSelection.collapsed(
-                                offset: (state.buyerNameOverride ?? '').length,
-                              ),
+                          SyncedTextField(
+                            value: state.buyerNameOverride ?? '',
                             placeholder: "Leave blank to use the signer's name",
                             onChanged: (v) => ref
                                 .read(contractEditorProvider(_key).notifier)

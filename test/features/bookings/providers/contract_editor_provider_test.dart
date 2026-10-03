@@ -81,6 +81,11 @@ class _FixedDetailNotifier extends BookingDetailNotifier {
 
   @override
   Future<BookingDetail> build() async => _detail;
+
+  /// The editor's autosave asks the detail notifier for a background
+  /// refresh; the real one touches SWR/connectivity, which this stub avoids.
+  @override
+  Future<void> refresh() async {}
 }
 
 BookingDetail _detailWithOverride(String? override) {

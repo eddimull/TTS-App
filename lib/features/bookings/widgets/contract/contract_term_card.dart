@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 
 import '../../data/models/contract_term.dart';
+import 'package:tts_bandmate/shared/widgets/synced_text_field.dart';
 
 class ContractTermCard extends StatelessWidget {
   const ContractTermCard({
@@ -72,10 +73,8 @@ class ContractTermCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CupertinoTextField(
-                controller: TextEditingController(text: term.title)
-                  ..selection =
-                      TextSelection.collapsed(offset: term.title.length),
+              SyncedTextField(
+                value: term.title,
                 placeholder: 'Section Title',
                 onChanged: onTitleChanged,
                 style: CupertinoTheme.of(context).textTheme.textStyle.copyWith(
@@ -84,10 +83,8 @@ class ContractTermCard extends StatelessWidget {
                     ),
               ),
               const SizedBox(height: 8),
-              CupertinoTextField(
-                controller: TextEditingController(text: term.content)
-                  ..selection =
-                      TextSelection.collapsed(offset: term.content.length),
+              SyncedTextField(
+                value: term.content,
                 placeholder: 'Terms and conditions...',
                 maxLines: null,
                 minLines: 3,

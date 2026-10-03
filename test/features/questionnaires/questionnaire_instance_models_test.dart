@@ -11,11 +11,13 @@ void main() {
         'status': 'in_progress',
         'sent_at': '2026-07-15T10:00:00+00:00',
         'submitted_at': null,
+        'sent_by_name': 'Eddie',
         'recipient_name': 'Alice',
         'booking': {'id': 3, 'name': 'Smith Wedding'},
         'questionnaire_id': 1,
       });
       expect(i.id, 7);
+      expect(i.sentByName, 'Eddie');
       expect(i.status, 'in_progress');
       expect(i.statusLabel, 'In progress');
       expect(i.recipientName, 'Alice');
@@ -25,6 +27,29 @@ void main() {
       expect(i.submittedAt, null);
       expect(i.fields, isEmpty);
       expect(i.isLocked, false);
+    });
+
+    test('test_sent_by_name_is_optional_for_older_backends', () {
+      final i = QuestionnaireInstance.fromJson({
+        'id': 8,
+        'name': 'Wedding Intake',
+        'status': 'sent',
+        'sent_at': '2026-07-15T10:00:00+00:00',
+        'recipient_name': 'Alice',
+        'booking': {'id': 3, 'name': 'Smith Wedding'},
+      });
+      expect(i.sentByName, isNull);
+      expect(i.copyWith(status: 'locked').sentByName, isNull);
+
+      final withSender = QuestionnaireInstance.fromJson({
+        'id': 9,
+        'name': 'Wedding Intake',
+        'status': 'sent',
+        'sent_by_name': 'Eddie',
+        'recipient_name': 'Alice',
+        'booking': {'id': 3, 'name': 'Smith Wedding'},
+      });
+      expect(withSender.copyWith(status: 'locked').sentByName, 'Eddie');
     });
 
     test('test_parses_detail_with_responses_and_songs', () {

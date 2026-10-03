@@ -118,6 +118,7 @@ class InstanceResponsesScreen extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Text(
                       'Sent ${_fmt(instance.sentAt)}'
+                      '${instance.sentByName != null ? ' by ${instance.sentByName}' : ''}'
                       '${instance.firstOpenedAt != null ? ' · opened ${_fmt(instance.firstOpenedAt)}' : ''}'
                       '${instance.submittedAt != null ? ' · submitted ${_fmt(instance.submittedAt)}' : ''}',
                       style: TextStyle(

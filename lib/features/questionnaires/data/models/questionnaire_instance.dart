@@ -48,6 +48,7 @@ class QuestionnaireInstance {
     required this.name,
     required this.status,
     this.sentAt,
+    this.sentByName,
     this.submittedAt,
     required this.recipientName,
     required this.bookingId,
@@ -66,6 +67,10 @@ class QuestionnaireInstance {
   final String name;
   final String status; // sent | in_progress | submitted | locked
   final DateTime? sentAt;
+
+  /// Display name of the band user who sent the questionnaire (audit trail).
+  /// Null when the backend predates the field.
+  final String? sentByName;
   final DateTime? submittedAt;
   final String recipientName;
   final int bookingId;
@@ -112,6 +117,7 @@ class QuestionnaireInstance {
       sentAt: json['sent_at'] == null
           ? null
           : DateTime.tryParse(json['sent_at'] as String),
+      sentByName: json['sent_by_name'] as String?,
       submittedAt: json['submitted_at'] == null
           ? null
           : DateTime.tryParse(json['submitted_at'] as String),
@@ -151,6 +157,7 @@ class QuestionnaireInstance {
       name: name,
       status: status ?? this.status,
       sentAt: sentAt,
+      sentByName: sentByName,
       submittedAt: submittedAt,
       recipientName: recipientName,
       bookingId: bookingId,

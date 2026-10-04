@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.27.0](https://github.com/eddimull/TTS-App/compare/v1.26.0...v1.27.0) (2026-10-04)
+
+
+### Features
+
+* **questionnaires:** show who sent each questionnaire alongside the sent date ([9579296](https://github.com/eddimull/TTS-App/commit/9579296d8cbcea8529bbef41b20b4e2b197b13fd))
+* **setlist:** show band catalog with client must-play/do-not-play markers ([affda1d](https://github.com/eddimull/TTS-App/commit/affda1d8fcac6dd9018f0a4343d501f601a8c27b))
+* **setlist:** show band catalog with client must-play/do-not-play markers ([9eb3f0a](https://github.com/eddimull/TTS-App/commit/9eb3f0aa6dbdff40f05cd8bf258853d797f3bb32))
+
+
+### Bug Fixes
+
+* **contract:** stop autosave from resetting the editor and jumping the caret ([863db98](https://github.com/eddimull/TTS-App/commit/863db982dfd23301cd6b2fbe955503fdd9867e74))
+* **contract:** stop autosave from resetting the editor and jumping the caret ([5ae63a7](https://github.com/eddimull/TTS-App/commit/5ae63a7128a15df40b85313ef1f7846401e20825))
+* **setlist:** join catalog summary parts so no stray leading comma ([669fbd4](https://github.com/eddimull/TTS-App/commit/669fbd4fc8e6e6b71db7fb01decb2ce29f69f179))
+* **setlist:** resolve song row title color for dark mode ([60c5800](https://github.com/eddimull/TTS-App/commit/60c5800ea2b1b2b4e57568e431addaca7afcc4a9))
+* **setlist:** supply MaterialLocalizations for the editor's reorderable list ([d19300e](https://github.com/eddimull/TTS-App/commit/d19300ebbf77f45d78886983451a21918437dd09))
+
 ## [1.26.0](https://github.com/eddimull/TTS-App/compare/v1.25.0...v1.26.0) (2026-09-02)
 
 

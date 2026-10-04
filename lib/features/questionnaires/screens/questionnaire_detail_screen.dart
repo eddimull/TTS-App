@@ -309,6 +309,7 @@ class _InstanceRow extends ConsumerWidget {
         ),
         subtitle: Text(
           '${i.recipientName} · sent ${_fmt(i.sentAt)}'
+          '${i.sentByName != null ? ' by ${i.sentByName}' : ''}'
           '${i.submittedAt != null ? ' · submitted ${_fmt(i.submittedAt)}' : ''}',
         ),
         trailing: const CupertinoListTileChevron(),

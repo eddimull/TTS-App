@@ -64,6 +64,23 @@ void main() {
     expect(requests.where((r) => r.path == '/api/mobile/notifications').length, 2);
   });
 
+  test('loadMore dedupes an id that overlaps the first page', () async {
+    var call = 0;
+    final c = container((req) {
+      if (req.path.endsWith('unseen-count')) return {'count': 0};
+      call++;
+      return call == 1
+          ? {'notifications': [row('a'), row('b')], 'next_cursor': 'c1', 'unseen_count': 0}
+          : {'notifications': [row('b'), row('c')], 'next_cursor': null, 'unseen_count': 0};
+    });
+    await c.read(notificationFeedProvider.future);
+    await c.read(notificationFeedProvider.notifier).loadMore();
+
+    final s = c.read(notificationFeedProvider).value!;
+    expect(s.items.map((i) => i.id), ['a', 'b', 'c']);
+    expect(s.items.length, 3);
+  });
+
   test('markRead is optimistic and posts; markAllRead clears every row', () async {
     final c = container((req) => req.path.endsWith('unseen-count')
         ? {'count': 1}

@@ -67,6 +67,7 @@ class NotificationFeedNotifier extends AsyncNotifier<NotificationFeedState> {
     state = AsyncData(current.copyWith(loadingMore: true));
     try {
       final page = await ref.read(notificationRepositoryProvider).list(cursor: current.nextCursor);
+      if (!ref.mounted) return;
       final seen = current.items.map((i) => i.id).toSet();
       state = AsyncData(current.copyWith(
         items: [...current.items, ...page.items.where((i) => !seen.contains(i.id))],
@@ -74,6 +75,7 @@ class NotificationFeedNotifier extends AsyncNotifier<NotificationFeedState> {
         loadingMore: false,
       ));
     } catch (_) {
+      if (!ref.mounted) return;
       state = AsyncData(current.copyWith(loadingMore: false));
     }
   }
@@ -87,6 +89,7 @@ class NotificationFeedNotifier extends AsyncNotifier<NotificationFeedState> {
     ));
     try {
       await ref.read(notificationRepositoryProvider).markRead(id);
+      if (!ref.mounted) return;
     } catch (_) {
       // best-effort; the next refresh reconciles
     }
@@ -101,12 +104,14 @@ class NotificationFeedNotifier extends AsyncNotifier<NotificationFeedState> {
     ));
     try {
       await ref.read(notificationRepositoryProvider).markAllRead();
+      if (!ref.mounted) return;
     } catch (_) {}
   }
 
   Future<void> markSeen() async {
     try {
       await ref.read(notificationRepositoryProvider).markSeen();
+      if (!ref.mounted) return;
     } catch (_) {
       return;
     }

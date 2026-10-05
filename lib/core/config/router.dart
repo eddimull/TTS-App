@@ -22,6 +22,7 @@ import '../../features/bookings/screens/booking_payments_screen.dart';
 import '../../features/bookings/screens/booking_payout_screen.dart';
 import '../../features/bookings/screens/bookings_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
+import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/events/screens/event_detail_screen.dart';
 import '../../features/search/screens/search_screen.dart';
 import '../../features/events/screens/event_edit_screen.dart';
@@ -99,6 +100,7 @@ const _kShellPrefixes = [
   '/bookings',
   '/library',
   '/messages',
+  '/notifications',
   '/operations',
   '/settings',
   '/band-settings',
@@ -560,6 +562,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             title: extra?['title'] as String?,
           );
         },
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (_, __) => const NotificationsScreen(),
       ),
       // Library — literal segment 'new' must precede the :chartId parameter
       // to prevent GoRouter from treating "new" as a chart ID.

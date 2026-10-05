@@ -47,7 +47,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   void _open(NotificationItem item) {
     ref.read(notificationFeedProvider.notifier).markRead(item.id);
-    (widget.navigate ?? (ctx, link) => ctx.go(link))(context, item.deeplink);
+    // The dashboard fallback is a shell tab, so it replaces the stack like
+    // any other tab destination; every other deeplink is pushed on top of
+    // the feed so Back returns here instead of exiting the app.
+    final defaultNavigate = item.deeplink == '/dashboard'
+        ? (BuildContext ctx, String link) => ctx.go(link)
+        : (BuildContext ctx, String link) => ctx.push(link);
+    (widget.navigate ?? defaultNavigate)(context, item.deeplink);
   }
 
   @override

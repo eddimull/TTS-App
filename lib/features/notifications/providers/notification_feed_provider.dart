@@ -33,7 +33,14 @@ class NotificationFeedState {
 
 /// Unseen count for the Dashboard bell. Invalidated by the user-channel
 /// 'notification' signal, by markSeen(), and on resume.
+///
+/// Carries its own [AppLifecycleListener] rather than relying solely on
+/// [NotificationFeedNotifier]'s: the bell must refresh on resume even if the
+/// feed screen has never been opened (and thus that notifier never built).
+/// A duplicate unseen-count fetch when both listeners are alive is harmless.
 final unseenNotificationsCountProvider = FutureProvider<int>((ref) {
+  final listener = AppLifecycleListener(onResume: () => ref.invalidateSelf());
+  ref.onDispose(listener.dispose);
   return ref.watch(notificationRepositoryProvider).unseenCount();
 });
 

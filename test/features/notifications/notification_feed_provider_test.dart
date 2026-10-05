@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/notifications/data/notification_repository.dart';
@@ -13,7 +14,7 @@ Map<String, dynamic> row(String id, {bool read = false}) => {
     };
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
 
   late List<RequestOptions> requests;
 
@@ -109,5 +110,29 @@ void main() {
 
     await c.read(notificationFeedProvider.notifier).markSeen();
     expect(await c.read(unseenNotificationsCountProvider.future), 0);
+  });
+
+  test('unseenNotificationsCountProvider refreshes on resume even if the feed provider is never read', () async {
+    var unseenCalls = 0;
+    final c = container((req) {
+      if (req.path.endsWith('unseen-count')) {
+        unseenCalls++;
+        return {'count': 3};
+      }
+      return {'notifications': <Map<String, dynamic>>[], 'next_cursor': null, 'unseen_count': 3};
+    });
+
+    final sub = c.listen(unseenNotificationsCountProvider, (_, __) {});
+    expect(await c.read(unseenNotificationsCountProvider.future), 3);
+    expect(unseenCalls, 1);
+
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await pumpEventQueue();
+
+    expect(unseenCalls, 2);
+    sub.close();
   });
 }

@@ -281,6 +281,17 @@ class ApiEndpoints {
   static String mobileMessageAttachment(int messageId, int attachmentId) =>
       '/api/mobile/messages/$messageId/attachments/$attachmentId';
 
+  // In-app notification feed (the web "bell").
+  static const String mobileNotifications = '/api/mobile/notifications';
+  static const String mobileNotificationsUnseen =
+      '/api/mobile/notifications/unseen-count';
+  static const String mobileNotificationsReadAll =
+      '/api/mobile/notifications/read-all';
+  static const String mobileNotificationsSeen =
+      '/api/mobile/notifications/seen';
+  static String mobileNotificationRead(String id) =>
+      '/api/mobile/notifications/$id/read';
+
   // Questionnaires
   static String mobileBandQuestionnaires(int bandId) =>
       '/api/mobile/bands/$bandId/questionnaires';

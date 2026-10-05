@@ -16,6 +16,8 @@ import 'package:tts_bandmate/features/bookings/data/bookings_cache_storage.dart'
 import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
 import 'package:tts_bandmate/features/chat/providers/conversations_provider.dart';
 import 'package:tts_bandmate/features/chat/providers/topic_thread_provider.dart';
+import 'package:tts_bandmate/features/notifications/data/notification_repository.dart';
+import 'package:tts_bandmate/features/notifications/providers/notification_feed_provider.dart';
 import 'package:tts_bandmate/features/notifications/providers/notifications_provider.dart';
 import 'package:tts_bandmate/shared/cache/api_cache_storage.dart';
 
@@ -342,6 +344,8 @@ void main() {
         // user; here we just need to prove the stale value isn't reused).
         var conversationsCalls = 0;
         var topicCalls = 0;
+        var notificationFeedCalls = 0;
+        var unseenCountCalls = 0;
         final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
           ..httpClientAdapter = StubAdapter((options) async {
             if (options.path == '/api/mobile/conversations') {
@@ -362,6 +366,18 @@ void main() {
               // chatConversationsProvider after each successful fetch — not
               // part of either call count this test asserts on.
               return json(204, {});
+            }
+            if (options.path == '/api/mobile/notifications') {
+              notificationFeedCalls++;
+              return json(200, {
+                'notifications': <dynamic>[],
+                'next_cursor': null,
+                'unseen_count': 0,
+              });
+            }
+            if (options.path == '/api/mobile/notifications/unseen-count') {
+              unseenCountCalls++;
+              return json(200, {'count': 0});
             }
             // topicThread (events/rehearsals/bookings conversation) path.
             topicCalls++;
@@ -388,6 +404,8 @@ void main() {
           routeStorageProvider.overrideWith((ref) async => fakeRouteStorage),
           bookingsCacheStorageProvider.overrideWithValue(fakeBookingsCache),
           chatRepositoryProvider.overrideWithValue(ChatRepository(dio)),
+          notificationRepositoryProvider
+              .overrideWithValue(NotificationRepository(dio)),
         ]);
         addTearDown(container.dispose);
 
@@ -397,32 +415,48 @@ void main() {
 
         const topic = TopicRef(kind: 'events', idOrKey: 'abc123');
 
-        // Seed both chat caches with "user A"'s data, keeping them alive with
-        // listeners the way a live Messages screen / CommentBar would.
+        // Seed both chat caches and the notification providers with "user
+        // A"'s data, keeping them alive with listeners the way a live
+        // Messages screen / CommentBar / Dashboard bell would.
         final convSub = container.listen(chatConversationsProvider, (_, __) {});
         final topicSub = container.listen(topicThreadProvider(topic), (_, __) {});
+        final feedSub = container.listen(notificationFeedProvider, (_, __) {});
+        final unseenSub =
+            container.listen(unseenNotificationsCountProvider, (_, __) {});
         addTearDown(convSub.close);
         addTearDown(topicSub.close);
+        addTearDown(feedSub.close);
+        addTearDown(unseenSub.close);
 
         final seededConversations =
             await container.read(chatConversationsProvider.future);
         expect(seededConversations.single.title, 'User A\'s DM');
         await container.read(topicThreadProvider(topic).future);
+        await container.read(notificationFeedProvider.future);
+        await container.read(unseenNotificationsCountProvider.future);
         expect(conversationsCalls, 1);
         expect(topicCalls, 1);
+        expect(notificationFeedCalls, 1);
+        expect(unseenCountCalls, 1);
 
         await container.read(authProvider.notifier).logout();
 
-        // Both providers must have been invalidated by logout — reading their
+        // All providers must have been invalidated by logout — reading their
         // futures again must refetch (never warm-paint the disposed-user
         // cached value) rather than resolve instantly from stale state.
         final afterLogoutConversations =
             await container.read(chatConversationsProvider.future);
         await container.read(topicThreadProvider(topic).future);
+        await container.read(notificationFeedProvider.future);
+        await container.read(unseenNotificationsCountProvider.future);
         expect(conversationsCalls, 2,
             reason: 'chatConversationsProvider must refetch after logout');
         expect(topicCalls, 2,
             reason: 'topicThreadProvider must refetch after logout');
+        expect(notificationFeedCalls, 2,
+            reason: 'notificationFeedProvider must refetch after logout');
+        expect(unseenCountCalls, 2,
+            reason: 'unseenNotificationsCountProvider must refetch after logout');
         expect(afterLogoutConversations.single.title, 'refetched');
       },
     );

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/pusher_connection.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/chat/providers/conversations_provider.dart';
+import '../../features/notifications/providers/notification_feed_provider.dart';
 import 'band_realtime_provider.dart'
     show BandChannelBinder, bandRealtimeDebounceProvider, providerInvalidatorProvider;
 
@@ -20,8 +21,8 @@ final userChannelBinderProvider = Provider<BandChannelBinder>((ref) {
 });
 
 /// Subscribes to the authed user's private channel and turns thin
-/// `user.data-changed` signals (currently only DM 'message' signals) into
-/// Riverpod invalidations. State is the subscribed user id.
+/// `user.data-changed` signals (DM 'message' and bell 'notification' signals)
+/// into Riverpod invalidations. State is the subscribed user id.
 ///
 /// Kept alive by AppScaffold, next to bandRealtimeProvider. Deliberately
 /// simpler than the band notifier: no resume blanket (the band notifier's
@@ -30,7 +31,7 @@ final userChannelBinderProvider = Provider<BandChannelBinder>((ref) {
 class UserRealtimeNotifier extends Notifier<int?> {
   Future<void> Function()? _unsubscribe;
   Timer? _flushTimer;
-  bool _pending = false;
+  final Set<String> _pending = {};
   int _generation = 0;
   bool _disposed = false;
 
@@ -81,16 +82,22 @@ class UserRealtimeNotifier extends Notifier<int?> {
 
   void _onSignal(String eventName, Map<String, dynamic> data) {
     if (eventName != userDataChangedEvent) return;
-    if (data['model'] != 'message') return;
-    _pending = true;
+    final model = data['model']?.toString();
+    if (model != 'message' && model != 'notification') return;
+    _pending.add(model!);
     _flushTimer ??= Timer(ref.read(bandRealtimeDebounceProvider), _flush);
   }
 
   void _flush() {
     _flushTimer = null;
-    if (!_pending) return;
-    _pending = false;
-    ref.read(providerInvalidatorProvider)(chatConversationsProvider);
+    if (_pending.isEmpty) return;
+    final invalidate = ref.read(providerInvalidatorProvider);
+    if (_pending.contains('message')) invalidate(chatConversationsProvider);
+    if (_pending.contains('notification')) {
+      invalidate(notificationFeedProvider);
+      invalidate(unseenNotificationsCountProvider);
+    }
+    _pending.clear();
   }
 
   void _teardown() {

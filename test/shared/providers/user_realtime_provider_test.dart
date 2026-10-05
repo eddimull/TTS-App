@@ -5,6 +5,7 @@ import 'package:tts_bandmate/core/network/pusher_connection.dart';
 import 'package:tts_bandmate/features/auth/data/models/auth_user.dart';
 import 'package:tts_bandmate/features/auth/providers/auth_provider.dart';
 import 'package:tts_bandmate/features/chat/providers/conversations_provider.dart';
+import 'package:tts_bandmate/features/notifications/providers/notification_feed_provider.dart';
 import 'package:tts_bandmate/shared/providers/band_realtime_provider.dart';
 import 'package:tts_bandmate/shared/providers/user_realtime_provider.dart';
 
@@ -72,5 +73,15 @@ void main() {
         {'model': 'message', 'id': 9, 'action': 'created'});
     await Future<void>.delayed(Duration.zero);
     expect(invalidated, contains(chatConversationsProvider));
+  });
+
+  test('notification signal invalidates the feed and the unseen count', () async {
+    final c = makeContainer(authedAs(42));
+    await activate(c);
+    capturedHandler!('user.data-changed',
+        {'model': 'notification', 'id': 9, 'action': 'created'});
+    await Future<void>.delayed(Duration.zero);
+    expect(invalidated, contains(notificationFeedProvider));
+    expect(invalidated, contains(unseenNotificationsCountProvider));
   });
 }

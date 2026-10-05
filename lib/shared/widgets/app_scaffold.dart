@@ -7,6 +7,7 @@ import '../providers/band_realtime_provider.dart';
 import '../providers/user_realtime_provider.dart';
 import '../../features/chat/providers/conversations_provider.dart';
 import '../../features/notifications/services/lifecycle_observer.dart';
+import 'unread_badge.dart';
 
 class _NavDestination {
   const _NavDestination({
@@ -91,35 +92,8 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
 
   Widget _tabIcon(_NavDestination d, {required bool selected, required int unread}) {
     final icon = Icon(selected ? d.activeIcon : d.icon);
-    if (d.route != '/messages' || unread <= 0) return icon;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        icon,
-        Positioned(
-          top: -4,
-          right: -10,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            constraints: const BoxConstraints(minWidth: 16),
-            height: 16,
-            decoration: BoxDecoration(
-              color: CupertinoColors.systemRed.resolveFrom(context),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              unread > 99 ? '99+' : '$unread',
-              style: const TextStyle(
-                color: CupertinoColors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
+    if (d.route != '/messages') return icon;
+    return UnreadBadge(count: unread, child: icon);
   }
 
   @override

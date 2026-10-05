@@ -4,6 +4,10 @@
 /// `inviteRouteForUri` in core/deeplink for the same pattern).
 String? routeForPushData(Map<String, dynamic> data) {
   final type = data['type']?.toString();
+  if (type == 'notification') {
+    final deeplink = data['deeplink']?.toString() ?? '';
+    return deeplink.startsWith('/') ? deeplink : '/dashboard';
+  }
   if (type == 'chat_message') {
     final conversationId = int.tryParse(data['conversationId']?.toString() ?? '');
     if (conversationId == null) return null;

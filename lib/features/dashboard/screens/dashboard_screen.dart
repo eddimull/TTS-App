@@ -19,6 +19,7 @@ import '../../bookings/widgets/create_booking_sheet.dart';
 import '../../events/data/models/event_summary.dart';
 import '../../lodging/providers/lodging_provider.dart';
 import '../../lodging/utils/lodging_by_day.dart';
+import '../../notifications/providers/notification_feed_provider.dart';
 import '../dashboard_list_filter.dart';
 import '../providers/calendar_filter_provider.dart';
 import '../providers/dashboard_provider.dart';
@@ -28,6 +29,7 @@ import '../widgets/calendar_filter_sheet.dart';
 import '../widgets/event_card.dart';
 import '../widgets/live_now_card.dart';
 import '../widgets/month_year_picker_sheet.dart';
+import '../../../shared/widgets/unread_badge.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -68,6 +70,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }();
 
     final dashboardAsync = ref.watch(dashboardProvider);
+    final bellUnseen = ref.watch(unseenNotificationsCountProvider).value ?? 0;
 
     // A provider reset (app-resume blanket invalidation, realtime signal,
     // pull-to-refresh) replaces the loaded window with the initial one while
@@ -112,6 +115,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    Semantics(
+                      label: bellUnseen > 0
+                          ? 'Notifications, $bellUnseen unseen'
+                          : 'Notifications',
+                      button: true,
+                      child: CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () => context.push('/notifications'),
+                        child: UnreadBadge(
+                          count: bellUnseen,
+                          child: Icon(
+                            bellUnseen > 0
+                                ? CupertinoIcons.bell_fill
+                                : CupertinoIcons.bell,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
                     CupertinoButton(
                       padding: EdgeInsets.zero,
                       onPressed: () async {

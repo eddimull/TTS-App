@@ -57,4 +57,16 @@ void main() {
       isNull,
     );
   });
+
+  test('notification pushes route to their deeplink', () {
+    expect(
+      routeForPushData({'type': 'notification', 'notificationId': 'abc', 'deeplink': '/bookings/1/42'}),
+      '/bookings/1/42',
+    );
+  });
+
+  test('notification pushes without a usable deeplink go to the dashboard', () {
+    expect(routeForPushData({'type': 'notification', 'notificationId': 'abc'}), '/dashboard');
+    expect(routeForPushData({'type': 'notification', 'deeplink': 'javascript:alert(1)'}), '/dashboard');
+  });
 }

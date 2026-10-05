@@ -14,6 +14,7 @@ import '../data/auth_repository.dart';
 import '../data/models/auth_user.dart';
 import '../data/models/band_summary.dart';
 import '../data/social_sign_in_service.dart';
+import '../../notifications/providers/notification_feed_provider.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import 'social_sign_in_provider.dart';
 
@@ -294,15 +295,18 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       ref.read(apiCacheStorageProvider).clearAll();
     } catch (_) {}
 
-    // Drop the in-memory chat caches too — chatConversationsProvider and
-    // every topicThreadProvider family member are keyed independently of the
-    // authed user, so without this a different user signing in on this
-    // device would see the previous user's DM list / comment threads
+    // Drop the in-memory chat caches too — chatConversationsProvider,
+    // every topicThreadProvider family member, notificationFeedProvider, and
+    // unseenNotificationsCountProvider are keyed independently of the authed
+    // user, so without this a different user signing in on this device would
+    // see the previous user's DM list / comment threads / notification feed
     // warm-painted from the still-cached provider state until the next
     // realtime signal happened to invalidate it.
     try {
       ref.invalidate(chatConversationsProvider);
       ref.invalidate(topicThreadProvider);
+      ref.invalidate(notificationFeedProvider);
+      ref.invalidate(unseenNotificationsCountProvider);
     } catch (_) {}
 
     state = const AsyncValue.data(AuthUnauthenticated());

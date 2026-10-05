@@ -62,7 +62,7 @@ int localNotificationId(PushPayload payload, {required bool isAndroid}) =>
             payload.type == PushType.chatMessage &&
             payload.conversationId != null
         ? 0
-        : payload.notificationId;
+        : payload.localNotificationId;
 
 /// True for hybrid (notification+data) push types that should still be
 /// rendered locally while the app is in the FOREGROUND, where the OS shows
@@ -73,7 +73,8 @@ int localNotificationId(PushPayload payload, {required bool isAndroid}) =>
 /// `notification` block. Pure so the rule is unit-testable.
 bool isForegroundRenderable(PushPayload payload) =>
     payload.type == PushType.chatMessage ||
-    payload.type == PushType.questionnaireSubmitted;
+    payload.type == PushType.questionnaireSubmitted ||
+    payload.type == PushType.notification;
 
 /// Thin wrapper over FCM + local notifications. Logic-free where possible.
 class PushService implements LocalScheduler {

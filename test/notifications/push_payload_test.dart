@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tts_bandmate/features/notifications/data/notification_channels.dart';
 import 'package:tts_bandmate/features/notifications/data/push_payload.dart';
 
 void main() {
@@ -61,14 +62,14 @@ void main() {
   });
 
   group('departure notification id alignment', () {
-    test('PushPayload.notificationId equals departureNotificationId for a '
-        'departure push, so the rendered push and the scheduled local '
+    test('PushPayload.localNotificationId equals departureNotificationId for '
+        'a departure push, so the rendered push and the scheduled local '
         'notification share one slot', () {
       final p = PushPayload.fromData({
         'type': 'event_departure',
         'eventKey': 'evt_42',
       });
-      expect(p.notificationId, departureNotificationId('evt_42'));
+      expect(p.localNotificationId, departureNotificationId('evt_42'));
     });
 
     test('departureNotificationId is stable and positive (31-bit)', () {
@@ -113,7 +114,7 @@ void main() {
     test('notification ids differ per type for the same rehearsal', () {
       final a = PushPayload.fromData({'type': 'rehearsal_cancelled', 'rehearsalId': '42'});
       final b = PushPayload.fromData({'type': 'rehearsal_restored', 'rehearsalId': '42'});
-      expect(a.notificationId, isNot(b.notificationId));
+      expect(a.localNotificationId, isNot(b.localNotificationId));
     });
   });
 
@@ -133,7 +134,7 @@ void main() {
         spec.id,
         PushPayload.fromData(
                 {'type': 'chat_message', 'conversationId': '5'})
-            .notificationId,
+            .localNotificationId,
       );
     });
 
@@ -202,8 +203,37 @@ void main() {
             'type': 'questionnaire_submitted',
             'instanceId': instanceId,
           });
-      expect(payload('1').notificationId,
-          isNot(payload('2').notificationId));
+      expect(payload('1').localNotificationId,
+          isNot(payload('2').localNotificationId));
+    });
+  });
+
+  group('notification type', () {
+    test('parses notificationId, kind and deeplink', () {
+      final p = PushPayload.fromData({
+        'type': 'notification', 'notificationId': 'abc', 'kind': 'booking',
+        'title': 'TTS', 'body': 'Payment received', 'deeplink': '/bookings/1/42',
+      });
+      expect(p.type, PushType.notification);
+      expect(p.notificationId, 'abc');
+      expect(p.kind, 'booking');
+      expect(p.deeplink, '/bookings/1/42');
+    });
+
+    test('renders in the background on the band-updates channel with its route', () {
+      final spec = buildBackgroundNotification({
+        'type': 'notification', 'notificationId': 'abc', 'title': 'TTS', 'body': 'hi', 'deeplink': '/events/k',
+      });
+      expect(spec, isNotNull);
+      expect(spec!.route, '/events/k');
+      expect(spec.channelId, BandUpdatesChannel.id);
+    });
+
+    test('two notification pushes get distinct local ids', () {
+      final a = PushPayload.fromData({'type': 'notification', 'notificationId': 'a'});
+      final b = PushPayload.fromData({'type': 'notification', 'notificationId': 'b'});
+      expect(a.notificationId, isNot(b.notificationId));
+      expect(a.notificationId, isNot(0));
     });
   });
 }

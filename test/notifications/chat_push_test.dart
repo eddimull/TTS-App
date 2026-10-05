@@ -22,9 +22,9 @@ void main() {
         {'type': 'chat_message', 'conversationId': '5', 'body': 'yo'});
     expect(p.type, PushType.chatMessage);
     expect(p.conversationId, '5');
-    expect(p.notificationId,
+    expect(p.localNotificationId,
         PushPayload.fromData({'type': 'chat_message', 'conversationId': '5'})
-            .notificationId);
+            .localNotificationId);
   });
 
   group('per-conversation notification slot (tag + local id)', () {
@@ -38,7 +38,7 @@ void main() {
       expect(
         chatNotificationId('5'),
         PushPayload.fromData({'type': 'chat_message', 'conversationId': '5'})
-            .notificationId,
+            .localNotificationId,
       );
     });
 
@@ -48,14 +48,14 @@ void main() {
       final chat = PushPayload.fromData(
           {'type': 'chat_message', 'conversationId': '5'});
       expect(localNotificationId(chat, isAndroid: true), 0);
-      expect(localNotificationId(chat, isAndroid: false), chat.notificationId);
+      expect(localNotificationId(chat, isAndroid: false), chat.localNotificationId);
     });
 
     test('local render id: non-chat payloads keep the hash id on Android', () {
       final rehearsal = PushPayload.fromData(
           {'type': 'rehearsal_cancelled', 'rehearsalId': '7'});
       expect(localNotificationId(rehearsal, isAndroid: true),
-          rehearsal.notificationId);
+          rehearsal.localNotificationId);
     });
   });
 

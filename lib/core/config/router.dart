@@ -100,7 +100,6 @@ const _kShellPrefixes = [
   '/bookings',
   '/library',
   '/messages',
-  '/notifications',
   '/operations',
   '/settings',
   '/band-settings',

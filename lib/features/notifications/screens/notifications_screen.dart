@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/context_colors.dart';
 import '../../chat/utils/message_time.dart' show dateSeparatorLabel;
 import '../data/models/notification_item.dart';
 import '../providers/notification_feed_provider.dart';
@@ -104,7 +105,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                                  color: context.secondaryText,
                                 ),
                               ),
                             ),

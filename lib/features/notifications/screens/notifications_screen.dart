@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/router.dart' show isShellLocation;
 import '../../../core/theme/context_colors.dart';
 import '../../chat/utils/message_time.dart' show dateSeparatorLabel;
 import '../data/models/notification_item.dart';
@@ -29,6 +30,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     super.initState();
     _scroll.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       ref.read(notificationFeedProvider.notifier).markSeen();
     });
   }
@@ -47,10 +49,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   void _open(NotificationItem item) {
     ref.read(notificationFeedProvider.notifier).markRead(item.id);
-    // The dashboard fallback is a shell tab, so it replaces the stack like
-    // any other tab destination; every other deeplink is pushed on top of
-    // the feed so Back returns here instead of exiting the app.
-    final defaultNavigate = item.deeplink == '/dashboard'
+    // Shell tabs (dashboard, band-settings, etc.) must be reached with `go`
+    // — pushing one draws a second AppScaffold/bottom nav over the feed.
+    // Every other deeplink is pushed on top of the feed so Back returns
+    // here instead of exiting the app.
+    final defaultNavigate = isShellLocation(item.deeplink)
         ? (BuildContext ctx, String link) => ctx.go(link)
         : (BuildContext ctx, String link) => ctx.push(link);
     (widget.navigate ?? defaultNavigate)(context, item.deeplink);

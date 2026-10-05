@@ -170,9 +170,14 @@ class BackgroundNotificationSpec {
 /// pushes, which arrive hybrid/OS-rendered, or unknown types).
 ///
 /// Scope: data-only push types (`chat_message`, `questionnaire_submitted`,
-/// and `notification`). The backend sends these data-only, so without this
-/// the background isolate shows nothing on Android. Kept free of Riverpod/plugin imports so it runs
-/// safely in the separate background isolate FCM spins up for `onBackgroundMessage`.
+/// and `notification`). `chat_message` and `questionnaire_submitted` are
+/// sent data-only, so without this the background isolate would show
+/// nothing for them on Android. `notification` is actually sent with
+/// `alert: true` — main.dart's `message.notification != null` early return
+/// fires first for it in practice, so this branch is defensive (covers a
+/// backend payload shape change, or a path that reaches here some other
+/// way). Kept free of Riverpod/plugin imports so it runs safely in the
+/// separate background isolate FCM spins up for `onBackgroundMessage`.
 BackgroundNotificationSpec? buildBackgroundNotification(
   Map<String, dynamic> data,
 ) {

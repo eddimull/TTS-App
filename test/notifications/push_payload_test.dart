@@ -232,8 +232,20 @@ void main() {
     test('two notification pushes get distinct local ids', () {
       final a = PushPayload.fromData({'type': 'notification', 'notificationId': 'a'});
       final b = PushPayload.fromData({'type': 'notification', 'notificationId': 'b'});
-      expect(a.notificationId, isNot(b.notificationId));
-      expect(a.notificationId, isNot(0));
+      expect(a.localNotificationId, isNot(b.localNotificationId));
+      expect(a.localNotificationId, isNot(0));
+    });
+
+    test('a notification payload and a chat payload for the same empty '
+        'entity get distinct local ids', () {
+      // Both fall through to the generic entity+type hash when there's no
+      // notificationId/conversationId — the type must still keep them apart
+      // so a chat push and an in-app notification push never collide on one
+      // tray slot.
+      final notification =
+          PushPayload.fromData({'type': 'notification'});
+      final chat = PushPayload.fromData({'type': 'chat_message'});
+      expect(notification.localNotificationId, isNot(chat.localNotificationId));
     });
   });
 }

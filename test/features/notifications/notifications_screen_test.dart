@@ -126,6 +126,21 @@ void main() {
     expect(config.last.matchedLocation, '/dashboard');
   });
 
+  testWidgets('tapping a band-settings row uses go, replacing the stack', (tester) async {
+    // /band-settings is a ShellRoute child too (not just /dashboard) — a
+    // push would draw a second AppScaffold/bottom nav over the feed.
+    final bandSettings = item('a', deeplink: '/band-settings');
+    final router = await pumpWithRouter(tester, bandSettings);
+
+    await tester.tap(find.text('Notification a'));
+    await tester.pumpAndSettle();
+
+    final config = router.routerDelegate.currentConfiguration;
+    expect(config.uri.path, '/band-settings');
+    expect(config.matches.length, 1);
+    expect(config.last.matchedLocation, '/band-settings');
+  });
+
   testWidgets('mark all read clears every dot', (tester) async {
     final repo = await pump(tester, [item('a'), item('b')]);
     await tester.tap(find.text('Mark all read'));

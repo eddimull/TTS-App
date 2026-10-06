@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Returns the current `DateTime` when called. Override in tests to pin
@@ -9,4 +10,4 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 ///   clockProvider.overrideWithValue(() => DateTime(2026, 5, 3, 12, 0)),
 /// ]);
 /// ```
-final clockProvider = Provider<DateTime Function()>((_) => DateTime.now);
+final clockProvider = Provider<DateTime Function()>((_) => clock.now);

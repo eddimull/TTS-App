@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -321,7 +322,7 @@ class _RecordPaymentSheet extends ConsumerStatefulWidget {
 class _RecordPaymentSheetState extends ConsumerState<_RecordPaymentSheet> {
   final _nameCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
-  DateTime _date = DateTime.now();
+  DateTime _date = clock.now();
   String _paymentType = 'cash';
   bool _saving = false;
 

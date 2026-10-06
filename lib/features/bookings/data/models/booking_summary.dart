@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:intl/intl.dart';
 import '../../../auth/data/models/band_summary.dart';
 import '../../../events/data/models/event_summary.dart';
@@ -115,13 +116,13 @@ class BookingSummary {
     );
   }
 
-  /// Parses [startDate] into a [DateTime]. Returns [DateTime.now()] as a
+  /// Parses [startDate] into a [DateTime]. Returns [clock.now()] as a
   /// fallback (rare — payload should always include start_date).
   DateTime get parsedStartDate {
     try {
       return DateTime.parse(startDate);
     } catch (_) {
-      return DateTime.now();
+      return clock.now();
     }
   }
 

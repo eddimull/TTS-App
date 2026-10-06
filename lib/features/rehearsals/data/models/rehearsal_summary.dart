@@ -1,3 +1,5 @@
+import 'package:clock/clock.dart';
+
 class RehearsalSummary {
   const RehearsalSummary({
     this.id,
@@ -37,13 +39,13 @@ class RehearsalSummary {
     );
   }
 
-  /// Parses [date] into a [DateTime]. Returns [DateTime.now()] as a fallback.
+  /// Parses [date] into a [DateTime]. Returns [clock.now()] as a fallback.
   DateTime get parsedDate {
-    if (date == null) return DateTime.now();
+    if (date == null) return clock.now();
     try {
       return DateTime.parse(date!);
     } catch (_) {
-      return DateTime.now();
+      return clock.now();
     }
   }
 

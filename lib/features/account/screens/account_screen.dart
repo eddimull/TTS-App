@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -69,7 +70,7 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
 
   // The user's move date, defaulting to today. Only relevant — and only sent —
   // when the address changed. Drives which events recompute mileage.
-  DateTime _movedDate = DateTime.now();
+  DateTime _movedDate = clock.now();
 
   @override
   void initState() {
@@ -152,7 +153,7 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
       // The saved profile is the new baseline; the move prompt resets until the
       // user edits the address again.
       _originalAddress = _addressSnapshotOf(p);
-      _movedDate = DateTime.now();
+      _movedDate = clock.now();
     });
   }
 
@@ -360,7 +361,7 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
                 mode: CupertinoDatePickerMode.date,
                 initialDateTime: _movedDate,
                 // A move can't be in the future; cap at today.
-                maximumDate: DateTime.now(),
+                maximumDate: clock.now(),
                 onDateTimeChanged: (dt) => picked = dt,
               ),
             ),
@@ -461,7 +462,7 @@ class _AccountFormState extends ConsumerState<_AccountForm> {
 
   /// Human-friendly label for the move-date row (e.g. "Today" for the default).
   String _movedDateLabel() {
-    final now = DateTime.now();
+    final now = clock.now();
     if (_movedDate.year == now.year &&
         _movedDate.month == now.month &&
         _movedDate.day == now.day) {

@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,7 +24,7 @@ class RouteStorage {
     _prefs.setString(_Keys.lastRoute, path);
     _prefs.setString(
       _Keys.lastRouteTimestamp,
-      DateTime.now().millisecondsSinceEpoch.toString(),
+      clock.now().millisecondsSinceEpoch.toString(),
     );
   }
 

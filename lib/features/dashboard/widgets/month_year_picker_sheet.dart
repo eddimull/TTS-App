@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 
 /// Modal popup contents for jumping the dashboard calendar to a month/year.
@@ -74,7 +75,7 @@ class _MonthYearPickerSheetState extends State<MonthYearPickerSheet> {
                   child: const Text('Cancel'),
                 ),
                 CupertinoButton(
-                  onPressed: () => Navigator.of(context).pop(DateTime.now()),
+                  onPressed: () => Navigator.of(context).pop(clock.now()),
                   child: const Text('Today'),
                 ),
                 CupertinoButton(

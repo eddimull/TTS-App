@@ -80,7 +80,7 @@ void main() {
         'id': 1, 'key': 'k', 'title': 'T', 'date': 'not-a-date',
         'event_source': 'booking',
       });
-      // Should not throw — returns DateTime.now() fallback
+      // Should not throw — returns clock.now() fallback
       expect(() => event.parsedDate, returnsNormally);
     });
 

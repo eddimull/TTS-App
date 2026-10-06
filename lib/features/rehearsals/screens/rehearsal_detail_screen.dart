@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -174,7 +175,7 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
   /// Upcoming (today or later) — mirrors _canPlan's date logic without the
   /// cancelled check.
   bool _isUpcoming(RehearsalDetail rehearsal) {
-    final now = DateTime.now();
+    final now = clock.now();
     final today = DateTime(now.year, now.month, now.day);
     final d = rehearsal.parsedDate;
     return !DateTime(d.year, d.month, d.day).isBefore(today);
@@ -671,7 +672,7 @@ class _RehearsalDetailViewState extends ConsumerState<_RehearsalDetailView> {
   /// you plan ahead for what to work on at one that hasn't happened yet.
   bool _canPlan(RehearsalDetail rehearsal) {
     if (rehearsal.isCancelled) return false;
-    final now = DateTime.now();
+    final now = clock.now();
     final today = DateTime(now.year, now.month, now.day);
     final d = rehearsal.parsedDate;
     final rehearsalDay = DateTime(d.year, d.month, d.day);

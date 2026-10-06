@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,7 +14,7 @@ class _FakeRepo implements FinancesRepository {
       {required int year,
       String? snapshotDate,
       bool compareWithCurrent = false}) async {
-    final thisYear = DateTime.now().year;
+    final thisYear = clock.now().year;
     return FinanceTrends.fromJson({
       'year': year,
       'available_years': [year],
@@ -120,7 +121,7 @@ void main() {
     await tester.tap(find.text('UNEARNED'));
     await tester.pumpAndSettle();
 
-    final thisYear = DateTime.now().year;
+    final thisYear = clock.now().year;
     expect(find.text('Unearned deposits'), findsOneWidget);
     expect(find.text('$thisYear'), findsWidgets); // year row (year picker may also show it)
     expect(find.text('${thisYear + 1}'), findsOneWidget);

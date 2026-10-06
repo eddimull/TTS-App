@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material, Theme, ThemeData;
 import 'package:intl/intl.dart';
@@ -39,7 +40,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  DateTime _focusedDay = DateTime.now();
+  DateTime _focusedDay = clock.now();
   DateTime? _selectedDay;
 
   // Tracks the last DashboardState seen by the resume-recover listener below
@@ -252,7 +253,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final picked = await MonthYearPickerSheet.show(
       context,
       focusedDay: _focusedDay,
-      now: DateTime.now(),
+      now: clock.now(),
     );
     if (picked == null || !mounted) return;
     _jumpToMonth(picked);
@@ -261,7 +262,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   void _jumpToMonth(DateTime month) {
     // Keep the target inside TableCalendar's firstDay..lastDay — the
     // first-of-month of the oldest pickable month precedes firstDay.
-    final now = DateTime.now();
+    final now = clock.now();
     final firstAllowed = now.subtract(const Duration(days: 365));
     final lastAllowed = now.add(const Duration(days: 365 * 5));
     var target = month;
@@ -330,7 +331,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
     // Mirror the list's "current month starts today" rule (shared helper) so
     // the filter-is-hiding-events empty state stays consistent with what the
     // list would actually show.
-    final range = FocusedMonthRange.of(widget.focusedDay, DateTime.now());
+    final range = FocusedMonthRange.of(widget.focusedDay, clock.now());
     return range.contains(event.parsedDate);
   }
 
@@ -339,7 +340,7 @@ class _DashboardContentState extends ConsumerState<_DashboardContent> {
       events: events,
       focusedDay: widget.focusedDay,
       selectedDay: widget.selectedDay,
-      now: DateTime.now(),
+      now: clock.now(),
     );
   }
 
@@ -488,10 +489,10 @@ class _CalendarSection extends StatelessWidget {
       child: Material(
         color: CupertinoColors.systemBackground.resolveFrom(context),
         child: TableCalendar<EventSummary>(
-          firstDay: DateTime.now().subtract(const Duration(days: 365)),
+          firstDay: clock.now().subtract(const Duration(days: 365)),
           // Sanity cap only — forward fetching is lazy (see ensureMonthLoaded),
           // so this bounds the picker, not the data.
-          lastDay: DateTime.now().add(const Duration(days: 365 * 5)),
+          lastDay: clock.now().add(const Duration(days: 365 * 5)),
           focusedDay: focusedDay,
           selectedDayPredicate: (day) => isSameDay(selectedDay, day),
           eventLoader: (day) => eventsByDay[dayKey(day)] ?? const [],
@@ -546,7 +547,7 @@ class _EventsList extends StatelessWidget {
   final List<LodgingDayEntry> lodgingEntries;
 
   String get _monthLabel {
-    final now = DateTime.now();
+    final now = clock.now();
     if (focusedDay.year == now.year && focusedDay.month == now.month) {
       return 'Upcoming Events';
     }

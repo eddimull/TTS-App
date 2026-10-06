@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 
@@ -19,7 +20,7 @@ class ContractSignatureBlock extends StatelessWidget {
     final hasOverride =
         buyerNameOverride != null && buyerNameOverride!.trim().isNotEmpty;
     final buyerName = hasOverride ? buyerNameOverride! : signerName;
-    final today = DateFormat('M/d/yyyy').format(DateTime.now());
+    final today = DateFormat('M/d/yyyy').format(clock.now());
 
     final bold = CupertinoTheme.of(context).textTheme.textStyle.copyWith(
           fontWeight: FontWeight.w700,

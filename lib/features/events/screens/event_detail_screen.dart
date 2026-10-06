@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:clock/clock.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -675,13 +676,13 @@ class _TimelineSection extends StatefulWidget {
 
 class _TimelineSectionState extends State<_TimelineSection> {
   late Timer _timer;
-  DateTime _now = DateTime.now();
+  DateTime _now = clock.now();
 
   @override
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 30), (_) {
-      setState(() => _now = DateTime.now());
+      setState(() => _now = clock.now());
     });
   }
 

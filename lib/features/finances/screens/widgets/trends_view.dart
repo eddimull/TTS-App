@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -24,7 +25,7 @@ class TrendsView extends ConsumerStatefulWidget {
 }
 
 class _TrendsViewState extends ConsumerState<TrendsView> {
-  int _year = DateTime.now().year;
+  int _year = clock.now().year;
   String? _snapshotDate; // YYYY-MM-DD
   bool _compare = false;
 
@@ -178,9 +179,9 @@ class _TrendsViewState extends ConsumerState<TrendsView> {
   }
 
   Future<void> _pickSnapshot() async {
-    final now = DateTime.now();
+    final now = clock.now();
     // Date-only "today" so it's always within maximumDate (which is end of
-    // today). Using DateTime.now() for both initial and max can make the
+    // today). Using clock.now() for both initial and max can make the
     // picker clamp/reset on the first selection.
     final today = DateTime(now.year, now.month, now.day);
     DateTime temp =

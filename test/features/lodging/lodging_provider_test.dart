@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,10 +22,10 @@ class _FakeLodgingRepository extends LodgingRepository {
         LodgingSummary(
           id: 1,
           name: 'Hotel A',
-          checkInAt: DateTime.now()
+          checkInAt: clock.now()
               .add(const Duration(days: 3))
               .toIso8601String(),
-          checkOutAt: DateTime.now()
+          checkOutAt: clock.now()
               .add(const Duration(days: 4))
               .toIso8601String(),
           roomCount: 1,

@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -135,7 +136,7 @@ class _LodgingSliverListState extends State<_LodgingSliverList> {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
+    final now = clock.now();
     final upcoming = <LodgingSummary>[];
     final past = <LodgingSummary>[];
     for (final l in widget.lodgings) {

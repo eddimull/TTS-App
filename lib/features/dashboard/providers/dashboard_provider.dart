@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/dashboard_repository.dart';
 import '../data/models/upcoming_chart.dart';
@@ -73,7 +74,7 @@ class DashboardState {
   /// - If a start time is present: now falls within [startTime, startTime + 4h].
   /// - If no start time: the whole calendar day counts.
   EventSummary? get currentEvent {
-    final now = DateTime.now();
+    final now = clock.now();
     final todayDate = DateTime(now.year, now.month, now.day);
 
     for (final event in events) {
@@ -174,7 +175,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   static DateTime _initialTo() => _dateOnly(
-      DateTime.now().add(const Duration(days: _initialForwardWindowDays)));
+      clock.now().add(const Duration(days: _initialForwardWindowDays)));
 
   static const String _cacheName = 'dashboard';
 
@@ -183,7 +184,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
   @override
   Future<DashboardState> build() async {
     final initialFrom = _dateOnly(
-      DateTime.now().subtract(const Duration(days: _initialPastWindowDays)),
+      clock.now().subtract(const Duration(days: _initialPastWindowDays)),
     );
     final initialTo = _initialTo();
 
@@ -269,7 +270,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
         events: result.events,
         upcomingCharts: result.upcomingCharts,
         loadedFrom: _dateOnly(
-          DateTime.now().subtract(const Duration(days: _initialPastWindowDays)),
+          clock.now().subtract(const Duration(days: _initialPastWindowDays)),
         ),
         loadedTo: initialTo,
       ));

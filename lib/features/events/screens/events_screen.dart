@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -131,7 +132,7 @@ class _EventsBody extends ConsumerWidget {
 
   List<EventSummary> _applyFilter(
       List<EventSummary> events, _EventsFilter filter) {
-    final now = DateTime.now();
+    final now = clock.now();
     final sorted = [...events]
       ..sort((a, b) => a.parsedDate.compareTo(b.parsedDate));
     return switch (filter) {

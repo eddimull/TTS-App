@@ -32,7 +32,9 @@ Map<DateTime, List<LodgingDayEntry>> lodgingByDay(
             isCheckIn: day == dayKey(checkIn),
             isCheckOut: day == lastDay,
           ));
-      day = day.add(const Duration(days: 1));
+      // Step by calendar day, not 24h — a Duration drifts off midnight
+      // across DST changes.
+      day = DateTime(day.year, day.month, day.day + 1);
     }
   }
   return map;

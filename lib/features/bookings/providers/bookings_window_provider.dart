@@ -186,7 +186,9 @@ class BookingsWindowNotifier extends AsyncNotifier<BookingsWindow> {
       value.from.month - _expansionMonths,
       1,
     );
-    final newTo = value.from.subtract(const Duration(days: 1));
+    // Calendar-day step (see loadLater) — 24h back can skip a date when
+    // the clocks spring forward.
+    final newTo = DateTime(value.from.year, value.from.month, value.from.day - 1);
 
     try {
       final repo = ref.read(bookingsRepositoryProvider);
@@ -227,7 +229,9 @@ class BookingsWindowNotifier extends AsyncNotifier<BookingsWindow> {
 
     state = AsyncData(value.copyWith(isLoadingLater: true));
 
-    final newFrom = value.to.add(const Duration(days: 1));
+    // Calendar-day step: a 24h Duration from midnight can land on the same
+    // date when the clocks fall back that day.
+    final newFrom = DateTime(value.to.year, value.to.month, value.to.day + 1);
     // Last day of (value.to.month + expansion): use day=0 of the
     // following month for end-of-month normalization.
     final newTo = DateTime(

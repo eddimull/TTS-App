@@ -1,5 +1,6 @@
 import 'dart:async' show unawaited;
 
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -155,8 +156,8 @@ final routesClientProvider = Provider<RoutesClient>((ref) {
 /// a venue and a first timeline item, compute live travel time and schedule (or
 /// suppress) the precise "leave in 15 min" local notification. Best-effort;
 /// any failure leaves the server's time-based push as the floor.
-Future<void> enrichTodaysEvents(WidgetRef ref, {DateTime? clock}) async {
-  final now = clock ?? DateTime.now();
+Future<void> enrichTodaysEvents(WidgetRef ref) async {
+  final now = clock.now();
 
   // Cheap no-op checks first: don't prompt for location / hit GPS when there's
   // nothing to enrich (e.g. no band selected yet on cold start / resume).
@@ -230,9 +231,8 @@ Future<void> enrichEventFromPush(
   required String venueAddress,
   required String firstItemTitle,
   required DateTime firstItem,
-  DateTime? clock,
 }) async {
-  final now = clock ?? DateTime.now();
+  final now = clock.now();
   final location = ref.read(locationServiceProvider);
   if (await location.ensurePermission() == LocationGrant.denied) return;
   final origin = await location.current();

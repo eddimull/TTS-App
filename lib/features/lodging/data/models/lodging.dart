@@ -1,3 +1,5 @@
+import 'package:clock/clock.dart';
+
 import '../../../../shared/models/displayable_attachment.dart';
 
 class LodgingLinkedBooking {
@@ -120,7 +122,7 @@ class LodgingSummary {
 
   /// Parses [checkInAt]; falls back to now on malformed input.
   DateTime get parsedCheckIn =>
-      DateTime.tryParse(checkInAt) ?? DateTime.now();
+      DateTime.tryParse(checkInAt) ?? clock.now();
 }
 
 class Lodging {
@@ -182,8 +184,8 @@ class Lodging {
     );
   }
 
-  DateTime get parsedCheckIn => DateTime.tryParse(checkInAt) ?? DateTime.now();
-  DateTime get parsedCheckOut => DateTime.tryParse(checkOutAt) ?? DateTime.now();
+  DateTime get parsedCheckIn => DateTime.tryParse(checkInAt) ?? clock.now();
+  DateTime get parsedCheckOut => DateTime.tryParse(checkOutAt) ?? clock.now();
 
   @override
   bool operator ==(Object other) => other is Lodging && other.id == id;

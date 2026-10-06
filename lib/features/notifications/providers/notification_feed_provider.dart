@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -90,7 +91,7 @@ class NotificationFeedNotifier extends AsyncNotifier<NotificationFeedState> {
   Future<void> markRead(String id) async {
     final current = state.value;
     if (current == null) return;
-    final now = DateTime.now();
+    final now = clock.now();
     state = AsyncData(current.copyWith(
       items: [for (final i in current.items) i.id == id && i.isUnread ? i.copyWith(readAt: now) : i],
     ));
@@ -105,7 +106,7 @@ class NotificationFeedNotifier extends AsyncNotifier<NotificationFeedState> {
   Future<void> markAllRead() async {
     final current = state.value;
     if (current == null) return;
-    final now = DateTime.now();
+    final now = clock.now();
     state = AsyncData(current.copyWith(
       items: [for (final i in current.items) i.isUnread ? i.copyWith(readAt: now) : i],
     ));

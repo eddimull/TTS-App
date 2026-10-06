@@ -1,9 +1,16 @@
+import 'package:clock/clock.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/rehearsals/data/models/rehearsal_schedule.dart';
 import 'package:tts_bandmate/features/rehearsals/data/rehearsals_repository.dart';
 import 'package:tts_bandmate/features/rehearsals/providers/rehearsals_provider.dart';
+
+// Pinned so the provider and the expectation compute the same 'today'.
+final _pinned = DateTime(2026, 6, 15, 10);
+
+/// Runs [body] with `clock.now()` fixed at [_pinned].
+T _atPinned<T>(T Function() body) => withClock(Clock.fixed(_pinned), body);
 
 final _throwingDio = Dio();
 
@@ -25,7 +32,7 @@ String _ymd(DateTime d) =>
 
 void main() {
   test('schedulesProvider fetches with until = today + window and virtuals on',
-      () async {
+      () => _atPinned(() async {
     final repo = _FakeRehearsalsRepository();
     final container = ProviderContainer(overrides: [
       rehearsalsRepositoryProvider.overrideWithValue(repo),
@@ -37,11 +44,11 @@ void main() {
     final call = repo.calls.single;
     expect(call.bandId, 1);
     expect(call.includeVirtual, isTrue);
-    expect(call.until, _ymd(DateTime.now().add(const Duration(days: 90))));
-  });
+    expect(call.until, _ymd(clock.now().add(const Duration(days: 90))));
+  }));
 
   test('bumping schedulesWindowDaysProvider refetches with a larger until',
-      () async {
+      () => _atPinned(() async {
     final repo = _FakeRehearsalsRepository();
     final container = ProviderContainer(overrides: [
       rehearsalsRepositoryProvider.overrideWithValue(repo),
@@ -55,6 +62,6 @@ void main() {
 
     expect(repo.calls, hasLength(2));
     expect(repo.calls.last.until,
-        _ymd(DateTime.now().add(const Duration(days: 180))));
-  });
+        _ymd(clock.now().add(const Duration(days: 180))));
+  }));
 }

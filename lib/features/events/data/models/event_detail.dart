@@ -1,3 +1,5 @@
+import 'package:clock/clock.dart';
+
 import '../../../../shared/models/displayable_attachment.dart';
 import '../../../lodging/data/models/lodging.dart';
 import 'event_member.dart';
@@ -365,7 +367,7 @@ class EventDetail {
     try {
       return DateTime.parse(date);
     } catch (_) {
-      return DateTime.now();
+      return clock.now();
     }
   }
 

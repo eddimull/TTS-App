@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:clock/clock.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -54,7 +55,7 @@ class ApiCacheStorage {
     _prefs.setString(
       '$_prefix$key',
       jsonEncode({
-        'savedAt': DateTime.now().millisecondsSinceEpoch,
+        'savedAt': clock.now().millisecondsSinceEpoch,
         'payload': payload,
       }),
     );

@@ -1,5 +1,6 @@
 import 'dart:async' show unawaited;
 
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -420,7 +421,7 @@ class _ConversationThreadScreenState
                                 status = _StatusLabel(
                                   text: at == null
                                       ? 'Seen'
-                                      : 'Seen ${bubbleTimeLabel(at, now: DateTime.now())}',
+                                      : 'Seen ${bubbleTimeLabel(at, now: clock.now())}',
                                 );
                               case DmMessageStatus.delivered:
                                 status = const _StatusLabel(text: 'Delivered');
@@ -463,7 +464,7 @@ class _ConversationThreadScreenState
                           children: [
                             _DateSeparator(
                               label: dateSeparatorLabel(message.createdAt,
-                                  now: DateTime.now()),
+                                  now: clock.now()),
                             ),
                             bubble,
                           ],
@@ -579,7 +580,7 @@ class _MessageBubble extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.read(chatRepositoryProvider);
-    final time = bubbleTimeLabel(message.createdAt, now: DateTime.now());
+    final time = bubbleTimeLabel(message.createdAt, now: clock.now());
     final timeLabel = message.editedAt != null && !message.isDeleted
         ? '$time · edited'
         : time;

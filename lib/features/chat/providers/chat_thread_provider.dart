@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleListener;
@@ -493,7 +494,7 @@ class ChatThreadNotifier extends Notifier<ChatThreadState> {
 
   /// Called by the composer on text changes. Throttled to one POST per 3s.
   void notifyTyping() {
-    final now = DateTime.now();
+    final now = clock.now();
     if (now.difference(_lastTypingSent) < const Duration(seconds: 3)) return;
     _lastTypingSent = now;
     _repo.sendTyping(_conversationId).catchError((Object e) {

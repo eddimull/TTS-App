@@ -1,8 +1,9 @@
+import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/lodging/utils/link_picker_options.dart';
 
 void main() {
-  final checkIn = DateTime.now().add(const Duration(days: 30));
+  final checkIn = clock.now().add(const Duration(days: 30));
   final checkOut = checkIn.add(const Duration(days: 3));
 
   LinkOption opt(int id, String label, DateTime? date) =>
@@ -35,8 +36,8 @@ void main() {
 
     test('no check-in: single ascending group, undated last', () {
       final groups = groupLinkOptions([
-        opt(1, 'B', DateTime.now().add(const Duration(days: 20))),
-        opt(2, 'A', DateTime.now().add(const Duration(days: 5))),
+        opt(1, 'B', clock.now().add(const Duration(days: 20))),
+        opt(2, 'A', clock.now().add(const Duration(days: 5))),
         opt(3, 'U', null),
       ], null, null);
       expect(groups, hasLength(1));

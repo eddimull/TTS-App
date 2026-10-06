@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:intl/intl.dart';
 
 /// Represents a single booking entry returned by the finances endpoints.
@@ -71,13 +72,13 @@ class FinanceBooking {
     );
   }
 
-  /// Parses [startDate] into a [DateTime]. Returns [DateTime.now()] as a
+  /// Parses [startDate] into a [DateTime]. Returns [clock.now()] as a
   /// fallback (rare — payload should always include start_date).
   DateTime get parsedStartDate {
     try {
       return DateTime.parse(startDate);
     } catch (_) {
-      return DateTime.now();
+      return clock.now();
     }
   }
 

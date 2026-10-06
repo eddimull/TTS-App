@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -51,7 +52,7 @@ String _resolveInitialLocation(RouteStorage rs) {
   final last = rs.readLastRoute();
   final ts = rs.readLastRouteTimestamp();
   if (last == null || ts == null) return '/welcome';
-  if (DateTime.now().difference(ts).inHours >= 24) return '/welcome';
+  if (clock.now().difference(ts).inHours >= 24) return '/welcome';
   if (!_kRestorableShellPrefixes.any((p) => last.startsWith(p))) {
     return '/welcome';
   }

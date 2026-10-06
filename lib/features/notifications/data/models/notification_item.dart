@@ -1,3 +1,5 @@
+import 'package:clock/clock.dart';
+
 /// One row of the in-app feed, exactly as the backend presents it: the
 /// server resolves `kind` and a mobile `deeplink`, so the client never
 /// interprets stored payloads.
@@ -30,7 +32,7 @@ class NotificationItem {
       kind: (json['kind'] ?? 'dashboard').toString(),
       text: (json['text'] ?? 'New notification').toString(),
       deeplink: deeplink.startsWith('/') ? deeplink : '/dashboard',
-      createdAt: date(json['created_at']) ?? DateTime.now(),
+      createdAt: date(json['created_at']) ?? clock.now(),
       readAt: date(json['read_at']),
       seenAt: date(json['seen_at']),
     );

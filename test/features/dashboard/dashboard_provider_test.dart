@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,6 +12,13 @@ import 'package:tts_bandmate/shared/cache/api_cache_storage.dart';
 import 'package:tts_bandmate/shared/providers/connectivity_provider.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+// Pinned mid-month so the initial window (today − 30d .. today + 90d) has a
+// mid-month watermark and the forward-jump targets below always lie beyond it.
+final _pinned = DateTime(2026, 6, 15, 10);
+
+/// Runs [body] with `clock.now()` fixed at [_pinned].
+T _atPinned<T>(T Function() body) => withClock(Clock.fixed(_pinned), body);
 
 final _throwingDio = Dio();
 
@@ -137,9 +145,9 @@ class _RaceDashboardRepository extends DashboardRepository {
   }
 }
 
-/// Current year. Forward-window tests build their targets relative to it so
-/// they always land beyond the initial today + 90d window, whatever the date.
-final _y = DateTime.now().year;
+/// Pinned year. Forward-window tests build their targets relative to it so
+/// they always land beyond the initial today + 90d window.
+final _y = _pinned.year;
 
 void main() {
   group('DashboardState.coversMonth', () {
@@ -274,7 +282,7 @@ void main() {
       addTearDown(container.dispose);
     }
 
-    test('merges and dedups older events by id', () async {
+    test('merges and dedups older events by id', () => _atPinned(() async {
       await setUpContainer(_FakeDashboardRepository(
         initialEvents: [_event(1, '2026-06-20')],
         olderBatches: [
@@ -288,9 +296,9 @@ void main() {
       final state = container.read(dashboardProvider).value!;
       final ids = state.events.map((e) => e.id).toList()..sort();
       expect(ids, [1, 2], reason: 'duplicate id 1 must not be added twice');
-    });
+    }));
 
-    test('keeps distinct null-id events instead of collapsing them', () async {
+    test('keeps distinct null-id events instead of collapsing them', () => _atPinned(() async {
       // Events without an id (e.g. some rehearsal/scheduled shapes) must not be
       // deduped against each other — they'd all share a null id and vanish.
       EventSummary nullIdEvent(String key, String date) =>
@@ -315,9 +323,9 @@ void main() {
       expect(state.events.length, 3,
           reason: 'all three null-id events must be retained');
       expect(state.events.every((e) => e.id == null), isTrue);
-    });
+    }));
 
-    test('loadedFrom decrements by 30 days per fetch', () async {
+    test('loadedFrom decrements by 30 days per fetch', () => _atPinned(() async {
       await setUpContainer(_FakeDashboardRepository(
         initialEvents: const [],
         olderBatches: [
@@ -331,9 +339,9 @@ void main() {
 
       final after = container.read(dashboardProvider).value!.loadedFrom;
       expect(before.difference(after).inDays, 30);
-    });
+    }));
 
-    test('sets hasReachedStart when a fetch returns no events', () async {
+    test('sets hasReachedStart when a fetch returns no events', () => _atPinned(() async {
       await setUpContainer(_FakeDashboardRepository(
         initialEvents: const [],
         olderBatches: const [],
@@ -344,9 +352,9 @@ void main() {
 
       final state = container.read(dashboardProvider).value!;
       expect(state.hasReachedStart, isTrue);
-    });
+    }));
 
-    test('does not fetch again once hasReachedStart is set', () async {
+    test('does not fetch again once hasReachedStart is set', () => _atPinned(() async {
       await setUpContainer(_FakeDashboardRepository(
         initialEvents: const [],
         olderBatches: const [],
@@ -357,7 +365,7 @@ void main() {
       await notifier.loadOlder();
 
       expect(fakeRepo.requestedBeforeDates.length, 1);
-    });
+    }));
   });
 
   group('DashboardNotifier.loadNewer', () {
@@ -383,17 +391,17 @@ void main() {
     String ymd(DateTime d) =>
         '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-    test('initial fetch sends to = today + 90d', () async {
+    test('initial fetch sends to = today + 90d', () => _atPinned(() async {
       await setUpContainer(_FakeDashboardRepository(
         initialEvents: [], olderBatches: [],
       ));
       await buildNotifier();
 
-      final expected = ymd(DateTime.now().add(const Duration(days: 90)));
+      final expected = ymd(clock.now().add(const Duration(days: 90)));
       expect(fakeRepo.requestedTos, [expected]);
-    });
+    }));
 
-    test('forward ensureMonthLoaded fetches one window to the month start after target', () async {
+    test('forward ensureMonthLoaded fetches one window to the month start after target', () => _atPinned(() async {
       await setUpContainer(_FakeDashboardRepository(
         initialEvents: [], olderBatches: [],
         newerBatches: [
@@ -408,7 +416,7 @@ void main() {
 
       expect(fakeRepo.requestedNewerWindows, hasLength(1));
       final (after, before) = fakeRepo.requestedNewerWindows.single;
-      expect(after, ymd(DateTime.now().add(const Duration(days: 90))),
+      expect(after, ymd(clock.now().add(const Duration(days: 90))),
           reason: 'window starts at the current loadedTo watermark');
       expect(before, '${_y + 3}-04-01',
           reason: 'window extends to the first day of the month after target');
@@ -416,9 +424,9 @@ void main() {
       final state = container.read(dashboardProvider).value!;
       expect(state.events.map((e) => e.id), contains(5));
       expect(state.loadedTo, DateTime(_y + 3, 4, 1));
-    });
+    }));
 
-    test('already-covered months trigger no fetch and empty windows do not stop future fetches', () async {
+    test('already-covered months trigger no fetch and empty windows do not stop future fetches', () => _atPinned(() async {
       await setUpContainer(_FakeDashboardRepository(
         initialEvents: [], olderBatches: [],
         newerBatches: [], // every loadNewer returns empty
@@ -436,9 +444,9 @@ void main() {
       // there is no hasReachedEnd for the future.
       await notifier.ensureMonthLoaded(DateTime(_y + 3, 1, 10));
       expect(fakeRepo.requestedNewerWindows, hasLength(2));
-    });
+    }));
 
-    test('merges newer events deduping by id and by key for null-id events', () async {
+    test('merges newer events deduping by id and by key for null-id events', () => _atPinned(() async {
       EventSummary nullIdEvent(String key, String date) =>
           EventSummary.fromJson({
             'key': key,
@@ -465,9 +473,9 @@ void main() {
 
       final state = container.read(dashboardProvider).value!;
       expect(state.events, hasLength(4));
-    });
+    }));
 
-    test('refresh resets the forward watermark', () async {
+    test('refresh resets the forward watermark', () => _atPinned(() async {
       await setUpContainer(_FakeDashboardRepository(
         initialEvents: [], olderBatches: [], newerBatches: [],
       ));
@@ -477,13 +485,13 @@ void main() {
       await notifier.refresh();
 
       final state = container.read(dashboardProvider).value!;
-      final expected = DateTime.now().add(const Duration(days: 90));
+      final expected = clock.now().add(const Duration(days: 90));
       expect(state.loadedTo.year, expected.year);
       expect(state.loadedTo.month, expected.month);
       expect(state.loadedTo.day, expected.day);
       // And the refresh re-sent to=.
       expect(fakeRepo.requestedTos, hasLength(2));
-    });
+    }));
   });
 
   group('DashboardNotifier.ensureMonthLoaded (watermark trigger)', () {
@@ -503,7 +511,7 @@ void main() {
       return notifier;
     }
 
-    test('forward-then-back within fully-loaded range fetches nothing', () async {
+    test('forward-then-back within fully-loaded range fetches nothing', () => _atPinned(() async {
       final notifier = await build(_FakeDashboardRepository(
         initialEvents: const [],
         olderBatches: [
@@ -522,9 +530,9 @@ void main() {
       );
 
       expect(fakeRepo.requestedBeforeDates, isEmpty);
-    });
+    }));
 
-    test('swiping into the partial watermark month backfills it once', () async {
+    test('swiping into the partial watermark month backfills it once', () => _atPinned(() async {
       // The initial window starts mid-month (today − 30d), so the watermark's
       // own month is only partially loaded. Swiping into it must fetch exactly
       // once to fill the earlier days — then not fetch again on a revisit.
@@ -535,10 +543,8 @@ void main() {
         ],
       ));
       final loadedFrom = container.read(dashboardProvider).value!.loadedFrom;
-      // Only run the meaningful assertion when the watermark is genuinely
-      // mid-month; if today happens to be the 1st, loadedFrom is month-aligned
-      // and there is nothing to backfill.
-      if (loadedFrom.day == 1) return;
+      // The pinned date keeps the watermark genuinely mid-month.
+      expect(loadedFrom.day, isNot(1));
 
       await notifier.ensureMonthLoaded(
         DateTime(loadedFrom.year, loadedFrom.month, 1),
@@ -552,9 +558,9 @@ void main() {
       );
       expect(fakeRepo.requestedBeforeDates.length, 1,
           reason: 'revisit must not re-fetch');
-    });
+    }));
 
-    test('two-back then one-forward fetches each chunk exactly once', () async {
+    test('two-back then one-forward fetches each chunk exactly once', () => _atPinned(() async {
       final notifier = await build(_FakeDashboardRepository(
         initialEvents: const [],
         olderBatches: [
@@ -580,9 +586,9 @@ void main() {
         final curr = DateTime.parse(fakeRepo.requestedBeforeDates[i]);
         expect(curr.isBefore(prev), isTrue);
       }
-    });
+    }));
 
-    test('stops looping when hasReachedStart even if month not covered', () async {
+    test('stops looping when hasReachedStart even if month not covered', () => _atPinned(() async {
       final notifier = await build(_FakeDashboardRepository(
         initialEvents: const [],
         olderBatches: const [],
@@ -595,13 +601,13 @@ void main() {
 
       expect(fakeRepo.requestedBeforeDates.length, 1);
       expect(container.read(dashboardProvider).value!.hasReachedStart, isTrue);
-    });
+    }));
   });
 
   group('DashboardNotifier concurrency (loadOlder x _loadNewer race)', () {
     test(
         'loadOlder completing after a concurrent _loadNewer preserves both merges',
-        () async {
+        () => _atPinned(() async {
       final olderCompleter = Completer<List<EventSummary>>();
       final repo = _RaceDashboardRepository(
         initialEvents: [_event(1, '2026-06-20')],
@@ -658,6 +664,6 @@ void main() {
               '(first day of the month after the focused month)');
       expect(finalState.isLoadingOlder, isFalse);
       expect(finalState.isLoadingNewer, isFalse);
-    });
+    }));
   });
 }

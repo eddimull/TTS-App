@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:intl/intl.dart';
 import '../../../auth/data/models/band_summary.dart';
 import '../../../events/data/models/event_summary.dart';
@@ -167,7 +168,7 @@ class BookingDetail {
     try {
       return DateTime.parse(startDate);
     } catch (_) {
-      return DateTime.now();
+      return clock.now();
     }
   }
 

@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -76,12 +77,12 @@ class _FinancesBody extends ConsumerStatefulWidget {
 }
 
 class _FinancesBodyState extends ConsumerState<_FinancesBody> {
-  int _selectedYear = DateTime.now().year;
+  int _selectedYear = clock.now().year;
   String _nameQuery = '';
   String? _statusFilter; // null = All
 
   static const int _minYear = 2000;
-  static final int _maxYear = DateTime.now().year + 3;
+  static final int _maxYear = clock.now().year + 3;
 
   FinancesParams get _params =>
       FinancesParams(bandId: widget.bandId, year: _selectedYear);

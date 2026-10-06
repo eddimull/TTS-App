@@ -24,7 +24,7 @@ List<String> buildMonthKeys(List<BookingSummary> bookings) {
 /// is on or after the start of [now]'s day. Falls back to the last index
 /// when every booking is in the past. Returns `null` for an empty list.
 ///
-/// [now]'s time-of-day is ignored — passing `DateTime.now()` at any time
+/// [now]'s time-of-day is ignored — passing `clock.now()` at any time
 /// today selects today's booking if one exists.
 ///
 /// **Contract:** [bookings] must already be sorted ascending by date —

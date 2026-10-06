@@ -16,6 +16,7 @@
 // Configure opens on DOUBLE-tap because the editor fires single-tap on
 // pointer-down, which would pre-empt the long-press.
 
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -244,7 +245,7 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
       (size.width / 2 - v.x) / v.zoom,
       (size.height / 2 - v.y) / v.zoom,
     );
-    final id = 'node-${DateTime.now().microsecondsSinceEpoch}';
+    final id = 'node-${clock.now().microsecondsSinceEpoch}';
     _controller.addNode(newNodeForType(type, id, center));
     HapticFeedback.selectionClick();
     setState(() {});

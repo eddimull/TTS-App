@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material;
@@ -17,6 +18,13 @@ import 'package:tts_bandmate/shared/cache/api_cache_storage.dart';
 import 'package:tts_bandmate/shared/providers/connectivity_provider.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+// Pinned a week before the 15th so the stay fixture (anchored to the 15th) is
+// always upcoming within the focused month.
+final _pinned = DateTime(2026, 6, 8, 10);
+
+/// Runs [body] with `clock.now()` fixed at [_pinned].
+T _atPinned<T>(T Function() body) => withClock(Clock.fixed(_pinned), body);
 
 final _throwingDio = Dio();
 
@@ -66,7 +74,7 @@ class _FakeLodgingRepository extends LodgingRepository {
   _FakeLodgingRepository() : super(_throwingDio);
 
   static DateTime _anchor() {
-    final now = DateTime.now();
+    final now = clock.now();
     return DateTime(now.year, now.month, 15, 15);
   }
 
@@ -133,7 +141,7 @@ void main() {
 
   testWidgets(
       'agenda shows Check-in and stay name for the check-in day, and hides on toggle',
-      (tester) async {
+      (tester) => _atPinned(() async {
     final repo = _FakeLodgingRepository();
     await pumpDashboard(tester, repo);
 
@@ -154,5 +162,5 @@ void main() {
 
     expect(find.textContaining('Check-in'), findsNothing);
     expect(find.textContaining('Riverside Inn'), findsNothing);
-  });
+  }));
 }

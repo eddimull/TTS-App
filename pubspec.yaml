@@ -56,6 +56,7 @@ dependencies:
   sign_in_with_apple: ^8.1.0
   flutter_facebook_auth: ^7.2.0
   flutter_markdown_plus: ^1.0.12
+  clock: ^1.1.2
 
 dev_dependencies:
   flutter_test:

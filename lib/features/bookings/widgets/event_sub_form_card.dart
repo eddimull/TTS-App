@@ -369,25 +369,28 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
 
   // ── Picker launchers ────────────────────────────────────────────────────────
 
-  void _pickDate(BuildContext context) {
+  Future<void> _pickDate(BuildContext context) async {
     // Parse the stored ISO string into a DateTime for the picker.
     // Fall back to today if parsing fails (shouldn't happen in practice).
     final initial = _parseIsoDate(widget.draft.date) ?? DateTime.now();
     DateTime selected = initial;
+    // Tapping a day is an explicit choice, so it's committed however the
+    // sheet closes — Done, barrier tap or drag-dismiss. Gating on Done alone
+    // silently dropped the pick and saved the booking for today.
+    bool picked = false;
 
     // The popup route has a fresh widget tree; re-attach the current provider
     // container so the calendar's Consumer reads the same scope (and any
     // overrides) as this card. Same pattern as refine_sheet.dart.
     final container = ProviderScope.containerOf(context);
 
-    showCupertinoModalPopup<void>(
+    await showCupertinoModalPopup<void>(
       context: context,
       builder: (_) => UncontrolledProviderScope(
         container: container,
         child: _PickerSheet(
           height: 480,
-          onDone: () =>
-              widget.onChange(_copyWith(date: _formatIsoDate(selected))),
+          onDone: () {},
           child: StatefulBuilder(
             builder: (context, setSheetState) => Consumer(
               builder: (context, ref, _) {
@@ -408,7 +411,10 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
                 return BookingCalendarPicker(
                   selectedDate: selected,
                   dateStatuses: statuses,
-                  onDateSelected: (d) => setSheetState(() => selected = d),
+                  onDateSelected: (d) => setSheetState(() {
+                    selected = d;
+                    picked = true;
+                  }),
                 );
               },
             ),
@@ -416,6 +422,9 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
         ),
       ),
     );
+
+    if (!picked || !mounted) return;
+    widget.onChange(_copyWith(date: _formatIsoDate(selected)));
   }
 
   void _pickTime(

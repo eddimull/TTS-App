@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import '../data/models/booking_date_status.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
@@ -56,9 +57,9 @@ class _BookingCalendarPickerState extends State<BookingCalendarPicker> {
   }
 
   DateTime get _firstDate =>
-      widget.firstDate ?? DateTime(DateTime.now().year - 10);
+      widget.firstDate ?? DateTime(clock.now().year - 10);
   DateTime get _lastDate =>
-      widget.lastDate ?? DateTime(DateTime.now().year + 10);
+      widget.lastDate ?? DateTime(clock.now().year + 10);
 
   bool get _canGoPrev {
     final prev = DateTime(_displayMonth.year, _displayMonth.month - 1);
@@ -99,7 +100,7 @@ class _BookingCalendarPickerState extends State<BookingCalendarPicker> {
     final brightness = CupertinoTheme.brightnessOf(context);
     final isDark = brightness == Brightness.dark;
 
-    final today = _dateOnly(DateTime.now());
+    final today = _dateOnly(clock.now());
     final selected = _dateOnly(widget.selectedDate);
 
     // Weekday of the 1st of the display month (1=Mon … 7=Sun in Dart).

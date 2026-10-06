@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/finances/data/models/band_revenue.dart';
 
@@ -34,7 +35,7 @@ void main() {
     test('yearsActive counts rows', () => expect(r.yearsActive, 2));
     test('currentYearCents finds current year', () {
       final cur = BandRevenue(years: [
-        RevenueYear(year: DateTime.now().year, totalCents: 12345),
+        RevenueYear(year: clock.now().year, totalCents: 12345),
       ]);
       expect(cur.currentYearCents, 12345);
     });

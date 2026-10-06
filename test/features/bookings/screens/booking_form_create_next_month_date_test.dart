@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +13,12 @@ import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart'
 import 'package:tts_bandmate/features/bookings/screens/booking_form_screen.dart';
 import 'package:tts_bandmate/features/bookings/widgets/booking_calendar_picker.dart';
 import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
+
+// Pinned mid-month so 'next month' is unambiguous for the whole test run.
+final _pinned = DateTime(2026, 6, 15, 10);
+
+/// Runs [body] with `clock.now()` fixed at [_pinned].
+T _atPinned<T>(T Function() body) => withClock(Clock.fixed(_pinned), body);
 
 // Creating a booking whose date was picked in a DIFFERENT month than today
 // (calendar chevron navigation) must send the picked date, not today's, in
@@ -105,7 +112,7 @@ Future<_CapturingRepo> _pumpForm(WidgetTester tester) async {
 
 void main() {
   testWidgets(
-      'create sends the date picked in next month, not today', (tester) async {
+      'create sends the date picked in next month, not today', (tester) => _atPinned(() async {
     final repo = await _pumpForm(tester);
 
     // Name + event type.
@@ -153,16 +160,16 @@ void main() {
     expect(repo.capturedEvents, isNotNull,
         reason: 'createBooking should have been called');
 
-    final now = DateTime.now();
+    final now = clock.now();
     final nextMonth = DateTime(now.year, now.month + 1, 15);
     final expected = '${nextMonth.year}-'
         '${nextMonth.month.toString().padLeft(2, '0')}-15';
     expect(repo.capturedEvents!.single.date, expected);
-  });
+  }));
 
   testWidgets(
       'dismissing the calendar without Done still keeps the tapped day',
-      (tester) async {
+      (tester) => _atPinned(() async {
     final repo = await _pumpForm(tester);
 
     await tester.enterText(find.byType(EditableText).first, 'October Gig');
@@ -206,10 +213,10 @@ void main() {
 
     expect(repo.capturedEvents, isNotNull);
 
-    final now = DateTime.now();
+    final now = clock.now();
     final nextMonth = DateTime(now.year, now.month + 1, 15);
     final expected = '${nextMonth.year}-'
         '${nextMonth.month.toString().padLeft(2, '0')}-15';
     expect(repo.capturedEvents!.single.date, expected);
-  });
+  }));
 }

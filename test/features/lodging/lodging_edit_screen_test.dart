@@ -445,7 +445,7 @@ void main() {
       '(non-empty, unparseable) date sorts undated, not as "today"',
       (tester) async {
     // Non-empty but unparseable — the bug this regression guards against is
-    // treating this as `DateTime.now()` via EventSummary.parsedDate's silent
+    // treating this as `clock.now()` via EventSummary.parsedDate's silent
     // fallback, which would wrongly sort it into "During your stay"/"Nearby"
     // for a fresh lodging (whose default check-in is today).
     const malformedEvent = EventSummary(
@@ -484,7 +484,7 @@ void main() {
 
     // The booking tile renders — but with no date subtitle beneath its
     // label, proving `_bookingDate` returned null (undated) rather than
-    // `DateTime.now()`. A non-null date would render an
+    // `clock.now()`. A non-null date would render an
     // "EEE, MMM d, yyyy"-formatted line under the label.
     final tile = find.ancestor(
       of: find.text('Malformed Booking'),

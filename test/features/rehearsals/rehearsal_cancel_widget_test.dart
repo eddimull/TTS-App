@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,7 +23,7 @@ class _FakeRehearsalsRepository extends RehearsalsRepository {
 }
 
 RehearsalDetail _detail({bool isCancelled = false, String? notes}) {
-  final future = DateTime.now().add(const Duration(days: 7));
+  final future = clock.now().add(const Duration(days: 7));
   final date =
       '${future.year}-${future.month.toString().padLeft(2, '0')}-${future.day.toString().padLeft(2, '0')}';
   return RehearsalDetail.fromJson({

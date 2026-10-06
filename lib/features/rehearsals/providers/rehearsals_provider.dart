@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/rehearsals_repository.dart';
 import '../data/models/rehearsal_detail.dart';
@@ -35,7 +36,7 @@ final schedulesProvider =
     FutureProvider.family<List<RehearsalSchedule>, int>(
         (ref, bandId) async {
   final windowDays = ref.watch(schedulesWindowDaysProvider);
-  final until = DateTime.now().add(Duration(days: windowDays));
+  final until = clock.now().add(Duration(days: windowDays));
   final repo = ref.watch(rehearsalsRepositoryProvider);
   return repo.getSchedules(bandId, until: _ymd(until), includeVirtual: true);
 });

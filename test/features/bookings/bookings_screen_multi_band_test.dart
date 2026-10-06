@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:clock/clock.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,7 +58,7 @@ class _FixedAuthNotifier extends AuthNotifier {
 }
 
 String _isoDaysFromNow(int days) {
-  final d = DateTime.now().add(Duration(days: days));
+  final d = clock.now().add(Duration(days: days));
   return '${d.year}-${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 }

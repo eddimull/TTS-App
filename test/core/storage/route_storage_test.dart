@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tts_bandmate/core/storage/route_storage.dart';
@@ -48,11 +49,11 @@ void main() {
     });
 
     test('timestamp is within a few seconds of now', () async {
-      final before = DateTime.now().subtract(const Duration(seconds: 1));
+      final before = clock.now().subtract(const Duration(seconds: 1));
       final storage = await build();
       storage.writeLastRoute('/search');
       final ts = storage.readLastRouteTimestamp()!;
-      final after = DateTime.now().add(const Duration(seconds: 1));
+      final after = clock.now().add(const Duration(seconds: 1));
       expect(ts.isAfter(before), isTrue);
       expect(ts.isBefore(after), isTrue);
     });

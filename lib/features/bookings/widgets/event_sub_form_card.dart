@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -372,7 +373,7 @@ class _EventSubFormCardState extends ConsumerState<EventSubFormCard> {
   Future<void> _pickDate(BuildContext context) async {
     // Parse the stored ISO string into a DateTime for the picker.
     // Fall back to today if parsing fails (shouldn't happen in practice).
-    final initial = _parseIsoDate(widget.draft.date) ?? DateTime.now();
+    final initial = _parseIsoDate(widget.draft.date) ?? clock.now();
     DateTime selected = initial;
     // Tapping a day is an explicit choice, so it's committed however the
     // sheet closes — Done, barrier tap or drag-dismiss. Gating on Done alone

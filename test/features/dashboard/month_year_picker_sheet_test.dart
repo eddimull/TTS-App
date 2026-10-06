@@ -1,7 +1,16 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:tts_bandmate/features/dashboard/widgets/month_year_picker_sheet.dart';
+
+// Pinned mid-year so "advance the month wheel two notches" never wraps past
+// December — the Cupertino month column wraps without rolling the year.
+final _pinned = DateTime(2026, 6, 15, 10);
+
+/// Runs [body] with `clock.now()` fixed at [_pinned].
+Future<void> _atPinned(Future<void> Function() body) =>
+    withClock(Clock.fixed(_pinned), body);
 
 void main() {
   // CupertinoPicker item extent used by CupertinoDatePicker — dragging by
@@ -38,72 +47,81 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('Done returns the month picked on the wheel', (tester) async {
-    final now = DateTime.now();
-    await open(tester, focusedDay: now, now: now);
+  testWidgets(
+      'Done returns the month picked on the wheel',
+      (tester) => _atPinned(() async {
+            final now = clock.now();
+            await open(tester, focusedDay: now, now: now);
 
-    // Advance the month wheel two notches (drag the visible month name up).
-    final monthLabel = DateFormat.MMMM().format(DateTime(now.year, now.month));
-    await tester.drag(find.text(monthLabel), const Offset(0, -2.2 * itemExtent));
-    await tester.pumpAndSettle();
+            // Advance the month wheel two notches (drag the visible month name up).
+            final monthLabel =
+                DateFormat.MMMM().format(DateTime(now.year, now.month));
+            await tester.drag(
+                find.text(monthLabel), const Offset(0, -2.2 * itemExtent));
+            await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Done'));
-    await tester.pumpAndSettle();
+            await tester.tap(find.text('Done'));
+            await tester.pumpAndSettle();
 
-    final expected = DateTime(now.year, now.month + 2);
-    expect(completed, isTrue);
-    expect(result, isNotNull);
-    expect(result!.year, expected.year);
-    expect(result!.month, expected.month);
-    expect(result!.day, 1, reason: 'Done must return a first-of-month value');
-  });
+            final expected = DateTime(now.year, now.month + 2);
+            expect(completed, isTrue);
+            expect(result, isNotNull);
+            expect(result!.year, expected.year);
+            expect(result!.month, expected.month);
+            expect(result!.day, 1,
+                reason: 'Done must return a first-of-month value');
+          }));
 
-  testWidgets('Today returns the current date even when opened on another month',
-      (tester) async {
-    final now = DateTime.now();
-    final future = DateTime(now.year, now.month + 6);
-    await open(tester, focusedDay: future, now: now);
+  testWidgets(
+      'Today returns the current date even when opened on another month',
+      (tester) => _atPinned(() async {
+            final now = clock.now();
+            final future = DateTime(now.year, now.month + 6);
+            await open(tester, focusedDay: future, now: now);
 
-    await tester.tap(find.text('Today'));
-    await tester.pumpAndSettle();
+            await tester.tap(find.text('Today'));
+            await tester.pumpAndSettle();
 
-    expect(completed, isTrue);
-    expect(result, isNotNull);
-    expect(result!.year, now.year);
-    expect(result!.month, now.month);
-  });
+            expect(completed, isTrue);
+            expect(result, isNotNull);
+            expect(result!.year, now.year);
+            expect(result!.month, now.month);
+          }));
 
-  testWidgets('Cancel returns null', (tester) async {
-    final now = DateTime.now();
-    await open(tester, focusedDay: now, now: now);
+  testWidgets(
+      'Cancel returns null',
+      (tester) => _atPinned(() async {
+            final now = clock.now();
+            await open(tester, focusedDay: now, now: now);
 
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
+            await tester.tap(find.text('Cancel'));
+            await tester.pumpAndSettle();
 
-    expect(completed, isTrue);
-    expect(result, isNull);
-  });
+            expect(completed, isTrue);
+            expect(result, isNull);
+          }));
 
-  testWidgets('out-of-bounds focusedDay is clamped instead of asserting',
-      (tester) async {
-    final now = DateTime.now();
-    // Two years back — before the one-year minimum. Without clamping,
-    // CupertinoDatePicker asserts "initial date is not greater than or
-    // equal to minimumDate" and the sheet never opens.
-    final farPast = DateTime(now.year - 2, now.month);
-    await open(tester, focusedDay: farPast, now: now);
+  testWidgets(
+      'out-of-bounds focusedDay is clamped instead of asserting',
+      (tester) => _atPinned(() async {
+            final now = clock.now();
+            // Two years back — before the one-year minimum. Without clamping,
+            // CupertinoDatePicker asserts "initial date is not greater than or
+            // equal to minimumDate" and the sheet never opens.
+            final farPast = DateTime(now.year - 2, now.month);
+            await open(tester, focusedDay: farPast, now: now);
 
-    // Sheet opened successfully and shows the minimum (clamped) month —
-    // derived exactly as the widget derives it, from the calendar's
-    // 365-day-back bound normalised to first-of-month.
-    expect(find.byType(MonthYearPickerSheet), findsOneWidget);
-    final minAnchor = now.subtract(const Duration(days: 365));
-    final minMonth = DateTime(minAnchor.year, minAnchor.month);
-    expect(find.text(DateFormat.MMMM().format(minMonth)), findsWidgets);
+            // Sheet opened successfully and shows the minimum (clamped) month —
+            // derived exactly as the widget derives it, from the calendar's
+            // 365-day-back bound normalised to first-of-month.
+            expect(find.byType(MonthYearPickerSheet), findsOneWidget);
+            final minAnchor = now.subtract(const Duration(days: 365));
+            final minMonth = DateTime(minAnchor.year, minAnchor.month);
+            expect(find.text(DateFormat.MMMM().format(minMonth)), findsWidgets);
 
-    await tester.tap(find.text('Done'));
-    await tester.pumpAndSettle();
-    expect(result!.year, minMonth.year);
-    expect(result!.month, minMonth.month);
-  });
+            await tester.tap(find.text('Done'));
+            await tester.pumpAndSettle();
+            expect(result!.year, minMonth.year);
+            expect(result!.month, minMonth.month);
+          }));
 }

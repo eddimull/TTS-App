@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:intl/intl.dart';
 
 /// One year's total recorded revenue. [totalCents] is in cents (matches the
@@ -47,7 +48,7 @@ class BandRevenue {
 
   /// Revenue for the current calendar year in cents, or null if no row exists.
   int? get currentYearCents {
-    final now = DateTime.now().year;
+    final now = clock.now().year;
     for (final y in years) {
       if (y.year == now) return y.totalCents;
     }

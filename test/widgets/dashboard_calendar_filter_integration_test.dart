@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Material;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,12 @@ import 'package:tts_bandmate/features/dashboard/providers/calendar_filter_provid
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
 import 'package:tts_bandmate/features/dashboard/screens/dashboard_screen.dart';
 import 'package:tts_bandmate/features/events/data/models/event_summary.dart';
+
+// Pinned mid-month so the focused month always has future in-month days.
+final _pinned = DateTime(2026, 6, 15, 10);
+
+/// Runs [body] with `clock.now()` fixed at [_pinned].
+T _atPinned<T>(T Function() body) => withClock(Clock.fixed(_pinned), body);
 
 class _FixedAuthNotifier extends AuthNotifier {
   _FixedAuthNotifier(this._fixed);
@@ -44,7 +51,7 @@ void main() {
       '${d.day.toString().padLeft(2, '0')}';
 
   String upcomingInMonth() {
-    final now = DateTime.now();
+    final now = clock.now();
     final lastDayOfMonth = DateTime(now.year, now.month + 1, 0).day;
     // Tomorrow, but never spill past the month end. On the final day of the
     // month there is no future-in-month day, so fall back to that last day —
@@ -57,7 +64,7 @@ void main() {
   // so an event dated today is never treated as "live". HH:mm only; currentEvent
   // rebuilds the start on today, so day rollover is irrelevant.
   String pastLiveWindowTime() {
-    final t = DateTime.now().subtract(const Duration(hours: 5));
+    final t = clock.now().subtract(const Duration(hours: 5));
     return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
@@ -92,7 +99,7 @@ void main() {
                   events: events,
                   upcomingCharts: const [],
                   loadedFrom: DateTime(2026),
-                  loadedTo: DateTime(2026, 4, 1)),
+                  loadedTo: DateTime(2026, 9, 1)),
             )),
       ],
       child: const CupertinoApp(home: Material(child: DashboardScreen())),
@@ -100,7 +107,7 @@ void main() {
   }
 
   testWidgets('hiding a band hides its event from the events list',
-      (tester) async {
+      (tester) => _atPinned(() async {
     await tester.binding.setSurfaceSize(const Size(400, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -125,10 +132,10 @@ void main() {
 
     expect(find.text('a title'), findsOneWidget);
     expect(find.text('b title'), findsNothing);
-  });
+  }));
 
   testWidgets('filter-aware empty state shows Clear filters button',
-      (tester) async {
+      (tester) => _atPinned(() async {
     await tester.binding.setSurfaceSize(const Size(400, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -151,5 +158,5 @@ void main() {
 
     expect(container.read(calendarFilterProvider).isActive, false);
     expect(find.text('a title'), findsOneWidget);
-  });
+  }));
 }

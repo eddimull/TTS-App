@@ -1,3 +1,5 @@
+import 'package:clock/clock.dart';
+
 import '../../../auth/data/models/band_summary.dart';
 
 String _normalizeEventSource(String? raw) {
@@ -132,12 +134,12 @@ class EventSummary {
   bool get isRehearsal =>
       eventSource == 'rehearsal' || eventSource == 'rehearsal_schedule';
 
-  /// Parses [date] into a [DateTime]. Returns [DateTime.now()] as a fallback.
+  /// Parses [date] into a [DateTime]. Returns [clock.now()] as a fallback.
   DateTime get parsedDate {
     try {
       return DateTime.parse(date);
     } catch (_) {
-      return DateTime.now();
+      return clock.now();
     }
   }
 

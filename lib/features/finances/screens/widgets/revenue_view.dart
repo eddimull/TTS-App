@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tts_bandmate/shared/widgets/empty_state_view.dart';
@@ -71,7 +72,7 @@ class _SummaryCards extends StatelessWidget {
       ),
       if (currentYear != null)
         _StatCard(
-          label: '${DateTime.now().year} Revenue',
+          label: '${clock.now().year} Revenue',
           value: BandRevenue.formatCents(currentYear),
           icon: CupertinoIcons.calendar,
           tint: CupertinoColors.systemGreen.resolveFrom(context),
@@ -154,7 +155,7 @@ class _RevenueTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now().year;
+    final now = clock.now().year;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(

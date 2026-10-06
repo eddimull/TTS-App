@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Icons, Material;
@@ -16,6 +17,13 @@ import 'package:tts_bandmate/shared/cache/api_cache_storage.dart';
 import 'package:tts_bandmate/shared/providers/connectivity_provider.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+// Pinned mid-year so header titles, the +4-month chevron walk and the year-wheel
+// jump never depend on the real date.
+final _pinned = DateTime(2026, 6, 15, 10);
+
+/// Runs [body] with `clock.now()` fixed at [_pinned].
+T _atPinned<T>(T Function() body) => withClock(Clock.fixed(_pinned), body);
 
 final _throwingDio = Dio();
 const _itemExtent = 32.0;
@@ -94,22 +102,22 @@ void main() {
   }
 
   testWidgets('tapping the calendar header opens the month/year picker sheet',
-      (tester) async {
+      (tester) => _atPinned(() async {
     final repo = _FakeDashboardRepository();
     await pumpDashboard(tester, repo);
 
-    await tester.tap(find.text(headerTitle(DateTime.now())));
+    await tester.tap(find.text(headerTitle(clock.now())));
     await tester.pumpAndSettle();
 
     expect(find.byType(MonthYearPickerSheet), findsOneWidget);
-  });
+  }));
 
   testWidgets(
       'picking a distant month jumps the calendar and triggers a month load',
-      (tester) async {
+      (tester) => _atPinned(() async {
     final repo = _FakeDashboardRepository();
     await pumpDashboard(tester, repo);
-    final now = DateTime.now();
+    final now = clock.now();
 
     await tester.tap(find.text(headerTitle(now)));
     await tester.pumpAndSettle();
@@ -133,12 +141,12 @@ void main() {
     expect(repo.requestedNewerWindows, isNotEmpty,
         reason: 'jumping past the loaded window must trigger '
             'ensureMonthLoaded, same as swiping there');
-  });
+  }));
 
-  testWidgets('Today resets the calendar to the current month', (tester) async {
+  testWidgets('Today resets the calendar to the current month', (tester) => _atPinned(() async {
     final repo = _FakeDashboardRepository();
     await pumpDashboard(tester, repo);
-    final now = DateTime.now();
+    final now = clock.now();
 
     // Park the calendar 4 months ahead via the header chevron first.
     final nextChevron = find.byIcon(Icons.chevron_right);
@@ -157,12 +165,12 @@ void main() {
     expect(find.text(headerTitle(now)), findsOneWidget,
         reason: 'Today must park the calendar back on the current month');
     expect(find.byType(MonthYearPickerSheet), findsNothing);
-  });
+  }));
 
-  testWidgets('Cancel leaves the focused month untouched', (tester) async {
+  testWidgets('Cancel leaves the focused month untouched', (tester) => _atPinned(() async {
     final repo = _FakeDashboardRepository();
     await pumpDashboard(tester, repo);
-    final now = DateTime.now();
+    final now = clock.now();
 
     await tester.tap(find.text(headerTitle(now)));
     await tester.pumpAndSettle();
@@ -171,5 +179,5 @@ void main() {
 
     expect(find.text(headerTitle(now)), findsOneWidget);
     expect(find.byType(MonthYearPickerSheet), findsNothing);
-  });
+  }));
 }

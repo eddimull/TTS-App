@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -128,7 +129,7 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
               notes: r.notes ?? '',
             )));
       } else {
-        final now = DateTime.now();
+        final now = clock.now();
         _checkIn = DateTime(now.year, now.month, now.day, 15);
         _checkOut = _checkIn!.add(const Duration(days: 1)).copyWith(
               hour: 11,
@@ -156,8 +157,8 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
   Future<void> _pickDateTime({required bool isCheckIn}) async {
     DateTime picked = (isCheckIn ? _checkIn : _checkOut) ??
         (isCheckIn
-            ? DateTime.now()
-            : (_checkIn ?? DateTime.now()).add(const Duration(hours: 20)));
+            ? clock.now()
+            : (_checkIn ?? clock.now()).add(const Duration(hours: 20)));
 
     await showCupertinoModalPopup<void>(
       context: context,
@@ -227,7 +228,7 @@ class _LodgingEditScreenState extends ConsumerState<LodgingEditScreen> {
   /// malformed-but-non-empty date as "today," mirroring the same pitfall
   /// `lodgingByDay` guards against.
   DateTime? _bookingDate(BookingSummary b) {
-    final today = DateTime.now();
+    final today = clock.now();
     final todayDay = DateTime(today.year, today.month, today.day);
     final dates = [
       for (final e in b.events)

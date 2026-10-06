@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -201,7 +202,7 @@ class ContractEditorNotifier extends AsyncNotifier<ContractEditorState> {
       state = AsyncData(
         latest.copyWith(
           unsavedChanges: identical(latest, current) ? false : latest.unsavedChanges,
-          lastSavedAt: DateTime.now(),
+          lastSavedAt: clock.now(),
         ),
       );
       ref.read(cacheInvalidatorProvider).onContractTermsAutosaved(

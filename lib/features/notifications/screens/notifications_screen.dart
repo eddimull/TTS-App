@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -90,7 +91,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             if (state.items.isEmpty) {
               return const Center(child: Text("You're all caught up"));
             }
-            final now = DateTime.now();
+            final now = clock.now();
             return CustomScrollView(
               controller: _scroll,
               slivers: [

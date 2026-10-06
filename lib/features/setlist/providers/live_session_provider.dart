@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/pusher_connection.dart';
 import '../../../core/providers/core_providers.dart';
@@ -275,7 +276,7 @@ class LiveSessionNotifier extends Notifier<LiveSessionState> {
               (data['current_song'] as Map<String, dynamic>?)?['crowd_reaction']
                   as String?,
           isOffSetlist: e.isOffSetlist,
-          playedAt: DateTime.now().toIso8601String(),
+          playedAt: clock.now().toIso8601String(),
         );
       }
       return e;

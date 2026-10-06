@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tts_bandmate/shared/cache/api_cache_storage.dart';
@@ -17,7 +18,7 @@ void main() {
   });
 
   test('write/read round-trips payload and stamps savedAt', () {
-    final before = DateTime.now();
+    final before = clock.now();
     storage.write('7:dashboard', {'events': [{'id': 1}], 'upcoming_charts': []});
     final entry = storage.read('7:dashboard');
     expect(entry, isNotNull);

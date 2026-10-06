@@ -56,6 +56,12 @@ class _FixedAuthNotifier extends AuthNotifier {
   @override Future<AuthState> build() async => _fixed;
 }
 
+String _isoDaysFromNow(int days) {
+  final d = DateTime.now().add(Duration(days: days));
+  return '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -84,7 +90,9 @@ void main() {
           // reachedEarliest / reachedLatest instead of looping.
           final from = req.queryParameters['from'] as String?;
           final to = req.queryParameters['to'] as String?;
-          final fixtureDate = '${DateTime.now().year}-06-01';
+          // Anchor fixtures to today so they always land inside the
+          // initial window (today − 3mo .. today + 9mo), whatever the date.
+          final fixtureDate = _isoDaysFromNow(7);
           if (from != null && to != null) {
             if (from.compareTo(fixtureDate) > 0 ||
                 to.compareTo(fixtureDate) < 0) {
@@ -96,7 +104,7 @@ void main() {
               {
                 'id': 1,
                 'name': 'Big Show',
-                'date': '${DateTime.now().year}-06-01',
+                'date': fixtureDate,
                 'is_paid': false,
                 'contacts': [],
                 'status': 'confirmed',
@@ -111,7 +119,7 @@ void main() {
               {
                 'id': 2,
                 'name': 'Sunday Service',
-                'date': '${DateTime.now().year}-06-02',
+                'date': _isoDaysFromNow(8),
                 'is_paid': false,
                 'contacts': [],
                 'status': 'confirmed',

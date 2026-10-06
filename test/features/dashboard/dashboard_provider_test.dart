@@ -137,6 +137,10 @@ class _RaceDashboardRepository extends DashboardRepository {
   }
 }
 
+/// Current year. Forward-window tests build their targets relative to it so
+/// they always land beyond the initial today + 90d window, whatever the date.
+final _y = DateTime.now().year;
+
 void main() {
   group('DashboardState.coversMonth', () {
     test('month fully inside the loaded window returns true', () {
@@ -393,25 +397,25 @@ void main() {
       await setUpContainer(_FakeDashboardRepository(
         initialEvents: [], olderBatches: [],
         newerBatches: [
-          [_event(5, '2028-03-10')],
+          [_event(5, '${_y + 3}-03-10')],
         ],
       ));
       final notifier = await buildNotifier();
 
       // Jump 2+ years forward — must be a single fetch, not many.
-      final target = DateTime(2028, 3, 15);
+      final target = DateTime(_y + 3, 3, 15);
       await notifier.ensureMonthLoaded(target);
 
       expect(fakeRepo.requestedNewerWindows, hasLength(1));
       final (after, before) = fakeRepo.requestedNewerWindows.single;
       expect(after, ymd(DateTime.now().add(const Duration(days: 90))),
           reason: 'window starts at the current loadedTo watermark');
-      expect(before, '2028-04-01',
+      expect(before, '${_y + 3}-04-01',
           reason: 'window extends to the first day of the month after target');
 
       final state = container.read(dashboardProvider).value!;
       expect(state.events.map((e) => e.id), contains(5));
-      expect(state.loadedTo, DateTime(2028, 4, 1));
+      expect(state.loadedTo, DateTime(_y + 3, 4, 1));
     });
 
     test('already-covered months trigger no fetch and empty windows do not stop future fetches', () async {
@@ -421,16 +425,16 @@ void main() {
       ));
       final notifier = await buildNotifier();
 
-      await notifier.ensureMonthLoaded(DateTime(2027, 6, 15));
+      await notifier.ensureMonthLoaded(DateTime(_y + 2, 6, 15));
       expect(fakeRepo.requestedNewerWindows, hasLength(1));
 
       // Same month again: covered, no new fetch.
-      await notifier.ensureMonthLoaded(DateTime(2027, 6, 20));
+      await notifier.ensureMonthLoaded(DateTime(_y + 2, 6, 20));
       expect(fakeRepo.requestedNewerWindows, hasLength(1));
 
       // Further month: MUST fetch again despite the last window being empty —
       // there is no hasReachedEnd for the future.
-      await notifier.ensureMonthLoaded(DateTime(2028, 1, 10));
+      await notifier.ensureMonthLoaded(DateTime(_y + 3, 1, 10));
       expect(fakeRepo.requestedNewerWindows, hasLength(2));
     });
 
@@ -450,14 +454,14 @@ void main() {
           [
             _event(1, '2026-08-01'), // dup by id — dropped
             nullIdEvent('vr-a', '2026-08-05'), // dup by key — dropped
-            nullIdEvent('vr-b', '2026-11-12'), // new — kept
-            _event(2, '2026-12-01'), // new — kept
+            nullIdEvent('vr-b', '${_y + 2}-11-12'), // new — kept
+            _event(2, '${_y + 2}-12-01'), // new — kept
           ],
         ],
       ));
       final notifier = await buildNotifier();
 
-      await notifier.ensureMonthLoaded(DateTime(2026, 12, 15));
+      await notifier.ensureMonthLoaded(DateTime(_y + 2, 12, 15));
 
       final state = container.read(dashboardProvider).value!;
       expect(state.events, hasLength(4));
@@ -468,7 +472,7 @@ void main() {
         initialEvents: [], olderBatches: [], newerBatches: [],
       ));
       final notifier = await buildNotifier();
-      await notifier.ensureMonthLoaded(DateTime(2028, 3, 15));
+      await notifier.ensureMonthLoaded(DateTime(_y + 3, 3, 15));
 
       await notifier.refresh();
 
@@ -602,7 +606,7 @@ void main() {
       final repo = _RaceDashboardRepository(
         initialEvents: [_event(1, '2026-06-20')],
         olderCompleter: olderCompleter,
-        newerResult: [_event(3, '2026-12-05')],
+        newerResult: [_event(3, '${_y + 2}-12-05')],
       );
 
       final container = ProviderContainer(overrides: [
@@ -625,7 +629,7 @@ void main() {
       // While loadOlder is still in flight, kick off and fully await a
       // _loadNewer via ensureMonthLoaded — its fake resolves immediately, so
       // this completes and mutates state BEFORE loadOlder finishes.
-      final target = DateTime(2026, 12, 15);
+      final target = DateTime(_y + 2, 12, 15);
       await notifier.ensureMonthLoaded(target);
 
       final midState = container.read(dashboardProvider).value!;
@@ -649,7 +653,7 @@ void main() {
               'newer merge that completed first');
       expect(finalState.loadedFrom, expectedLoadedFrom,
           reason: 'loadedFrom must move backward from the older fetch');
-      expect(finalState.loadedTo, DateTime(2027, 1, 1),
+      expect(finalState.loadedTo, DateTime(_y + 3, 1, 1),
           reason: 'loadedTo must move forward to the newer fetch target '
               '(first day of the month after the focused month)');
       expect(finalState.isLoadingOlder, isFalse);

@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.28.1](https://github.com/eddimull/TTS-App/compare/v1.28.0...v1.28.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* **bookings:** keep the tapped date when the calendar sheet is dismissed ([a28490b](https://github.com/eddimull/TTS-App/commit/a28490bd8685db74d9b160cfae02016109e758bf))
+* **bookings:** keep the tapped date when the calendar sheet is dismissed ([be4c525](https://github.com/eddimull/TTS-App/commit/be4c5259dc154623cbe61e94c43b4ae7dacf8cb0))
+* **notifications:** open push taps over the tab shell so Back works ([313d5f3](https://github.com/eddimull/TTS-App/commit/313d5f3dcd4e9c211784ef1ab96616589aa11ba3))
+* **notifications:** open push taps over the tab shell so Back works ([c47f0d4](https://github.com/eddimull/TTS-App/commit/c47f0d43757c2230be09b7e186106223bf81b41e))
+* step dates by calendar day, not 24h, across DST changes ([5ecbe98](https://github.com/eddimull/TTS-App/commit/5ecbe9810810fe64ddcf008166dbb7d760b08814))
+* step dates by calendar day, not 24h, across DST changes ([1aa995e](https://github.com/eddimull/TTS-App/commit/1aa995e5cfa4747d4fe04d59967f9373073cbbbc))
+
 ## [1.28.0](https://github.com/eddimull/TTS-App/compare/v1.27.0...v1.28.0) (2026-10-06)
 
 

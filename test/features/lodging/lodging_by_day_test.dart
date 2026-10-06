@@ -60,4 +60,23 @@ void main() {
     expect(map.values.single.single.isCheckIn, isTrue);
     expect(map.values.single.single.isCheckOut, isTrue);
   }));
+
+  test('stay across a DST change keeps midnight day keys and flags checkout',
+      () {
+    // US clocks fall back on 2026-11-01. Stepping by a 24h Duration from
+    // Nov 1 00:00 lands on Nov 1 23:00, so later days lost their midnight
+    // key and checkout was never flagged. In a timezone without DST this
+    // passes trivially.
+    final checkIn = DateTime(2026, 10, 31, 15);
+    final checkOut = DateTime(2026, 11, 3, 11);
+    final map = lodgingByDay([_stay(1, checkIn, checkOut)]);
+
+    expect(map.keys, [
+      DateTime(2026, 10, 31),
+      DateTime(2026, 11, 1),
+      DateTime(2026, 11, 2),
+      DateTime(2026, 11, 3),
+    ]);
+    expect(map[DateTime(2026, 11, 3)]!.single.isCheckOut, isTrue);
+  });
 }

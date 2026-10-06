@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.28.0](https://github.com/eddimull/TTS-App/compare/v1.27.0...v1.28.0) (2026-10-06)
+
+
+### Features
+
+* **notifications:** Dashboard bell with unseen badge and the /notifications feed screen ([dc8dee3](https://github.com/eddimull/TTS-App/commit/dc8dee3b5a9f4714a08552930a7f037af9e7c33e))
+* **notifications:** feed and unseen-count providers with realtime and resume refresh ([1709a8f](https://github.com/eddimull/TTS-App/commit/1709a8fa9e7a8ecbf44ad5473fcd391ab5f9012e))
+* **notifications:** NotificationItem model and repository over the mobile feed API ([d944d78](https://github.com/eddimull/TTS-App/commit/d944d78c87aa65a555f3efc7cc9a6d83ac25a658))
+* **notifications:** route type=notification pushes to their server-resolved deeplink ([4522bf7](https://github.com/eddimull/TTS-App/commit/4522bf7527b1ed2c7f63bff1a1ce5010aa42958f))
+
+
+### Bug Fixes
+
+* **notifications:** bell badge now refreshes on resume without opening the feed ([67c5a1a](https://github.com/eddimull/TTS-App/commit/67c5a1a9bd6606c3d26810237e58b84c418da488))
+* **notifications:** clear feed on logout, go for shell deeplinks, real local-id test ([b978547](https://github.com/eddimull/TTS-App/commit/b978547d7a52dae728c91773659a08b4f9497967))
+* **notifications:** guard post-await state writes against teardown ([ff54486](https://github.com/eddimull/TTS-App/commit/ff544862851905a3a99499bcce217ba775fadfdd))
+* **notifications:** keep /notifications out of shell-prefix persistence; use context.secondaryText ([d678351](https://github.com/eddimull/TTS-App/commit/d67835149259616078490fa36638eef673eb6d9c))
+* **notifications:** push deeplinks from the feed instead of go, so Back returns to the feed ([7255c86](https://github.com/eddimull/TTS-App/commit/7255c86ef0652c861dc31792415635db078464b2))
+
 ## [1.27.0](https://github.com/eddimull/TTS-App/compare/v1.26.0...v1.27.0) (2026-10-04)
 
 

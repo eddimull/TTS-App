@@ -16,6 +16,7 @@ import '../data/push_payload.dart' show departureNotificationId;
 import '../data/routes_client.dart';
 import '../services/enrichment_service.dart';
 import '../services/location_service.dart';
+import '../services/push_navigation.dart';
 import '../services/push_service.dart';
 import '../../chat/providers/active_chat_conversation_provider.dart';
 import '../../chat/providers/chat_thread_provider.dart';
@@ -47,6 +48,9 @@ class PushRegistrar {
 
   bool _watchingRefresh = false;
 
+  void _openRoute(String route) =>
+      unawaited(openPushRoute(_ref.read(routerProvider), route));
+
   Future<void> registerCurrentToken() async {
     final platform = _platformName();
     if (platform == null) return; // unsupported platform: no-op
@@ -55,7 +59,7 @@ class PushRegistrar {
     // via getNotificationAppLaunchDetails() and calls onLocalTap synchronously
     // within that same call, so setting it after would silently drop a
     // terminated-state tap's route.
-    push.onLocalTap = (route) => _ref.read(routerProvider).go(route);
+    push.onLocalTap = _openRoute;
     // Set the suppression callback before attaching the foreground listener
     // so a message arriving in that window can't render for an open thread.
     push.currentOpenConversation =
@@ -71,12 +75,11 @@ class PushRegistrar {
     await push.init();
     await push.requestPermission();
     push.listenForeground();
-    push.listenTaps((route) => _ref.read(routerProvider).go(route));
+    push.listenTaps(_openRoute);
     // iOS terminated-state taps never surface through getInitialMessage /
     // onMessageOpenedApp (UIScene initial-notification gap) — pull the
     // natively stashed launch tap now that a route handler exists.
-    unawaited(push
-        .consumeLaunchNotification((route) => _ref.read(routerProvider).go(route)));
+    unawaited(push.consumeLaunchNotification(_openRoute));
     push.onDeparturePush = (payload) async {
       final firstTime = payload.firstItemTime;
       if (firstTime == null) return;

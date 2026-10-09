@@ -81,3 +81,9 @@ Pusher Channels (`pusher_channels_flutter`) is configured via `AppConfig`. Pushe
 ### Tests
 
 Tests live in `test/` and mirror the `lib/` structure. Unit tests use `ProviderContainer` directly with fake implementations (e.g., `FakeSecureStorage`). No widget integration or golden tests yet.
+
+## Pull Requests
+
+- Base branch is **`main`**; the Laravel backend lives in the separate `TTS` repo and targets `staging` there. Releases are cut by release-please from conventional commits (`feat:`/`fix:`), so merging its `chore(main): release x.y.z` PR tags, builds and submits to the stores. For a TestFlight build without a store submission, bump `version:` in `pubspec.yaml` by hand (see #152, #160).
+- **Opening the PR is not the end of the task.** Copilot and the Claude review workflow review every PR within a few minutes of each push. Wait for them, address every comment (fix it, or reply explaining why not), reply on each thread, and re-check after every push since reviews re-run on new commits. Only then report the PR as ready.
+- Check for reviews with `gh api repos/eddimull/TTS-App/pulls/<n>/reviews` and inline threads with `gh api repos/eddimull/TTS-App/pulls/<n>/comments`.

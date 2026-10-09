@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -65,6 +66,17 @@ class _ContractDefaultViewState extends ConsumerState<ContractDefaultView> {
 
   /// Recall the sent contract so it can be edited and resent. Confirms
   /// first — this voids the document the client already received.
+  String _amendErrorMessage(Object e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map) {
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) return message;
+      }
+    }
+    return 'Could not amend the contract. Please try again.';
+  }
+
   Future<void> _amendContract() async {
     final confirmed = await showCupertinoDialog<bool>(
       context: context,
@@ -102,7 +114,7 @@ class _ContractDefaultViewState extends ConsumerState<ContractDefaultView> {
           context: context,
           builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Amend Failed'),
-            content: Text(e.toString()),
+            content: Text(_amendErrorMessage(e)),
             actions: [
               CupertinoDialogAction(
                 onPressed: () => Navigator.pop(dialogContext),

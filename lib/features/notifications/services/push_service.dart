@@ -17,12 +17,27 @@ import 'enrichment_service.dart' show LocalScheduler;
 /// months (no UNUserNotificationCenter delegate under the UIScene lifecycle)
 /// with zero telemetry to show it — leave a trail per tap source so Sentry
 /// can confirm which paths fire and what route each resolved. Best-effort.
-void _tapBreadcrumb(String source, String? route) {
+void _tapBreadcrumb(String source, String? route, {Map<String, dynamic>? data}) {
   unawaited(Sentry.addBreadcrumb(Breadcrumb(
     category: 'push.tap',
     message: route ?? '(no route)',
     data: {'source': source},
   )));
+  // DIAGNOSTIC (temporary): warm taps on iOS land on the dashboard while
+  // cold-start taps route correctly, and breadcrumbs only ship with an
+  // error. Report every tap as its own event so Sentry shows which path
+  // fired, what the payload carried, and what route it resolved to.
+  unawaited(Sentry.captureMessage(
+    'push.tap $source → ${route ?? '(no route)'}',
+    level: SentryLevel.info,
+    withScope: (scope) => scope.setContexts('push_tap', {
+      'source': source,
+      'route': route ?? '(no route)',
+      'type': data?['type']?.toString() ?? '(none)',
+      'deeplink': data?['deeplink']?.toString() ?? '(none)',
+      'data_keys': data?.keys.toList() ?? const <String>[],
+    }),
+  ));
 }
 
 /// True only on platforms where FCM is supported.
@@ -223,7 +238,7 @@ class PushService implements LocalScheduler {
 
     void handle(String source, RemoteMessage message) {
       final route = routeForPushData(message.data);
-      _tapBreadcrumb(source, route);
+      _tapBreadcrumb(source, route, data: message.data);
       if (route != null) onRoute(route);
     }
 
@@ -259,11 +274,12 @@ class PushService implements LocalScheduler {
       return;
     }
     if (data == null) return;
-    final route = routeForPushData(<String, dynamic>{
+    final mapped = <String, dynamic>{
       for (final entry in data.entries)
         if (entry.key is String) entry.key as String: entry.value,
-    });
-    _tapBreadcrumb('ios_launch_stash', route);
+    };
+    final route = routeForPushData(mapped);
+    _tapBreadcrumb('ios_launch_stash', route, data: mapped);
     if (route != null) onRoute(route);
   }
 

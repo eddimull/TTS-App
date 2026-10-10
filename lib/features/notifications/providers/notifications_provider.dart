@@ -76,6 +76,7 @@ class PushRegistrar {
     await push.requestPermission();
     push.listenForeground();
     push.listenTaps(_openRoute);
+    push.listenNativeTaps(_openRoute);
     // DIAGNOSTIC (temporary): proves this wiring ran on the device.
     unawaited(Sentry.captureMessage(
       'push.listeners attached ($platform)',

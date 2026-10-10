@@ -2,6 +2,7 @@ import FirebaseCore
 import FirebaseMessaging
 import Flutter
 import GoogleMaps
+import Sentry
 import UIKit
 import UserNotifications
 
@@ -27,6 +28,26 @@ import UserNotifications
   /// relaunch, and warm taps (handled live by onMessageOpenedApp) are simply
   /// never pulled.
   private var pendingNotificationTapPayload: [AnyHashable: Any]?
+
+  /// DIAGNOSTIC (temporary, pairs with push_service._tapBreadcrumb): a
+  /// native-side trail for notification taps, so Sentry shows whether iOS
+  /// delivers the tap to this process at all and what the payload carries.
+  /// The native Sentry SDK is started by Dart (SentryFlutter.init), so
+  /// reports made before that are queued and flushed on the next report.
+  private var pendingNativeReports: [(String, [String: Any])] = []
+
+  private func report(_ message: String, _ data: [String: Any]) {
+    pendingNativeReports.append((message, data))
+    guard SentrySDK.isEnabled else { return }
+    let queued = pendingNativeReports
+    pendingNativeReports.removeAll()
+    for (queuedMessage, extra) in queued {
+      SentrySDK.capture(message: queuedMessage) { scope in
+        scope.setLevel(.info)
+        scope.setContext(value: extra, key: "native_push")
+      }
+    }
+  }
 
   override func application(
     _ application: UIApplication,
@@ -107,9 +128,17 @@ import UserNotifications
     didReceive response: UNNotificationResponse,
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
+    let userInfo = response.notification.request.content.userInfo
     if !launchStashConsumed {
-      pendingNotificationTapPayload = response.notification.request.content.userInfo
+      pendingNotificationTapPayload = userInfo
     }
+    report("native.tap", [
+      "stashed": !launchStashConsumed,
+      "has_gcm_message_id": userInfo["gcm.message_id"] != nil,
+      "keys": userInfo.keys.compactMap { $0 as? String }.sorted(),
+      "app_state": UIApplication.shared.applicationState.rawValue,
+      "action": response.actionIdentifier,
+    ])
     // super forwards to every registered plugin (firebase_messaging,
     // flutter_local_notifications) exactly as before this override existed.
     super.userNotificationCenter(
@@ -130,8 +159,13 @@ import UserNotifications
           return
         }
         let payload = self?.pendingNotificationTapPayload
+        let consumedBefore = self?.launchStashConsumed ?? false
         self?.pendingNotificationTapPayload = nil
         self?.launchStashConsumed = true
+        self?.report("native.stash_get", [
+          "had_payload": payload != nil,
+          "consumed_before": consumedBefore,
+        ])
         result(payload)
       }
     }

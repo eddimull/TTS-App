@@ -76,6 +76,11 @@ class PushRegistrar {
     await push.requestPermission();
     push.listenForeground();
     push.listenTaps(_openRoute);
+    // DIAGNOSTIC (temporary): proves this wiring ran on the device.
+    unawaited(Sentry.captureMessage(
+      'push.listeners attached ($platform)',
+      level: SentryLevel.info,
+    ));
     // iOS terminated-state taps never surface through getInitialMessage /
     // onMessageOpenedApp (UIScene initial-notification gap) — pull the
     // natively stashed launch tap now that a route handler exists.

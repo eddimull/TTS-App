@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:go_router/go_router.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../../core/config/router.dart' show isShellLocation;
 
@@ -19,9 +18,7 @@ Future<void> openPushRoute(
   String route, {
   Duration timeout = const Duration(seconds: 5),
 }) async {
-  final from = _location(router);
   if (isShellLocation(route)) {
-    _report(router, route: route, from: from, action: 'go');
     router.go(route);
     return;
   }
@@ -30,44 +27,11 @@ Future<void> openPushRoute(
     if (!await _waitForShell(router, timeout)) {
       // The shell never came up (e.g. redirected to the band picker) — fall
       // back to opening the destination on its own.
-      _report(router, route: route, from: from, action: 'fallback_go');
       router.go(route);
       return;
     }
-    _report(router, route: route, from: from, action: 'go_dashboard_then_push');
-  } else {
-    _report(router, route: route, from: from, action: 'push');
   }
   unawaited(router.push(route));
-}
-
-String _location(GoRouter router) =>
-    router.routerDelegate.currentConfiguration.uri.toString();
-
-// DIAGNOSTIC (temporary, see push_service._tapBreadcrumb): record the
-// decision taken for a tap and, once the router next settles, where it
-// actually landed.
-void _report(GoRouter router, {required String route, required String from, required String action}) {
-  void send(String landed) {
-    unawaited(Sentry.captureMessage(
-      'push.route $action → $landed',
-      level: SentryLevel.info,
-      withScope: (scope) => scope.setContexts('push_route', {
-        'route': route,
-        'from': from,
-        'action': action,
-        'landed': landed,
-      }),
-    ));
-  }
-
-  final delegate = router.routerDelegate;
-  void once() {
-    delegate.removeListener(once);
-    send(_location(router));
-  }
-
-  delegate.addListener(once);
 }
 
 bool _hasShell(GoRouter router) => router

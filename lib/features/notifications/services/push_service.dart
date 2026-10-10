@@ -21,23 +21,12 @@ void _tapBreadcrumb(String source, String? route, {Map<String, dynamic>? data}) 
   unawaited(Sentry.addBreadcrumb(Breadcrumb(
     category: 'push.tap',
     message: route ?? '(no route)',
-    data: {'source': source},
-  )));
-  // DIAGNOSTIC (temporary): warm taps on iOS land on the dashboard while
-  // cold-start taps route correctly, and breadcrumbs only ship with an
-  // error. Report every tap as its own event so Sentry shows which path
-  // fired, what the payload carried, and what route it resolved to.
-  unawaited(Sentry.captureMessage(
-    'push.tap $source → ${route ?? '(no route)'}',
-    level: SentryLevel.info,
-    withScope: (scope) => scope.setContexts('push_tap', {
+    data: {
       'source': source,
-      'route': route ?? '(no route)',
-      'type': data?['type']?.toString() ?? '(none)',
-      'deeplink': data?['deeplink']?.toString() ?? '(none)',
-      'data_keys': data?.keys.toList() ?? const <String>[],
-    }),
-  ));
+      if (data != null) 'type': data['type']?.toString() ?? '(none)',
+      if (data != null) 'deeplink': data['deeplink']?.toString() ?? '(none)',
+    },
+  )));
 }
 
 /// True only on platforms where FCM is supported.
@@ -320,11 +309,7 @@ class PushService implements LocalScheduler {
       _tapBreadcrumb('ios_launch_stash_unavailable', null);
       return;
     }
-    if (data == null) {
-      // DIAGNOSTIC: an empty pull is itself evidence (no cold-start tap).
-      _tapBreadcrumb('ios_launch_stash_empty', null);
-      return;
-    }
+    if (data == null) return;
     final mapped = _stringKeyed(data);
     final route = routeForPushData(mapped);
     _tapBreadcrumb('ios_launch_stash', route, data: mapped);

@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.28.2](https://github.com/eddimull/TTS-App/compare/v1.28.1...v1.28.2) (2026-10-10)
+
+
+### Bug Fixes
+
+* **bookings:** show server message when contract amend fails ([ee030d3](https://github.com/eddimull/TTS-App/commit/ee030d3d8baf4bd9356c116e0f2f40a144960671))
+* **ios:** deliver notification taps on a running app to Dart ([3e54cc5](https://github.com/eddimull/TTS-App/commit/3e54cc565bbb16df3b939d0d4ba3e777a795e592))
+
 ## [1.28.1](https://github.com/eddimull/TTS-App/compare/v1.28.0...v1.28.1) (2026-10-06)
 
 

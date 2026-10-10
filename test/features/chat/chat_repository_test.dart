@@ -275,4 +275,29 @@ void main() {
         '/api/mobile/messages/9/reactions/${Uri.encodeComponent('👍')}');
     expect(reactions, isEmpty);
   });
+
+  // BANDMATE-APP-T: callers fire these with `.catchError((_) {})`. catchError
+  // checks the future's RUNTIME type, so a method that returned Dio's own
+  // Future<Response<void>> made the null-returning handler throw a fatal
+  // ArgumentError whenever the request failed (e.g. a 401 at startup).
+  group('void requests fail quietly under catchError', () {
+    Dio dio401() => Dio(BaseOptions(baseUrl: 'http://test.local'))
+      ..httpClientAdapter = StubAdapter((_) async => json(401, {'message': 'nope'}));
+
+    test('markDelivered', () async {
+      final repo = ChatRepository(dio401());
+      await repo.markDelivered().catchError((_) {});
+    });
+
+    test('sendTyping', () async {
+      final repo = ChatRepository(dio401());
+      await repo.sendTyping(5).catchError((_) {});
+    });
+
+    test('markRead and deleteMessage', () async {
+      final repo = ChatRepository(dio401());
+      await repo.markRead(5, 9).catchError((_) {});
+      await repo.deleteMessage(9).catchError((_) {});
+    });
+  });
 }

@@ -269,11 +269,17 @@ class PushService implements LocalScheduler {
     try {
       data = await _launchChannel.invokeMethod<Map<Object?, Object?>>('get');
     } on MissingPluginException {
+      _tapBreadcrumb('ios_launch_stash_unavailable', null);
       return;
     } on PlatformException {
+      _tapBreadcrumb('ios_launch_stash_unavailable', null);
       return;
     }
-    if (data == null) return;
+    if (data == null) {
+      // DIAGNOSTIC: an empty pull is itself evidence (no cold-start tap).
+      _tapBreadcrumb('ios_launch_stash_empty', null);
+      return;
+    }
     final mapped = <String, dynamic>{
       for (final entry in data.entries)
         if (entry.key is String) entry.key as String: entry.value,

@@ -135,8 +135,14 @@ class ChatRepository {
     return ChatMessage.fromJson(res.data!['message'] as Map<String, dynamic>);
   }
 
-  Future<void> deleteMessage(int messageId) =>
-      _dio.delete<void>(ApiEndpoints.mobileMessage(messageId));
+  // These four are `async` on purpose, not `=> _dio.…`: callers attach
+  // `.catchError((_) {})`, and catchError checks the future's RUNTIME type.
+  // A returned Dio future is really a Future<Response<void>>, so a handler
+  // returning null threw "must return a value of the future's type" — an
+  // uncaught fatal (BANDMATE-APP-T) every time one of these requests failed.
+  Future<void> deleteMessage(int messageId) async {
+    await _dio.delete<void>(ApiEndpoints.mobileMessage(messageId));
+  }
 
   List<MessageReaction> _parseReactions(Map<String, dynamic>? data) =>
       (data?['reactions'] as List? ?? const [])
@@ -163,18 +169,21 @@ class ChatRepository {
     return _parseReactions(res.data);
   }
 
-  Future<void> markRead(int conversationId, int lastReadMessageId) =>
-      _dio.post<void>(
+  Future<void> markRead(int conversationId, int lastReadMessageId) async {
+    await _dio.post<void>(
         ApiEndpoints.mobileConversationRead(conversationId),
         data: {'last_read_message_id': lastReadMessageId},
       );
+  }
 
-  Future<void> sendTyping(int conversationId) =>
-      _dio.post<void>(ApiEndpoints.mobileConversationTyping(conversationId));
+  Future<void> sendTyping(int conversationId) async {
+    await _dio.post<void>(ApiEndpoints.mobileConversationTyping(conversationId));
+  }
 
   /// Bulk delivery ack: "this client has received everything up to now."
-  Future<void> markDelivered() =>
-      _dio.post<void>(ApiEndpoints.mobileConversationsDelivered);
+  Future<void> markDelivered() async {
+    await _dio.post<void>(ApiEndpoints.mobileConversationsDelivered);
+  }
 
   /// Absolute URL for an authenticated attachment image (for AuthThumbnail).
   String attachmentUrl(int messageId, int attachmentId) =>

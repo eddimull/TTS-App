@@ -113,11 +113,20 @@ import UserNotifications
     super.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
   }
 
-  /// True once Dart has pulled the launch stash. From then on live taps are
-  /// handled by firebase_messaging's onMessageOpenedApp listener, so stashing
-  /// stops — otherwise a later re-pull (second login in one process) would
-  /// replay an already-handled tap as a stale navigation.
+  /// True once Dart has pulled the launch stash. From then on live taps go
+  /// straight to Dart over [launchChannel] instead of being stashed —
+  /// otherwise a later re-pull (second login in one process) would replay an
+  /// already-handled tap as a stale navigation.
   private var launchStashConsumed = false
+
+  /// The `tts.band/launch_notification` channel, kept so warm taps can be
+  /// pushed to Dart. Fourth UIScene gap: FlutterAppDelegate's forwarding of
+  /// didReceiveNotificationResponse never reaches firebase_messaging here
+  /// (Sentry showed `native.tap` firing with no `push.tap` after it), so
+  /// its onMessageOpenedApp stream stays silent and a tap on a running app
+  /// did nothing. Deliver it ourselves; Dart de-duplicates by message id in
+  /// case the plugin ever does fire too.
+  private var launchChannel: FlutterMethodChannel?
 
   // ObjC selector userNotificationCenter:didReceiveNotificationResponse:
   // withCompletionHandler: imports into Swift as `didReceive` — the shortened
@@ -129,11 +138,15 @@ import UserNotifications
     withCompletionHandler completionHandler: @escaping () -> Void
   ) {
     let userInfo = response.notification.request.content.userInfo
-    if !launchStashConsumed {
+    let deliveredToDart = launchStashConsumed && launchChannel != nil
+    if deliveredToDart {
+      launchChannel?.invokeMethod("tap", arguments: userInfo)
+    } else if !launchStashConsumed {
       pendingNotificationTapPayload = userInfo
     }
     report("native.tap", [
       "stashed": !launchStashConsumed,
+      "delivered_to_dart": deliveredToDart,
       "has_gcm_message_id": userInfo["gcm.message_id"] != nil,
       "keys": userInfo.keys.compactMap { $0 as? String }.sorted(),
       "app_state": UIApplication.shared.applicationState.rawValue,
@@ -153,6 +166,7 @@ import UserNotifications
       let channel = FlutterMethodChannel(
         name: "tts.band/launch_notification",
         binaryMessenger: registrar.messenger())
+      launchChannel = channel
       channel.setMethodCallHandler { [weak self] call, result in
         guard call.method == "get" else {
           result(FlutterMethodNotImplemented)

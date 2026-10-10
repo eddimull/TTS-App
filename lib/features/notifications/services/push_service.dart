@@ -239,7 +239,7 @@ class PushService implements LocalScheduler {
     void handle(String source, RemoteMessage message) {
       final route = routeForPushData(message.data);
       _tapBreadcrumb(source, route, data: message.data);
-      if (route != null) onRoute(route);
+      if (route != null && claimTap(message.messageId)) onRoute(route);
     }
 
     FirebaseMessaging.onMessageOpenedApp
@@ -259,6 +259,51 @@ class PushService implements LocalScheduler {
   /// pulls it once the Dart side is ready — same pull semantics that make the
   /// Android cold-start path (getInitialMessage) work.
   static const _launchChannel = MethodChannel('tts.band/launch_notification');
+
+  /// Message ids whose tap has already been routed. A single tap can reach
+  /// Dart twice — the native channel below and, should firebase_messaging's
+  /// forwarding ever start working, onMessageOpenedApp — so each id routes
+  /// once. Bounded; taps are rare.
+  final _claimedTapIds = <String>{};
+
+  /// True the first time [messageId] is seen; false for a repeat. A null id
+  /// can't be de-duplicated and is always allowed through.
+  @visibleForTesting
+  bool claimTap(String? messageId) {
+    if (messageId == null || messageId.isEmpty) return true;
+    if (_claimedTapIds.contains(messageId)) return false;
+    if (_claimedTapIds.length >= 32) _claimedTapIds.remove(_claimedTapIds.first);
+    _claimedTapIds.add(messageId);
+    return true;
+  }
+
+  bool _nativeTapsListening = false;
+
+  /// iOS warm taps. The AppDelegate pushes every tap on a running app over
+  /// the launch channel as `tap` (see the fourth UIScene gap in
+  /// AppDelegate.swift); route it like any other. Must be wired before
+  /// [consumeLaunchNotification] — native starts pushing once the stash has
+  /// been pulled. Idempotent; a no-op on Android (no such calls arrive).
+  void listenNativeTaps(void Function(String route) onRoute) {
+    if (_nativeTapsListening) return;
+    _nativeTapsListening = true;
+    _launchChannel.setMethodCallHandler((call) async {
+      if (call.method != 'tap') throw MissingPluginException();
+      final mapped = _stringKeyed(call.arguments);
+      final route = routeForPushData(mapped);
+      _tapBreadcrumb('ios_native_tap', route, data: mapped);
+      if (route != null && claimTap(mapped['gcm.message_id']?.toString())) {
+        onRoute(route);
+      }
+      return null;
+    });
+  }
+
+  static Map<String, dynamic> _stringKeyed(Object? raw) => <String, dynamic>{
+        if (raw is Map)
+          for (final entry in raw.entries)
+            if (entry.key is String) entry.key as String: entry.value,
+      };
 
   /// Pull-and-clear the natively stashed cold-start tap, routing it like any
   /// other tap. Safe everywhere: Android and old binaries have no channel
@@ -280,13 +325,12 @@ class PushService implements LocalScheduler {
       _tapBreadcrumb('ios_launch_stash_empty', null);
       return;
     }
-    final mapped = <String, dynamic>{
-      for (final entry in data.entries)
-        if (entry.key is String) entry.key as String: entry.value,
-    };
+    final mapped = _stringKeyed(data);
     final route = routeForPushData(mapped);
     _tapBreadcrumb('ios_launch_stash', route, data: mapped);
-    if (route != null) onRoute(route);
+    if (route != null && claimTap(mapped['gcm.message_id']?.toString())) {
+      onRoute(route);
+    }
   }
 
   /// Handler for `FirebaseMessaging.onMessage` (foreground pushes). Public

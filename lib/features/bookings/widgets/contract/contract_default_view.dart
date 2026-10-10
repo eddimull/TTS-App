@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -63,6 +64,19 @@ class _ContractDefaultViewState extends ConsumerState<ContractDefaultView> {
     }
   }
 
+  /// The API's `message` for a failed amend (e.g. "already signed", a
+  /// PandaDoc recall failure), or a friendly fallback for anything else.
+  String _amendErrorMessage(Object e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map) {
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) return message;
+      }
+    }
+    return 'Could not amend the contract. Please try again.';
+  }
+
   /// Recall the sent contract so it can be edited and resent. Confirms
   /// first — this voids the document the client already received.
   Future<void> _amendContract() async {
@@ -102,7 +116,7 @@ class _ContractDefaultViewState extends ConsumerState<ContractDefaultView> {
           context: context,
           builder: (dialogContext) => CupertinoAlertDialog(
             title: const Text('Amend Failed'),
-            content: Text(e.toString()),
+            content: Text(_amendErrorMessage(e)),
             actions: [
               CupertinoDialogAction(
                 onPressed: () => Navigator.pop(dialogContext),

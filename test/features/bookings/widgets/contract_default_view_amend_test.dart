@@ -10,14 +10,28 @@ import 'package:tts_bandmate/features/bookings/widgets/contract/contract_default
 import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 
 class _FakeRepo extends BookingsRepository {
-  _FakeRepo() : super(Dio());
+  _FakeRepo({this.failWith}) : super(Dio());
   int amendCalls = 0;
+
+  /// When set, amendContract throws this instead of succeeding.
+  final Object? failWith;
 
   @override
   Future<BookingDetail> amendContract(int bandId, int bookingId) async {
     amendCalls++;
+    if (failWith != null) throw failWith!;
     return _booking(status: 'draft', contractStatus: 'pending');
   }
+}
+
+/// A DioException shaped like the API's error reply (status + JSON body).
+DioException _apiError(int status, Object? body) {
+  final options = RequestOptions(path: '/amend');
+  return DioException.badResponse(
+    statusCode: status,
+    requestOptions: options,
+    response: Response(requestOptions: options, statusCode: status, data: body),
+  );
 }
 
 class _NoopInvalidator extends CacheInvalidator {
@@ -98,5 +112,38 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repo.amendCalls, 1);
+  });
+
+  Future<void> amend(WidgetTester tester, _FakeRepo repo) async {
+    await tester.pumpWidget(_wrap(_booking(), repo));
+    await tester.pump();
+    await tester.tap(find.text('Amend contract'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Amend'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('a failed amend shows the server message', (tester) async {
+    await amend(
+        tester,
+        _FakeRepo(
+            failWith: _apiError(422, {
+          'message': 'This contract has already been signed and cannot be amended.',
+        })));
+
+    expect(find.text('Amend Failed'), findsOneWidget);
+    expect(
+        find.text('This contract has already been signed and cannot be amended.'),
+        findsOneWidget);
+  });
+
+  testWidgets('a failure without a usable message shows the friendly fallback',
+      (tester) async {
+    // A 502 with an HTML body, as a proxy would return — no JSON `message`.
+    await amend(tester, _FakeRepo(failWith: _apiError(502, '<html>Bad Gateway</html>')));
+
+    expect(find.text('Amend Failed'), findsOneWidget);
+    expect(find.text('Could not amend the contract. Please try again.'), findsOneWidget);
+    expect(find.textContaining('DioException'), findsNothing);
   });
 }

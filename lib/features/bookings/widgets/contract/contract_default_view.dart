@@ -64,8 +64,8 @@ class _ContractDefaultViewState extends ConsumerState<ContractDefaultView> {
     }
   }
 
-  /// Recall the sent contract so it can be edited and resent. Confirms
-  /// first — this voids the document the client already received.
+  /// The API's `message` for a failed amend (e.g. "already signed", a
+  /// PandaDoc recall failure), or a friendly fallback for anything else.
   String _amendErrorMessage(Object e) {
     if (e is DioException) {
       final data = e.response?.data;
@@ -77,6 +77,8 @@ class _ContractDefaultViewState extends ConsumerState<ContractDefaultView> {
     return 'Could not amend the contract. Please try again.';
   }
 
+  /// Recall the sent contract so it can be edited and resent. Confirms
+  /// first — this voids the document the client already received.
   Future<void> _amendContract() async {
     final confirmed = await showCupertinoDialog<bool>(
       context: context,

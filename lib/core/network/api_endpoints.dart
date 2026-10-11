@@ -32,6 +32,13 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/bookings';
   static String mobileBookingDetail(int bandId, int bookingId) =>
       '/api/mobile/bands/$bandId/bookings/$bookingId';
+  /// POST: estimate a booking price (owners only).
+  static String mobileBandPriceEstimate(int bandId) =>
+      '/api/mobile/bands/$bandId/price-estimate';
+
+  /// GET/PUT: band pricing rules (owners only).
+  static String mobileBandPricingSettings(int bandId) =>
+      '/api/mobile/bands/$bandId/pricing-settings';
   static String mobileBookingById(int bandId, int id) =>
       '/api/mobile/bands/$bandId/bookings/$id';
   static String mobileCancelBooking(int bandId, int id) =>

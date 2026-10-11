@@ -1,3 +1,5 @@
+import '../../features/pricing/screens/price_estimator_screen.dart';
+import '../../features/pricing/screens/pricing_settings_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -360,6 +362,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/band-settings',
             builder: (_, __) => const BandSettingsScreen(),
+          ),
+          GoRoute(
+            path: '/price-estimator',
+            builder: (_, __) => const PriceEstimatorScreen(),
+          ),
+          GoRoute(
+            path: '/band-settings/pricing',
+            builder: (_, __) => const PricingSettingsScreen(),
           ),
           GoRoute(
             path: '/personnel',

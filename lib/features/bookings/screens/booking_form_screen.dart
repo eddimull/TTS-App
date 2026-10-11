@@ -16,6 +16,10 @@ import '../widgets/booking_form_navigation_guard.dart';
 import '../widgets/booking_form_partial_failure_banner.dart';
 import '../widgets/booking_save_button.dart';
 import '../widgets/event_sub_form_card.dart';
+import '../../auth/data/models/band_summary.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../pricing/data/models/price_estimate.dart';
+import '../../pricing/widgets/price_suggestion_sheet.dart';
 import '../../events/data/events_repository.dart';
 import '../../events/data/models/event_summary.dart';
 import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
@@ -262,6 +266,58 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
             setState(() => _eventTypeId = types.isEmpty ? null : types[temp].id),
       ),
     );
+  }
+
+  // ── Price suggestion ──────────────────────────────────────────────────────
+
+  bool get _isOwner {
+    final auth = ref.read(authProvider).value;
+    if (auth is! AuthAuthenticated) return false;
+    return auth.bands
+            .where((BandSummary b) => b.id == widget.bandId)
+            .firstOrNull
+            ?.isOwner ??
+        false;
+  }
+
+  Future<void> _suggestPrice() async {
+    FocusScope.of(context).unfocus();
+    final draft = _eventRows.isEmpty ? null : _eventRows.first.draft;
+    if (_eventTypeId == null || draft == null || draft.date.isEmpty) {
+      await showCupertinoDialog<void>(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Need a bit more info'),
+          content: const Text(
+              'Choose an event type and a date first, then we can suggest a price.'),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    String? hhmm(String? t) =>
+        (t == null || t.length < 5) ? null : t.substring(0, 5);
+    final suggested = await showPriceSuggestionSheet(
+      context,
+      bandId: widget.bandId,
+      request: PriceEstimateRequest(
+        eventTypeId: _eventTypeId!,
+        date: draft.date,
+        startTime: hhmm(draft.startTime),
+        endTime: hhmm(draft.endTime),
+        venueAddress: draft.venueAddress,
+      ),
+    );
+    if (suggested == null || !mounted) return;
+    setState(() {
+      _price.text = NumberFormat.currency(symbol: r'$')
+          .format((suggested * 100).round() / 100);
+    });
   }
 
   // ── Status picker ────────────────────────────────────────────────────────
@@ -664,6 +720,25 @@ class _BookingFormScreenState extends ConsumerState<BookingFormScreen> {
                   // Recompute the deposit caption whenever price changes.
                   onChanged: (_) => setState(() {}),
                 ),
+                if (_isOwner)
+                  CupertinoFormRow(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(32, 32),
+                        onPressed: _suggestPrice,
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(CupertinoIcons.sparkles, size: 18),
+                            SizedBox(width: 6),
+                            Text('Suggest price'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 // Deposit toggle — create mode only.
                 if (!_isEdit)
                   CupertinoFormRow(

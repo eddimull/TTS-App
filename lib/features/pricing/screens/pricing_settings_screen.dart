@@ -8,7 +8,15 @@ import '../providers/pricing_provider.dart';
 import '../utils/percent.dart';
 import '../widgets/estimate_result_card.dart' show formatMoney;
 
-const _dowNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const _dowNames = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday'
+];
 
 /// Edit the band's pricing rules (owners only; the backend enforces this too).
 class PricingSettingsScreen extends ConsumerStatefulWidget {
@@ -39,7 +47,10 @@ class _PricingSettingsScreenState extends ConsumerState<PricingSettingsScreen> {
         context: context,
         builder: (ctx) => CupertinoAlertDialog(
           title: const Text('Could not save'),
-          content: Text(pricingErrorMessage(e)),
+          content: Text(pricingErrorMessage(
+            e,
+            fallback: 'Could not save your pricing rules. Please try again.',
+          )),
           actions: [
             CupertinoDialogAction(
               onPressed: () => Navigator.of(ctx).pop(),
@@ -79,7 +90,8 @@ class _PricingSettingsScreenState extends ConsumerState<PricingSettingsScreen> {
               Text('Failed to load pricing rules.',
                   style: TextStyle(color: context.secondaryText)),
               CupertinoButton(
-                onPressed: () => ref.invalidate(pricingSettingsProvider(bandId)),
+                onPressed: () =>
+                    ref.invalidate(pricingSettingsProvider(bandId)),
                 child: const Text('Retry'),
               ),
             ],
@@ -204,7 +216,8 @@ class _PricingSettingsScreenState extends ConsumerState<PricingSettingsScreen> {
                 _update(_s.copyWith(specialDates: l));
               },
             ),
-          _AddRow(label: 'Add special date', onTap: () => _editSpecialDate(null)),
+          _AddRow(
+              label: 'Add special date', onTap: () => _editSpecialDate(null)),
         ],
       );
 
@@ -255,8 +268,8 @@ class _PricingSettingsScreenState extends ConsumerState<PricingSettingsScreen> {
             initial: trimNumber(multiplierToPercent(_s.shortNoticeMultiplier)),
             suffix: '%',
             signed: true,
-            onChanged: (v) => _update(
-                _s.copyWith(shortNoticeMultiplier: percentToMultiplier(v ?? 0))),
+            onChanged: (v) => _update(_s.copyWith(
+                shortNoticeMultiplier: percentToMultiplier(v ?? 0))),
           ),
           _NumRow(
             key: const ValueKey('annual'),
@@ -342,7 +355,7 @@ class _PricingSettingsScreenState extends ConsumerState<PricingSettingsScreen> {
     final label = TextEditingController(text: existing?.label ?? '');
     final amount = TextEditingController(
         text: existing == null ? '' : trimNumber(existing.amount));
-    final ok = await _twoFieldDialog(
+    final ok = await _fieldsDialog(
       title: existing == null ? 'New add-on' : 'Edit add-on',
       fields: [
         _DialogField(label, 'Name (e.g. Production)', TextInputType.text),
@@ -357,7 +370,10 @@ class _PricingSettingsScreenState extends ConsumerState<PricingSettingsScreen> {
     if (ok != true || name.isEmpty || amt == null) return;
     final l = List<AddOn>.from(_s.addOns);
     if (existing == null) {
-      l.add(AddOn(key: _uniqueKey(name, l.map((e) => e.key)), label: name, amount: amt));
+      l.add(AddOn(
+          key: _uniqueKey(name, l.map((e) => e.key)),
+          label: name,
+          amount: amt));
     } else {
       l[index!] = existing.copyWith(label: name, amount: amt);
     }
@@ -372,10 +388,11 @@ class _PricingSettingsScreenState extends ConsumerState<PricingSettingsScreen> {
         text: existing == null
             ? ''
             : trimNumber(multiplierToPercent(existing.multiplier)));
-    final ok = await _twoFieldDialog(
+    final ok = await _fieldsDialog(
       title: existing == null ? 'New special date' : 'Edit special date',
       fields: [
-        _DialogField(date, 'MM-DD (yearly) or YYYY-MM-DD', TextInputType.datetime),
+        _DialogField(
+            date, 'MM-DD (yearly) or YYYY-MM-DD', TextInputType.datetime),
         _DialogField(label, 'Label (e.g. New Year\'s Eve)', TextInputType.text),
         _DialogField(pct, 'Adjustment % (e.g. 50)',
             const TextInputType.numberWithOptions(decimal: true, signed: true)),
@@ -389,13 +406,14 @@ class _PricingSettingsScreenState extends ConsumerState<PricingSettingsScreen> {
     pct.dispose();
     final valid = RegExp(r'^(\d{4}-)?\d{2}-\d{2}$').hasMatch(d);
     if (ok != true || !valid || p == null) return;
-    final item = SpecialDate(date: d, label: lbl, multiplier: percentToMultiplier(p));
+    final item =
+        SpecialDate(date: d, label: lbl, multiplier: percentToMultiplier(p));
     final l = List<SpecialDate>.from(_s.specialDates);
     index == null ? l.add(item) : l[index] = item;
     _update(_s.copyWith(specialDates: l));
   }
 
-  Future<bool?> _twoFieldDialog({
+  Future<bool?> _fieldsDialog({
     required String title,
     required List<_DialogField> fields,
   }) {

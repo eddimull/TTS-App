@@ -67,9 +67,7 @@ class _PriceEstimatorScreenState extends ConsumerState<PriceEstimatorScreen> {
 
   Future<void> _pickTime({required bool start}) async {
     final init = (start ? _start : _end) ??
-        (start
-            ? DateTime(2000, 1, 1, 19)
-            : DateTime(2000, 1, 1, 23));
+        (start ? DateTime(2000, 1, 1, 19) : DateTime(2000, 1, 1, 23));
     DateTime temp = init;
     await _showSheet(
       CupertinoDatePicker(
@@ -141,8 +139,7 @@ class _PriceEstimatorScreenState extends ConsumerState<PriceEstimatorScreen> {
     final settings = ref.watch(pricingSettingsProvider(bandId)).value;
     final addOns = settings?.settings.addOns ?? const [];
     final result = ref.watch(priceEstimateProvider);
-    final typeName =
-        types.where((t) => t.id == _eventTypeId).firstOrNull?.name;
+    final typeName = types.where((t) => t.id == _eventTypeId).firstOrNull?.name;
 
     return CupertinoPageScaffold(
       navigationBar: navBar,
@@ -159,14 +156,14 @@ class _PriceEstimatorScreenState extends ConsumerState<PriceEstimatorScreen> {
                 ),
                 _PickRow(
                   label: 'Date',
-                  value: _date == null
-                      ? null
-                      : DateFormat.yMMMEd().format(_date!),
+                  value:
+                      _date == null ? null : DateFormat.yMMMEd().format(_date!),
                   onTap: _pickDate,
                 ),
                 _PickRow(
                   label: 'Start time',
-                  value: (_start == null ? null : DateFormat.jm().format(_start!)),
+                  value:
+                      (_start == null ? null : DateFormat.jm().format(_start!)),
                   onTap: () => _pickTime(start: true),
                 ),
                 _PickRow(
@@ -210,7 +207,12 @@ class _PriceEstimatorScreenState extends ConsumerState<PriceEstimatorScreen> {
             if (_validation != null)
               _Message(text: _validation!, isError: true),
             if (result.hasError && !result.isLoading)
-              _Message(text: pricingErrorMessage(result.error!), isError: true),
+              _Message(
+                  text: pricingErrorMessage(
+                    result.error!,
+                    fallback: 'Could not get an estimate. Please try again.',
+                  ),
+                  isError: true),
             if (result.value != null && !result.isLoading)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -224,7 +226,8 @@ class _PriceEstimatorScreenState extends ConsumerState<PriceEstimatorScreen> {
 }
 
 class _PickRow extends StatelessWidget {
-  const _PickRow({required this.label, required this.value, required this.onTap});
+  const _PickRow(
+      {required this.label, required this.value, required this.onTap});
   final String label;
   final String? value;
   final VoidCallback onTap;

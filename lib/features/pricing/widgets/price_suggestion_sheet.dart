@@ -36,9 +36,7 @@ class _PriceSuggestionSheetState extends ConsumerState<_PriceSuggestionSheet> {
 
   void _run() {
     if (!mounted) return;
-    ref
-        .read(priceEstimateProvider.notifier)
-        .run(widget.bandId, widget.request);
+    ref.read(priceEstimateProvider.notifier).run(widget.bandId, widget.request);
   }
 
   @override
@@ -55,7 +53,11 @@ class _PriceSuggestionSheetState extends ConsumerState<_PriceSuggestionSheet> {
     } else if (result.hasError) {
       body = Column(
         children: [
-          Text(pricingErrorMessage(result.error!),
+          Text(
+              pricingErrorMessage(
+                result.error!,
+                fallback: 'Could not get an estimate. Please try again.',
+              ),
               textAlign: TextAlign.center,
               style: TextStyle(
                   color: CupertinoColors.systemRed.resolveFrom(context))),
@@ -66,8 +68,9 @@ class _PriceSuggestionSheetState extends ConsumerState<_PriceSuggestionSheet> {
       final est = result.value!;
       body = EstimateResultCard(
         estimate: est,
-        onUsePrice:
-            est.hasEstimate ? () => Navigator.of(context).pop(est.estimate) : null,
+        onUsePrice: est.hasEstimate
+            ? () => Navigator.of(context).pop(est.estimate)
+            : null,
       );
     } else {
       body = const SizedBox.shrink();

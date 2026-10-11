@@ -9,8 +9,12 @@ final pricingRepositoryProvider = Provider<PricingRepository>((ref) {
   return PricingRepository(ref.watch(apiClientProvider).dio);
 });
 
-/// Turns a Dio/other error into a short user-facing message.
-String pricingErrorMessage(Object error) {
+/// Turns a Dio/other error into a short user-facing message. [fallback] is
+/// shown when the server gave no usable message, so each flow can word it.
+String pricingErrorMessage(
+  Object error, {
+  String fallback = 'Something went wrong. Please try again.',
+}) {
   if (error is DioException) {
     final data = error.response?.data;
     if (data is Map) {
@@ -24,10 +28,10 @@ String pricingErrorMessage(Object error) {
       if (msg is String && msg.isNotEmpty) return msg;
     }
     if (error.response?.statusCode == 403) {
-      return 'Only band owners can use the price estimator.';
+      return 'Only band owners can use pricing tools.';
     }
   }
-  return 'Could not get an estimate. Please try again.';
+  return fallback;
 }
 
 /// Holds the latest estimate (null = nothing requested yet). Auto-disposed so
@@ -61,9 +65,8 @@ class PricingSettingsNotifier extends AsyncNotifier<PricingSettingsBundle> {
 
   /// Throws on failure so the caller can show an error; state is left intact.
   Future<void> save(PricingSettings settings) async {
-    final saved = await ref
-        .read(pricingRepositoryProvider)
-        .saveSettings(arg, settings);
+    final saved =
+        await ref.read(pricingRepositoryProvider).saveSettings(arg, settings);
     state = AsyncValue.data(saved);
   }
 }

@@ -21,6 +21,7 @@ const _eventKey = 'evt-key';
 
 EventDetail _baseEvent({
   bool canWrite = true,
+  String date = '2026-05-20',
   String? status = 'confirmed',
   String? eventableType,
   int? eventableId,
@@ -34,7 +35,7 @@ EventDetail _baseEvent({
       'id': 1,
       'key': _eventKey,
       'title': 'Summer Gala',
-      'date': '2026-05-20',
+      'date': date,
       'time': time,
       'end_time': endTime,
       'can_write': canWrite,
@@ -127,6 +128,10 @@ void main() {
       );
       expect(
         find.descendant(of: sheet, matching: find.text('Setlist')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: sheet, matching: find.text('Go live')),
         findsOneWidget,
       );
       expect(
@@ -471,8 +476,61 @@ void main() {
       await _pump(tester, event);
 
       expect(find.text('Join Live Setlist'), findsOneWidget);
+      expect(find.text('Go Live'), findsNothing);
+    });
+
+    testWidgets('no Go Live button in the body — starting lives in the menu',
+        (tester) async {
+      await _pump(tester, _baseEvent(date: _today()));
+
+      expect(find.text('Go Live'), findsNothing);
     });
   });
+
+  group('go live from the menu', () {
+    Future<void> openMenu(WidgetTester tester) async {
+      await tester.tap(find.byIcon(CupertinoIcons.ellipsis_circle));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('read-only members cannot start a session', (tester) async {
+      await _pump(tester, _baseEvent(canWrite: false, date: _today()));
+      await openMenu(tester);
+
+      expect(find.text('Go live'), findsNothing);
+    });
+
+    testWidgets('read-only members can join a running session',
+        (tester) async {
+      await _pump(tester, _baseEvent(canWrite: false).copyWithLiveSession(42));
+      await openMenu(tester);
+
+      expect(find.text('Join live setlist'), findsOneWidget);
+    });
+
+    testWidgets('warns before going live away from gig day', (tester) async {
+      // _baseEvent's default date is in the past.
+      await _pump(tester, _baseEvent());
+      await openMenu(tester);
+
+      await tester.tap(find.text('Go live'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Not gig day'), findsOneWidget);
+      expect(find.textContaining('This event is on Wednesday, May 20'),
+          findsOneWidget);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.text('Not gig day'), findsNothing);
+    });
+  });
+}
+
+String _today() {
+  final n = DateTime.now();
+  return '${n.year}-${n.month.toString().padLeft(2, '0')}'
+      '-${n.day.toString().padLeft(2, '0')}';
 }
 
 extension _EventDetailTestExtensions on EventDetail {

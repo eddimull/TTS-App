@@ -7,26 +7,28 @@ import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 /// Sealed-style result returned by [showSongPickerSheet].
 ///
-/// Exactly one of [song] (library pick) or [customTitle] (custom entry) will
-/// be non-null — inspect [isLibrary] to distinguish the two cases.
+/// Either [songs] is non-empty (library picks) or [customTitle] is non-null
+/// (custom entry) — inspect [isLibrary] to distinguish the two cases.
 class SongPickerResult {
-  /// A song chosen from the band's library.
+  /// One or more songs chosen from the band's library, in the order the user
+  /// selected them.
   ///
-  /// [notes] is optional; when null the caller (Task 16) will default to no
-  /// notes on the setlist entry.  The library quick-pick path leaves notes null
-  /// because the editor screen exposes a per-row edit action for that.
-  const SongPickerResult.library(BandSongSummary this.song, {this.notes})
+  /// Library picks never carry notes — the editor screen exposes a per-row
+  /// edit action for that.
+  const SongPickerResult.library(this.songs)
       : customTitle = null,
-        customArtist = null;
+        customArtist = null,
+        notes = null;
 
   /// A custom song entered manually (not in the band's library).
   const SongPickerResult.custom({
     required String this.customTitle,
     this.customArtist,
     this.notes,
-  }) : song = null;
+  }) : songs = const [];
 
-  final BandSongSummary? song;
+  /// Library songs in selection order; empty for custom entries.
+  final List<BandSongSummary> songs;
 
   /// Non-null when [isCustom] — the user-typed title.
   final String? customTitle;
@@ -36,48 +38,61 @@ class SongPickerResult {
 
   /// Optional free-text notes passed through to the setlist entry.
   ///
-  /// Populated from the Notes field in custom mode; null for library quick-picks
+  /// Populated from the Notes field in custom mode; null for library picks
   /// (the editor screen lets users set notes on a row after it is added).
   final String? notes;
 
-  bool get isLibrary => song != null;
+  bool get isLibrary => songs.isNotEmpty;
   bool get isCustom => customTitle != null;
 }
 
 // ── Public entry point ────────────────────────────────────────────────────────
 
 /// Shows a modal bottom sheet that lets the user search the band's [songs] and
-/// pick one, or switch to "Custom" mode to enter a title + optional artist.
+/// tap to select several in a row, or switch to "Custom" mode to enter a
+/// title + optional artist.
 ///
-/// Returns a [SongPickerResult] when the user makes a selection, or `null` if
-/// the sheet is dismissed without a selection.
+/// [onSetlistIds] marks library songs already on the setlist so the user can
+/// avoid accidental duplicates (they remain selectable, e.g. for a reprise).
+///
+/// Returns a [SongPickerResult] when the user confirms, or `null` if the sheet
+/// is dismissed without a selection.
 ///
 /// Typical usage from an editor screen:
 /// ```dart
 /// final result = await showSongPickerSheet(context, songs: state.songs);
-/// if (result != null) {
-///   notifier.addSong(result);
+/// for (final song in result?.songs ?? const []) {
+///   notifier.addSong(song);
 /// }
 /// ```
 Future<SongPickerResult?> showSongPickerSheet(
   BuildContext context, {
   required List<BandSongSummary> songs,
   ClientSongRequests? clientRequests,
+  Set<int> onSetlistIds = const {},
 }) {
   return showCupertinoModalPopup<SongPickerResult>(
     context: context,
-    builder: (_) =>
-        _SongPickerSheet(songs: songs, clientRequests: clientRequests),
+    builder: (_) => _SongPickerSheet(
+      songs: songs,
+      clientRequests: clientRequests,
+      onSetlistIds: onSetlistIds,
+    ),
   );
 }
 
 // ── Private sheet implementation ──────────────────────────────────────────────
 
 class _SongPickerSheet extends StatefulWidget {
-  const _SongPickerSheet({required this.songs, this.clientRequests});
+  const _SongPickerSheet({
+    required this.songs,
+    this.clientRequests,
+    this.onSetlistIds = const {},
+  });
 
   final List<BandSongSummary> songs;
   final ClientSongRequests? clientRequests;
+  final Set<int> onSetlistIds;
 
   @override
   State<_SongPickerSheet> createState() => _SongPickerSheetState();
@@ -86,6 +101,10 @@ class _SongPickerSheet extends StatefulWidget {
 class _SongPickerSheetState extends State<_SongPickerSheet> {
   String _query = '';
   bool _customMode = false;
+
+  /// Library songs the user has tapped, in tap order. Survives search changes
+  /// so the user can search, pick, search again, pick again.
+  final List<BandSongSummary> _selected = [];
 
   final _customTitleController = TextEditingController();
   final _customArtistController = TextEditingController();
@@ -119,8 +138,21 @@ class _SongPickerSheetState extends State<_SongPickerSheet> {
     }
   }
 
-  void _pickLibrarySong(BandSongSummary song) {
-    Navigator.of(context).pop(SongPickerResult.library(song));
+  void _toggleLibrarySong(BandSongSummary song) {
+    setState(() {
+      final i = _selected.indexWhere((s) => s.id == song.id);
+      if (i >= 0) {
+        _selected.removeAt(i);
+      } else {
+        _selected.add(song);
+      }
+    });
+  }
+
+  void _submitLibrary() {
+    if (_selected.isEmpty) return;
+    Navigator.of(context)
+        .pop(SongPickerResult.library(List.unmodifiable(_selected)));
   }
 
   void _submitCustom() {
@@ -173,10 +205,17 @@ class _SongPickerSheetState extends State<_SongPickerSheet> {
               songs: _filtered,
               query: _query,
               clientRequests: widget.clientRequests,
+              onSetlistIds: widget.onSetlistIds,
+              selected: _selected,
               onQueryChanged: (v) => setState(() => _query = v),
-              onPick: _pickLibrarySong,
+              onToggle: _toggleLibrarySong,
             ),
           ),
+          if (!_customMode)
+            _AddSelectedBar(
+              count: _selected.length,
+              onSubmit: _selected.isEmpty ? null : _submitLibrary,
+            ),
         ],
       ),
     );
@@ -221,7 +260,7 @@ class _Header extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              customMode ? 'Add Custom Song' : 'Pick a Song',
+              customMode ? 'Add Custom Song' : 'Pick Songs',
               style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
@@ -258,16 +297,20 @@ class _LibraryList extends StatelessWidget {
   const _LibraryList({
     required this.songs,
     required this.query,
+    required this.selected,
     required this.onQueryChanged,
-    required this.onPick,
+    required this.onToggle,
     this.clientRequests,
+    this.onSetlistIds = const {},
   });
 
   final List<BandSongSummary> songs;
   final String query;
   final ClientSongRequests? clientRequests;
+  final Set<int> onSetlistIds;
+  final List<BandSongSummary> selected;
   final ValueChanged<String> onQueryChanged;
-  final ValueChanged<BandSongSummary> onPick;
+  final ValueChanged<BandSongSummary> onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -289,12 +332,19 @@ class _LibraryList extends StatelessWidget {
                   // search field may have raised, improving the browse UX.
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
-                  itemBuilder: (context, i) => _SongTile(
-                    song: songs[i],
-                    clientStatus: clientRequests?.statusFor(songs[i].id) ??
-                        ClientSongStatus.none,
-                    onTap: () => onPick(songs[i]),
-                  ),
+                  itemBuilder: (context, i) {
+                    final song = songs[i];
+                    final order =
+                        selected.indexWhere((s) => s.id == song.id) + 1;
+                    return _SongTile(
+                      song: song,
+                      clientStatus: clientRequests?.statusFor(song.id) ??
+                          ClientSongStatus.none,
+                      onSetlist: onSetlistIds.contains(song.id),
+                      selectionOrder: order == 0 ? null : order,
+                      onTap: () => onToggle(song),
+                    );
+                  },
                 ),
         ),
       ],
@@ -302,23 +352,38 @@ class _LibraryList extends StatelessWidget {
   }
 }
 
-/// Single tappable row for a library song.
+/// Single tappable row for a library song. Tapping toggles selection.
 class _SongTile extends StatelessWidget {
   const _SongTile({
     required this.song,
     required this.onTap,
     this.clientStatus = ClientSongStatus.none,
+    this.onSetlist = false,
+    this.selectionOrder,
   });
 
   final BandSongSummary song;
   final VoidCallback onTap;
   final ClientSongStatus clientStatus;
 
+  /// True when this song is already an entry on the setlist being edited.
+  final bool onSetlist;
+
+  /// 1-based position in the pending selection, or null when not selected.
+  final int? selectionOrder;
+
   @override
   Widget build(BuildContext context) {
+    final singer = song.leadSinger?.trim() ?? '';
     return Semantics(
       button: true,
-      label: '${song.title}${song.artist != null ? ", by ${song.artist}" : ""}',
+      selected: selectionOrder != null,
+      label: [
+        song.title,
+        if (song.artist != null) 'by ${song.artist}',
+        if (singer.isNotEmpty) 'sung by $singer',
+        if (onSetlist) 'already on setlist',
+      ].join(', '),
       child: CupertinoButton(
         padding: EdgeInsets.zero,
         minimumSize: Size.zero,
@@ -335,6 +400,10 @@ class _SongTile extends StatelessWidget {
           ),
           child: Row(
             children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: _SelectionMark(order: selectionOrder),
+              ),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -382,24 +451,147 @@ class _SongTile extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 2),
                         child: ClientRequestCaption(clientStatus),
                       ),
+                    if (onSetlist) const _OnSetlistCaption(),
                   ],
                 ),
               ),
-              // Song key shown on the trailing edge as a compact hint.
-              if (song.songKey != null)
+              // Lead singer shown on the trailing edge as a compact hint.
+              if (singer.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(left: 8),
-                  child: Text(
-                    song.songKey!,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: context.secondaryText,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        CupertinoIcons.mic,
+                        size: 13,
+                        color: context.secondaryText,
+                      ),
+                      const SizedBox(width: 2),
+                      ConstrainedBox(
+                        // Keep long names from squeezing the title.
+                        constraints: const BoxConstraints(maxWidth: 110),
+                        child: Text(
+                          singer,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: context.secondaryText,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Leading selection indicator: an empty ring, or a filled badge showing the
+/// order the song will be appended in.
+class _SelectionMark extends StatelessWidget {
+  const _SelectionMark({this.order});
+
+  final int? order;
+
+  @override
+  Widget build(BuildContext context) {
+    final blue = CupertinoColors.activeBlue.resolveFrom(context);
+    final selected = order != null;
+    return Container(
+      width: 24,
+      height: 24,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: selected ? blue : null,
+        border: selected
+            ? null
+            : Border.all(
+                color: CupertinoColors.systemGrey3.resolveFrom(context),
+                width: 1.5,
+              ),
+      ),
+      child: selected
+          ? Text(
+              '$order',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: CupertinoColors.white,
+              ),
+            )
+          : null,
+    );
+  }
+}
+
+/// Caption marking a song that is already on the setlist.
+class _OnSetlistCaption extends StatelessWidget {
+  const _OnSetlistCaption();
+
+  @override
+  Widget build(BuildContext context) {
+    final color = CupertinoColors.systemGreen.resolveFrom(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(CupertinoIcons.checkmark_circle_fill, size: 12, color: color),
+          const SizedBox(width: 3),
+          Text(
+            'On setlist',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bottom bar confirming the pending library selection.
+class _AddSelectedBar extends StatelessWidget {
+  const _AddSelectedBar({required this.count, required this.onSubmit});
+
+  final int count;
+
+  /// Null when nothing is selected — disables the button.
+  final VoidCallback? onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = switch (count) {
+      0 => 'Select Songs',
+      1 => 'Add 1 Song',
+      _ => 'Add $count Songs',
+    };
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        8,
+        16,
+        MediaQuery.of(context).padding.bottom + 8,
+      ),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: CupertinoColors.separator.resolveFrom(context),
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: CupertinoButton.filled(
+        onPressed: onSubmit,
+        child: Text(label),
       ),
     );
   }

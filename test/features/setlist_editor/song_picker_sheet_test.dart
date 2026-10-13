@@ -18,6 +18,7 @@ Future<void> _pumpSheet(
   WidgetTester tester,
   List<BandSongSummary> songs, {
   void Function(SongPickerResult)? onResult,
+  Set<int> onSetlistIds = const {},
 }) async {
   SongPickerResult? captured;
 
@@ -27,7 +28,11 @@ Future<void> _pumpSheet(
         builder: (context) => CupertinoPageScaffold(
           child: CupertinoButton(
             onPressed: () async {
-              final result = await showSongPickerSheet(context, songs: songs);
+              final result = await showSongPickerSheet(
+                context,
+                songs: songs,
+                onSetlistIds: onSetlistIds,
+              );
               if (result != null) {
                 captured = result;
                 onResult?.call(result);
@@ -55,6 +60,7 @@ const _aSong = BandSongSummary(
   title: 'Brown Eyed Girl',
   artist: 'Van Morrison',
   songKey: 'G',
+  leadSinger: 'Eddie',
 );
 const _bSong = BandSongSummary(
   id: 2,
@@ -80,8 +86,9 @@ void main() {
       expect(find.text('Van Morrison'), findsOneWidget);
       expect(find.text('Sweet Home Alabama'), findsOneWidget);
       expect(find.text('Piano Man'), findsOneWidget);
-      // Song key shown for aSong
-      expect(find.text('G'), findsOneWidget);
+      // Lead singer shown instead of the song key.
+      expect(find.text('Eddie'), findsOneWidget);
+      expect(find.text('G'), findsNothing);
     });
 
     testWidgets('shows empty-library message when songs list is empty',
@@ -128,41 +135,92 @@ void main() {
       expect(find.textContaining('No songs match your search'), findsOneWidget);
     });
 
-    testWidgets(
-        'tapping a song row fires the pick callback with that exact song',
+    testWidgets('tapping a song selects it instead of closing the sheet',
         (tester) async {
       SongPickerResult? result;
-
-      await _pumpSheet(
-        tester,
-        [_aSong, _bSong],
-        onResult: (r) => result = r,
-      );
+      await _pumpSheet(tester, [_aSong, _bSong], onResult: (r) => result = r);
 
       await tester.tap(find.text('Brown Eyed Girl'));
       await tester.pumpAndSettle();
 
-      expect(result, isNotNull);
-      expect(result!.isLibrary, isTrue);
-      expect(result!.song?.id, 1);
-      expect(result!.song?.title, 'Brown Eyed Girl');
+      expect(result, isNull);
+      expect(find.text('Pick Songs'), findsOneWidget);
+      expect(find.text('Add 1 Song'), findsOneWidget);
     });
 
-    testWidgets(
-        'tapping a second song returns that song (not the first)',
+    testWidgets('confirming returns every selected song in tap order',
         (tester) async {
       SongPickerResult? result;
+      await _pumpSheet(tester, [_aSong, _bSong, _cSong],
+          onResult: (r) => result = r);
 
-      await _pumpSheet(
-        tester,
-        [_aSong, _bSong],
-        onResult: (r) => result = r,
-      );
+      await tester.tap(find.text('Piano Man'));
+      await tester.tap(find.text('Brown Eyed Girl'));
+      await tester.pump();
 
-      await tester.tap(find.text('Sweet Home Alabama'));
+      await tester.tap(find.text('Add 2 Songs'));
       await tester.pumpAndSettle();
 
-      expect(result!.song?.id, 2);
+      expect(result, isNotNull);
+      expect(result!.isLibrary, isTrue);
+      expect(result!.songs.map((s) => s.id), [3, 1]);
+    });
+
+    testWidgets('tapping a selected song again deselects it', (tester) async {
+      SongPickerResult? result;
+      await _pumpSheet(tester, [_aSong, _bSong], onResult: (r) => result = r);
+
+      await tester.tap(find.text('Brown Eyed Girl'));
+      await tester.tap(find.text('Sweet Home Alabama'));
+      await tester.tap(find.text('Brown Eyed Girl'));
+      await tester.pump();
+
+      await tester.tap(find.text('Add 1 Song'));
+      await tester.pumpAndSettle();
+
+      expect(result!.songs.map((s) => s.id), [2]);
+    });
+
+    testWidgets('selection survives changing the search query',
+        (tester) async {
+      SongPickerResult? result;
+      await _pumpSheet(tester, [_aSong, _bSong, _cSong],
+          onResult: (r) => result = r);
+
+      final search = find.byType(CupertinoSearchTextField);
+      await tester.enterText(search, 'brown');
+      await tester.pump();
+      await tester.tap(find.text('Brown Eyed Girl'));
+      await tester.enterText(search, 'piano');
+      await tester.pump();
+      await tester.tap(find.text('Piano Man'));
+      await tester.pump();
+
+      await tester.tap(find.text('Add 2 Songs'));
+      await tester.pumpAndSettle();
+
+      expect(result!.songs.map((s) => s.id), [1, 3]);
+    });
+
+    testWidgets('add button is disabled until a song is selected',
+        (tester) async {
+      await _pumpSheet(tester, [_aSong]);
+
+      final button = tester.widget<CupertinoButton>(find.ancestor(
+        of: find.text('Select Songs'),
+        matching: find.byType(CupertinoButton),
+      ));
+      expect(button.onPressed, isNull);
+    });
+
+    testWidgets('marks songs already on the setlist', (tester) async {
+      await _pumpSheet(tester, [_aSong, _bSong], onSetlistIds: {2});
+
+      expect(find.text('On setlist'), findsOneWidget);
+      // Still selectable (e.g. for a reprise).
+      await tester.tap(find.text('Sweet Home Alabama'));
+      await tester.pump();
+      expect(find.text('Add 1 Song'), findsOneWidget);
     });
   });
 
@@ -285,11 +343,11 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('SongPickerResult', () {
-    test('library result exposes song and isLibrary == true', () {
-      const result = SongPickerResult.library(_aSong);
+    test('library result exposes songs and isLibrary == true', () {
+      const result = SongPickerResult.library([_aSong, _bSong]);
       expect(result.isLibrary, isTrue);
       expect(result.isCustom, isFalse);
-      expect(result.song, same(_aSong));
+      expect(result.songs, [_aSong, _bSong]);
       expect(result.customTitle, isNull);
     });
 
@@ -300,7 +358,7 @@ void main() {
       expect(result.isLibrary, isFalse);
       expect(result.customTitle, 'Foo');
       expect(result.customArtist, 'Bar');
-      expect(result.song, isNull);
+      expect(result.songs, isEmpty);
     });
 
     test('custom result with null artist is allowed', () {
@@ -318,7 +376,7 @@ void main() {
     });
 
     test('library result notes is null by default', () {
-      const result = SongPickerResult.library(_aSong);
+      const result = SongPickerResult.library([_aSong]);
       expect(result.notes, isNull);
     });
   });

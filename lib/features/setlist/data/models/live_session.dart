@@ -43,6 +43,12 @@ class LiveSession {
       .where((e) => e.position == currentPosition && e.isPending && !e.isBreak)
       .firstOrNull;
 
+  /// Pending entries after the current song (songs and breaks), in order.
+  List<QueueEntry> get upcoming => queue
+      .where((e) => e.isPending && e.position > currentPosition)
+      .toList()
+    ..sort((a, b) => a.position.compareTo(b.position));
+
   QueueEntry? get nextSong => queue
       .where((e) => e.position > currentPosition && e.isPending && !e.isBreak)
       .toList()

@@ -58,6 +58,13 @@ class OperationsScreen extends ConsumerWidget {
                   size: 22, color: context.secondaryText),
               onTap: () => context.push('/personnel'),
             ),
+          if (isOwner)
+            NavRow(
+              title: 'Price Estimator',
+              leading: Icon(CupertinoIcons.tag,
+                  size: 22, color: context.secondaryText),
+              onTap: () => context.push('/price-estimator'),
+            ),
           NavRow(
             title: 'Lodging',
             leading: Icon(CupertinoIcons.bed_double,

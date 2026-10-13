@@ -1,5 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../auth/data/models/band_summary.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../../shared/providers/selected_band_provider.dart';
 import '../providers/band_settings_provider.dart';
 import 'band_info_edit_screen.dart';
@@ -50,6 +53,12 @@ class BandSettingsScreen extends ConsumerWidget {
     }
 
     final settings = settingsAsync.value!;
+    final authState = ref.watch(authProvider).value;
+    final bands = authState is AuthAuthenticated
+        ? authState.bands
+        : const <BandSummary>[];
+    final isOwner =
+        bands.where((b) => b.id == bandId).firstOrNull?.isOwner ?? false;
 
     return CupertinoPageScaffold(
       navigationBar: navBar,
@@ -76,6 +85,20 @@ class BandSettingsScreen extends ConsumerWidget {
                 ),
               ],
             ),
+            if (isOwner)
+              CupertinoListSection.insetGrouped(
+                header: const Text('Pricing'),
+                children: [
+                  CupertinoListTile(
+                    leading: Icon(CupertinoIcons.tag,
+                        size: 22, color: context.secondaryText),
+                    title: const Text('Pricing Rules'),
+                    subtitle: const Text('Rates, seasons, travel, add-ons'),
+                    trailing: const CupertinoListTileChevron(),
+                    onTap: () => context.push('/band-settings/pricing'),
+                  ),
+                ],
+              ),
           ],
         ),
       ),

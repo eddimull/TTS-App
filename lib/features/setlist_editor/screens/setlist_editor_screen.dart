@@ -472,10 +472,16 @@ class _BottomToolbar extends ConsumerWidget {
                     context,
                     songs: state.bandSongs,
                     clientRequests: state.clientRequests,
+                    onSetlistIds: {
+                      for (final e in state.setlist?.songs ?? const [])
+                        if (e.songId != null) e.songId!,
+                    },
                   );
                   if (result == null) return;
                   if (result.isLibrary) {
-                    notifier.addSong(result.song!, notes: result.notes);
+                    for (final song in result.songs) {
+                      notifier.addSong(song);
+                    }
                   } else {
                     // isCustom path
                     notifier.addCustomSong(

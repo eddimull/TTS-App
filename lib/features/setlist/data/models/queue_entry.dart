@@ -31,6 +31,26 @@ class QueueEntry {
   final bool isOffSetlist;
   final String? playedAt;
 
+  /// [crowdReaction] uses a closure so it can be cleared to null.
+  QueueEntry copyWith({int? position, String? Function()? crowdReaction}) =>
+      QueueEntry(
+        id: id,
+        type: type,
+        songId: songId,
+        position: position ?? this.position,
+        status: status,
+        title: title,
+        artist: artist,
+        songKey: songKey,
+        genre: genre,
+        bpm: bpm,
+        leadSinger: leadSinger,
+        crowdReaction:
+            crowdReaction != null ? crowdReaction() : this.crowdReaction,
+        isOffSetlist: isOffSetlist,
+        playedAt: playedAt,
+      );
+
   bool get isBreak => type == 'break';
   bool get isPending => status == 'pending';
   bool get isPlayed => status == 'played';

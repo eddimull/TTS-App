@@ -149,6 +149,17 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
               },
               child: const Text('Setlist'),
             ),
+            // Anyone can join a running session; only writers can start one.
+            if (event.liveSessionId != null || event.canWrite)
+              CupertinoActionSheetAction(
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  _openLiveSetlist();
+                },
+                child: Text(
+                  event.liveSessionId != null ? 'Join live setlist' : 'Go live',
+                ),
+              ),
             if (event.canWrite)
               CupertinoActionSheetAction(
                 onPressed: () {
@@ -355,6 +366,54 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
       event.outside != null ||
       event.backlineProvided != null ||
       event.productionNeeded != null;
+
+  /// Opens the live setlist from the ⋯ menu. Going live away from gig day is
+  /// allowed but confirmed first, since starting a session notifies the band.
+  Future<void> _openLiveSetlist() async {
+    final path = '/events/${event.key}/setlist/live';
+    if (event.liveSessionId != null || _isGigDay(event.date)) {
+      context.push(path);
+      return;
+    }
+    final parsed = DateTime.tryParse(event.date);
+    final when = parsed == null
+        ? 'another day'
+        : DateFormat('EEEE, MMM d').format(parsed);
+    final proceed = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (dialogContext) => CupertinoAlertDialog(
+        title: const Text('Not gig day'),
+        content: Text(
+          'This event is on $when. Starting a live session will notify '
+          'the band. Go live anyway?',
+        ),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Go Live'),
+          ),
+        ],
+      ),
+    );
+    if (proceed == true && mounted) context.push(path);
+  }
+
+  /// True on the event's date, and the day after so a gig running past
+  /// midnight isn't flagged.
+  static bool _isGigDay(String date) {
+    final d = DateTime.tryParse(date);
+    if (d == null) return false;
+    final now = clock.now();
+    final days = DateTime(now.year, now.month, now.day)
+        .difference(DateTime(d.year, d.month, d.day))
+        .inDays;
+    return days == 0 || days == 1;
+  }
 
   String _formatDateAndTime(String date, String? time) =>
       formatDateWithTimeRange(date, time, null);

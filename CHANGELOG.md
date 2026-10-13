@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.29.0](https://github.com/eddimull/TTS-App/compare/v1.28.2...v1.29.0) (2026-10-13)
+
+
+### Features
+
+* **pricing:** add price estimate models, repository and providers ([35df68b](https://github.com/eddimull/TTS-App/commit/35df68b34a8be87a83e38873ebbc83ed34bfb56f))
+* **pricing:** add pricing rules settings screen ([9bb4498](https://github.com/eddimull/TTS-App/commit/9bb4498926f4d70aca9cadb9024e31c28c646bf4))
+* **pricing:** add standalone price estimator screen and result card ([7a6b177](https://github.com/eddimull/TTS-App/commit/7a6b1771cb7dc74cf23ad25d936959d082ef3012))
+* **pricing:** wire entry points, routes and booking form Suggest price ([71fd568](https://github.com/eddimull/TTS-App/commit/71fd568ebc6f717a3c630fbe7a312b5682944436))
+* **setlist:** run the live setlist on the fly ([f668fc0](https://github.com/eddimull/TTS-App/commit/f668fc0d3c8d20a0e1db5080bea225c624ac04c5))
+* **setlist:** run the live setlist on the fly ([b408a74](https://github.com/eddimull/TTS-App/commit/b408a7449cf93870ae771c4c3e9de4f1fb2c9b10))
+
+
+### Bug Fixes
+
+* **pricing:** word error fallbacks per flow; rename _fieldsDialog ([a841f21](https://github.com/eddimull/TTS-App/commit/a841f21310ea66dcece3f958e44744ba5c48cb21))
+
 ## [1.28.2](https://github.com/eddimull/TTS-App/compare/v1.28.1...v1.28.2) (2026-10-10)
 
 

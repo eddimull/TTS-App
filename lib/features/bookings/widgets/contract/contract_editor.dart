@@ -101,8 +101,8 @@ class _ContractEditorState extends ConsumerState<ContractEditor> {
       await ref.read(bookingsRepositoryProvider).sendContract(
             _key.bandId,
             _key.bookingId,
-            result.signerId,
-            ccId: result.ccId,
+            signerIds: result.signerIds,
+            ccIds: result.ccIds,
           );
       if (!mounted) return;
       // Show the confirmation BEFORE invalidating caches. Invalidating
@@ -267,7 +267,7 @@ class _ContractEditorState extends ConsumerState<ContractEditor> {
                           const SizedBox(height: 6),
                           SyncedTextField(
                             value: state.buyerNameOverride ?? '',
-                            placeholder: "Leave blank to use the signer's name",
+                            placeholder: "Leave blank to use the first signer's name",
                             onChanged: (v) => ref
                                 .read(contractEditorProvider(_key).notifier)
                                 .updateBuyerNameOverride(v),

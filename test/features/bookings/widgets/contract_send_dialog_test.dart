@@ -18,8 +18,12 @@ class _FakeRepo extends BookingsRepository {
   final BookingDetail _detail;
 
   @override
-  Future<BookingDetail> sendContract(int bandId, int bookingId, int signerId,
-      {int? ccId}) async {
+  Future<BookingDetail> sendContract(
+    int bandId,
+    int bookingId, {
+    required List<int> signerIds,
+    List<int> ccIds = const [],
+  }) async {
     return _detail;
   }
 

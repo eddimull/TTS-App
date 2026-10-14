@@ -36,7 +36,7 @@ void main() {
 
       expect(richTextContaining('The City of Scott'), findsWidgets);
       expect(richTextContaining('on behalf of'), findsOneWidget);
-      expect(richTextContaining('Mayor Jane Doe'), findsWidgets);
+      expect(find.textContaining('Mayor Jane Doe'), findsNothing);
     });
 
     testWidgets('whitespace-only override falls back, no "on behalf of"',

@@ -307,10 +307,18 @@ class BookingsRepository {
     return BookingDetail.fromJson(response.data['booking']);
   }
 
+  /// Send the contract to one or more signers (who sign in parallel) and
+  /// optionally CC other contacts. [signerIds] must contain at least one id.
   Future<BookingDetail> sendContract(
-      int bandId, int bookingId, int signerId, {int? ccId}) async {
-    final body = <String, dynamic>{'signer_id': signerId};
-    if (ccId != null) body['cc_id'] = ccId;
+    int bandId,
+    int bookingId, {
+    required List<int> signerIds,
+    List<int> ccIds = const [],
+  }) async {
+    final body = <String, dynamic>{
+      'signer_ids': signerIds,
+      'cc_ids': ccIds,
+    };
     final response = await _dio.post(
         ApiEndpoints.mobileBookingContractSend(bandId, bookingId),
         data: body);

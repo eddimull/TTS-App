@@ -16,6 +16,8 @@ class ContractSignatureBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // With no override the sent contract names every signer; the preview can
+    // only show the default signer (the first contact).
     final signerName = firstContact?.name ?? 'Buyer';
     final hasOverride =
         buyerNameOverride != null && buyerNameOverride!.trim().isNotEmpty;
@@ -45,14 +47,18 @@ class ContractSignatureBlock extends StatelessWidget {
           ])),
           if (hasOverride) ...[
             const SizedBox(height: 4),
-            Text.rich(TextSpan(children: [
-              const TextSpan(text: 'By: '),
-              TextSpan(text: signerName, style: bold),
-              TextSpan(text: ', on behalf of $buyerName'),
-            ])),
+            Text('Each signer signs on behalf of $buyerName'),
           ],
           const SizedBox(height: 16),
           const Text('Signature: ___________________________'),
+          const SizedBox(height: 8),
+          Text(
+            'Signers are chosen when you send the contract.',
+            style: CupertinoTheme.of(context).textTheme.textStyle.copyWith(
+                  fontSize: 11,
+                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                ),
+          ),
         ],
       ),
     );

@@ -16,7 +16,8 @@ class ContractSignatureBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // With no override the buyer is the first signer (first contact by default).
+    // With no override the sent contract names every signer; the preview can
+    // only show the default signer (the first contact).
     final signerName = firstContact?.name ?? 'Buyer';
     final hasOverride =
         buyerNameOverride != null && buyerNameOverride!.trim().isNotEmpty;

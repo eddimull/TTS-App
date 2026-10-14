@@ -267,7 +267,7 @@ class _ContractEditorState extends ConsumerState<ContractEditor> {
                           const SizedBox(height: 6),
                           SyncedTextField(
                             value: state.buyerNameOverride ?? '',
-                            placeholder: "Leave blank to use the first signer's name",
+                            placeholder: "Leave blank to use the signers' names",
                             onChanged: (v) => ref
                                 .read(contractEditorProvider(_key).notifier)
                                 .updateBuyerNameOverride(v),

@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.30.0](https://github.com/eddimull/TTS-App/compare/v1.29.0...v1.30.0) (2026-10-14)
+
+
+### Features
+
+* **bookings:** send contracts to multiple signers and CCs ([bc5fe73](https://github.com/eddimull/TTS-App/commit/bc5fe7395fbe196c4b99e29c9a2800a6d08cd97f))
+* **bookings:** send contracts to multiple signers and CCs ([5e2a553](https://github.com/eddimull/TTS-App/commit/5e2a553c45086d7ffdaf176c8de4ac135680fb49))
+
+
+### Bug Fixes
+
+* **bookings:** describe all signers in the buyer-name hint ([200c08e](https://github.com/eddimull/TTS-App/commit/200c08ee631cd2fa5f1402a0bf456cad53b0644c))
+
 ## [1.29.0](https://github.com/eddimull/TTS-App/compare/v1.28.2...v1.29.0) (2026-10-13)
 
 

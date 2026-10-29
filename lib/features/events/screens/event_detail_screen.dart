@@ -1,29 +1,23 @@
-import 'dart:async';
+import 'dart:math' as math;
 import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../shared/providers/selected_band_provider.dart';
-import '../../../shared/utils/time_format.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/status_chip.dart';
 import '../../chat/widgets/comment_bar.dart';
+import '../data/event_tabs.dart';
 import '../data/models/event_detail.dart';
+import '../providers/event_tab_storage.dart';
 import '../providers/events_provider.dart';
-import '../widgets/event_glance_card.dart';
+import '../widgets/event_header.dart';
+import '../widgets/event_tabs/music_tab.dart';
+import '../widgets/event_tabs/notes_tab.dart';
+import '../widgets/event_tabs/overview_tab.dart';
+import '../widgets/event_tabs/timeline_tab.dart';
 import 'roster_sheet.dart';
-import '../widgets/event_sections/contact_row.dart';
-import '../widgets/event_sections/flags_row.dart';
-import '../widgets/event_sections/lodging_section.dart';
-import '../widgets/event_sections/media_section.dart';
-import '../widgets/event_sections/notes_attachments_section.dart';
-import '../widgets/event_sections/performance_section.dart';
-import '../widgets/event_sections/roster_summary_row.dart';
-import '../widgets/event_sections/section_primitives.dart';
-import '../widgets/event_sections/timeline_section.dart';
-import '../widgets/event_sections/venue_card.dart';
-import '../widgets/event_sections/wedding_section.dart';
 
 class EventDetailScreen extends ConsumerWidget {
   const EventDetailScreen({
@@ -83,21 +77,44 @@ class _EventDetailView extends ConsumerStatefulWidget {
 }
 
 class _EventDetailViewState extends ConsumerState<_EventDetailView> {
-  final _timelineKey = GlobalKey();
+  /// Tab the user picked this visit; until then the remembered tab (or
+  /// Overview) is used.
+  EventTab? _picked;
+
+  /// Measured height of the expanded header content. Seeded with a typical
+  /// value so the first frame is close; corrected after layout.
+  double _headerContentHeight = 300;
 
   EventDetail get event => widget.event;
 
-  void _scrollToKey(GlobalKey key) {
-    final keyContext = key.currentContext;
-    if (keyContext == null) return;
-    Scrollable.ensureVisible(
-      keyContext,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+  void _selectTab(EventTab tab) {
+    setState(() => _picked = tab);
+    ref.read(eventTabStorageProvider).value?.saveLastTab(tab);
   }
 
-  void _openTimeline() => _scrollToKey(_timelineKey);
+  void _onHeaderMeasured(double h) {
+    if (!mounted || (h - _headerContentHeight).abs() < 0.5) return;
+    setState(() => _headerContentHeight = h);
+  }
+
+  Widget _tabBody(EventTab tab, List<EventTab> tabs) {
+    switch (tab) {
+      case EventTab.overview:
+        return OverviewTab(
+          event: event,
+          onOpenRoster: _openRoster,
+          onShowTimeTap: tabs.contains(EventTab.timeline)
+              ? () => _selectTab(EventTab.timeline)
+              : null,
+        );
+      case EventTab.timeline:
+        return TimelineTab(event: event);
+      case EventTab.music:
+        return MusicTab(event: event);
+      case EventTab.notes:
+        return NotesTab(event: event);
+    }
+  }
 
   /// Pushes the full-screen roster sheet.
   void _openRoster() {
@@ -191,6 +208,12 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
         fromBooking ? widget.parentBookingId : event.eventableId;
     final bool showBookingLink = fromBooking || isBookingBacked;
 
+    final tabs = visibleTabs(event);
+    final stored = ref.watch(eventTabStorageProvider).value?.lastTab;
+    final selected = (_picked != null && tabs.contains(_picked))
+        ? _picked!
+        : resolveInitialTab(stored, tabs);
+
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
         middle: Row(
@@ -228,140 +251,56 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
       ),
       child: CommentBarBody(
         topic: TopicRef(kind: 'events', idOrKey: event.key),
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Date / Time
-            InfoRow(
-              icon: CupertinoIcons.calendar,
-              label: 'Date',
-              value: _formatDateAndTime(event.date, event.time),
-            ),
-
-            // Venue
-            if (event.venueName != null && event.venueName!.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              VenueCard(
-                venueName: event.venueName!,
-                venueAddress: event.venueAddress,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final delegate = EventHeaderDelegate(
+              event: event,
+              tabs: tabs,
+              selected: selected,
+              onSelect: _selectTab,
+              contentHeight: _headerContentHeight,
+              onContentMeasured: _onHeaderMeasured,
+            );
+            // The nav bar is translucent, so the scaffold lets content run under
+            // it and reports its height as top padding; a plain ListView would
+            // apply that itself, a CustomScrollView with a pinned header must
+            // be moved down explicitly.
+            return MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: Padding(
+                padding:
+                    EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
+                child: CustomScrollView(
+                  slivers: [
+                    SliverPersistentHeader(pinned: true, delegate: delegate),
+                    SliverToBoxAdapter(
+                      // Every tab is at least as tall as the space under the
+                      // collapsed header, so switching from a long tab to a short
+                      // one never pulls the header back open.
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: math.max(
+                              0, constraints.maxHeight - delegate.minExtent),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                          child: KeyedSubtree(
+                            key: ValueKey(selected),
+                            child: _tabBody(selected, tabs),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
-
-            // Event type + flags row
-            if (_hasFlags) ...[
-              const SizedBox(height: 16),
-              FlagsRow(event: event),
-            ],
-
-            // At-a-glance card
-            if (EventGlanceCard.hasContent(event)) ...[
-              const SizedBox(height: 12),
-              EventGlanceCard(
-                event: event,
-                onShowTimeTap: _openTimeline,
-                onLodgingTap: (lodgingId) =>
-                    context.push('/lodging/$lodgingId'),
-              ),
-            ],
-
-            // Notes + Attachments (combined — band-internal files, read-only)
-            if (NotesAndAttachmentsSection.hasContent(
-                event.notes, event.attachments)) ...[
-              const SizedBox(height: 20),
-              const SectionHeader(title: 'Notes'),
-              const SizedBox(height: 8),
-              NotesAndAttachmentsSection(
-                notesHtml: event.notes,
-                attachments: event.attachments,
-              ),
-            ],
-
-            // Timeline
-            if (event.timeline.isNotEmpty || event.time != null) ...[
-              SizedBox(height: 20, key: _timelineKey),
-              const SectionHeader(title: 'Timeline'),
-              const SizedBox(height: 8),
-              TimelineSection(
-                entries: event.timeline,
-                eventDate: event.parsedDate,
-                showTime: event.time,
-                eventDateStr: event.date,
-              ),
-            ],
-
-            // Lodging
-            if (event.lodgings.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              const SectionHeader(title: 'Lodging'),
-              const SizedBox(height: 8),
-              LodgingLinksSection(lodgings: event.lodgings),
-            ],
-
-            // Contacts
-            if (event.contacts.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              const SectionHeader(title: 'Contacts'),
-              const SizedBox(height: 8),
-              ...event.contacts.map((c) => ContactRow(contact: c)),
-            ],
-
-            // Roster
-            if (event.members.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              RosterSummaryRow(event: event, onTap: _openRoster),
-            ],
-
-            // Performance (songs / charts)
-            if (event.performance != null &&
-                (event.performance!.notes?.isNotEmpty == true ||
-                    event.performance!.songs.isNotEmpty ||
-                    event.performance!.charts.isNotEmpty)) ...[
-              const SizedBox(height: 20),
-              const SectionHeader(title: 'Performance'),
-              const SizedBox(height: 8),
-              PerformanceSection(performance: event.performance!),
-            ],
-
-            // Wedding details
-            if (event.wedding != null &&
-                (event.wedding!.onsite != null ||
-                    event.wedding!.dances.isNotEmpty)) ...[
-              const SizedBox(height: 20),
-              const SectionHeader(title: 'Wedding Details'),
-              const SizedBox(height: 8),
-              WeddingSection(wedding: event.wedding!),
-            ],
-
-            // Live setlist join (state-driven CTA — shown only during an
-            // active live session; the plain Setlist row lives in the ⋯ menu)
-            if (event.liveSessionId != null) ...[
-              const SizedBox(height: 20),
-              LiveSetlistButton(eventKey: event.key),
-            ],
-
-            // Media (client-shared photos/files — writers can upload)
-            if (event.media.isNotEmpty || event.canWrite) ...[
-              const SizedBox(height: 20),
-              MediaSection(
-                media: event.media,
-                eventKey: event.key,
-                eventId: event.id,
-                canWrite: event.canWrite,
-              ),
-            ],
-
-            const SizedBox(height: 32),
-          ],
+            );
+          },
         ),
       ),
     );
   }
-
-  bool get _hasFlags =>
-      event.isPublic != null ||
-      event.outside != null ||
-      event.backlineProvided != null ||
-      event.productionNeeded != null;
 
   /// Opens the live setlist from the ⋯ menu. Going live away from gig day is
   /// allowed but confirmed first, since starting a session notifies the band.
@@ -410,7 +349,4 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
         .inDays;
     return days == 0 || days == 1;
   }
-
-  String _formatDateAndTime(String date, String? time) =>
-      formatDateWithTimeRange(date, time, null);
 }

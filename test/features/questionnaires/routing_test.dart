@@ -1,5 +1,10 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tts_bandmate/features/bookings/data/bookings_repository.dart';
 import 'package:tts_bandmate/features/events/data/models/event_detail.dart';
 import 'package:tts_bandmate/features/questionnaires/data/models/routing_preview.dart';
 import 'package:tts_bandmate/features/questionnaires/providers/questionnaires_provider.dart';
@@ -7,6 +12,23 @@ import 'package:tts_bandmate/features/questionnaires/providers/routing_provider.
 import 'fake_questionnaires_repository.dart';
 
 const _key = (bandId: 1, instanceId: 7);
+
+class _RecordingAdapter implements HttpClientAdapter {
+  final requests = <RequestOptions>[];
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(RequestOptions options,
+      Stream<Uint8List>? stream, Future<void>? cancel) async {
+    requests.add(options);
+    return ResponseBody.fromBytes(utf8.encode(jsonEncode({'contacts': []})), 200,
+        headers: {
+          'content-type': ['application/json'],
+        });
+  }
+}
 
 Map<String, dynamic> _previewJson() => {
       'groups': [
@@ -260,6 +282,91 @@ void main() {
 
       await repo.undoApplication(1, 9);
       expect(repo.undoneApplicationId, 9);
+    });
+  });
+
+  group('contacts and new preview fields', () {
+    test('contact parses email, phone and contact_id', () {
+      final c = RoutingContact.fromJson({
+        'name': 'Grace',
+        'email': 'g@x.com',
+        'phone': ' ',
+        'on_booking': false,
+        'contact_id': 4,
+      });
+      expect(c.email, 'g@x.com');
+      expect(c.phone, isNull); // blank -> null
+      expect(c.contactId, 4);
+      expect(c.toAddContactBody(), {'contact_id': 4, 'role': ''});
+
+      final fresh = RoutingContact.fromJson(
+          {'name': 'Todd', 'email': 't@x.com', 'on_booking': false});
+      expect(fresh.toAddContactBody(),
+          {'name': 'Todd', 'email': 't@x.com', 'phone': '', 'role': ''});
+    });
+
+    test('song conflicts show Title · Artist; extra fields are tolerated', () {
+      final p = RoutingPreview.fromJson({
+        'event_id': 3,
+        'conflicts': [
+          {
+            'kind': 'song_both_lists',
+            'song_id': 12,
+            'title': 'We Are Family',
+            'artist': 'Sister Sledge',
+          },
+          {'kind': 'song_both_lists', 'song_id': 13, 'title': 'Solo'},
+        ],
+        'song_requests': {'do_not_play_write_ins': ['x']},
+        'groups': [
+          {
+            'key': 'a',
+            'label': 'A',
+            'items': [
+              {
+                'response_id': 1,
+                'field_type': 'long_text',
+                'targets': [],
+                'compatible_targets': [
+                  {'key': 'event.notes', 'label': 'Event notes'},
+                ],
+              },
+            ],
+          },
+        ],
+      });
+      expect(p.conflicts.first.songDisplay, 'We Are Family · Sister Sledge');
+      expect(p.conflicts.last.songDisplay, 'Solo');
+      expect(p.allItems.single.compatibleTargets.single.label, 'Event notes');
+    });
+
+    test('addContact posts to the booking contacts endpoint and refetches',
+        () async {
+      final adapter = _RecordingAdapter();
+      final dio = Dio()..httpClientAdapter = adapter;
+      final repo = FakeQuestionnairesRepository()
+        ..routingPreview = RoutingPreview.fromJson(_previewJson());
+      final c = ProviderContainer(overrides: [
+        questionnairesRepositoryProvider.overrideWithValue(repo),
+        bookingsRepositoryProvider.overrideWithValue(BookingsRepository(dio)),
+      ]);
+      addTearDown(c.dispose);
+      await c.read(routingPreviewProvider(_key).future);
+      // Hold the auto-dispose provider open, as the screen does.
+      c.listen(routingSelectionProvider(_key), (_, __) {});
+      final n = c.read(routingSelectionProvider(_key).notifier);
+      n.toggle(2); // a user choice that must survive the refetch
+
+      await n.addContact(
+          const RoutingContact(
+              name: 'Todd', email: 't@x.com', onBooking: false),
+          55);
+
+      final req = adapter.requests.single;
+      expect(req.method, 'POST');
+      expect(req.path, contains('/bands/1/bookings/55/contacts'));
+      expect(req.data, containsPair('name', 'Todd'));
+      expect(c.read(routingSelectionProvider(_key)).checked, contains(2));
     });
   });
 

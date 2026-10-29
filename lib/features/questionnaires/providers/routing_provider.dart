@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../bookings/data/bookings_repository.dart';
 import '../../events/providers/events_provider.dart';
 import '../data/models/routing_preview.dart';
 import 'questionnaire_instances_provider.dart';
@@ -128,7 +129,24 @@ class RoutingSelectionNotifier extends Notifier<RoutingSelection> {
 
   @override
   RoutingSelection build() {
-    final preview = ref.watch(routingPreviewProvider(_key)).value;
+    // A refetch (e.g. after adding a contact) merges into the current
+    // selection instead of resetting what the user already chose.
+    ref.listen(routingPreviewProvider(_key), (prev, next) {
+      final fresh = next.value;
+      final old = prev?.value;
+      if (fresh == null || old == null) return;
+      final oldIds = old.allItems.map((i) => i.responseId).toSet();
+      final freshIds = fresh.allItems.map((i) => i.responseId).toSet();
+      state = state.copyWith(checked: {
+        ...state.checked.where((id) =>
+            freshIds.contains(id) ||
+            state.targetOverrides.containsKey(id)),
+        for (final i in fresh.allItems)
+          if (!oldIds.contains(i.responseId) && i.defaultChecked)
+            i.responseId,
+      });
+    });
+    final preview = ref.read(routingPreviewProvider(_key)).value;
     if (preview == null) return const RoutingSelection();
     return RoutingSelection(
       checked: {
@@ -176,6 +194,21 @@ class RoutingSelectionNotifier extends Notifier<RoutingSelection> {
 
   void resolveVenue(String resolution) =>
       state = state.copyWith(venueResolution: resolution);
+
+  /// Adds a questionnaire contact to the booking through the bookings
+  /// repository, then refetches the preview. Errors propagate to the caller.
+  Future<void> addContact(RoutingContact contact, int bookingId) async {
+    final link = ref.keepAlive();
+    try {
+      await ref
+          .read(bookingsRepositoryProvider)
+          .addContact(_key.bandId, bookingId, contact.toAddContactBody());
+      ref.invalidate(routingPreviewProvider(_key));
+      await ref.read(routingPreviewProvider(_key).future);
+    } finally {
+      link.close();
+    }
+  }
 
   /// Sends the selection. Records the application for the event screen's
   /// session-only undo banner and refreshes dependent providers.

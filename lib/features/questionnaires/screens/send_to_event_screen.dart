@@ -134,6 +134,52 @@ class _ReviewBody extends ConsumerWidget {
         .setTarget(responseId, choice.target, remember: choice.remember);
   }
 
+  Future<void> _addContact(BuildContext context, WidgetRef ref,
+      RoutingContact contact, int? bookingId) async {
+    if (bookingId == null || bookingId == 0) return;
+    final details = [
+      if (contact.email != null) contact.email!,
+      if (contact.phone != null) contact.phone!,
+    ].join('\n');
+    final confirmed = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text('Add ${contact.name} to the booking?'),
+        content: details.isEmpty ? null : Text(details),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          CupertinoDialogAction(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref
+          .read(routingSelectionProvider(keyArgs).notifier)
+          .addContact(contact, bookingId);
+    } on DioException catch (e) {
+      if (!context.mounted) return;
+      final data = e.response?.data;
+      _alert(
+        context,
+        "Couldn't add contact",
+        data is Map && data['message'] is String
+            ? data['message'] as String
+            : 'Please try again.',
+      );
+    } catch (_) {
+      if (context.mounted) {
+        _alert(context, "Couldn't add contact", 'Please try again.');
+      }
+    }
+  }
+
   Future<void> _send(BuildContext context, WidgetRef ref) async {
     RouteResult result;
     try {
@@ -269,15 +315,19 @@ class _ReviewBody extends ConsumerWidget {
                         subtitle: Text(c.onBooking
                             ? 'Already on the booking'
                             : 'Not on the booking'),
-                        trailing: Icon(
-                          c.onBooking
-                              ? CupertinoIcons.checkmark_circle_fill
-                              : CupertinoIcons.exclamationmark_circle,
-                          color: c.onBooking
-                              ? CupertinoColors.systemGreen.resolveFrom(context)
-                              : CupertinoColors.systemOrange
-                                  .resolveFrom(context),
-                        ),
+                        trailing: c.onBooking
+                            ? Icon(
+                                CupertinoIcons.checkmark_circle_fill,
+                                color: CupertinoColors.systemGreen
+                                    .resolveFrom(context),
+                              )
+                            : CupertinoButton(
+                                padding: EdgeInsets.zero,
+                                minimumSize: const Size(44, 44),
+                                onPressed: () => _addContact(
+                                    context, ref, c, instance?.bookingId),
+                                child: const Text('Add contact'),
+                              ),
                       ),
                   ],
                 ),
@@ -430,7 +480,7 @@ class _NeedsALook extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(s.title ?? 'Song #${s.songId}',
+                  child: Text(s.songDisplay,
                       overflow: TextOverflow.ellipsis),
                 ),
                 const SizedBox(width: 8),

@@ -136,6 +136,7 @@ class RoutingConflict {
     required this.kind,
     this.songId,
     this.title,
+    this.artist,
     this.bookingValue,
     this.formValue,
     this.resolution,
@@ -147,6 +148,7 @@ class RoutingConflict {
   final String kind;
   final int? songId;
   final String? title;
+  final String? artist;
   final String? bookingValue;
   final String? formValue;
 
@@ -157,6 +159,12 @@ class RoutingConflict {
   bool get isSong => kind == songBothLists;
   bool get isVenue => kind == venueMismatch;
 
+  /// "Title · Artist" when the artist is known.
+  String get songDisplay {
+    final t = title ?? 'Song #$songId';
+    return artist == null || artist!.isEmpty ? t : '$t · $artist';
+  }
+
   /// Stable key used by the selection state.
   String get id => isSong ? 'song:$songId' : kind;
 
@@ -165,6 +173,7 @@ class RoutingConflict {
         kind: json['kind'] as String? ?? '',
         songId: (json['song_id'] as num?)?.toInt(),
         title: json['title'] as String?,
+        artist: json['artist'] as String?,
         bookingValue: json['booking_value'] as String?,
         formValue: json['form_value'] as String?,
         resolution: json['resolution'] as String?,
@@ -196,15 +205,47 @@ class SongRequests {
 }
 
 class RoutingContact {
-  const RoutingContact({required this.name, required this.onBooking});
+  const RoutingContact({
+    required this.name,
+    required this.onBooking,
+    this.email,
+    this.phone,
+    this.contactId,
+  });
 
   final String name;
   final bool onBooking;
+  final String? email;
+  final String? phone;
 
-  factory RoutingContact.fromJson(Map<String, dynamic> json) => RoutingContact(
-        name: json['name'] as String? ?? '',
-        onBooking: json['on_booking'] as bool? ?? false,
-      );
+  /// Existing library contact to attach, when the server matched one.
+  final int? contactId;
+
+  factory RoutingContact.fromJson(Map<String, dynamic> json) {
+    String? text(String key) {
+      final v = json[key];
+      return v is String && v.trim().isNotEmpty ? v.trim() : null;
+    }
+
+    return RoutingContact(
+      name: json['name'] as String? ?? '',
+      onBooking: json['on_booking'] as bool? ?? false,
+      email: text('email'),
+      phone: text('phone'),
+      contactId: (json['contact_id'] as num?)?.toInt(),
+    );
+  }
+
+  /// Body for the existing add-booking-contact call: attach the matched
+  /// library contact, or create one from the questionnaire answers.
+  Map<String, dynamic> toAddContactBody() => contactId != null
+      ? {'contact_id': contactId, 'role': ''}
+      : {
+          'name': name,
+          'email': email ?? '',
+          'phone': phone ?? '',
+          'role': '',
+        };
 }
 
 /// An answer with no mapping; the user can pick a destination for it.

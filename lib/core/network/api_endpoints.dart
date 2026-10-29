@@ -333,6 +333,12 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/questionnaire-instances/$instanceId/apply-all';
   static String mobileBandQuestionnaireInstanceAppendToNotes(int bandId, int instanceId) =>
       '/api/mobile/bands/$bandId/questionnaire-instances/$instanceId/append-to-notes';
+  static String mobileBandQuestionnaireInstanceRouting(int bandId, int instanceId) =>
+      '/api/mobile/bands/$bandId/questionnaire-instances/$instanceId/routing';
+  static String mobileBandQuestionnaireInstanceRoute(int bandId, int instanceId) =>
+      '/api/mobile/bands/$bandId/questionnaire-instances/$instanceId/route';
+  static String mobileBandQuestionnaireApplicationUndo(int bandId, int applicationId) =>
+      '/api/mobile/bands/$bandId/questionnaire-applications/$applicationId/undo';
 
   // ── Lodging ─────────────────────────────────────────────────────────
   static String mobileBandLodgings(int bandId) =>

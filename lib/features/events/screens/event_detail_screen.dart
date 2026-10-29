@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:dio/dio.dart' show DioException;
 import 'package:clock/clock.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
@@ -21,6 +22,8 @@ import '../../bookings/widgets/venue_picker.dart' show geocodeAddress, VenuePrev
 import '../../contacts/contact_detail_screen.dart';
 import '../../contacts/contact_ref.dart';
 import '../../media/providers/upload_queue_provider.dart';
+import '../../questionnaires/providers/questionnaire_instances_provider.dart';
+import '../../questionnaires/providers/routing_provider.dart';
 import '../../media/widgets/upload_queue_sheet.dart';
 import '../data/models/event_detail.dart';
 import '../../lodging/data/models/lodging.dart';
@@ -269,6 +272,9 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
               ),
             ],
 
+            // Undo banner after a questionnaire send (session only)
+            _QuestionnaireUndoBanner(event: event),
+
             // Notes + Attachments (combined — band-internal files, read-only)
             if (_NotesAndAttachmentsSection.hasContent(
                 event.notes, event.attachments)) ...[
@@ -280,6 +286,14 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
                 attachments: event.attachments,
               ),
             ],
+
+            // Link to the full questionnaire answers (renders nothing when the
+            // booking has no submitted questionnaire).
+            _QuestionnaireAnswersLink(
+              event: event,
+              hasNotesSection: _NotesAndAttachmentsSection.hasContent(
+                  event.notes, event.attachments),
+            ),
 
             // Timeline
             if (event.timeline.isNotEmpty || event.time != null) ...[
@@ -329,7 +343,9 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
 
             // Wedding details
             if (event.wedding != null &&
-                (event.wedding!.onsite != null || event.wedding!.dances.isNotEmpty)) ...[
+                (event.wedding!.onsite != null ||
+                    event.wedding!.dances.isNotEmpty ||
+                    event.wedding!.colors != null)) ...[
               const SizedBox(height: 20),
               const _SectionHeader(title: 'Wedding Details'),
               const SizedBox(height: 8),
@@ -1095,7 +1111,7 @@ class _PerformanceSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (performance.notes != null && performance.notes!.isNotEmpty) ...[
-          _Card(child: Text(performance.notes!, style: const TextStyle(fontSize: 15))),
+          _Card(child: _PerformanceNotes(notes: performance.notes!)),
           const SizedBox(height: 8),
         ],
         if (performance.songs.isNotEmpty) ...[
@@ -1230,6 +1246,208 @@ class _ChartRow extends StatelessWidget {
   }
 }
 
+// ── Performance notes (rule chip + remaining text) ───────────────────────────
+
+/// Renders the first line of the performance notes as a rule chip when it's
+/// short (e.g. "Only upbeat songs"), followed by the rest as plain text. The
+/// notes remain plain text on the server; this is display-only.
+class _PerformanceNotes extends StatelessWidget {
+  const _PerformanceNotes({required this.notes});
+  final String notes;
+
+  static const _maxChipLength = 60;
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = notes
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+    if (lines.isEmpty) return const SizedBox.shrink();
+    final first = lines.first;
+    final asChip = first.length <= _maxChipLength;
+    final rest = (asChip ? lines.skip(1) : lines).join('\n');
+    final tint = CupertinoColors.systemOrange.resolveFrom(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (asChip)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: tint.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(first,
+                style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600, color: tint)),
+          ),
+        if (asChip && rest.isNotEmpty) const SizedBox(height: 8),
+        if (rest.isNotEmpty) Text(rest, style: const TextStyle(fontSize: 15)),
+      ],
+    );
+  }
+}
+
+// ── Questionnaire: undo banner + answers link ────────────────────────────────
+
+/// Shown right after sending questionnaire answers to this event. Lives only
+/// for the app session (see [lastRoutedApplicationProvider]).
+class _QuestionnaireUndoBanner extends ConsumerWidget {
+  const _QuestionnaireUndoBanner({required this.event});
+  final EventDetail event;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final app = ref.watch(lastRoutedApplicationProvider);
+    if (app == null || !app.matches(id: event.id, key: event.key)) {
+      return const SizedBox.shrink();
+    }
+    final green = CupertinoColors.systemGreen.resolveFrom(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Container(
+        padding: const EdgeInsets.only(left: 12),
+        decoration: BoxDecoration(
+          color: green.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(CupertinoIcons.checkmark_circle_fill, size: 18, color: green),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '${app.applied} answer${app.applied == 1 ? '' : 's'} sent from the questionnaire',
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+            CupertinoButton(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              minimumSize: const Size(44, 44),
+              onPressed: () => _undo(context, ref, app),
+              child: const Text('Undo'),
+            ),
+            CupertinoButton(
+              padding: const EdgeInsets.only(right: 12),
+              minimumSize: const Size(32, 44),
+              onPressed: () =>
+                  ref.read(lastRoutedApplicationProvider.notifier).set(null),
+              child: Icon(CupertinoIcons.xmark,
+                  size: 16, color: context.secondaryText),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _undo(
+      BuildContext context, WidgetRef ref, RoutedApplication app) async {
+    String? failure;
+    try {
+      await undoRoutedApplication(ref, app);
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      failure = data is Map && data['message'] is String
+          ? data['message'] as String
+          : (e.response?.statusCode == 409
+              ? 'Event was edited since — undo manually.'
+              : 'Please try again.');
+    } catch (_) {
+      failure = 'Please try again.';
+    }
+    if (failure == null || !context.mounted) return;
+    final message = failure;
+    await showCupertinoDialog<void>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text("Couldn't undo"),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Questionnaire · all answers" row linking to the submitted questionnaire
+/// for this event's booking. Quietly renders nothing while loading, on error,
+/// or when there is no submitted questionnaire.
+class _QuestionnaireAnswersLink extends ConsumerWidget {
+  const _QuestionnaireAnswersLink({
+    required this.event,
+    required this.hasNotesSection,
+  });
+
+  final EventDetail event;
+  final bool hasNotesSection;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bandId = ref.watch(selectedBandProvider).value;
+    final bookingId = event.eventableId;
+    final isBooking = event.eventableType?.contains('Booking') ?? false;
+    if (bandId == null || bookingId == null || !isBooking) {
+      return const SizedBox.shrink();
+    }
+
+    final data = ref
+        .watch(bookingQuestionnairesProvider(
+            (bandId: bandId, bookingId: bookingId)))
+        .value;
+    final instance = data?.instances
+        .where((i) =>
+            (i.isSubmitted || i.isLocked) && i.questionnaireId != null)
+        .firstOrNull;
+    if (instance == null) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!hasNotesSection) ...[
+          const SizedBox(height: 20),
+          const _SectionHeader(title: 'Notes'),
+        ],
+        const SizedBox(height: 8),
+        Semantics(
+          button: true,
+          label: '${instance.name}, all answers',
+          child: CupertinoButton(
+            padding: EdgeInsets.zero,
+            minimumSize: const Size(44, 44),
+            onPressed: () => context.push(
+                '/questionnaires/${instance.questionnaireId}/instances/${instance.id}'),
+            child: _Card(
+              child: Row(
+                children: [
+                  Icon(CupertinoIcons.doc_text,
+                      size: 18, color: context.secondaryText),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('${instance.name} · all answers',
+                        style: TextStyle(
+                            fontSize: 15, color: context.primaryText)),
+                  ),
+                  Icon(CupertinoIcons.chevron_right,
+                      size: 14, color: context.tertiaryText),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // ── Wedding ───────────────────────────────────────────────────────────────────
 
 class _WeddingSection extends StatelessWidget {
@@ -1262,7 +1480,27 @@ class _WeddingSection extends StatelessWidget {
               ],
             ),
           ],
-          if (wedding.onsite != null && wedding.dances.isNotEmpty) ...[
+          if (wedding.colors != null) ...[
+            if (wedding.onsite != null)
+              Container(height: 0.5, margin: const EdgeInsets.symmetric(vertical: 10), color: CupertinoColors.separator.resolveFrom(context)),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 140,
+                  child: Text('Colors',
+                      style: TextStyle(
+                          fontSize: 13, color: context.secondaryText)),
+                ),
+                Expanded(
+                  child: Text(wedding.colors!,
+                      style: const TextStyle(fontSize: 15)),
+                ),
+              ],
+            ),
+          ],
+          if ((wedding.onsite != null || wedding.colors != null) &&
+              wedding.dances.isNotEmpty) ...[
             Container(height: 0.5, margin: const EdgeInsets.symmetric(vertical: 10), color: CupertinoColors.separator.resolveFrom(context)),
           ],
           if (wedding.dances.isNotEmpty) ...[

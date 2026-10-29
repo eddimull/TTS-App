@@ -2,6 +2,7 @@ import 'package:tts_bandmate/features/questionnaires/data/models/eligible_bookin
 import 'package:tts_bandmate/features/questionnaires/data/models/questionnaire.dart';
 import 'package:tts_bandmate/features/questionnaires/data/models/questionnaire_catalog.dart';
 import 'package:tts_bandmate/features/questionnaires/data/models/questionnaire_instance.dart';
+import 'package:tts_bandmate/features/questionnaires/data/models/routing_preview.dart';
 import 'package:tts_bandmate/features/questionnaires/data/questionnaires_repository.dart';
 
 class FakeQuestionnairesRepository implements QuestionnairesRepository {
@@ -157,5 +158,33 @@ class FakeQuestionnairesRepository implements QuestionnairesRepository {
   @override
   Future<void> appendToNotes(int bandId, int instanceId) async {
     appendedToNotes = true;
+  }
+
+  /// Preview returned by [fetchRouting]; null simulates a server 404.
+  RoutingPreview? routingPreview;
+  List<Map<String, dynamic>>? routedItems;
+  Map<String, dynamic>? routedResolutions;
+  int? undoneApplicationId;
+  RouteResult routeResult = const RouteResult(applicationId: 9, applied: 0);
+
+  @override
+  Future<RoutingPreview?> fetchRouting(int bandId, int instanceId) async =>
+      routingPreview;
+
+  @override
+  Future<RouteResult> route(
+    int bandId,
+    int instanceId, {
+    required List<Map<String, dynamic>> items,
+    required Map<String, dynamic> resolutions,
+  }) async {
+    routedItems = items;
+    routedResolutions = resolutions;
+    return routeResult;
+  }
+
+  @override
+  Future<void> undoApplication(int bandId, int applicationId) async {
+    undoneApplicationId = applicationId;
   }
 }

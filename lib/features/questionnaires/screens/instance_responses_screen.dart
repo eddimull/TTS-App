@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 import '../../../features/auth/data/models/band_summary.dart';
@@ -11,6 +12,7 @@ import '../data/models/questionnaire_instance.dart';
 import '../logic/visibility_evaluator.dart';
 import '../providers/questionnaire_instances_provider.dart';
 import '../providers/questionnaires_provider.dart';
+import '../providers/routing_provider.dart';
 import '../widgets/instance_status_badge.dart';
 
 class InstanceResponsesScreen extends ConsumerWidget {
@@ -68,6 +70,11 @@ class InstanceResponsesScreen extends ConsumerWidget {
     }
 
     final instance = detailAsync.value!;
+    // The review screen needs a server that has the routing endpoint; a null
+    // preview (404) or any error keeps today's per-field Apply UI only.
+    final canSend = isOwner &&
+        (instance.isSubmitted || instance.isLocked) &&
+        ref.watch(routingPreviewProvider(key)).value != null;
     final refs = instance.fields
         .map((f) => VisibilityFieldRef(id: '${f.id}', rule: f.visibilityRule))
         .toList();
@@ -124,6 +131,17 @@ class InstanceResponsesScreen extends ConsumerWidget {
                       style: TextStyle(
                           color: context.secondaryText, fontSize: 13),
                     ),
+                    if (canSend) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: CupertinoButton.filled(
+                          onPressed: () => context.push(
+                              '/questionnaires/$questionnaireId/instances/$instanceId/send'),
+                          child: const Text('Send to event…'),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

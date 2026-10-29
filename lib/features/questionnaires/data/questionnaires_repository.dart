@@ -4,6 +4,7 @@ import 'models/eligible_booking.dart';
 import 'models/questionnaire.dart';
 import 'models/questionnaire_catalog.dart';
 import 'models/questionnaire_instance.dart';
+import 'models/routing_preview.dart';
 
 class QuestionnairesRepository {
   QuestionnairesRepository(this._dio);
@@ -198,6 +199,44 @@ class QuestionnairesRepository {
     await _dio.post<Map<String, dynamic>>(
       ApiEndpoints.mobileBandQuestionnaireInstanceAppendToNotes(
           bandId, instanceId),
+    );
+  }
+
+  /// Fetches the routing preview, or null when the server predates the
+  /// endpoint (404) so callers can fall back to the per-field Apply UI.
+  Future<RoutingPreview?> fetchRouting(int bandId, int instanceId) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.mobileBandQuestionnaireInstanceRouting(bandId, instanceId),
+      );
+      return RoutingPreview.fromJson(response.data ?? const {});
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
+  /// Sends the chosen answers (and conflict resolutions) to the event in one
+  /// transaction. [items] entries are `{response_id, target[, remember]}`.
+  Future<RouteResult> route(
+    int bandId,
+    int instanceId, {
+    required List<Map<String, dynamic>> items,
+    required Map<String, dynamic> resolutions,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandQuestionnaireInstanceRoute(bandId, instanceId),
+      data: {'items': items, 'resolutions': resolutions},
+    );
+    return RouteResult.fromJson(response.data ?? const {});
+  }
+
+  /// Reverts a previous [route]. Throws a [DioException] with status 409 when
+  /// the event was edited since.
+  Future<void> undoApplication(int bandId, int applicationId) async {
+    await _dio.post<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandQuestionnaireApplicationUndo(
+          bandId, applicationId),
     );
   }
 }

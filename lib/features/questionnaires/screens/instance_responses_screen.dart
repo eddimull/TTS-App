@@ -136,8 +136,12 @@ class InstanceResponsesScreen extends ConsumerWidget {
                       SizedBox(
                         width: double.infinity,
                         child: CupertinoButton.filled(
-                          onPressed: () => context.push(
-                              '/questionnaires/$questionnaireId/instances/$instanceId/send'),
+                          onPressed: () {
+                            // Always review current answers and statuses.
+                            ref.invalidate(routingPreviewProvider(key));
+                            context.push(
+                                '/questionnaires/$questionnaireId/instances/$instanceId/send');
+                          },
                           child: const Text('Send to event…'),
                         ),
                       ),

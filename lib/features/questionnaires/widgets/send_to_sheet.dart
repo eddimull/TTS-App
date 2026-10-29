@@ -18,6 +18,7 @@ Future<SendToChoice?> showSendToSheet(
   required String valueDisplay,
   required List<RoutingTarget> options,
   String? currentTarget,
+  bool initialRemember = false,
 }) {
   return showCupertinoModalPopup<SendToChoice>(
     context: context,
@@ -26,6 +27,7 @@ Future<SendToChoice?> showSendToSheet(
       valueDisplay: valueDisplay,
       options: options,
       currentTarget: currentTarget,
+      initialRemember: initialRemember,
     ),
   );
 }
@@ -37,12 +39,16 @@ class SendToSheet extends StatefulWidget {
     required this.valueDisplay,
     required this.options,
     this.currentTarget,
+    this.initialRemember = false,
   });
 
   final String fieldLabel;
   final String valueDisplay;
   final List<RoutingTarget> options;
   final String? currentTarget;
+
+  /// Whether this answer is already marked "Remember for this questionnaire".
+  final bool initialRemember;
 
   @override
   State<SendToSheet> createState() => _SendToSheetState();
@@ -53,7 +59,7 @@ class _SendToSheetState extends State<SendToSheet> {
   static const _dontSend = '';
 
   late String? _selected = widget.currentTarget;
-  bool _remember = false;
+  late bool _remember = widget.initialRemember;
 
   RoutingTarget? get _selectedTarget =>
       widget.options.where((o) => o.key == _selected).firstOrNull;
@@ -71,7 +77,8 @@ class _SendToSheetState extends State<SendToSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final background = CupertinoColors.systemGroupedBackground.resolveFrom(context);
+    final background =
+        CupertinoColors.systemGroupedBackground.resolveFrom(context);
     final maxHeight = MediaQuery.sizeOf(context).height * 0.85;
 
     return Align(
@@ -82,8 +89,7 @@ class _SendToSheetState extends State<SendToSheet> {
         child: Container(
           decoration: BoxDecoration(
             color: background,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(14)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
           ),
           child: SafeArea(
             top: false,
@@ -121,7 +127,8 @@ class _SendToSheetState extends State<SendToSheet> {
                         CupertinoListSection.insetGrouped(
                           children: [
                             CupertinoListTile.notched(
-                              title: const Text('Remember for this questionnaire'),
+                              title:
+                                  const Text('Remember for this questionnaire'),
                               subtitle: Text(
                                 _selectedTarget == null ||
                                         _selected == _dontSend

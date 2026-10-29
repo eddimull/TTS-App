@@ -12,6 +12,7 @@ class RoutingItem {
     required this.targetLabel,
     this.status = 'pending',
     this.defaultChecked = true,
+    this.compatibleTargets = const [],
   });
 
   final int responseId;
@@ -20,6 +21,10 @@ class RoutingItem {
   final String target;
   final String targetLabel;
 
+  /// Destinations this answer may be re-routed to. Optional in the payload;
+  /// when empty the Send-to sheet offers only the current target.
+  final List<RoutingTarget> compatibleTargets;
+
   /// `pending` | `applied` | `stale`.
   final String status;
   final bool defaultChecked;
@@ -27,15 +32,24 @@ class RoutingItem {
   bool get isApplied => status == 'applied';
   bool get isStale => status == 'stale';
 
-  factory RoutingItem.fromJson(Map<String, dynamic> json) => RoutingItem(
-        responseId: ((json['response_id'] as num?) ?? 0).toInt(),
-        fieldLabel: json['field_label'] as String? ?? '',
-        valueDisplay: json['value_display'] as String? ?? '',
-        target: json['target'] as String? ?? '',
-        targetLabel: json['target_label'] as String? ?? '',
-        status: json['status'] as String? ?? 'pending',
-        defaultChecked: json['default_checked'] as bool? ?? true,
-      );
+  factory RoutingItem.fromJson(Map<String, dynamic> json) {
+    final rawTargets = json['compatible_targets'];
+    return RoutingItem(
+      responseId: ((json['response_id'] as num?) ?? 0).toInt(),
+      fieldLabel: json['field_label'] as String? ?? '',
+      valueDisplay: json['value_display'] as String? ?? '',
+      target: json['target'] as String? ?? '',
+      targetLabel: json['target_label'] as String? ?? '',
+      status: json['status'] as String? ?? 'pending',
+      defaultChecked: json['default_checked'] as bool? ?? true,
+      compatibleTargets: rawTargets is List
+          ? rawTargets
+              .map(RoutingTarget.tryParse)
+              .whereType<RoutingTarget>()
+              .toList()
+          : const [],
+    );
+  }
 }
 
 class RoutingGroup {
@@ -104,10 +118,17 @@ const _knownTargets = <String, String>{
   'event.notes': 'Event notes',
 };
 
-/// Targets offered when the server doesn't list compatible ones.
+/// Free-text destinations offered for an unrouted answer when the server
+/// doesn't list compatible ones. Boolean and per-dance targets are left out
+/// because they only accept specific field types.
 List<RoutingTarget> get fallbackRoutingTargets => [
-      for (final e in _knownTargets.entries)
-        RoutingTarget(key: e.key, label: e.value),
+      for (final k in const [
+        'wedding.toasts',
+        'wedding.colors',
+        'performance.notes',
+        'event.notes',
+      ])
+        RoutingTarget(key: k, label: _knownTargets[k]!),
     ];
 
 class RoutingConflict {

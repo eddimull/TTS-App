@@ -84,7 +84,8 @@ class RoutingSelection {
   }
 
   /// Number of distinct destinations (the "16 items -> 5 places" subtitle).
-  int placeCount(RoutingPreview p) => p.groups.where((g) => g.items.isNotEmpty).length;
+  int placeCount(RoutingPreview p) =>
+      p.groups.where((g) => g.items.isNotEmpty).length;
 
   /// Body for `POST …/route`.
   ({List<Map<String, dynamic>> items, Map<String, dynamic> resolutions})
@@ -92,7 +93,8 @@ class RoutingSelection {
     final items = <Map<String, dynamic>>[];
     for (final i in p.allItems) {
       if (!checked.contains(i.responseId)) continue;
-      items.add(_entry(i.responseId, targetOverrides[i.responseId] ?? i.target));
+      items
+          .add(_entry(i.responseId, targetOverrides[i.responseId] ?? i.target));
     }
     for (final u in p.unrouted) {
       final t = targetOverrides[u.responseId];
@@ -106,8 +108,7 @@ class RoutingSelection {
       if (r != null) songs['${c.songId}'] = r;
     }
     if (songs.isNotEmpty) resolutions['songs'] = songs;
-    if (venueResolution != null &&
-        p.knownConflicts.any((c) => c.isVenue)) {
+    if (venueResolution != null && p.knownConflicts.any((c) => c.isVenue)) {
       resolutions['venue'] = venueResolution;
     }
     return (items: items, resolutions: resolutions);
@@ -180,22 +181,24 @@ class RoutingSelectionNotifier extends Notifier<RoutingSelection> {
   /// session-only undo banner and refreshes dependent providers.
   Future<RouteResult> send(RoutingPreview preview) async {
     final body = state.payload(preview);
+    // The screen may be popped while the request is in flight; keep this
+    // notifier alive until the completion handling below has run.
+    final link = ref.keepAlive();
     state = state.copyWith(sending: true);
     try {
-      final result =
-          await ref.read(questionnairesRepositoryProvider).route(
-                _key.bandId,
-                _key.instanceId,
-                items: body.items,
-                resolutions: body.resolutions,
-              );
+      final result = await ref.read(questionnairesRepositoryProvider).route(
+            _key.bandId,
+            _key.instanceId,
+            items: body.items,
+            resolutions: body.resolutions,
+          );
       ref.read(lastRoutedApplicationProvider.notifier).set(RoutedApplication(
-        bandId: _key.bandId,
-        applicationId: result.applicationId,
-        applied: result.applied,
-        eventId: result.eventId,
-        eventKey: result.eventKey,
-      ));
+            bandId: _key.bandId,
+            applicationId: result.applicationId,
+            applied: result.applied,
+            eventId: result.eventId,
+            eventKey: result.eventKey,
+          ));
       ref.invalidate(eventDetailProvider);
       ref.invalidate(instanceDetailProvider((
         bandId: _key.bandId,
@@ -207,6 +210,7 @@ class RoutingSelectionNotifier extends Notifier<RoutingSelection> {
       // The notifier rebuilds when the preview is invalidated; guard so a
       // disposed notifier doesn't throw.
       if (ref.mounted) state = state.copyWith(sending: false);
+      link.close();
     }
   }
 }
@@ -234,7 +238,8 @@ class RoutedApplication {
   final String? eventKey;
 
   bool matches({required int id, required String key}) =>
-      (eventId != null && eventId == id) || (eventKey != null && eventKey == key);
+      (eventId != null && eventId == id) ||
+      (eventKey != null && eventKey == key);
 }
 
 class LastRoutedApplicationNotifier extends Notifier<RoutedApplication?> {
@@ -249,10 +254,19 @@ final lastRoutedApplicationProvider =
         LastRoutedApplicationNotifier.new);
 
 /// Undoes [app]; the server answers 409 if the event was edited since.
-Future<void> undoRoutedApplication(WidgetRef ref, RoutedApplication app) async {
-  await ref
+///
+/// Takes a [ProviderContainer] rather than a `WidgetRef` so the completion
+/// handling still works if the banner is disposed while the request is
+/// pending. Capture it with `ProviderScope.containerOf(context)` before the
+/// first await.
+Future<void> undoRoutedApplication(
+    ProviderContainer container, RoutedApplication app) async {
+  await container
       .read(questionnairesRepositoryProvider)
       .undoApplication(app.bandId, app.applicationId);
-  ref.read(lastRoutedApplicationProvider.notifier).set(null);
-  ref.invalidate(eventDetailProvider);
+  container.read(lastRoutedApplicationProvider.notifier).set(null);
+  container.invalidate(eventDetailProvider);
+  // Applied statuses and default selections changed back.
+  container.invalidate(instanceDetailProvider);
+  container.invalidate(routingPreviewProvider);
 }

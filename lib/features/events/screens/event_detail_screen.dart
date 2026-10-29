@@ -1347,9 +1347,10 @@ class _QuestionnaireUndoBanner extends ConsumerWidget {
 
   Future<void> _undo(
       BuildContext context, WidgetRef ref, RoutedApplication app) async {
+    final container = ProviderScope.containerOf(context);
     String? failure;
     try {
-      await undoRoutedApplication(ref, app);
+      await undoRoutedApplication(container, app);
     } on DioException catch (e) {
       final data = e.response?.data;
       failure = data is Map && data['message'] is String
@@ -1403,11 +1404,13 @@ class _QuestionnaireAnswersLink extends ConsumerWidget {
         .watch(bookingQuestionnairesProvider(
             (bandId: bandId, bookingId: bookingId)))
         .value;
-    final instance = data?.instances
+    // Every submitted questionnaire gets a row; the one whose answers were
+    // just sent isn't identifiable from the event payload.
+    final instances = (data?.instances ?? const [])
         .where((i) =>
             (i.isSubmitted || i.isLocked) && i.questionnaireId != null)
-        .firstOrNull;
-    if (instance == null) return const SizedBox.shrink();
+        .toList();
+    if (instances.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1416,33 +1419,35 @@ class _QuestionnaireAnswersLink extends ConsumerWidget {
           const SizedBox(height: 20),
           const _SectionHeader(title: 'Notes'),
         ],
-        const SizedBox(height: 8),
-        Semantics(
-          button: true,
-          label: '${instance.name}, all answers',
-          child: CupertinoButton(
-            padding: EdgeInsets.zero,
-            minimumSize: const Size(44, 44),
-            onPressed: () => context.push(
-                '/questionnaires/${instance.questionnaireId}/instances/${instance.id}'),
-            child: _Card(
-              child: Row(
-                children: [
-                  Icon(CupertinoIcons.doc_text,
-                      size: 18, color: context.secondaryText),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text('${instance.name} · all answers',
-                        style: TextStyle(
-                            fontSize: 15, color: context.primaryText)),
-                  ),
-                  Icon(CupertinoIcons.chevron_right,
-                      size: 14, color: context.tertiaryText),
-                ],
+        for (final instance in instances) ...[
+          const SizedBox(height: 8),
+          Semantics(
+            button: true,
+            label: '${instance.name}, all answers',
+            child: CupertinoButton(
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(44, 44),
+              onPressed: () => context.push(
+                  '/questionnaires/${instance.questionnaireId}/instances/${instance.id}'),
+              child: _Card(
+                child: Row(
+                  children: [
+                    Icon(CupertinoIcons.doc_text,
+                        size: 18, color: context.secondaryText),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text('${instance.name} · all answers',
+                          style: TextStyle(
+                              fontSize: 15, color: context.primaryText)),
+                    ),
+                    Icon(CupertinoIcons.chevron_right,
+                        size: 14, color: context.tertiaryText),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }

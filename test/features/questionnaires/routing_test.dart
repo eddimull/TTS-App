@@ -133,6 +133,23 @@ void main() {
       expect(p.unrouted.single.compatibleTargets.single.hint, 'Text');
     });
 
+    test('item compatible_targets are optional; fallbacks are free-text only',
+        () {
+      final withTargets = RoutingItem.fromJson({
+        'response_id': 1,
+        'target': 'performance.notes',
+        'compatible_targets': ['performance.notes', 'event.notes'],
+      });
+      expect(withTargets.compatibleTargets.map((t) => t.key),
+          ['performance.notes', 'event.notes']);
+      expect(RoutingItem.fromJson({'response_id': 2}).compatibleTargets,
+          isEmpty);
+
+      final keys = fallbackRoutingTargets.map((t) => t.key);
+      expect(keys, isNot(contains('wedding.onsite')));
+      expect(keys, contains('wedding.toasts'));
+    });
+
     test('RouteResult parses application id, count and event', () {
       final r = RouteResult.fromJson({
         'application_id': 5,

@@ -95,18 +95,16 @@ class _ReviewBody extends ConsumerWidget {
   final int questionnaireId;
   final RoutingPreview preview;
 
-  List<RoutingTarget> _itemOptions() {
-    final seen = <String, RoutingTarget>{};
-    for (final i in preview.allItems) {
-      if (i.target.isEmpty) continue;
-      seen[i.target] = RoutingTarget(
-          key: i.target,
-          label: i.targetLabel.isEmpty ? i.target : i.targetLabel);
+  /// Destinations for an already-routed answer: the server's compatible
+  /// list when sent, otherwise just where it's already going.
+  List<RoutingTarget> _itemOptions(RoutingItem i) {
+    final own = RoutingTarget(
+        key: i.target, label: i.targetLabel.isEmpty ? i.target : i.targetLabel);
+    final options = [...i.compatibleTargets];
+    if (i.target.isNotEmpty && !options.any((o) => o.key == i.target)) {
+      options.insert(0, own);
     }
-    for (final t in fallbackRoutingTargets) {
-      seen.putIfAbsent(t.key, () => t);
-    }
-    return seen.values.toList();
+    return options;
   }
 
   Future<void> _pick(
@@ -118,12 +116,17 @@ class _ReviewBody extends ConsumerWidget {
     required List<RoutingTarget> options,
     String? current,
   }) async {
+    if (options.isEmpty) return;
     final choice = await showSendToSheet(
       context,
       fieldLabel: fieldLabel,
       valueDisplay: valueDisplay,
-      options: options.isEmpty ? fallbackRoutingTargets : options,
+      options: options,
       currentTarget: current,
+      initialRemember: ref
+          .read(routingSelectionProvider(keyArgs))
+          .remember
+          .contains(responseId),
     );
     if (choice == null) return;
     ref
@@ -132,20 +135,11 @@ class _ReviewBody extends ConsumerWidget {
   }
 
   Future<void> _send(BuildContext context, WidgetRef ref) async {
+    RouteResult result;
     try {
-      final result = await ref
+      result = await ref
           .read(routingSelectionProvider(keyArgs).notifier)
           .send(preview);
-      if (!context.mounted) return;
-      final key = result.eventKey;
-      if (key != null && key.isNotEmpty) {
-        // Land on the event so the undo banner is right there.
-        final router = GoRouter.of(context);
-        router.pop();
-        router.push('/events/$key');
-      } else {
-        context.pop();
-      }
     } on DioException catch (e) {
       if (!context.mounted) return;
       final data = e.response?.data;
@@ -156,8 +150,30 @@ class _ReviewBody extends ConsumerWidget {
             ? data['message'] as String
             : 'Please try again.',
       );
+      return;
     } catch (_) {
       if (context.mounted) _alert(context, 'Send failed', 'Please try again.');
+      return;
+    }
+
+    // The send succeeded; navigation problems must not read as failures.
+    if (!context.mounted) return;
+    final router = GoRouter.of(context);
+    final key = result.eventKey;
+    if (key != null && key.isNotEmpty) {
+      // Land on the event so the undo banner is right there. When this route
+      // was opened directly (web reload) there is nothing to pop to.
+      if (router.canPop()) {
+        router.pop();
+        router.push('/events/$key');
+      } else {
+        router.go('/events/$key');
+      }
+    } else if (router.canPop()) {
+      router.pop();
+    } else {
+      router.go(
+          '/questionnaires/$questionnaireId/instances/${keyArgs.instanceId}');
     }
   }
 
@@ -186,7 +202,6 @@ class _ReviewBody extends ConsumerWidget {
     final conflicts = preview.knownConflicts;
     final unresolved = sel.unresolvedCount(preview);
     final sendCount = sel.sendCount(preview);
-    final itemOptions = _itemOptions();
 
     return Column(
       children: [
@@ -222,10 +237,11 @@ class _ReviewBody extends ConsumerWidget {
                           checked: sel.checked.contains(item.responseId),
                           targetOverride: sel.targetOverrides[item.responseId],
                           optionLabel: (k) =>
-                              itemOptions
+                              _itemOptions(item)
                                   .where((o) => o.key == k)
                                   .firstOrNull
                                   ?.label ??
+                              knownTargetLabel(k) ??
                               k,
                           onToggle: () => notifier.toggle(item.responseId),
                           onLongPress: () => _pick(
@@ -234,7 +250,7 @@ class _ReviewBody extends ConsumerWidget {
                             responseId: item.responseId,
                             fieldLabel: item.fieldLabel,
                             valueDisplay: item.valueDisplay,
-                            options: itemOptions,
+                            options: _itemOptions(item),
                             current: sel.targetOverrides[item.responseId] ??
                                 item.target,
                           ),
@@ -289,7 +305,9 @@ class _ReviewBody extends ConsumerWidget {
                           responseId: u.responseId,
                           fieldLabel: u.fieldLabel,
                           valueDisplay: u.valueDisplay,
-                          options: u.compatibleTargets,
+                          options: u.compatibleTargets.isNotEmpty
+                              ? u.compatibleTargets
+                              : fallbackRoutingTargets,
                           current: sel.targetOverrides[u.responseId],
                         ),
                       ),
@@ -495,12 +513,15 @@ class _ItemTile extends StatelessWidget {
         : item.isStale
             ? 'Answer changed since sent'
             : null;
-    final dest = targetOverride != null ? 'Sending to ${optionLabel(targetOverride!)}' : null;
+    final dest = targetOverride != null
+        ? 'Sending to ${optionLabel(targetOverride!)}'
+        : null;
 
     return Semantics(
       checked: checked,
       label: '${item.targetLabel}, $value',
-      hint: 'Double tap to toggle. Long press to choose a different destination.',
+      hint:
+          'Double tap to toggle. Long press to choose a different destination.',
       child: GestureDetector(
         onLongPress: onLongPress,
         child: CupertinoListTile.notched(
@@ -512,7 +533,8 @@ class _ItemTile extends StatelessWidget {
                 ? CupertinoTheme.of(context).primaryColor
                 : context.tertiaryText,
           ),
-          title: Text(item.targetLabel.isEmpty ? item.fieldLabel : item.targetLabel),
+          title: Text(
+              item.targetLabel.isEmpty ? item.fieldLabel : item.targetLabel),
           subtitle: Text(
             [
               placeholder ? '“$value” — skipped until they pick one' : value,
@@ -608,7 +630,9 @@ class _SendBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: CupertinoColors.systemBackground.resolveFrom(context),
         border: Border(
-          top: BorderSide(color: CupertinoColors.separator.resolveFrom(context), width: 0.5),
+          top: BorderSide(
+              color: CupertinoColors.separator.resolveFrom(context),
+              width: 0.5),
         ),
       ),
       child: SafeArea(
@@ -624,7 +648,8 @@ class _SendBar extends StatelessWidget {
                   onPressed: (count == 0 || sending) ? null : onSend,
                   child: sending
                       ? const CupertinoActivityIndicator()
-                      : Text('Send $count item${count == 1 ? '' : 's'} to event'),
+                      : Text(
+                          'Send $count item${count == 1 ? '' : 's'} to event'),
                 ),
               ),
               if (unresolved > 0)

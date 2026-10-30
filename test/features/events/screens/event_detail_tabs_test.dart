@@ -92,8 +92,14 @@ class _FakeBand extends SelectedBandNotifier {
 }
 
 class _RecordingRepo extends EventsRepository {
-  _RecordingRepo() : super(Dio());
+  _RecordingRepo({this.fresh}) : super(Dio());
   final savedNotes = <String?>[];
+
+  /// What the server has now; removing a pasted block reads it first.
+  EventDetail? fresh;
+
+  @override
+  Future<EventDetail> getEventDetail(String key) async => fresh!;
 
   @override
   Future<void> updateEvent(
@@ -291,7 +297,7 @@ void main() {
 
     testWidgets('remove asks to confirm, then saves notes without the block',
         (tester) async {
-      final repo = _RecordingRepo();
+      final repo = _RecordingRepo(fresh: _event(notes: _pasted));
       final inv = _FakeInvalidator();
       await _pump(tester, _event(notes: _pasted),
           prefs: {'event_last_tab': 'notes'}, repo: repo, invalidator: inv);
@@ -311,6 +317,25 @@ void main() {
       expect(inv.changed, [_key]);
       // Sheet closed.
       expect(find.text('Client answers'), findsNothing);
+    });
+
+    testWidgets('remove keeps a note someone else added meanwhile',
+        (tester) async {
+      final repo = _RecordingRepo(
+          fresh: _event(
+              notes: _pasted.replaceFirst('Band note up top.',
+                  'Band note up top.\nAdded on the web.')));
+      await _pump(tester, _event(notes: _pasted),
+          prefs: {'event_last_tab': 'notes'}, repo: repo);
+      await tester.tap(find.text('Wedding Day Questionnaire'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Remove pasted text from notes'));
+      await tester.tap(find.text('Remove pasted text from notes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove'));
+      await tester.pumpAndSettle();
+
+      expect(repo.savedNotes, ['Band note up top.\nAdded on the web.']);
     });
 
     testWidgets('cancelling the confirm saves nothing', (tester) async {
@@ -440,7 +465,8 @@ void main() {
 
     testWidgets('setlist songs alone show the Music tab', (tester) async {
       await _pump(tester, _event(),
-          music: const EventMusic(setlist: EventSetlist(id: 1, status: 'draft', songs: [
+          music: const EventMusic(
+              setlist: EventSetlist(id: 1, status: 'draft', songs: [
             SetlistEntry(type: 'song', position: 1, songId: 1),
           ])));
       expect(find.descendant(of: _tabBar, matching: find.text('Music')),

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderOrFamily;
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +13,8 @@ import 'package:tts_bandmate/features/bookings/providers/bookings_window_provide
 import 'package:tts_bandmate/features/chat/providers/conversations_provider.dart';
 import 'package:tts_bandmate/features/chat/providers/topic_thread_provider.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
+import 'package:tts_bandmate/features/events/providers/attire_chips_provider.dart';
+import 'package:tts_bandmate/features/events/providers/event_music_provider.dart';
 import 'package:tts_bandmate/features/events/providers/events_provider.dart';
 import 'package:tts_bandmate/features/library/providers/library_provider.dart';
 import 'package:tts_bandmate/features/lodging/providers/lodging_provider.dart';
@@ -104,7 +107,8 @@ void main() {
     expect(c.read(bandRealtimeProvider), 9);
   });
 
-  test('a burst of signals for one model invalidates its targets once', () async {
+  test('a burst of signals for one model invalidates its targets once',
+      () async {
     final c = makeContainer();
     await activate(c);
 
@@ -114,11 +118,13 @@ void main() {
     }
     await Future<void>.delayed(Duration.zero);
 
-    expect(invalidated, containsAll(<ProviderOrFamily>[
-      bandBookingsProvider,
-      bookingDetailProvider,
-      dashboardProvider,
-    ]));
+    expect(
+        invalidated,
+        containsAll(<ProviderOrFamily>[
+          bandBookingsProvider,
+          bookingDetailProvider,
+          dashboardProvider,
+        ]));
     expect(invalidated.length, invalidated.toSet().length,
         reason: 'burst must be debounced into one invalidation per target');
   });
@@ -136,7 +142,8 @@ void main() {
         {'id': 621, 'name': 'stale name'},
       ],
     ));
-    expect(cacheStorage.read(), isNotNull, reason: 'precondition: cache seeded');
+    expect(cacheStorage.read(), isNotNull,
+        reason: 'precondition: cache seeded');
 
     await activate(c);
 
@@ -162,8 +169,10 @@ void main() {
     final c = makeContainer();
     await activate(c);
 
-    capturedHandler!('band.data-changed', {'model': 'mystery', 'id': 1, 'action': 'created'});
-    capturedHandler!('some.other.event', {'model': 'bookings', 'id': 1, 'action': 'created'});
+    capturedHandler!('band.data-changed',
+        {'model': 'mystery', 'id': 1, 'action': 'created'});
+    capturedHandler!('some.other.event',
+        {'model': 'bookings', 'id': 1, 'action': 'created'});
     await Future<void>.delayed(Duration.zero);
 
     expect(invalidated, isEmpty);
@@ -171,7 +180,8 @@ void main() {
 
   test('registry maps events, rehearsal, and event_member', () {
     expect(invalidationTargetsFor('events'), contains(bandEventsProvider));
-    expect(invalidationTargetsFor('event_member'), contains(eventDetailProvider));
+    expect(
+        invalidationTargetsFor('event_member'), contains(eventDetailProvider));
     expect(invalidationTargetsFor('rehearsal'), isNotEmpty);
     expect(invalidationTargetsFor('unknown'), isEmpty);
   });
@@ -186,8 +196,7 @@ void main() {
     expect(targets, contains(eventDetailProvider));
   });
 
-  test('registry maps payments/payout signals to booking payout providers',
-      () {
+  test('registry maps payments/payout signals to booking payout providers', () {
     expect(invalidationTargetsFor('payments'), contains(bookingPayoutProvider));
     expect(invalidationTargetsFor('payout_adjustment'), isNotEmpty);
     expect(invalidationTargetsFor('media_file'), contains(mediaListProvider));
@@ -220,6 +229,74 @@ void main() {
     final responseTargets = invalidationTargetsFor('questionnaire_responses');
     expect(responseTargets, contains(instanceDetailProvider));
     expect(responseTargets, contains(questionnaireInstancesProvider));
+  });
+
+  test('event page signals reach the event page providers', () {
+    for (final m in [
+      'bookings',
+      'media_file',
+      'rehearsal',
+      'event_attachment',
+      'live_setlist_session',
+      'roster_member',
+      'roster_slot',
+    ]) {
+      expect(invalidationTargetsFor(m), contains(eventDetailProvider),
+          reason: m);
+    }
+    for (final m in [
+      'events',
+      'event_setlist',
+      'song',
+      'questionnaire_responses',
+    ]) {
+      expect(invalidationTargetsFor(m), contains(eventMusicProvider),
+          reason: m);
+    }
+    expect(invalidationTargetsFor('rehearsal'),
+        contains(rehearsalsBeforeEventProvider));
+    expect(
+        invalidationTargetsFor('attire_chip'), contains(attireChipsProvider));
+  });
+
+  test('every registered model has targets, and resume covers them all', () {
+    for (final m in allRegisteredModels) {
+      expect(invalidationTargetsFor(m), isNotEmpty, reason: m);
+    }
+    expect(allRegisteredModels.toSet().length, allRegisteredModels.length);
+  });
+
+  test('resume retries the subscribe when the first one failed', () async {
+    var attempts = 0;
+    final band = FakeSelectedBand(7);
+    final channels = <String>[];
+    final container = ProviderContainer(overrides: [
+      selectedBandProvider.overrideWith(() => band),
+      bandRealtimeDebounceProvider.overrideWithValue(Duration.zero),
+      providerInvalidatorProvider.overrideWithValue((p) {}),
+      bandChannelBinderProvider.overrideWithValue((channel, onEvent) async {
+        if (attempts++ == 0) throw StateError('offline');
+        channels.add(channel);
+        return () async {};
+      }),
+    ]);
+    addTearDown(container.dispose);
+
+    container.read(bandRealtimeProvider);
+    await container.read(selectedBandProvider.future);
+    await Future<void>.delayed(Duration.zero);
+    expect(container.read(bandRealtimeProvider), isNull);
+
+    final binding = TestWidgetsFlutterBinding.instance;
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(channels, ['private-band.7']);
+    expect(container.read(bandRealtimeProvider), 7);
   });
 
   test('rapid band switch during in-flight subscribe does not leak', () async {
@@ -315,7 +392,8 @@ void main() {
     expect(unsubscribed, contains('private-band.7'));
   });
 
-  test('throwing binder is swallowed (fire-and-forget resubscribe), state stays null',
+  test(
+      'throwing binder is swallowed (fire-and-forget resubscribe), state stays null',
       () async {
     final band = FakeSelectedBand(7);
     final container = ProviderContainer(overrides: [
@@ -347,10 +425,12 @@ void main() {
         {'model': 'message', 'id': 1, 'action': 'created'});
     await Future<void>.delayed(Duration.zero);
 
-    expect(invalidated, containsAll(<ProviderOrFamily>[
-      chatConversationsProvider,
-      topicThreadProvider,
-      dashboardProvider,
-    ]));
+    expect(
+        invalidated,
+        containsAll(<ProviderOrFamily>[
+          chatConversationsProvider,
+          topicThreadProvider,
+          dashboardProvider,
+        ]));
   });
 }

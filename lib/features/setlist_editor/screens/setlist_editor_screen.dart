@@ -21,9 +21,16 @@ import 'package:tts_bandmate/core/theme/context_colors.dart';
 enum SetlistEditorSegment { setlist, catalog }
 
 class SetlistEditorScreen extends ConsumerStatefulWidget {
-  const SetlistEditorScreen({super.key, required this.eventKey});
+  const SetlistEditorScreen({
+    super.key,
+    required this.eventKey,
+    this.initialSegment = SetlistEditorSegment.setlist,
+  });
 
   final String eventKey;
+
+  /// Segment to open on; falls back to Setlist when there's no Catalog.
+  final SetlistEditorSegment initialSegment;
 
   @override
   ConsumerState<SetlistEditorScreen> createState() =>
@@ -31,7 +38,7 @@ class SetlistEditorScreen extends ConsumerStatefulWidget {
 }
 
 class _SetlistEditorScreenState extends ConsumerState<SetlistEditorScreen> {
-  SetlistEditorSegment _segment = SetlistEditorSegment.setlist;
+  late SetlistEditorSegment _segment = widget.initialSegment;
 
   @override
   void initState() {

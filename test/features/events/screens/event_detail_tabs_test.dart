@@ -11,9 +11,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
 import 'package:tts_bandmate/features/chat/data/models/conversation.dart';
 import 'package:tts_bandmate/features/chat/providers/topic_thread_provider.dart';
+import 'package:tts_bandmate/features/events/data/client_requests_summary.dart';
 import 'package:tts_bandmate/features/events/data/event_tabs.dart';
 import 'package:tts_bandmate/features/events/data/events_repository.dart';
 import 'package:tts_bandmate/features/events/data/models/event_detail.dart';
+import 'package:tts_bandmate/features/events/providers/client_requests_provider.dart';
 import 'package:tts_bandmate/features/events/providers/events_provider.dart';
 import 'package:tts_bandmate/features/events/screens/event_detail_screen.dart';
 import 'package:tts_bandmate/features/media/data/upload_queue_storage.dart';
@@ -36,7 +38,10 @@ Venue name: Il Mercato
 First dance: Forever and Ever, Amen''';
 
 EventDetail _event(
-        {String? notes, bool canWrite = true, bool timeline = true}) =>
+        {String? notes,
+        bool canWrite = true,
+        bool timeline = true,
+        bool music = false}) =>
     EventDetail.fromJson({
       'id': 1,
       'key': _key,
@@ -49,6 +54,12 @@ EventDetail _event(
       'eventable_type': 'Bookings',
       'eventable_id': 9,
       'notes': notes,
+      if (music)
+        'performance': {
+          'notes': 'Upbeat only',
+          'songs': <dynamic>[],
+          'charts': <dynamic>[],
+        },
       'members': <dynamic>[],
       'timeline': timeline
           ? [
@@ -118,6 +129,7 @@ Future<void> _pump(
   _RecordingRepo? repo,
   _FakeInvalidator? invalidator,
   List<QuestionnaireInstance> questionnaires = const [],
+  ClientRequestsSummary? requests,
 }) async {
   tester.view.physicalSize = const Size(400, 800);
   tester.view.devicePixelRatio = 1.0;
@@ -138,6 +150,7 @@ Future<void> _pump(
         selectedBandProvider.overrideWith(_FakeBand.new),
         bookingQuestionnairesProvider.overrideWith((ref, args) async =>
             BookingQuestionnaires(instances: questionnaires)),
+        eventClientRequestsProvider.overrideWith((ref, key) async => requests),
       ],
       child: const CupertinoApp(home: EventDetailScreen(eventKey: _key)),
     ),
@@ -355,6 +368,38 @@ void main() {
       expect(find.text('Wedding Day Questionnaire'), findsOneWidget);
       expect(find.textContaining('Grace Terreson'), findsOneWidget);
       expect(find.text('No questionnaire answers yet'), findsNothing);
+    });
+  });
+
+  group('Music tab client requests', () {
+    final requests = ClientRequestsSummary(
+      mustPlay: [for (var i = 1; i <= 7; i++) 'Song $i'],
+      doNotPlay: const ['Wonderwall · Oasis'],
+      sourceName: 'Wedding Questionnaire',
+    );
+
+    testWidgets('lists picks, previews five, expands on Show all',
+        (tester) async {
+      await _pump(tester, _event(music: true), requests: requests,
+          prefs: {'event_last_tab': 'music'});
+      expect(find.text('Client requests'), findsOneWidget);
+      expect(find.text('Must play (7)'), findsOneWidget);
+      expect(find.text('Do not play (1)'), findsOneWidget);
+      expect(find.text('Song 5'), findsOneWidget);
+      expect(find.text('Song 6'), findsNothing);
+
+      await tester.ensureVisible(find.text('Show all (7)'));
+      await tester.tap(find.text('Show all (7)'));
+      await tester.pumpAndSettle();
+      expect(find.text('Song 7'), findsOneWidget);
+      expect(find.text('Open in setlist'), findsOneWidget);
+    });
+
+    testWidgets('no card when the client made no picks', (tester) async {
+      await _pump(tester, _event(music: true),
+          prefs: {'event_last_tab': 'music'});
+      expect(find.text('Upbeat only'), findsOneWidget);
+      expect(find.text('Client requests'), findsNothing);
     });
   });
 }

@@ -31,16 +31,20 @@ class MusicTab extends ConsumerWidget {
       if (event.liveSessionId != null) LiveSetlistButton(eventKey: event.key),
       if (requests != null)
         ClientRequestsCard(eventKey: event.key, summary: requests),
-      if (hasPerformance) ...[
-        const SectionHeader(title: 'Performance'),
-        const SizedBox(height: 8),
-        PerformanceSection(performance: perf),
-      ],
-      if (dances.isNotEmpty) ...[
-        const SectionHeader(title: 'Special dances'),
-        const SizedBox(height: 8),
+      // Each block is one widget so the 20pt gap falls between sections,
+      // not between a header and its card.
+      if (hasPerformance)
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SectionHeader(title: 'Performance'),
+            const SizedBox(height: 8),
+            PerformanceSection(performance: perf),
+          ],
+        ),
+      // The card carries its own "Special Dances" heading.
+      if (dances.isNotEmpty)
         WeddingSection(wedding: WeddingDetail(dances: dances)),
-      ],
     ];
 
     return Column(

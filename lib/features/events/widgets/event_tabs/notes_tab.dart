@@ -4,7 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 import 'package:tts_bandmate/features/questionnaires/data/models/questionnaire_instance.dart';
 import 'package:tts_bandmate/features/questionnaires/providers/questionnaire_instances_provider.dart';
+import 'package:tts_bandmate/features/finances/payout_editor/providers/payout_flow_provider.dart'
+    show isSelectedBandOwnerProvider;
 import 'package:tts_bandmate/features/questionnaires/widgets/instance_status_badge.dart';
+import 'package:tts_bandmate/features/questionnaires/widgets/send_from_event.dart';
 import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 
@@ -77,6 +80,11 @@ class NotesTab extends ConsumerWidget {
                 ?.instances ??
             const <QuestionnaireInstance>[]
         : const <QuestionnaireInstance>[];
+    // Owners can send from here, as on the booking screen.
+    final canSend = _bookingBacked &&
+        bandId != null &&
+        bookingId != null &&
+        ref.watch(isSelectedBandOwnerProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,16 +134,27 @@ class NotesTab extends ConsumerWidget {
           ),
 
         // ── Questionnaires sent for the booking ───────────────────────────
-        if (instances.isNotEmpty) ...[
+        if (instances.isNotEmpty || canSend) ...[
           const SizedBox(height: 20),
           const SectionHeader(title: 'Questionnaires'),
           const SizedBox(height: 8),
           SectionCard(
             child: Column(
               children: [
+                if (instances.isEmpty) const _NoQuestionnaireText(),
                 for (int i = 0; i < instances.length; i++) ...[
                   if (i > 0) const SectionDivider(),
                   _InstanceRow(instance: instances[i]),
+                ],
+                if (canSend) ...[
+                  const SectionDivider(),
+                  _SendRow(
+                    label: instances.isEmpty
+                        ? 'Send questionnaire'
+                        : 'Send another questionnaire',
+                    onTap: () => sendQuestionnaireFromEvent(context,
+                        bandId: bandId, bookingId: bookingId),
+                  ),
                 ],
               ],
             ),
@@ -144,7 +163,7 @@ class NotesTab extends ConsumerWidget {
           const SizedBox(height: 20),
           const SectionHeader(title: 'Questionnaires'),
           const SizedBox(height: 8),
-          const _NoQuestionnaireCard(),
+          const SectionCard(child: _NoQuestionnaireText()),
         ],
 
         // ── Files (band only) ─────────────────────────────────────────────
@@ -303,14 +322,14 @@ class _InstanceRow extends StatelessWidget {
   static String _monthDay(DateTime d) => '${_months[d.month - 1]} ${d.day}';
 }
 
-/// Empty state for the questionnaires section. Sending a questionnaire from here
-/// arrives in a follow-up, so this is informational only.
-class _NoQuestionnaireCard extends StatelessWidget {
-  const _NoQuestionnaireCard();
+/// Empty state for the questionnaires section.
+class _NoQuestionnaireText extends StatelessWidget {
+  const _NoQuestionnaireText();
 
   @override
   Widget build(BuildContext context) {
-    return SectionCard(
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -325,6 +344,46 @@ class _NoQuestionnaireCard extends StatelessWidget {
             style: TextStyle(fontSize: 13, color: context.secondaryText),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Blue action row at the bottom of the questionnaires card.
+class _SendRow extends StatelessWidget {
+  const _SendRow({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      onTap: onTap,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Row(
+            children: [
+              Icon(CupertinoIcons.paperplane,
+                  size: 18,
+                  color: CupertinoTheme.of(context).primaryColor),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                      fontSize: 15,
+                      color: CupertinoTheme.of(context).primaryColor),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

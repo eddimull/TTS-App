@@ -14,6 +14,7 @@ import '../providers/event_tab_storage.dart';
 import '../providers/client_requests_provider.dart';
 import '../providers/events_provider.dart';
 import '../widgets/event_header.dart';
+import '../widgets/event_sections/questionnaire_undo_banner.dart';
 import '../widgets/event_tabs/music_tab.dart';
 import '../widgets/event_tabs/notes_tab.dart';
 import '../widgets/event_tabs/overview_tab.dart';
@@ -303,6 +304,9 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              // After sending questionnaire answers here; on
+                              // every tab since the event may reopen on any.
+                              QuestionnaireUndoBanner(event: event),
                               for (final tab in tabs)
                                 Offstage(
                                   offstage: tab != selected,

@@ -57,6 +57,7 @@ import '../../features/questionnaires/screens/questionnaires_screen.dart';
 import '../../features/questionnaires/screens/questionnaire_detail_screen.dart';
 import '../../features/questionnaires/screens/questionnaire_editor_screen.dart';
 import '../../features/questionnaires/screens/instance_responses_screen.dart';
+import '../../features/questionnaires/screens/send_to_event_screen.dart';
 import '../../features/account/screens/account_screen.dart';
 import '../../features/calendar_feed/screens/calendar_feed_screen.dart';
 import '../../features/chat/screens/conversation_thread_screen.dart';
@@ -433,6 +434,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/questionnaires/:id/edit',
         builder: (_, state) => QuestionnaireEditorScreen(
           questionnaireId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/questionnaires/:id/instances/:instanceId/send',
+        builder: (_, state) => SendToEventScreen(
+          questionnaireId: int.parse(state.pathParameters['id']!),
+          instanceId: int.parse(state.pathParameters['instanceId']!),
         ),
       ),
       GoRoute(

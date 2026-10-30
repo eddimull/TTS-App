@@ -124,8 +124,12 @@ class WeddingDance {
 }
 
 class WeddingDetail {
-  const WeddingDetail({this.onsite, required this.dances});
+  const WeddingDetail({this.onsite, required this.dances, this.colors});
   final bool? onsite;
+
+  /// The couple's colors (`additional_data.wedding.colors`), e.g.
+  /// "Pink, green, white". Not the band's attire.
+  final String? colors;
   final List<WeddingDance> dances;
 
   factory WeddingDetail.fromJson(Map<String, dynamic> json) {
@@ -136,6 +140,10 @@ class WeddingDetail {
     return WeddingDetail(
       onsite: json['onsite'] as bool?,
       dances: dances,
+      colors: json['colors'] is String &&
+              (json['colors'] as String).trim().isNotEmpty
+          ? (json['colors'] as String).trim()
+          : null,
     );
   }
 }

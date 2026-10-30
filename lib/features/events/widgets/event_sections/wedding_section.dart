@@ -35,7 +35,30 @@ class WeddingSection extends StatelessWidget {
               ],
             ),
           ],
-          if (wedding.onsite != null && wedding.dances.isNotEmpty) ...[
+          if (wedding.colors != null) ...[
+            if (wedding.onsite != null)
+              Container(
+                  height: 0.5,
+                  margin: const EdgeInsets.symmetric(vertical: 10),
+                  color: CupertinoColors.separator.resolveFrom(context)),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 140,
+                  child: Text('Colors',
+                      style: TextStyle(
+                          fontSize: 13, color: context.secondaryText)),
+                ),
+                Expanded(
+                  child: Text(wedding.colors!,
+                      style: const TextStyle(fontSize: 15)),
+                ),
+              ],
+            ),
+          ],
+          if ((wedding.onsite != null || wedding.colors != null) &&
+              wedding.dances.isNotEmpty) ...[
             Container(
                 height: 0.5,
                 margin: const EdgeInsets.symmetric(vertical: 10),

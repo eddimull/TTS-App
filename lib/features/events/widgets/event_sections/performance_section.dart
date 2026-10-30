@@ -47,9 +47,7 @@ class PerformanceSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (performance.notes != null && performance.notes!.isNotEmpty) ...[
-          SectionCard(
-              child: Text(performance.notes!,
-                  style: const TextStyle(fontSize: 15))),
+          SectionCard(child: PerformanceNotes(notes: performance.notes!)),
           const SizedBox(height: 8),
         ],
         if (performance.songs.isNotEmpty) ...[
@@ -180,6 +178,51 @@ class ChartRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Performance notes (rule chip + remaining text) ───────────────────────────
+
+/// Renders the first line of the performance notes as a rule chip when it's
+/// short (e.g. "Only upbeat songs"), followed by the rest as plain text. The
+/// notes remain plain text on the server; this is display-only.
+class PerformanceNotes extends StatelessWidget {
+  const PerformanceNotes({super.key, required this.notes});
+  final String notes;
+
+  static const _maxChipLength = 60;
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = notes
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+    if (lines.isEmpty) return const SizedBox.shrink();
+    final first = lines.first;
+    final asChip = first.length <= _maxChipLength;
+    final rest = (asChip ? lines.skip(1) : lines).join('\n');
+    final tint = CupertinoColors.systemOrange.resolveFrom(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (asChip)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: tint.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(first,
+                style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600, color: tint)),
+          ),
+        if (asChip && rest.isNotEmpty) const SizedBox(height: 8),
+        if (rest.isNotEmpty) Text(rest, style: const TextStyle(fontSize: 15)),
+      ],
     );
   }
 }

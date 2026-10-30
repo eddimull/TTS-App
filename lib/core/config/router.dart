@@ -414,6 +414,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/events/:key/setlist',
         builder: (_, state) => SetlistEditorScreen(
           eventKey: state.pathParameters['key']!,
+          initialSegment: state.uri.queryParameters['view'] == 'catalog'
+              ? SetlistEditorSegment.catalog
+              : SetlistEditorSegment.setlist,
         ),
       ),
       GoRoute(

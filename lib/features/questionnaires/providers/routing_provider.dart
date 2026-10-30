@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../bookings/data/bookings_repository.dart';
-import '../../events/providers/events_provider.dart';
+import '../../../shared/cache/cache_invalidator.dart';
 import '../data/models/routing_preview.dart';
 import 'questionnaire_instances_provider.dart';
 import 'questionnaires_provider.dart';
@@ -232,7 +232,10 @@ class RoutingSelectionNotifier extends Notifier<RoutingSelection> {
             eventId: result.eventId,
             eventKey: result.eventKey,
           ));
-      ref.invalidate(eventDetailProvider);
+      // Drops cached event details (memory and disk) and client picks.
+      ref
+          .read(cacheInvalidatorProvider)
+          .onQuestionnaireAppliedToEvents(bandId: _key.bandId);
       ref.invalidate(instanceDetailProvider((
         bandId: _key.bandId,
         instanceId: _key.instanceId,
@@ -298,7 +301,9 @@ Future<void> undoRoutedApplication(
       .read(questionnairesRepositoryProvider)
       .undoApplication(app.bandId, app.applicationId);
   container.read(lastRoutedApplicationProvider.notifier).set(null);
-  container.invalidate(eventDetailProvider);
+  container
+      .read(cacheInvalidatorProvider)
+      .onQuestionnaireAppliedToEvents(bandId: app.bandId);
   // Applied statuses and default selections changed back.
   container.invalidate(instanceDetailProvider);
   container.invalidate(routingPreviewProvider);

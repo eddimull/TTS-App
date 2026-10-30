@@ -5,9 +5,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
 import 'package:tts_bandmate/features/chat/data/models/conversation.dart';
 import 'package:tts_bandmate/features/chat/providers/topic_thread_provider.dart';
+import 'package:tts_bandmate/features/events/data/event_tabs.dart';
 import 'package:tts_bandmate/features/events/data/models/event_detail.dart';
 import 'package:tts_bandmate/features/events/providers/events_provider.dart';
 import 'package:tts_bandmate/features/events/screens/event_detail_screen.dart';
+import 'package:tts_bandmate/features/events/widgets/event_glance_card.dart';
 import 'package:tts_bandmate/features/media/data/upload_queue_storage.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 
@@ -91,13 +93,23 @@ Future<void> _pump(
         topicThreadProvider.overrideWith((ref, topic) => _emptyThread()),
         uploadQueueStorageProvider.overrideWithValue(UploadQueueStorage(prefs)),
         if (selectedBandId != null)
-          selectedBandProvider.overrideWith(() => _FakeSelectedBand(selectedBandId)),
+          selectedBandProvider
+              .overrideWith(() => _FakeSelectedBand(selectedBandId)),
       ],
       child: const CupertinoApp(
         home: EventDetailScreen(eventKey: _eventKey),
       ),
     ),
   );
+  await tester.pumpAndSettle();
+}
+
+/// Switches to a tab by tapping its segmented-control label.
+Future<void> _openTab(WidgetTester tester, String label) async {
+  await tester.tap(find.descendant(
+    of: find.byType(CupertinoSlidingSegmentedControl<EventTab>),
+    matching: find.text(label),
+  ));
   await tester.pumpAndSettle();
 }
 
@@ -235,7 +247,7 @@ void main() {
       await _pump(tester, event);
 
       expect(find.text('Attire'), findsNothing);
-      expect(find.textContaining('Show'), findsNothing);
+      expect(find.byType(EventGlanceCard), findsNothing);
     });
   });
 
@@ -259,8 +271,8 @@ void main() {
       expect(find.byType(SingleChildScrollView), findsWidgets);
       expect(find.text('Public'), findsOneWidget);
       expect(find.text('Outdoor'), findsOneWidget);
-      expect(find.text('Backline'), findsOneWidget);
-      expect(find.text('Production'), findsOneWidget);
+      expect(find.text('Backline'), findsWidgets); // chip + Event details row
+      expect(find.text('Production'), findsWidgets);
     });
   });
 
@@ -270,14 +282,17 @@ void main() {
   group('notes+attachments bundle', () {
     testWidgets('long note is clamped with a Show more/less toggle',
         (tester) async {
-      final longNote = List.generate(20, (i) => 'Line $i of notes text here')
-          .join('\n');
+      final longNote =
+          List.generate(20, (i) => 'Line $i of notes text here').join('\n');
       final event = _baseEvent().copyWithNotes(longNote);
       await _pump(tester, event);
+      await _openTab(tester, 'Notes');
 
       expect(find.text('Show more'), findsOneWidget);
       expect(find.text('Show less'), findsNothing);
 
+      await tester.ensureVisible(find.text('Show more'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Show more'));
       await tester.pumpAndSettle();
 
@@ -288,6 +303,7 @@ void main() {
     testWidgets('short note has no toggle', (tester) async {
       final event = _baseEvent().copyWithNotes('Short note, one line.');
       await _pump(tester, event);
+      await _openTab(tester, 'Notes');
 
       expect(find.text('Show more'), findsNothing);
       expect(find.text('Show less'), findsNothing);
@@ -306,6 +322,7 @@ void main() {
           },
       ]);
       await _pump(tester, event);
+      await _openTab(tester, 'Notes');
 
       for (int i = 1; i <= 3; i++) {
         expect(find.text('file_$i.pdf'), findsOneWidget);
@@ -314,6 +331,8 @@ void main() {
       expect(find.text('file_5.pdf'), findsNothing);
       expect(find.text('Show all (5)'), findsOneWidget);
 
+      await tester.ensureVisible(find.text('Show all (5)'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Show all (5)'));
       await tester.pumpAndSettle();
 
@@ -322,11 +341,10 @@ void main() {
       }
     });
 
-    testWidgets('Notes header renders once for the combined section',
+    testWidgets('band notes and files get their own headers on the Notes tab',
         (tester) async {
-      final event = _baseEvent()
-          .copyWithNotes('Some notes')
-          .copyWithAttachments([
+      final event =
+          _baseEvent().copyWithNotes('Some notes').copyWithAttachments([
         {
           'id': 1,
           'filename': 'file_1.pdf',
@@ -335,8 +353,10 @@ void main() {
         },
       ]);
       await _pump(tester, event);
+      await _openTab(tester, 'Notes');
 
-      expect(find.text('Notes'), findsOneWidget);
+      expect(find.text('Band notes'), findsOneWidget);
+      expect(find.text('Files (band only)'), findsOneWidget);
       expect(find.text('Attachments'), findsNothing);
     });
   });
@@ -440,19 +460,24 @@ void main() {
   });
 
   group('body section order', () {
-    testWidgets('Notes appears above Timeline', (tester) async {
+    testWidgets('tabs run Overview, Timeline, Notes', (tester) async {
       final event = _baseEvent().copyWithNotes('Some notes').copyWithTimeline([
         {'title': 'Load in', 'time': '18:00'},
       ]);
       await _pump(tester, event);
 
-      final notesTop = tester.getTopLeft(find.text('Notes')).dy;
-      final timelineTop = tester.getTopLeft(find.text('Timeline')).dy;
-
-      expect(notesTop, lessThan(timelineTop));
+      final tabs = find.byType(CupertinoSlidingSegmentedControl<EventTab>);
+      double left(String label) => tester
+          .getTopLeft(find.descendant(of: tabs, matching: find.text(label)))
+          .dx;
+      expect(left('Overview'), lessThan(left('Timeline')));
+      expect(left('Timeline'), lessThan(left('Notes')));
+      expect(find.descendant(of: tabs, matching: find.text('Music')),
+          findsNothing);
     });
 
-    testWidgets('Attire section header findsNothing (attire lives in glance card)',
+    testWidgets(
+        'Attire section header findsNothing (attire lives in glance card)',
         (tester) async {
       final event = _baseEvent(attire: 'Black tie');
       await _pump(tester, event);
@@ -470,10 +495,12 @@ void main() {
       expect(find.text('Setlist'), findsNothing);
     });
 
-    testWidgets('Join Live Setlist button stays in body when live session active',
+    testWidgets(
+        'Join Live Setlist button lives on the Music tab when a live session is active',
         (tester) async {
       final event = _baseEvent().copyWithLiveSession(42);
       await _pump(tester, event);
+      await _openTab(tester, 'Music');
 
       expect(find.text('Join Live Setlist'), findsOneWidget);
       expect(find.text('Go Live'), findsNothing);
@@ -500,8 +527,7 @@ void main() {
       expect(find.text('Go live'), findsNothing);
     });
 
-    testWidgets('read-only members can join a running session',
-        (tester) async {
+    testWidgets('read-only members can join a running session', (tester) async {
       await _pump(tester, _baseEvent(canWrite: false).copyWithLiveSession(42));
       await openMenu(tester);
 

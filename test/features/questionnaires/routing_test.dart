@@ -9,6 +9,7 @@ import 'package:tts_bandmate/features/events/data/models/event_detail.dart';
 import 'package:tts_bandmate/features/questionnaires/data/models/routing_preview.dart';
 import 'package:tts_bandmate/features/questionnaires/providers/questionnaires_provider.dart';
 import 'package:tts_bandmate/features/questionnaires/providers/routing_provider.dart';
+import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 import 'fake_questionnaires_repository.dart';
 
 const _key = (bandId: 1, instanceId: 7);
@@ -103,10 +104,24 @@ Map<String, dynamic> _previewJson() => {
       ],
     };
 
+/// Records event invalidations instead of touching the real caches.
+class _FakeInvalidator extends Fake implements CacheInvalidator {
+  final appliedBands = <int>[];
+  @override
+  void onQuestionnaireAppliedToEvents({required int bandId}) =>
+      appliedBands.add(bandId);
+}
+
 void main() {
+  late _FakeInvalidator invalidator;
+  setUp(() => invalidator = _FakeInvalidator());
+
   ProviderContainer makeContainer(FakeQuestionnairesRepository repo) =>
       ProviderContainer(
-        overrides: [questionnairesRepositoryProvider.overrideWithValue(repo)],
+        overrides: [
+          questionnairesRepositoryProvider.overrideWithValue(repo),
+          cacheInvalidatorProvider.overrideWithValue(invalidator),
+        ],
       );
 
   Future<ProviderContainer> loaded(FakeQuestionnairesRepository repo) async {
@@ -279,6 +294,8 @@ void main() {
       final preview = c.read(routingPreviewProvider(_key)).value!;
       await c.read(routingSelectionProvider(_key).notifier).send(preview);
       expect(c.read(lastRoutedApplicationProvider), isNotNull);
+      // The band's cached events (and client picks) are dropped.
+      expect(invalidator.appliedBands, [_key.bandId]);
 
       await repo.undoApplication(1, 9);
       expect(repo.undoneApplicationId, 9);
@@ -349,6 +366,7 @@ void main() {
       final c = ProviderContainer(overrides: [
         questionnairesRepositoryProvider.overrideWithValue(repo),
         bookingsRepositoryProvider.overrideWithValue(BookingsRepository(dio)),
+        cacheInvalidatorProvider.overrideWithValue(invalidator),
       ]);
       addTearDown(c.dispose);
       await c.read(routingPreviewProvider(_key).future);

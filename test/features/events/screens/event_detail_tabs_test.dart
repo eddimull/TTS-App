@@ -395,6 +395,14 @@ void main() {
       expect(find.text('Open in setlist'), findsOneWidget);
     });
 
+    testWidgets('picks alone show the Music tab', (tester) async {
+      await _pump(tester, _event(), requests: requests);
+      expect(find.descendant(of: _tabBar, matching: find.text('Music')),
+          findsOneWidget);
+      await _openTab(tester, 'Music');
+      expect(find.text('Client requests'), findsOneWidget);
+    });
+
     testWidgets('no card when the client made no picks', (tester) async {
       await _pump(tester, _event(music: true),
           prefs: {'event_last_tab': 'music'});

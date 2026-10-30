@@ -91,6 +91,13 @@ void main() {
     });
   });
 
+  group('visibleTabs client requests', () {
+    test('client song picks alone earn a Music tab', () {
+      expect(visibleTabs(_event(), hasClientRequests: true),
+          [EventTab.overview, EventTab.music, EventTab.notes]);
+    });
+  });
+
   group('resolveInitialTab', () {
     const visible = [EventTab.overview, EventTab.timeline, EventTab.notes];
 

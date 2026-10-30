@@ -11,6 +11,7 @@ import '../../chat/widgets/comment_bar.dart';
 import '../data/event_tabs.dart';
 import '../data/models/event_detail.dart';
 import '../providers/event_tab_storage.dart';
+import '../providers/client_requests_provider.dart';
 import '../providers/events_provider.dart';
 import '../widgets/event_header.dart';
 import '../widgets/event_tabs/music_tab.dart';
@@ -208,8 +209,19 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
         fromBooking ? widget.parentBookingId : event.eventableId;
     final bool showBookingLink = fromBooking || isBookingBacked;
 
-    final tabs = visibleTabs(event);
     final stored = ref.watch(eventTabStorageProvider).value?.lastTab;
+    // Client song picks also earn a Music tab. Only bookings have them.
+    final requests = event.eventableType == 'Bookings'
+        ? ref.watch(eventClientRequestsProvider(event.key))
+        : null;
+    // While the picks load, keep a remembered Music tab in place so the screen
+    // doesn't open on Overview and then jump.
+    final tabs = visibleTabs(
+      event,
+      hasClientRequests: requests != null &&
+          (requests.value != null ||
+              (requests.isLoading && stored == EventTab.music.name)),
+    );
     final selected = (_picked != null && tabs.contains(_picked))
         ? _picked!
         : resolveInitialTab(stored, tabs);

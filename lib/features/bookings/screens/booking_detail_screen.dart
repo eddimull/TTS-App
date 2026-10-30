@@ -23,6 +23,7 @@ import '../../questionnaires/data/models/eligible_booking.dart';
 import '../../questionnaires/providers/questionnaire_instances_provider.dart';
 import '../../questionnaires/widgets/instance_status_badge.dart';
 import '../../questionnaires/widgets/send_from_booking_sheet.dart';
+import '../../questionnaires/widgets/send_from_event.dart' show eligibleContactsFrom;
 
 class BookingDetailScreen extends ConsumerWidget {
   const BookingDetailScreen({
@@ -910,15 +911,7 @@ class _QuestionnairesSection extends ConsumerWidget {
 
   Future<void> _showSendSheet(
       BuildContext context, WidgetRef ref, BookingQuestionnaires data) async {
-    final eligibleContacts = contacts
-        .where((c) => c.contactId != null)
-        .map((c) => EligibleContact(
-              id: c.contactId!,
-              name: c.name,
-              isPrimary: c.isPrimary,
-              canLogin: c.canLogin,
-            ))
-        .toList();
+    final eligibleContacts = eligibleContactsFrom(contacts);
     final container = ProviderScope.containerOf(context);
     await showCupertinoModalPopup<void>(
       context: context,

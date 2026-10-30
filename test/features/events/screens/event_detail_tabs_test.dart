@@ -18,6 +18,7 @@ import 'package:tts_bandmate/features/events/data/models/event_detail.dart';
 import 'package:tts_bandmate/features/events/providers/client_requests_provider.dart';
 import 'package:tts_bandmate/features/events/providers/events_provider.dart';
 import 'package:tts_bandmate/features/events/screens/event_detail_screen.dart';
+import 'package:tts_bandmate/features/finances/payout_editor/providers/payout_flow_provider.dart';
 import 'package:tts_bandmate/features/media/data/upload_queue_storage.dart';
 import 'package:tts_bandmate/features/questionnaires/data/models/eligible_booking.dart';
 import 'package:tts_bandmate/features/questionnaires/data/models/questionnaire_instance.dart';
@@ -130,6 +131,7 @@ Future<void> _pump(
   _FakeInvalidator? invalidator,
   List<QuestionnaireInstance> questionnaires = const [],
   ClientRequestsSummary? requests,
+  bool owner = false,
 }) async {
   tester.view.physicalSize = const Size(400, 800);
   tester.view.devicePixelRatio = 1.0;
@@ -151,6 +153,7 @@ Future<void> _pump(
         bookingQuestionnairesProvider.overrideWith((ref, args) async =>
             BookingQuestionnaires(instances: questionnaires)),
         eventClientRequestsProvider.overrideWith((ref, key) async => requests),
+        isSelectedBandOwnerProvider.overrideWithValue(owner),
       ],
       child: const CupertinoApp(home: EventDetailScreen(eventKey: _key)),
     ),
@@ -423,6 +426,45 @@ void main() {
           prefs: {'event_last_tab': 'music'});
       expect(find.text('Upbeat only'), findsOneWidget);
       expect(find.text('Client requests'), findsNothing);
+    });
+  });
+
+  group('send questionnaire from the event', () {
+    testWidgets('owners get a send row when nothing was sent yet',
+        (tester) async {
+      await _pump(tester, _event(notes: 'Just a note'),
+          prefs: {'event_last_tab': 'notes'}, owner: true);
+      expect(find.text('No questionnaire answers yet'), findsOneWidget);
+      expect(find.text('Send questionnaire'), findsOneWidget);
+    });
+
+    testWidgets('owners can send another once one exists', (tester) async {
+      final sent = QuestionnaireInstance.fromJson({
+        'id': 3,
+        'name': 'Wedding Day Questionnaire',
+        'status': 'sent',
+        'recipient_name': 'Grace Terreson',
+        'questionnaire_id': 7,
+        'booking': {'id': 9, 'name': 'Terreson Wedding'},
+      });
+      await _pump(tester, _event(notes: 'Just a note'),
+          prefs: {'event_last_tab': 'notes'},
+          owner: true,
+          questionnaires: [sent]);
+      expect(find.text('Send another questionnaire'), findsOneWidget);
+    });
+
+    testWidgets('members do not get the send row', (tester) async {
+      await _pump(tester, _event(notes: 'Just a note'),
+          prefs: {'event_last_tab': 'notes'});
+      expect(find.textContaining('Send'), findsNothing);
+    });
+
+    testWidgets('owners get Send questionnaire in the menu', (tester) async {
+      await _pump(tester, _event(), owner: true);
+      await tester.tap(find.byIcon(CupertinoIcons.ellipsis_circle));
+      await tester.pumpAndSettle();
+      expect(find.text('Send questionnaire'), findsOneWidget);
     });
   });
 }

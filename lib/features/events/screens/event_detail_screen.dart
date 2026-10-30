@@ -13,6 +13,9 @@ import '../data/models/event_detail.dart';
 import '../providers/event_tab_storage.dart';
 import '../providers/client_requests_provider.dart';
 import '../providers/events_provider.dart';
+import '../../finances/payout_editor/providers/payout_flow_provider.dart'
+    show isSelectedBandOwnerProvider;
+import '../../questionnaires/widgets/send_from_event.dart';
 import '../widgets/event_header.dart';
 import '../widgets/event_sections/questionnaire_undo_banner.dart';
 import '../widgets/event_tabs/music_tab.dart';
@@ -148,6 +151,19 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
                   context.push('/bookings/$bookingBandId/$bookingId');
                 },
                 child: const Text('Go to booking'),
+              ),
+            // Owners send questionnaires; same rule as the booking screen.
+            if (showBookingLink &&
+                bookingBandId != null &&
+                bookingId != null &&
+                ref.read(isSelectedBandOwnerProvider))
+              CupertinoActionSheetAction(
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  sendQuestionnaireFromEvent(context,
+                      bandId: bookingBandId, bookingId: bookingId);
+                },
+                child: const Text('Send questionnaire'),
               ),
             CupertinoActionSheetAction(
               onPressed: () {

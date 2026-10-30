@@ -2,7 +2,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
+import 'package:tts_bandmate/features/questionnaires/data/models/questionnaire_instance.dart';
+import 'package:tts_bandmate/features/questionnaires/providers/questionnaire_instances_provider.dart';
+import 'package:tts_bandmate/features/questionnaires/widgets/instance_status_badge.dart';
 import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
+import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 
 import '../../data/models/event_detail.dart';
 import '../../data/pasted_questionnaires.dart';
@@ -58,6 +62,20 @@ class NotesTab extends ConsumerWidget {
     final hasBandNotes = parsed.bandNotes.isNotEmpty;
     final hasBlocks = parsed.blocks.isNotEmpty;
 
+    // The booking's questionnaires, independent of what was pasted into the
+    // notes, so removing the pasted copy never hides the answers.
+    final bandId = ref.watch(selectedBandProvider).value;
+    final bookingId = event.eventableId;
+    final instances = (_bookingBacked && bandId != null && bookingId != null)
+        ? ref
+                .watch(bookingQuestionnairesProvider(
+                    (bandId: bandId, bookingId: bookingId)))
+                .value
+                ?.instances ??
+            const <QuestionnaireInstance>[]
+        : const <QuestionnaireInstance>[];
+    final hasClientContent = hasBlocks || instances.isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -87,15 +105,19 @@ class NotesTab extends ConsumerWidget {
           ),
 
         // ── From the client ───────────────────────────────────────────────
-        if (hasBlocks) ...[
+        if (hasClientContent) ...[
           const SizedBox(height: 20),
           const SectionHeader(title: 'From the client'),
           const SizedBox(height: 8),
           SectionCard(
             child: Column(
               children: [
-                for (int i = 0; i < parsed.blocks.length; i++) ...[
+                for (int i = 0; i < instances.length; i++) ...[
                   if (i > 0) const SectionDivider(),
+                  _InstanceRow(instance: instances[i]),
+                ],
+                for (int i = 0; i < parsed.blocks.length; i++) ...[
+                  if (i > 0 || instances.isNotEmpty) const SectionDivider(),
                   _PastedBlockRow(
                     block: parsed.blocks[i],
                     onTap: () =>
@@ -143,7 +165,8 @@ class _PastedBlockRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final summary = '${block.date} · ${block.answerCount} answers';
+    final summary =
+        'Pasted into notes · ${block.date} · ${block.answerCount} answers';
     return Semantics(
       button: true,
       label: '${block.name}, $summary. Opens the answers.',
@@ -189,6 +212,79 @@ class _PastedBlockRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// One questionnaire sent for the event's booking; opens its answers.
+class _InstanceRow extends StatelessWidget {
+  const _InstanceRow({required this.instance});
+  final QuestionnaireInstance instance;
+
+  @override
+  Widget build(BuildContext context) {
+    final submitted = instance.submittedAt;
+    final subtitle = [
+      instance.recipientName,
+      if (submitted != null)
+        'Submitted ${_monthDay(submitted.toLocal())}',
+    ].where((s) => s.isNotEmpty).join(' · ');
+    // Instances of a deleted template have nowhere to navigate to.
+    final canOpen = instance.questionnaireId != null;
+    return Semantics(
+      button: canOpen,
+      label: '${instance.name}, ${instance.status}. $subtitle',
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: canOpen
+            ? () => context.push(
+                '/questionnaires/${instance.questionnaireId}/instances/${instance.id}')
+            : null,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        instance.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w500),
+                      ),
+                      if (subtitle.isNotEmpty)
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                              fontSize: 13, color: context.secondaryText),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                InstanceStatusBadge(status: instance.status),
+                if (canOpen) ...[
+                  const SizedBox(width: 6),
+                  Icon(CupertinoIcons.chevron_right,
+                      size: 16, color: context.tertiaryText),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static const _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  static String _monthDay(DateTime d) => '${_months[d.month - 1]} ${d.day}';
 }
 
 /// Empty state for the client section. Sending a questionnaire from here

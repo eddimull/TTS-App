@@ -17,6 +17,10 @@ import 'package:tts_bandmate/features/events/data/models/event_detail.dart';
 import 'package:tts_bandmate/features/events/providers/events_provider.dart';
 import 'package:tts_bandmate/features/events/screens/event_detail_screen.dart';
 import 'package:tts_bandmate/features/media/data/upload_queue_storage.dart';
+import 'package:tts_bandmate/features/questionnaires/data/models/eligible_booking.dart';
+import 'package:tts_bandmate/features/questionnaires/data/models/questionnaire_instance.dart';
+import 'package:tts_bandmate/features/questionnaires/providers/questionnaire_instances_provider.dart';
+import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 
 const _key = 'evt-key';
@@ -69,6 +73,11 @@ class _FakeDetail extends EventDetailNotifier {
   Future<EventDetail> build() async => _value;
 }
 
+class _FakeBand extends SelectedBandNotifier {
+  @override
+  Future<int?> build() async => 1;
+}
+
 class _RecordingRepo extends EventsRepository {
   _RecordingRepo() : super(Dio());
   final savedNotes = <String?>[];
@@ -108,6 +117,7 @@ Future<void> _pump(
   Map<String, Object> prefs = const {},
   _RecordingRepo? repo,
   _FakeInvalidator? invalidator,
+  List<QuestionnaireInstance> questionnaires = const [],
 }) async {
   tester.view.physicalSize = const Size(400, 800);
   tester.view.devicePixelRatio = 1.0;
@@ -125,6 +135,9 @@ Future<void> _pump(
         if (repo != null) eventsRepositoryProvider.overrideWithValue(repo),
         if (invalidator != null)
           cacheInvalidatorProvider.overrideWithValue(invalidator),
+        selectedBandProvider.overrideWith(_FakeBand.new),
+        bookingQuestionnairesProvider.overrideWith((ref, args) async =>
+            BookingQuestionnaires(instances: questionnaires)),
       ],
       child: const CupertinoApp(home: EventDetailScreen(eventKey: _key)),
     ),
@@ -237,7 +250,7 @@ void main() {
 
       expect(find.text('Band note up top.'), findsOneWidget);
       expect(find.text('Wedding Day Questionnaire'), findsOneWidget);
-      expect(find.text('Oct 20 · 3 answers'), findsOneWidget);
+      expect(find.text('Pasted into notes · Oct 20 · 3 answers'), findsOneWidget);
       // Answers themselves are not dumped into the page.
       expect(find.textContaining('Grace Terreson'), findsNothing);
     });
@@ -314,6 +327,25 @@ void main() {
           prefs: {'event_last_tab': 'notes'});
       expect(find.text('No questionnaire answers yet'), findsOneWidget);
       expect(find.textContaining('Send'), findsNothing);
+    });
+
+    testWidgets(
+        'the booking questionnaire stays listed after its pasted copy is removed',
+        (tester) async {
+      final submitted = QuestionnaireInstance.fromJson({
+        'id': 3,
+        'name': 'Wedding Day Questionnaire',
+        'status': 'submitted',
+        'recipient_name': 'Grace Terreson',
+        'submitted_at': '2026-10-20T15:00:00Z',
+        'questionnaire_id': 7,
+        'booking': {'id': 9, 'name': 'Terreson Wedding'},
+      });
+      await _pump(tester, _event(notes: 'Just a note'),
+          prefs: {'event_last_tab': 'notes'}, questionnaires: [submitted]);
+      expect(find.text('Wedding Day Questionnaire'), findsOneWidget);
+      expect(find.textContaining('Grace Terreson'), findsOneWidget);
+      expect(find.text('No questionnaire answers yet'), findsNothing);
     });
   });
 }

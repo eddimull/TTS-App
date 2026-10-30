@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.30.0](https://github.com/eddimull/TTS-App/compare/v1.29.0...v1.30.0) (2026-10-30)
+
+
+### Features
+
+* **bookings:** send contracts to multiple signers and CCs ([bc5fe73](https://github.com/eddimull/TTS-App/commit/bc5fe7395fbe196c4b99e29c9a2800a6d08cd97f))
+* **bookings:** send contracts to multiple signers and CCs ([5e2a553](https://github.com/eddimull/TTS-App/commit/5e2a553c45086d7ffdaf176c8de4ac135680fb49))
+* **events:** client song picks alone earn a Music tab ([d10913f](https://github.com/eddimull/TTS-App/commit/d10913f5e326f745c65b895652437b2ad2f70265))
+* **events:** Music page, song sheet and Add to rehearsal ([e6441fc](https://github.com/eddimull/TTS-App/commit/e6441fcfae2acfac96ef0a745791a496e2af9f28))
+* **events:** Music page, song sheet and Add to rehearsal ([24d6e7d](https://github.com/eddimull/TTS-App/commit/24d6e7dfbcd0f42348fc5833fded8e766bb11548))
+* **events:** send a questionnaire from the event ([51df502](https://github.com/eddimull/TTS-App/commit/51df50200c2b9f75b97dc419ab5a8dd9f752deb1))
+* **events:** send a questionnaire from the event ([5ab3358](https://github.com/eddimull/TTS-App/commit/5ab3358c38837702e931269f70aca4d0aa0b7b69))
+* **events:** show the client's song requests on the Music tab ([c0a2e08](https://github.com/eddimull/TTS-App/commit/c0a2e08610ae8ad29fdbfbe50c7a1503464f3d01))
+* **events:** tabbed event screen with collapsing header and folded questionnaire answers ([af65b6b](https://github.com/eddimull/TTS-App/commit/af65b6be261d3006f8e7312bf8cb302765b89eac))
+* **events:** tabbed event screen with folded questionnaire answers ([cd57d56](https://github.com/eddimull/TTS-App/commit/cd57d5635f3d5cd3abd42a47eb0d274300e92454))
+* **events:** when to leave row and sheet in the event header ([411cbb7](https://github.com/eddimull/TTS-App/commit/411cbb74cb3582f991214c58176774cb06e25b63))
+* **events:** when to leave row and sheet in the event header ([055502f](https://github.com/eddimull/TTS-App/commit/055502f1a6ca11f7c9cb3f97d6cada86d1fa2317))
+* **questionnaires:** add booking contacts from the review screen ([4e783f2](https://github.com/eddimull/TTS-App/commit/4e783f2ec50003fdbfbd2c58622b2f5d0903d076))
+* **questionnaires:** route questionnaire answers to the event ([8b1ea00](https://github.com/eddimull/TTS-App/commit/8b1ea00bcdcee1db2df4db59d32acb0fc8393560))
+* **questionnaires:** route questionnaire answers to the event with a review screen ([c45e48c](https://github.com/eddimull/TTS-App/commit/c45e48c712c7a0f54a70ccb91fd634e1f54314b8))
+
+
+### Bug Fixes
+
+* **bookings:** describe all signers in the buyer-name hint ([200c08e](https://github.com/eddimull/TTS-App/commit/200c08ee631cd2fa5f1402a0bf456cad53b0644c))
+* **events:** address review on the tabbed event screen ([70817ee](https://github.com/eddimull/TTS-App/commit/70817eec08f28d3d3f67f3d395d23d2d4a409b6e))
+* **events:** keep Music tab headers with their cards ([812a1e2](https://github.com/eddimull/TTS-App/commit/812a1e226566e2872ad6ba0262856646ca160e7f))
+* **events:** list the booking's questionnaires on the Notes tab ([69491db](https://github.com/eddimull/TTS-App/commit/69491db24972e22f1735a78cbd4f6b904babd846))
+* **events:** show pasted answers inside the band notes card ([a2eaa7f](https://github.com/eddimull/TTS-App/commit/a2eaa7f2e5407141c7e0fb0262968dc741073cc7))
+* **questionnaires:** address review feedback on routing flow ([552601f](https://github.com/eddimull/TTS-App/commit/552601fb8e7c05ad23cfc56f0a1051e537dddc9c))
+* **questionnaires:** refresh events after appending or applying answers ([07acfc3](https://github.com/eddimull/TTS-App/commit/07acfc32ffc5ac96ce1d331efe00f8378f51f838))
+
 ## [1.29.0](https://github.com/eddimull/TTS-App/compare/v1.28.2...v1.29.0) (2026-10-13)
 
 

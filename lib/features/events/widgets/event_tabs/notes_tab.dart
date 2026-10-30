@@ -74,7 +74,6 @@ class NotesTab extends ConsumerWidget {
                 ?.instances ??
             const <QuestionnaireInstance>[]
         : const <QuestionnaireInstance>[];
-    final hasClientContent = hasBlocks || instances.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,30 +93,17 @@ class NotesTab extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 4),
+        // Pasted questionnaire answers live in the notes, so they're listed
+        // here (folded) rather than leaving the card looking empty.
         if (hasBandNotes)
-          NotesAndAttachmentsSection(notesHtml: parsed.bandNotes)
-        else
-          SectionCard(
-            child: Text(
-              'No band notes yet',
-              style: TextStyle(fontSize: 15, color: context.secondaryText),
-            ),
-          ),
-
-        // ── From the client ───────────────────────────────────────────────
-        if (hasClientContent) ...[
-          const SizedBox(height: 20),
-          const SectionHeader(title: 'From the client'),
-          const SizedBox(height: 8),
+          NotesAndAttachmentsSection(notesHtml: parsed.bandNotes),
+        if (hasBlocks) ...[
+          if (hasBandNotes) const SizedBox(height: 8),
           SectionCard(
             child: Column(
               children: [
-                for (int i = 0; i < instances.length; i++) ...[
-                  if (i > 0) const SectionDivider(),
-                  _InstanceRow(instance: instances[i]),
-                ],
                 for (int i = 0; i < parsed.blocks.length; i++) ...[
-                  if (i > 0 || instances.isNotEmpty) const SectionDivider(),
+                  if (i > 0) const SectionDivider(),
                   _PastedBlockRow(
                     block: parsed.blocks[i],
                     onTap: () =>
@@ -127,9 +113,33 @@ class NotesTab extends ConsumerWidget {
               ],
             ),
           ),
-        ] else if (_bookingBacked) ...[
+        ],
+        if (!hasBandNotes && !hasBlocks)
+          SectionCard(
+            child: Text(
+              'No band notes yet',
+              style: TextStyle(fontSize: 15, color: context.secondaryText),
+            ),
+          ),
+
+        // ── Questionnaires sent for the booking ───────────────────────────
+        if (instances.isNotEmpty) ...[
           const SizedBox(height: 20),
-          const SectionHeader(title: 'From the client'),
+          const SectionHeader(title: 'Questionnaires'),
+          const SizedBox(height: 8),
+          SectionCard(
+            child: Column(
+              children: [
+                for (int i = 0; i < instances.length; i++) ...[
+                  if (i > 0) const SectionDivider(),
+                  _InstanceRow(instance: instances[i]),
+                ],
+              ],
+            ),
+          ),
+        ] else if (_bookingBacked && !hasBlocks) ...[
+          const SizedBox(height: 20),
+          const SectionHeader(title: 'Questionnaires'),
           const SizedBox(height: 8),
           const _NoQuestionnaireCard(),
         ],
@@ -166,7 +176,7 @@ class _PastedBlockRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final summary =
-        'Pasted into notes · ${block.date} · ${block.answerCount} answers';
+        'Pasted answers · ${block.date} · ${block.answerCount} answers';
     return Semantics(
       button: true,
       label: '${block.name}, $summary. Opens the answers.',
@@ -287,7 +297,7 @@ class _InstanceRow extends StatelessWidget {
   static String _monthDay(DateTime d) => '${_months[d.month - 1]} ${d.day}';
 }
 
-/// Empty state for the client section. Sending a questionnaire from here
+/// Empty state for the questionnaires section. Sending a questionnaire from here
 /// arrives in a follow-up, so this is informational only.
 class _NoQuestionnaireCard extends StatelessWidget {
   const _NoQuestionnaireCard();

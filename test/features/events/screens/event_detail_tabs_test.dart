@@ -250,7 +250,7 @@ void main() {
 
       expect(find.text('Band note up top.'), findsOneWidget);
       expect(find.text('Wedding Day Questionnaire'), findsOneWidget);
-      expect(find.text('Pasted into notes · Oct 20 · 3 answers'), findsOneWidget);
+      expect(find.text('Pasted answers · Oct 20 · 3 answers'), findsOneWidget);
       // Answers themselves are not dumped into the page.
       expect(find.textContaining('Grace Terreson'), findsNothing);
     });
@@ -327,6 +327,15 @@ void main() {
           prefs: {'event_last_tab': 'notes'});
       expect(find.text('No questionnaire answers yet'), findsOneWidget);
       expect(find.textContaining('Send'), findsNothing);
+    });
+
+    testWidgets('notes that are only pasted answers do not read as empty',
+        (tester) async {
+      final onlyPasted = _pasted.substring(_pasted.indexOf('----------'));
+      await _pump(tester, _event(notes: onlyPasted),
+          prefs: {'event_last_tab': 'notes'});
+      expect(find.text('No band notes yet'), findsNothing);
+      expect(find.text('Wedding Day Questionnaire'), findsOneWidget);
     });
 
     testWidgets(

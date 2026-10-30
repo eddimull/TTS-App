@@ -142,7 +142,9 @@ class EventHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant EventHeaderDelegate old) =>
-      old.event != event ||
+      // identical, not ==: EventDetail compares by key, so a refreshed
+      // event (new times, venue) would otherwise keep the stale header.
+      !identical(old.event, event) ||
       old.selected != selected ||
       old.contentHeight != contentHeight ||
       !foundation.listEquals(old.tabs, tabs);

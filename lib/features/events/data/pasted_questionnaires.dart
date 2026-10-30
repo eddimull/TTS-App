@@ -128,6 +128,23 @@ bool _isBlockStart(List<String> lines, int i) =>
 
 /// Notes with [block] removed. [notes] must be the same text [block] was
 /// parsed from.
+/// [block] as it now sits in [notes]: the first block there with the same
+/// questionnaire, date and answers. Null when it's gone (someone else
+/// removed it). Line numbers shift when the notes are edited elsewhere, so a
+/// block from an older read must be found again before it is removed.
+PastedQuestionnaire? findPastedBlock(String notes, PastedQuestionnaire block) {
+  String answers(PastedQuestionnaire b) => [
+        for (final s in b.sections) ...[s.label, ...s.lines]
+      ].join('\n');
+  final want = answers(block);
+  for (final b in parsePastedQuestionnaires(notes).blocks) {
+    if (b.name == block.name && b.date == block.date && answers(b) == want) {
+      return b;
+    }
+  }
+  return null;
+}
+
 String removePastedBlock(String notes, PastedQuestionnaire block) {
   final lines = notes.replaceAll('\r\n', '\n').split('\n');
   return _joinKept(lines, [block]);

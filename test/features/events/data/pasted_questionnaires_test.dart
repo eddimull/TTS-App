@@ -130,6 +130,25 @@ void main() {
     });
   });
 
+  group('findPastedBlock', () {
+    test('finds the block again after the notes above it changed', () {
+      const before = 'Old.\n\n$_block1\n\n$_block2';
+      final block = parsePastedQuestionnaires(before).blocks.last;
+      const after = 'Edited elsewhere.\nTwo lines now.\n\n$_block1\n\n$_block2';
+      final found = findPastedBlock(after, block);
+      expect(found, isNotNull);
+      expect(found!.startLine, isNot(block.startLine));
+      expect(removePastedBlock(after, found),
+          'Edited elsewhere.\nTwo lines now.\n\n$_block1');
+    });
+
+    test('null when the block was already removed', () {
+      const before = '$_block1\n\n$_block2';
+      final block = parsePastedQuestionnaires(before).blocks.first;
+      expect(findPastedBlock(_block2, block), isNull);
+    });
+  });
+
   group('notesToPlainText', () {
     test('strips tags and decodes common entities', () {
       expect(notesToPlainText('<p>Load in &amp; soundcheck</p><p>Done</p>'),

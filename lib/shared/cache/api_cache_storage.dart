@@ -67,6 +67,17 @@ class ApiCacheStorage {
     _prefs.remove('$_prefix$key');
   }
 
+  /// Drops every entry whose key starts with [keyPrefix] — for mutations that
+  /// touch an unknown subset of one kind of payload.
+  void removeByPrefix(String keyPrefix) {
+    for (final k in _prefs
+        .getKeys()
+        .where((k) => k.startsWith('$_prefix$keyPrefix'))
+        .toList()) {
+      _prefs.remove(k);
+    }
+  }
+
   /// Drops every cached payload. Called on logout so a different user
   /// signing in on this device never sees the previous user's data.
   void clearAll() {

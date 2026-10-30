@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 import 'package:intl/intl.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 import '../../../features/auth/data/models/band_summary.dart';
@@ -225,6 +226,9 @@ class InstanceResponsesScreen extends ConsumerWidget {
                       .read(questionnairesRepositoryProvider)
                       .applyAllResponses(bandId, instance.id);
                   ref.invalidate(instanceDetailProvider(detailKey));
+                  ref
+                      .read(cacheInvalidatorProvider)
+                      .onQuestionnaireAppliedToEvents(bandId: bandId);
                   if (context.mounted) {
                     _info(context, 'Applied',
                         'Applied $count answer${count == 1 ? '' : 's'} to the event.');
@@ -233,6 +237,9 @@ class InstanceResponsesScreen extends ConsumerWidget {
                   // The backend may have applied some responses before
                   // failing, so re-fetch to reflect server truth.
                   ref.invalidate(instanceDetailProvider(detailKey));
+                  ref
+                      .read(cacheInvalidatorProvider)
+                      .onQuestionnaireAppliedToEvents(bandId: bandId);
                   if (context.mounted) {
                     _info(
                         context,
@@ -277,6 +284,9 @@ class InstanceResponsesScreen extends ConsumerWidget {
                 await ref
                     .read(questionnairesRepositoryProvider)
                     .appendToNotes(bandId, instance.id);
+                ref
+                    .read(cacheInvalidatorProvider)
+                    .onQuestionnaireAppliedToEvents(bandId: bandId);
                 if (context.mounted) {
                   _info(context, 'Done', 'Answers appended to event notes.');
                 }

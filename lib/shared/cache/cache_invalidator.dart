@@ -154,6 +154,15 @@ class CacheInvalidator {
     _ref.read(dashboardProvider.notifier).refresh();
   }
 
+  /// A questionnaire wrote to its booking's events (append to notes, apply
+  /// answers). The instance only knows the booking, not which event, so drop
+  /// every cached event detail for the band.
+  void onQuestionnaireAppliedToEvents({required int bandId}) {
+    _ref.read(apiCacheStorageProvider).removeByPrefix('$bandId:event:');
+    _ref.invalidate(eventDetailProvider);
+    _ref.read(dashboardProvider.notifier).refresh();
+  }
+
   // ── Rehearsals ──────────────────────────────────────────────────────────────
 
   void onRehearsalChanged({int? rehearsalId, String? eventKey}) {

@@ -91,6 +91,24 @@ void main() {
     expect(storage.read('7:event:evt-1'), isNull);
   });
 
+  test('onQuestionnaireAppliedToEvents drops every event of the band only',
+      () async {
+    final container = await makeContainer();
+    storage.write('7:event:evt-1', {'event': {'id': 1}});
+    storage.write('7:event:evt-2', {'event': {'id': 2}});
+    storage.write('9:event:evt-3', {'event': {'id': 3}});
+    storage.write('7:booking:42', {'booking': {'id': 42}});
+
+    container
+        .read(cacheInvalidatorProvider)
+        .onQuestionnaireAppliedToEvents(bandId: 7);
+
+    expect(storage.read('7:event:evt-1'), isNull);
+    expect(storage.read('7:event:evt-2'), isNull);
+    expect(storage.read('9:event:evt-3'), isNotNull);
+    expect(storage.read('7:booking:42'), isNotNull);
+  });
+
   test('onBookingDetailChanged drops the booking cache entry', () async {
     final container = await makeContainer();
     storage.write('7:booking:42', {

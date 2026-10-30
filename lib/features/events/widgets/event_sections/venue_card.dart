@@ -72,6 +72,7 @@ Future<void> openVenueInMaps({
   required BuildContext context,
   required String venueName,
   required String? venueAddress,
+  bool directions = false,
 }) async {
   final fullAddress = [
     venueName,
@@ -83,10 +84,7 @@ Future<void> openVenueInMaps({
 
   // No coords — fall back to a search-by-address universal URL.
   if (position == null) {
-    final searchUri = Uri.parse(
-      'https://www.google.com/maps/search/?api=1'
-      '&query=${Uri.encodeComponent(fullAddress)}',
-    );
+    final searchUri = _webMapsUri(fullAddress, directions: directions);
     if (await canLaunchUrl(searchUri)) {
       await launchUrl(searchUri, mode: LaunchMode.externalApplication);
     }
@@ -99,10 +97,7 @@ Future<void> openVenueInMaps({
 
   // No native maps installed (rare on iOS/Android) — fall back to web search.
   if (availableMaps.isEmpty) {
-    final searchUri = Uri.parse(
-      'https://www.google.com/maps/search/?api=1'
-      '&query=${Uri.encodeComponent(fullAddress)}',
-    );
+    final searchUri = _webMapsUri(fullAddress, directions: directions);
     if (await canLaunchUrl(searchUri)) {
       await launchUrl(searchUri, mode: LaunchMode.externalApplication);
     }
@@ -110,7 +105,7 @@ Future<void> openVenueInMaps({
   }
 
   if (availableMaps.length == 1) {
-    await availableMaps.first.showMarker(coords: coords, title: venueName);
+    await _show(availableMaps.first, coords, venueName, directions);
     return;
   }
 
@@ -123,7 +118,7 @@ Future<void> openVenueInMaps({
           CupertinoActionSheetAction(
             onPressed: () {
               Navigator.pop(ctx);
-              map.showMarker(coords: coords, title: venueName);
+              _show(map, coords, venueName, directions);
             },
             child: Text(map.mapName),
           ),
@@ -135,3 +130,18 @@ Future<void> openVenueInMaps({
     ),
   );
 }
+
+Future<void> _show(
+        AvailableMap map, Coords coords, String venueName, bool directions) =>
+    directions
+        ? map.showDirections(destination: coords, destinationTitle: venueName)
+        : map.showMarker(coords: coords, title: venueName);
+
+/// Google's universal Maps URL: an address search, or directions to it.
+Uri _webMapsUri(String address, {required bool directions}) => Uri.parse(
+      directions
+          ? 'https://www.google.com/maps/dir/?api=1'
+              '&destination=${Uri.encodeComponent(address)}'
+          : 'https://www.google.com/maps/search/?api=1'
+              '&query=${Uri.encodeComponent(address)}',
+    );

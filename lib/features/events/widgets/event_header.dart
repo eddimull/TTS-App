@@ -10,9 +10,11 @@ import 'package:tts_bandmate/shared/utils/time_format.dart';
 
 import '../data/event_header_times.dart';
 import '../data/event_tabs.dart';
+import '../data/leave_plan.dart';
 import '../data/models/event_detail.dart';
 import 'event_sections/flags_row.dart';
 import 'event_sections/venue_card.dart';
+import 'when_to_leave.dart';
 
 /// Pinned header for the event screen: the full header (date, Load-in / Show /
 /// End, venue, flags) scrolls away, then collapses to a one-line summary, and
@@ -30,6 +32,7 @@ class EventHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.onSelect,
     required this.contentHeight,
     required this.onContentMeasured,
+    required this.onGoLive,
   });
 
   final EventDetail event;
@@ -38,6 +41,9 @@ class EventHeaderDelegate extends SliverPersistentHeaderDelegate {
   final ValueChanged<EventTab> onSelect;
   final double contentHeight;
   final ValueChanged<double> onContentMeasured;
+
+  /// Gig day's Go live button.
+  final VoidCallback onGoLive;
 
   static const double summaryHeight = 36;
   static const double tabBarHeight = 60;
@@ -75,7 +81,7 @@ class EventHeaderDelegate extends SliverPersistentHeaderDelegate {
               maxHeight: double.infinity,
               child: MeasureSize(
                 onChange: onContentMeasured,
-                child: EventHeaderContent(event: event),
+                child: EventHeaderContent(event: event, onGoLive: onGoLive),
               ),
             ),
           ),
@@ -182,11 +188,12 @@ class EventTabBar extends StatelessWidget {
   }
 }
 
-/// The expanded header: date, Load-in / Show / End tiles, venue map card and
-/// flag chips.
+/// The expanded header: date, Load-in / Show / End tiles, when to leave,
+/// venue map card, gig day's Directions / Go live, and flag chips.
 class EventHeaderContent extends StatelessWidget {
-  const EventHeaderContent({super.key, required this.event});
+  const EventHeaderContent({super.key, required this.event, this.onGoLive});
   final EventDetail event;
+  final VoidCallback? onGoLive;
 
   @override
   Widget build(BuildContext context) {
@@ -219,12 +226,21 @@ class EventHeaderContent extends StatelessWidget {
               Expanded(child: _TimeTile(label: 'End', raw: times.end)),
             ],
           ),
+          // Sizes itself to nothing when the event has no leave time.
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: LeaveByRow(event: event),
+          ),
           if (hasVenue) ...[
             const SizedBox(height: 12),
             VenueCard(
               venueName: event.venueName!,
               venueAddress: event.venueAddress,
             ),
+          ],
+          if (onGoLive != null && isLeaveDay(event, clock.now())) ...[
+            const SizedBox(height: 12),
+            GigDayActions(event: event, onGoLive: onGoLive!),
           ],
           if (hasFlags) ...[
             const SizedBox(height: 12),

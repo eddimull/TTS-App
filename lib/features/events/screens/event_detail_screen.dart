@@ -289,6 +289,7 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
               onSelect: _selectTab,
               contentHeight: _headerContentHeight,
               onContentMeasured: _onHeaderMeasured,
+              onGoLive: _openLiveSetlist,
             );
             // The nav bar is translucent, so the scaffold lets content run under
             // it and reports its height as top padding; a plain ListView would

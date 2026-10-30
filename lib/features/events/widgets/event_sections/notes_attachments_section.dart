@@ -40,19 +40,9 @@ class _NotesAndAttachmentsSectionState
   bool _notesExpanded = false;
   bool _attachmentsExpanded = false;
 
-  String get _plainNotes {
-    final html = widget.notesHtml ?? '';
-    return html
-        .replaceAll(RegExp(r'<br\s*/?>'), '\n')
-        .replaceAll(RegExp(r'<p[^>]*>'), '')
-        .replaceAll('</p>', '\n')
-        .replaceAll(RegExp(r'<[^>]+>'), '')
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll('&amp;', '&')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .trim();
-  }
+  // NotesTab hands over plain text already (see notesToPlainText); a second
+  // pass would decode entities twice and drop text like "<red>".
+  String get _plainNotes => (widget.notesHtml ?? '').trim();
 
   /// Cheap heuristic for "would this overflow 6 lines" without a
   /// LayoutBuilder/TextPainter measure pass: count explicit newlines plus

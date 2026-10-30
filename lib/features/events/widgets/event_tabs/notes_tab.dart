@@ -29,11 +29,14 @@ class NotesTab extends ConsumerWidget {
     String plainNotes,
     PastedQuestionnaire block,
   ) async {
-    await ref.read(eventsRepositoryProvider).updateEvent(
-          event.key,
-          notes: removePastedBlock(plainNotes, block),
-        );
-    ref.read(cacheInvalidatorProvider).onEventChanged(eventKey: event.key);
+    // Read both before awaiting: the tab can be disposed while this saves.
+    final repo = ref.read(eventsRepositoryProvider);
+    final invalidator = ref.read(cacheInvalidatorProvider);
+    await repo.updateEvent(
+      event.key,
+      notes: removePastedBlock(plainNotes, block),
+    );
+    invalidator.onEventChanged(eventKey: event.key);
   }
 
   void _openBlock(
@@ -181,6 +184,7 @@ class _PastedBlockRow extends StatelessWidget {
       button: true,
       label: '${block.name}, $summary. Opens the answers.',
       excludeSemantics: true,
+      onTap: onTap,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
@@ -239,16 +243,18 @@ class _InstanceRow extends StatelessWidget {
     ].where((s) => s.isNotEmpty).join(' · ');
     // Instances of a deleted template have nowhere to navigate to.
     final canOpen = instance.questionnaireId != null;
+    final VoidCallback? open = canOpen
+        ? () => context.push(
+            '/questionnaires/${instance.questionnaireId}/instances/${instance.id}')
+        : null;
     return Semantics(
       button: canOpen,
       label: '${instance.name}, ${instance.status}. $subtitle',
       excludeSemantics: true,
+      onTap: open,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: canOpen
-            ? () => context.push(
-                '/questionnaires/${instance.questionnaireId}/instances/${instance.id}')
-            : null,
+        onTap: open,
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 44),
           child: Padding(

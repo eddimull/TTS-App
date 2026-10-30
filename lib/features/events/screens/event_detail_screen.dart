@@ -297,9 +297,24 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
                         ),
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                          child: KeyedSubtree(
-                            key: ValueKey(selected),
-                            child: _tabBody(selected, tabs),
+                          // Every visible tab stays mounted (offstage when not
+                          // selected) so state like the media upload listener
+                          // survives switching tabs.
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (final tab in tabs)
+                                Offstage(
+                                  offstage: tab != selected,
+                                  child: TickerMode(
+                                    enabled: tab == selected,
+                                    child: KeyedSubtree(
+                                      key: ValueKey(tab),
+                                      child: _tabBody(tab, tabs),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ),

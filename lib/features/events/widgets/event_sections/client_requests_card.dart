@@ -28,6 +28,9 @@ class _ClientRequestsCardState extends State<ClientRequestsCard> {
   bool _mustExpanded = false;
   bool _doNotExpanded = false;
 
+  void _openCatalog() =>
+      context.push('/events/${widget.eventKey}/setlist?view=catalog');
+
   @override
   Widget build(BuildContext context) {
     final s = widget.summary;
@@ -68,10 +71,10 @@ class _ClientRequestsCardState extends State<ClientRequestsCard> {
                 button: true,
                 label: 'Open the client requests in the setlist',
                 excludeSemantics: true,
+                onTap: _openCatalog,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => context
-                      .push('/events/${widget.eventKey}/setlist?view=catalog'),
+                  onTap: _openCatalog,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(minHeight: 44),
                     child: Row(

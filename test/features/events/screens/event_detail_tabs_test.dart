@@ -342,6 +342,21 @@ void main() {
       expect(find.textContaining('Send'), findsNothing);
     });
 
+    testWidgets('angle brackets in notes survive (decoded only once)',
+        (tester) async {
+      await _pump(tester, _event(notes: 'Wear &lt;red&gt; ties'),
+          prefs: {'event_last_tab': 'notes'});
+      expect(find.text('Wear <red> ties'), findsOneWidget);
+    });
+
+    testWidgets('tabs stay mounted offstage when switching', (tester) async {
+      await _pump(tester, _event(notes: 'Hello'),
+          prefs: {'event_last_tab': 'notes'});
+      await _openTab(tester, 'Overview');
+      expect(find.text('Hello', skipOffstage: false), findsOneWidget);
+      expect(find.text('Hello'), findsNothing);
+    });
+
     testWidgets('notes that are only pasted answers do not read as empty',
         (tester) async {
       final onlyPasted = _pasted.substring(_pasted.indexOf('----------'));

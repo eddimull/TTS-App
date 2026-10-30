@@ -496,13 +496,13 @@ void main() {
     });
 
     testWidgets(
-        'Join Live Setlist button lives on the Music tab when a live session is active',
+        'Join the live setlist button lives on the Music tab when a live session is active',
         (tester) async {
       final event = _baseEvent().copyWithLiveSession(42);
       await _pump(tester, event);
       await _openTab(tester, 'Music');
 
-      expect(find.text('Join Live Setlist'), findsOneWidget);
+      expect(find.text('Join the live setlist'), findsOneWidget);
       expect(find.text('Go Live'), findsNothing);
     });
 

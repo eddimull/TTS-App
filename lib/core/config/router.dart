@@ -26,6 +26,7 @@ import '../../features/bookings/screens/bookings_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/events/screens/event_detail_screen.dart';
+import '../../features/events/screens/event_music_screen.dart';
 import '../../features/search/screens/search_screen.dart';
 import '../../features/events/screens/event_edit_screen.dart';
 import '../../features/events/data/models/event_detail.dart';
@@ -409,6 +410,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => LiveSessionScreen(
           eventKey: state.pathParameters['key']!,
         ),
+      ),
+      GoRoute(
+        path: '/events/:key/music',
+        builder: (_, state) =>
+            EventMusicScreen(eventKey: state.pathParameters['key']!),
       ),
       GoRoute(
         path: '/events/:key/setlist',

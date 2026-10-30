@@ -7,6 +7,7 @@ import '../../features/bookings/providers/bookings_window_provider.dart';
 import '../../features/bookings/providers/contract_history_provider.dart';
 import '../../features/dashboard/providers/dashboard_provider.dart';
 import '../../features/events/providers/client_requests_provider.dart';
+import '../../features/events/providers/event_music_provider.dart';
 import '../../features/events/providers/events_provider.dart';
 import '../../features/rehearsals/providers/rehearsals_provider.dart';
 import '../../shared/providers/selected_band_provider.dart';
@@ -152,6 +153,7 @@ class CacheInvalidator {
   void onEventChanged({required String eventKey}) {
     _removeCache('event:$eventKey');
     _ref.invalidate(eventDetailProvider(eventKey));
+    _ref.invalidate(eventMusicProvider(eventKey));
     _ref.invalidate(eventClientRequestsProvider(eventKey));
     _ref.read(dashboardProvider.notifier).refresh();
   }
@@ -162,6 +164,7 @@ class CacheInvalidator {
   void onQuestionnaireAppliedToEvents({required int bandId}) {
     _ref.read(apiCacheStorageProvider).removeByPrefix('$bandId:event:');
     _ref.invalidate(eventDetailProvider);
+    _ref.invalidate(eventMusicProvider);
     _ref.invalidate(eventClientRequestsProvider);
     _ref.read(dashboardProvider.notifier).refresh();
   }

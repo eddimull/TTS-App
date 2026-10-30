@@ -93,7 +93,7 @@ void main() {
 
   group('visibleTabs client requests', () {
     test('client song picks alone earn a Music tab', () {
-      expect(visibleTabs(_event(), hasClientRequests: true),
+      expect(visibleTabs(_event(), hasSetlistMusic: true),
           [EventTab.overview, EventTab.music, EventTab.notes]);
     });
   });

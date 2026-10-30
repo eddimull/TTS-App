@@ -13,9 +13,9 @@ enum EventTab {
 
 /// Tabs worth showing for [event]. Overview and Notes are always present;
 /// Timeline needs timeline entries; Music needs anything performance related
-/// (notes, songs, charts, wedding dances), a running live session, or the
-/// client's song picks ([hasClientRequests], fetched separately).
-List<EventTab> visibleTabs(EventDetail event, {bool hasClientRequests = false}) {
+/// (notes, songs, charts, wedding dances), a running live session, or setlist
+/// songs or client song picks ([hasSetlistMusic], fetched separately).
+List<EventTab> visibleTabs(EventDetail event, {bool hasSetlistMusic = false}) {
   final perf = event.performance;
   final hasMusic = (perf != null &&
           ((perf.notes?.isNotEmpty ?? false) ||
@@ -23,7 +23,7 @@ List<EventTab> visibleTabs(EventDetail event, {bool hasClientRequests = false}) 
               perf.charts.isNotEmpty)) ||
       (event.wedding?.dances.isNotEmpty ?? false) ||
       event.liveSessionId != null ||
-      hasClientRequests;
+      hasSetlistMusic;
 
   return [
     EventTab.overview,

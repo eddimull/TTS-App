@@ -11,13 +11,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
 import 'package:tts_bandmate/features/chat/data/models/conversation.dart';
 import 'package:tts_bandmate/features/chat/providers/topic_thread_provider.dart';
-import 'package:tts_bandmate/features/events/data/client_requests_summary.dart';
+import 'package:tts_bandmate/features/events/data/event_music.dart';
 import 'package:tts_bandmate/features/events/data/event_tabs.dart';
 import 'package:tts_bandmate/features/events/data/events_repository.dart';
 import 'package:tts_bandmate/features/events/data/models/event_detail.dart';
-import 'package:tts_bandmate/features/events/providers/client_requests_provider.dart';
+import 'package:tts_bandmate/features/events/providers/event_music_provider.dart';
 import 'package:tts_bandmate/features/events/providers/events_provider.dart';
 import 'package:tts_bandmate/features/events/screens/event_detail_screen.dart';
+import 'package:tts_bandmate/features/setlist_editor/data/models/event_setlist.dart';
 import 'package:tts_bandmate/features/finances/payout_editor/providers/payout_flow_provider.dart';
 import 'package:tts_bandmate/features/media/data/upload_queue_storage.dart';
 import 'package:tts_bandmate/features/questionnaires/data/models/eligible_booking.dart';
@@ -130,7 +131,7 @@ Future<void> _pump(
   _RecordingRepo? repo,
   _FakeInvalidator? invalidator,
   List<QuestionnaireInstance> questionnaires = const [],
-  ClientRequestsSummary? requests,
+  EventMusic? music,
   bool owner = false,
 }) async {
   tester.view.physicalSize = const Size(400, 800);
@@ -152,7 +153,7 @@ Future<void> _pump(
         selectedBandProvider.overrideWith(_FakeBand.new),
         bookingQuestionnairesProvider.overrideWith((ref, args) async =>
             BookingQuestionnaires(instances: questionnaires)),
-        eventClientRequestsProvider.overrideWith((ref, key) async => requests),
+        eventMusicProvider.overrideWith((ref, key) async => music),
         isSelectedBandOwnerProvider.overrideWithValue(owner),
       ],
       child: const CupertinoApp(home: EventDetailScreen(eventKey: _key)),
@@ -389,43 +390,84 @@ void main() {
     });
   });
 
-  group('Music tab client requests', () {
-    final requests = ClientRequestsSummary(
-      mustPlay: [for (var i = 1; i <= 7; i++) 'Song $i'],
-      doNotPlay: const ['Wonderwall · Oasis'],
-      sourceName: 'Wedding Questionnaire',
+  group('Music tab', () {
+    final music = EventMusic(
+      bandSongs: [
+        for (var i = 1; i <= 8; i++) BandSongSummary(id: i, title: 'Song $i'),
+      ],
+      requests: const ClientSongRequests(
+        mustPlayIds: {1, 2, 3, 4, 5, 6, 7},
+        doNotPlayIds: {8},
+      ),
+      setlist: const EventSetlist(id: 1, status: 'ready', songs: [
+        SetlistEntry(type: 'song', position: 1, songId: 1, title: 'Song 1'),
+        SetlistEntry(
+            type: 'song',
+            position: 2,
+            customTitle: 'Here for a Good Time',
+            customArtist: 'George Strait'),
+        SetlistEntry(
+            type: 'song', position: 3, customTitle: 'Boogie Wonderland'),
+        SetlistEntry(type: 'song', position: 4, customTitle: 'Third New'),
+      ]),
     );
 
-    testWidgets('lists picks, previews five, expands on Show all',
-        (tester) async {
-      await _pump(tester, _event(music: true), requests: requests,
-          prefs: {'event_last_tab': 'music'});
-      expect(find.text('Client requests'), findsOneWidget);
-      expect(find.text('Must play (7)'), findsOneWidget);
-      expect(find.text('Do not play (1)'), findsOneWidget);
-      expect(find.text('Song 5'), findsOneWidget);
-      expect(find.text('Song 6'), findsNothing);
-
-      await tester.ensureVisible(find.text('Show all (7)'));
-      await tester.tap(find.text('Show all (7)'));
-      await tester.pumpAndSettle();
-      expect(find.text('Song 7'), findsOneWidget);
-      expect(find.text('Open in setlist'), findsOneWidget);
+    testWidgets('summary counts songs, to learn and requests', (tester) async {
+      await _pump(tester, _event(music: true),
+          music: music, prefs: {'event_last_tab': 'music'});
+      expect(find.text('Performance notes'), findsOneWidget);
+      expect(find.text('Upbeat only'), findsOneWidget);
+      expect(find.text('4'), findsOneWidget); // songs
+      expect(find.text('3'), findsOneWidget); // to learn
+      expect(find.text('7'), findsOneWidget); // must-play requests
+      expect(find.text('Not in our catalog'), findsOneWidget);
+      expect(find.text('Here for a Good Time · George Strait'), findsOneWidget);
+      expect(find.text('Boogie Wonderland'), findsOneWidget);
+      expect(find.text('Third New'), findsNothing);
+      expect(find.text('+ 1 more'), findsOneWidget);
+      expect(find.text('Open music'), findsOneWidget);
     });
 
     testWidgets('picks alone show the Music tab', (tester) async {
-      await _pump(tester, _event(), requests: requests);
+      await _pump(tester, _event(),
+          music: const EventMusic(
+            bandSongs: [BandSongSummary(id: 1, title: 'Song 1')],
+            requests: ClientSongRequests(mustPlayIds: {1}, doNotPlayIds: {}),
+          ));
       expect(find.descendant(of: _tabBar, matching: find.text('Music')),
           findsOneWidget);
-      await _openTab(tester, 'Music');
-      expect(find.text('Client requests'), findsOneWidget);
     });
 
-    testWidgets('no card when the client made no picks', (tester) async {
+    testWidgets('setlist songs alone show the Music tab', (tester) async {
+      await _pump(tester, _event(),
+          music: const EventMusic(setlist: EventSetlist(id: 1, status: 'draft', songs: [
+            SetlistEntry(type: 'song', position: 1, songId: 1),
+          ])));
+      expect(find.descendant(of: _tabBar, matching: find.text('Music')),
+          findsOneWidget);
+    });
+
+    testWidgets('an empty setlist and no picks hide the Music tab',
+        (tester) async {
+      await _pump(tester, _event(), music: const EventMusic());
+      expect(find.descendant(of: _tabBar, matching: find.text('Music')),
+          findsNothing);
+    });
+
+    testWidgets('Run the live setlist confirms away from gig day',
+        (tester) async {
       await _pump(tester, _event(music: true),
           prefs: {'event_last_tab': 'music'});
-      expect(find.text('Upbeat only'), findsOneWidget);
-      expect(find.text('Client requests'), findsNothing);
+      await tester.ensureVisible(find.text('Run the live setlist'));
+      await tester.tap(find.text('Run the live setlist'));
+      await tester.pumpAndSettle();
+      expect(find.text('Not gig day'), findsOneWidget);
+    });
+
+    testWidgets('read-only members get no Run button', (tester) async {
+      await _pump(tester, _event(music: true, canWrite: false),
+          prefs: {'event_last_tab': 'music'});
+      expect(find.text('Run the live setlist'), findsNothing);
     });
   });
 

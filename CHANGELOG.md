@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.30.1](https://github.com/eddimull/TTS-App/compare/v1.30.0...v1.30.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **realtime:** show live updates on the event page ([870a270](https://github.com/eddimull/TTS-App/commit/870a270362358673ba11940d5fabc3dcd8a58376))
+* **realtime:** show live updates on the event page ([18b7631](https://github.com/eddimull/TTS-App/commit/18b76311cab36bd93ef7739ba800a3f2bc810020))
+
 ## [1.30.0](https://github.com/eddimull/TTS-App/compare/v1.29.0...v1.30.0) (2026-10-30)
 
 

@@ -25,6 +25,18 @@ class _VenueCardState extends State<VenueCard> {
     _geocodeVenue();
   }
 
+  @override
+  void didUpdateWidget(VenueCard old) {
+    super.didUpdateWidget(old);
+    // The venue can change under an open event page (realtime edits).
+    if (old.venueName != widget.venueName ||
+        old.venueAddress != widget.venueAddress) {
+      _lat = null;
+      _lng = null;
+      _geocodeVenue();
+    }
+  }
+
   Future<void> _geocodeVenue() async {
     final fullAddress = [
       widget.venueName,

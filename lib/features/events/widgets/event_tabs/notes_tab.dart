@@ -27,25 +27,27 @@ class NotesTab extends ConsumerWidget {
 
   bool get _bookingBacked => event.eventableType == 'Bookings';
 
-  Future<void> _removeBlock(
-    WidgetRef ref,
-    String plainNotes,
-    PastedQuestionnaire block,
-  ) async {
+  Future<void> _removeBlock(WidgetRef ref, PastedQuestionnaire block) async {
     // Read both before awaiting: the tab can be disposed while this saves.
     final repo = ref.read(eventsRepositoryProvider);
     final invalidator = ref.read(cacheInvalidatorProvider);
-    await repo.updateEvent(
-      event.key,
-      notes: removePastedBlock(plainNotes, block),
-    );
+    // Remove from the notes as they are now, not as this tab last drew
+    // them, so a note edited elsewhere in the meantime isn't written over.
+    final fresh = await repo.getEventDetail(event.key);
+    final notes = notesToPlainText(fresh.notes ?? '');
+    final current = findPastedBlock(notes, block);
+    if (current != null) {
+      await repo.updateEvent(
+        event.key,
+        notes: removePastedBlock(notes, current),
+      );
+    }
     invalidator.onEventChanged(eventKey: event.key);
   }
 
   void _openBlock(
     BuildContext context,
     WidgetRef ref,
-    String plainNotes,
     PastedQuestionnaire block,
   ) {
     Navigator.of(context).push(
@@ -53,9 +55,7 @@ class NotesTab extends ConsumerWidget {
         fullscreenDialog: true,
         builder: (_) => PastedQuestionnaireSheet(
           block: block,
-          onRemove: event.canWrite
-              ? () => _removeBlock(ref, plainNotes, block)
-              : null,
+          onRemove: event.canWrite ? () => _removeBlock(ref, block) : null,
         ),
       ),
     );
@@ -117,8 +117,7 @@ class NotesTab extends ConsumerWidget {
                   if (i > 0) const SectionDivider(),
                   _PastedBlockRow(
                     block: parsed.blocks[i],
-                    onTap: () =>
-                        _openBlock(context, ref, plain, parsed.blocks[i]),
+                    onTap: () => _openBlock(context, ref, parsed.blocks[i]),
                   ),
                 ],
               ],
@@ -257,8 +256,7 @@ class _InstanceRow extends StatelessWidget {
     final submitted = instance.submittedAt;
     final subtitle = [
       instance.recipientName,
-      if (submitted != null)
-        'Submitted ${_monthDay(submitted.toLocal())}',
+      if (submitted != null) 'Submitted ${_monthDay(submitted.toLocal())}',
     ].where((s) => s.isNotEmpty).join(' · ');
     // Instances of a deleted template have nowhere to navigate to.
     final canOpen = instance.questionnaireId != null;
@@ -316,8 +314,18 @@ class _InstanceRow extends StatelessWidget {
   }
 
   static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   static String _monthDay(DateTime d) => '${_months[d.month - 1]} ${d.day}';
 }
@@ -370,8 +378,7 @@ class _SendRow extends StatelessWidget {
           child: Row(
             children: [
               Icon(CupertinoIcons.paperplane,
-                  size: 18,
-                  color: CupertinoTheme.of(context).primaryColor),
+                  size: 18, color: CupertinoTheme.of(context).primaryColor),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(

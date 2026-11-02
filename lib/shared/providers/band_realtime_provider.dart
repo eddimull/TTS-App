@@ -19,6 +19,8 @@ import '../../features/library/providers/library_provider.dart';
 import '../../features/lodging/providers/lodging_provider.dart';
 import '../../features/media/providers/media_provider.dart';
 import '../../features/search/providers/music_provider.dart';
+import '../../features/events/providers/attire_chips_provider.dart';
+import '../../features/events/providers/event_music_provider.dart';
 import '../../features/events/providers/events_provider.dart';
 import '../../features/personnel/providers/rosters_provider.dart';
 import '../../features/questionnaires/providers/questionnaire_instances_provider.dart';
@@ -63,16 +65,25 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
         bookingDateInfoProvider,
         bookingHistoryProvider,
         dashboardProvider,
+        // The event page shows the booking's status and contacts; the
+        // backend signals `bookings` for contact changes too.
+        eventDetailProvider,
       ];
     case 'events':
     case 'event_member':
+    // A band event (eventable) changing its title or venue.
+    case 'band_events':
       return [
         bandEventsProvider,
         eventDetailProvider,
         eventSubsProvider,
         dashboardProvider,
+        // Wedding dances and event details feed the Music page.
+        eventMusicProvider,
       ];
     case 'roster':
+    case 'roster_member':
+    case 'roster_slot':
       return [
         bandEventsProvider,
         eventDetailProvider,
@@ -81,12 +92,25 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
         rostersProvider,
         rosterDetailProvider,
       ];
+    case 'event_attachment':
+    case 'live_setlist_session':
+      // Files list and the Run/Join live button on the event page.
+      return [eventDetailProvider];
+    case 'event_setlist':
+      // Not setlistEditorProvider: it holds unsaved local edits.
+      return [eventMusicProvider];
+    case 'attire_chip':
+      return [attireChipsProvider];
     case 'rehearsal':
       return [
         schedulesProvider,
         rehearsalDetailProvider,
         rehearsalDetailByKeyProvider,
         dashboardProvider,
+        // A rehearsal's venue shows on its event page, and Add to rehearsal
+        // lists the rehearsals before a gig.
+        eventDetailProvider,
+        rehearsalsBeforeEventProvider,
       ];
     case 'lodging':
       return [
@@ -106,15 +130,20 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
         bookingPayoutProvider,
       ];
     case 'media_file':
-      return [mediaListProvider];
+      // eventDetailProvider: the event page's Media grid.
+      return [mediaListProvider, eventDetailProvider];
     case 'song':
-      return [songsProvider, libraryProvider];
+      return [songsProvider, libraryProvider, eventMusicProvider];
     case 'charts':
     case 'chart_uploads':
       return [chartsProvider, libraryProvider, chartDetailProvider];
     case 'message':
       // dashboardProvider: keeps EventCard unread-comment badges fresh.
-      return [chatConversationsProvider, topicThreadProvider, dashboardProvider];
+      return [
+        chatConversationsProvider,
+        topicThreadProvider,
+        dashboardProvider
+      ];
     case 'questionnaires':
       return [questionnairesProvider, questionnaireDetailProvider];
     case 'questionnaire_instances':
@@ -126,7 +155,12 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
         questionnairesProvider, // times-sent counts on the list
       ];
     case 'questionnaire_responses':
-      return [instanceDetailProvider, questionnaireInstancesProvider];
+      // eventMusicProvider: the client's song picks.
+      return [
+        instanceDetailProvider,
+        questionnaireInstancesProvider,
+        eventMusicProvider,
+      ];
     default:
       return const [];
   }
@@ -154,12 +188,21 @@ List<void Function(Ref)> cacheClearersFor(String model) {
 
 /// All models the registry knows — used for the blanket invalidation after an
 /// app-resume reconnect, when signals may have been missed.
-const List<String> _allRegisteredModels = [
+@visibleForTesting
+const List<String> allRegisteredModels = [
   'bookings',
   'events',
+  'event_member',
+  'band_events',
+  'event_attachment',
+  'event_setlist',
+  'live_setlist_session',
+  'attire_chip',
   'rehearsal',
   'lodging',
   'roster',
+  'roster_member',
+  'roster_slot',
   'payments',
   'payout',
   'payout_adjustment',
@@ -284,9 +327,11 @@ class BandRealtimeNotifier extends Notifier<int?> {
   /// resubscribe (spec: Resilience).
   void _onResume() {
     if (_disposed) return;
-    final bandId = state;
+    // The selected band, not `state`: state stays null when the last
+    // subscribe failed (offline at launch), and resume is its retry.
+    final bandId = state ?? ref.read(selectedBandProvider).value;
     if (bandId == null) return;
-    _pendingModels.addAll(_allRegisteredModels);
+    _pendingModels.addAll(allRegisteredModels);
     _flushTimer ??= Timer(ref.read(bandRealtimeDebounceProvider), _flush);
     _resubscribe(bandId);
   }

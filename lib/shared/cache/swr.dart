@@ -58,6 +58,14 @@ mixin SwrSupport<T> on AsyncNotifier<T> {
     return '$bandId:$name';
   }
 
+  /// Notify on every new state, not only when `==` says it changed. Models
+  /// like `EventDetail` compare by key alone, so a revalidated payload with a
+  /// new timeline "equals" the one on screen and would otherwise never reach
+  /// widgets — realtime signals and resume refreshes would fetch and drop it.
+  @override
+  bool updateShouldNotify(AsyncValue<T> previous, AsyncValue<T> next) =>
+      !identical(previous, next);
+
   /// Latest known connectivity. `null` (stream not yet emitted) is treated
   /// as online so we never wrongly skip a fetch.
   bool get _isOffline => ref.read(connectivityProvider).value == false;
@@ -71,7 +79,8 @@ mixin SwrSupport<T> on AsyncNotifier<T> {
     required Future<({T value, Map<String, dynamic> raw})> Function() fetch,
   }) async {
     final key = _swrKey(name);
-    final cached = key == null ? null : ref.read(apiCacheStorageProvider).read(key);
+    final cached =
+        key == null ? null : ref.read(apiCacheStorageProvider).read(key);
     if (cached != null) {
       try {
         final decoded = decode(cached.payload);

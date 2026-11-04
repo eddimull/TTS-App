@@ -4,11 +4,21 @@ import 'package:tts_bandmate/core/providers/core_providers.dart';
 import 'models/band_revenue.dart';
 import 'models/finance_booking.dart';
 import 'models/finance_trends.dart';
+import 'models/payments_due.dart';
 
 class FinancesRepository {
   FinancesRepository(this._dio);
 
   final Dio _dio;
+
+  /// Fetches every payment still owed on [bandId]'s contracted bookings.
+  /// Owner-only on the backend.
+  Future<PaymentsDue> fetchDue(int bandId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.mobileBandFinancesDue(bandId),
+    );
+    return PaymentsDue.fromJson(response.data!);
+  }
 
   /// Fetches bookings with an outstanding balance for [bandId].
   /// Pass [year] to scope results to a specific calendar year.

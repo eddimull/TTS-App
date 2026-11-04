@@ -7,6 +7,7 @@ import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/bookings_repository.dart';
 import '../data/models/booking_payment.dart';
 import '../providers/bookings_provider.dart';
+import '../widgets/deposit_finance_row.dart';
 import '../widgets/payment_type_picker.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 
@@ -59,6 +60,7 @@ class BookingPaymentsScreen extends ConsumerWidget {
                               label: 'Total',
                               value: booking.displayPrice,
                               bold: true),
+                          DepositFinanceRow(booking: booking),
                           const SizedBox(height: 6),
                           _FinRow(
                             label: 'Paid',
@@ -66,16 +68,7 @@ class BookingPaymentsScreen extends ConsumerWidget {
                             valueColor: CupertinoColors.systemGreen
                                 .resolveFrom(context),
                           ),
-                          const SizedBox(height: 6),
-                          _FinRow(
-                            label: 'Balance due',
-                            value: booking.displayAmountDue,
-                            valueColor: booking.isPaid
-                                ? CupertinoColors.systemGreen
-                                    .resolveFrom(context)
-                                : CupertinoColors.systemRed
-                                    .resolveFrom(context),
-                          ),
+                          BalanceFinanceRow(booking: booking),
                         ],
                       ),
                     ),

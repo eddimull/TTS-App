@@ -8,14 +8,16 @@ import 'package:tts_bandmate/shared/widgets/empty_state_view.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../../../shared/widgets/status_chip.dart';
 import '../data/models/finance_booking.dart';
+import '../payout_editor/providers/payout_flow_provider.dart' show isSelectedBandOwnerProvider;
 import '../providers/finances_provider.dart';
 import 'widgets/revenue_view.dart';
+import 'widgets/payments_due_view.dart';
 import 'widgets/trends_view.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 final _fmt = NumberFormat.currency(symbol: '\$');
 
-enum _FinancesTab { unpaid, paid, revenue, trends }
+enum _FinancesTab { due, unpaid, paid, revenue, trends }
 
 // ── Root screen ───────────────────────────────────────────────────────────────
 
@@ -27,11 +29,16 @@ class FinancesScreen extends ConsumerStatefulWidget {
 }
 
 class _FinancesScreenState extends ConsumerState<FinancesScreen> {
-  _FinancesTab _tab = _FinancesTab.unpaid;
+  /// Null until the user picks a tab: owners start on Due, everyone else on
+  /// Unpaid. Derived rather than stored so it's right once auth has loaded.
+  _FinancesTab? _tab;
 
   @override
   Widget build(BuildContext context) {
     final bandAsync = ref.watch(selectedBandProvider);
+    final isOwner = ref.watch(isSelectedBandOwnerProvider);
+    var tab = _tab ?? (isOwner ? _FinancesTab.due : _FinancesTab.unpaid);
+    if (tab == _FinancesTab.due && !isOwner) tab = _FinancesTab.unpaid;
 
     return bandAsync.when(
       loading: () => const CupertinoPageScaffold(
@@ -51,7 +58,8 @@ class _FinancesScreenState extends ConsumerState<FinancesScreen> {
         }
         return _FinancesBody(
           bandId: bandId,
-          tab: _tab,
+          tab: tab,
+          showDueTab: isOwner,
           onTabChanged: (t) => setState(() => _tab = t),
         );
       },
@@ -65,11 +73,13 @@ class _FinancesBody extends ConsumerStatefulWidget {
   const _FinancesBody({
     required this.bandId,
     required this.tab,
+    required this.showDueTab,
     required this.onTabChanged,
   });
 
   final int bandId;
   final _FinancesTab tab;
+  final bool showDueTab;
   final void Function(_FinancesTab) onTabChanged;
 
   @override
@@ -98,6 +108,7 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
     // Only the Unpaid/Paid tabs read a bookings provider; the Revenue tab has
     // its own provider, so don't keep a bookings provider alive there.
     final bookingsAsync = switch (widget.tab) {
+      _FinancesTab.due => null,
       _FinancesTab.unpaid => ref.watch(unpaidServicesProvider(_params)),
       _FinancesTab.paid => ref.watch(paidServicesProvider(_params)),
       _FinancesTab.revenue => null,
@@ -109,6 +120,8 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
         slivers: [
           CupertinoSliverRefreshControl(
             onRefresh: () => switch (widget.tab) {
+              _FinancesTab.due =>
+                ref.read(paymentsDueProvider(widget.bandId).notifier).refresh(),
               _FinancesTab.unpaid =>
                 ref.read(unpaidServicesProvider(_params).notifier).refresh(),
               _FinancesTab.paid =>
@@ -139,38 +152,13 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
               child: CupertinoSegmentedControl<_FinancesTab>(
                 groupValue: widget.tab,
                 onValueChanged: widget.onTabChanged,
-                // FittedBox: the four segments share the width equally, so on
-                // narrow (zoomed-display) screens the longer labels wrap
-                // mid-word; scale them down instead.
-                children: const {
-                  _FinancesTab.unpaid: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text('Unpaid', maxLines: 1),
-                    ),
-                  ),
-                  _FinancesTab.paid: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text('Paid', maxLines: 1),
-                    ),
-                  ),
-                  _FinancesTab.revenue: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text('Revenue', maxLines: 1),
-                    ),
-                  ),
-                  _FinancesTab.trends: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text('Trends', maxLines: 1),
-                    ),
-                  ),
+                children: {
+                  if (widget.showDueTab)
+                    _FinancesTab.due: const _TabLabel('Due'),
+                  _FinancesTab.unpaid: const _TabLabel('Unpaid'),
+                  _FinancesTab.paid: const _TabLabel('Paid'),
+                  _FinancesTab.revenue: const _TabLabel('Revenue'),
+                  _FinancesTab.trends: const _TabLabel('Trends'),
                 },
               ),
             ),
@@ -347,12 +335,34 @@ class _FinancesBodyState extends ConsumerState<_FinancesBody> {
               );
             },
           ),
-          ] else if (widget.tab == _FinancesTab.revenue)
+          ] else if (widget.tab == _FinancesTab.due)
+            PaymentsDueView(bandId: widget.bandId)
+          else if (widget.tab == _FinancesTab.revenue)
             RevenueView(bandId: widget.bandId)
           else
             TrendsView(bandId: widget.bandId),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
+      ),
+    );
+  }
+}
+
+/// One segment's label. The segments share the width equally, so a fixed size
+/// keeps them matching (scaling each to fit left "Revenue" smaller than the
+/// rest), with FittedBox only as a guard against wrapping on very narrow screens.
+class _TabLabel extends StatelessWidget {
+  const _TabLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(label, maxLines: 1, style: const TextStyle(fontSize: 14)),
       ),
     );
   }

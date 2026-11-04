@@ -15,6 +15,7 @@ import '../providers/bookings_provider.dart';
 import '../widgets/booking_contract_nudge.dart';
 import '../widgets/booking_engagement_summary.dart';
 import '../widgets/booking_section_tile.dart';
+import '../widgets/deposit_finance_row.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 import '../../chat/widgets/comment_bar.dart';
 import '../../auth/data/models/band_summary.dart';
@@ -628,6 +629,7 @@ class _FinancialsCard extends StatelessWidget {
       child: Column(
         children: [
           _FinanceRow(label: 'Total', value: booking.displayPrice, bold: true),
+          DepositFinanceRow(booking: booking),
           const SizedBox(height: 6),
           _FinanceRow(
             label: 'Paid',
@@ -635,13 +637,7 @@ class _FinancialsCard extends StatelessWidget {
             valueColor: CupertinoColors.systemGreen.resolveFrom(context),
           ),
           const SizedBox(height: 6),
-          _FinanceRow(
-            label: 'Balance due',
-            value: booking.displayAmountDue,
-            valueColor: booking.isPaid
-                ? CupertinoColors.systemGreen.resolveFrom(context)
-                : CupertinoColors.systemRed.resolveFrom(context),
-          ),
+          BalanceFinanceRow(booking: booking),
           if (booking.isPaid) ...[
             const SizedBox(height: 8),
             Row(

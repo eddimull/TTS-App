@@ -34,4 +34,16 @@ class Deposit {
       remainingAmount: (price - depositDollars).toStringAsFixed(2),
     );
   }
+
+  /// "Deposit (25%)" for a percent deposit, "Deposit" for a flat amount.
+  static String label(BookingDetail booking) =>
+      labelFor(booking.depositType, booking.depositValue);
+
+  static String labelFor(String depositType, String depositValue) {
+    if (depositType == 'amount') return 'Deposit';
+    final percent = (double.tryParse(depositValue) ?? 0)
+        .toStringAsFixed(2)
+        .replaceFirst(RegExp(r'\.?0+$'), '');
+    return 'Deposit ($percent%)';
+  }
 }

@@ -20,6 +20,7 @@ import '../../bookings/widgets/create_booking_sheet.dart';
 import '../../events/data/models/event_summary.dart';
 import '../../lodging/providers/lodging_provider.dart';
 import '../../lodging/utils/lodging_by_day.dart';
+import '../../finances/providers/finances_provider.dart';
 import '../../notifications/providers/notification_feed_provider.dart';
 import '../dashboard_list_filter.dart';
 import '../providers/calendar_filter_provider.dart';
@@ -72,6 +73,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     final dashboardAsync = ref.watch(dashboardProvider);
     final bellUnseen = ref.watch(unseenNotificationsCountProvider).value ?? 0;
+    final overdueCount = ref.watch(selectedBandOverdueCountProvider);
 
     // A provider reset (app-resume blanket invalidation, realtime signal,
     // pull-to-refresh) replaces the loaded window with the initial one while
@@ -105,12 +107,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               CupertinoSliverNavigationBar(
                 largeTitle: Text(bandName),
                 leading: Semantics(
-                  label: 'Operations menu',
+                  label: overdueCount > 0
+                      ? 'Operations menu, $overdueCount payments overdue'
+                      : 'Operations menu',
                   button: true,
                   child: CupertinoButton(
                     padding: EdgeInsets.zero,
                     onPressed: () => context.push('/operations'),
-                    child: const Icon(CupertinoIcons.line_horizontal_3),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(CupertinoIcons.line_horizontal_3),
+                        if (overdueCount > 0)
+                          Positioned(
+                            key: const ValueKey('overdue-menu-dot'),
+                            top: 0,
+                            right: -3,
+                            child: Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: CupertinoColors.systemRed
+                                    .resolveFrom(context),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
                 trailing: Row(

@@ -1,8 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tts_bandmate/features/finances/payout_editor/providers/payout_flow_provider.dart' show isSelectedBandOwnerProvider;
+import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 import '../data/finances_repository.dart';
 import '../data/models/band_revenue.dart';
 import '../data/models/finance_booking.dart';
 import '../data/models/finance_trends.dart';
+import '../data/models/payments_due.dart';
 
 class FinancesParams {
   const FinancesParams({required this.bandId, required this.year});
@@ -18,6 +21,34 @@ class FinancesParams {
   @override
   int get hashCode => Object.hash(bandId, year);
 }
+
+class _PaymentsDueNotifier extends AsyncNotifier<PaymentsDue> {
+  _PaymentsDueNotifier(this._bandId);
+  final int _bandId;
+
+  @override
+  Future<PaymentsDue> build() =>
+      ref.watch(financesRepositoryProvider).fetchDue(_bandId);
+
+  Future<void> refresh() async {
+    state = await AsyncValue.guard(
+        () => ref.read(financesRepositoryProvider).fetchDue(_bandId));
+  }
+}
+
+final paymentsDueProvider =
+    AsyncNotifierProvider.family<_PaymentsDueNotifier, PaymentsDue, int>(
+  (arg) => _PaymentsDueNotifier(arg),
+);
+
+/// How many payments are overdue on the selected band, for the owner's menu dot
+/// and Operations count. Zero for non-owners, who can't load payments due, and
+/// while loading or on failure: a badge should never get in the way of home.
+final selectedBandOverdueCountProvider = Provider<int>((ref) {
+  final bandId = ref.watch(selectedBandProvider).value;
+  if (bandId == null || !ref.watch(isSelectedBandOwnerProvider)) return 0;
+  return ref.watch(paymentsDueProvider(bandId)).value?.overdue.count ?? 0;
+});
 
 class _UnpaidServicesNotifier extends AsyncNotifier<List<FinanceBooking>> {
   _UnpaidServicesNotifier(this._params);

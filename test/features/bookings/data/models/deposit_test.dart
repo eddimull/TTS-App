@@ -47,6 +47,21 @@ void main() {
       expect(resolved.remainingAmount, '0.00');
     });
   });
+
+  group('Deposit.label', () {
+    test('names the percent without trailing zeros', () {
+      expect(Deposit.label(_booking(depositValue: '25.00')), 'Deposit (25%)');
+      expect(Deposit.label(_booking(depositValue: '12.50')), 'Deposit (12.5%)');
+      expect(Deposit.label(_booking(depositValue: '100.00')), 'Deposit (100%)');
+    });
+
+    test('is plain for a flat amount', () {
+      expect(
+        Deposit.label(_booking(depositType: 'amount', depositValue: '300.00')),
+        'Deposit',
+      );
+    });
+  });
 }
 
 BookingDetail _booking({

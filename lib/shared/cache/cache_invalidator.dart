@@ -9,6 +9,7 @@ import '../../features/dashboard/providers/dashboard_provider.dart';
 import '../../features/events/providers/client_requests_provider.dart';
 import '../../features/events/providers/event_music_provider.dart';
 import '../../features/events/providers/events_provider.dart';
+import '../../features/finances/providers/finances_provider.dart';
 import '../../features/rehearsals/providers/rehearsals_provider.dart';
 import '../../shared/providers/selected_band_provider.dart';
 import 'api_cache_storage.dart';
@@ -134,6 +135,8 @@ class CacheInvalidator {
     _ref.invalidate(bookingsWindowProvider);
     _ref.invalidate(bookingDateInfoProvider(bandId));
     _ref.invalidate(bookingDateStatusesProvider(bandId));
+    // A payment or contract change moves what's due, and the menu dot with it.
+    _ref.invalidate(paymentsDueProvider(bandId));
     // Dashboard surfaces upcoming events/charts derived from band data.
     _ref.read(dashboardProvider.notifier).refresh();
   }
@@ -155,6 +158,10 @@ class CacheInvalidator {
     _ref.invalidate(eventDetailProvider(eventKey));
     _ref.invalidate(eventMusicProvider(eventKey));
     _ref.invalidate(eventClientRequestsProvider(eventKey));
+    // A show's date sets when its balance is due. Family roots, because only
+    // the event's key is known here.
+    _ref.invalidate(paymentsDueProvider);
+    _ref.invalidate(bookingDetailProvider);
     _ref.read(dashboardProvider.notifier).refresh();
   }
 
@@ -192,6 +199,8 @@ class CacheInvalidator {
     _ref.invalidate(eventDetailProvider);
     _ref.invalidate(bookingDetailProvider);
     _ref.invalidate(bookingsWindowProvider);
+    // Also covers a new day: a payment can go overdue with nothing changing.
+    _ref.invalidate(paymentsDueProvider);
   }
 }
 

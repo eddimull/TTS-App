@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tts_bandmate/core/network/pusher_connection.dart';
 import 'package:tts_bandmate/features/bookings/data/bookings_cache_storage.dart';
 import 'package:tts_bandmate/features/bookings/providers/booking_payout_provider.dart';
+import 'package:tts_bandmate/features/finances/providers/finances_provider.dart';
 import 'package:tts_bandmate/features/bookings/providers/bookings_provider.dart';
 import 'package:tts_bandmate/features/bookings/providers/bookings_window_provider.dart';
 import 'package:tts_bandmate/features/chat/providers/conversations_provider.dart';
@@ -180,6 +181,11 @@ void main() {
 
   test('registry maps events, rehearsal, and event_member', () {
     expect(invalidationTargetsFor('events'), contains(bandEventsProvider));
+    // A show's date sets when its balance is due.
+    expect(invalidationTargetsFor('events'),
+        containsAll([paymentsDueProvider, bookingDetailProvider]));
+    expect(invalidationTargetsFor('payments'), contains(paymentsDueProvider));
+    expect(invalidationTargetsFor('bookings'), contains(paymentsDueProvider));
     expect(
         invalidationTargetsFor('event_member'), contains(eventDetailProvider));
     expect(invalidationTargetsFor('rehearsal'), isNotEmpty);

@@ -6,9 +6,13 @@ import 'package:tts_bandmate/features/finances/data/finances_repository.dart';
 import 'package:tts_bandmate/features/finances/data/models/band_revenue.dart';
 import 'package:tts_bandmate/features/finances/data/models/finance_booking.dart';
 import 'package:tts_bandmate/features/finances/data/models/finance_trends.dart';
+import 'package:tts_bandmate/features/finances/data/models/payments_due.dart';
 import 'package:tts_bandmate/features/finances/screens/widgets/trends_view.dart';
 
 class _FakeRepo implements FinancesRepository {
+  @override
+  Future<PaymentsDue> fetchDue(int bandId) => throw UnimplementedError();
+
   @override
   Future<FinanceTrends> fetchTrends(int bandId,
       {required int year,
@@ -49,6 +53,9 @@ class _FakeRepo implements FinancesRepository {
 /// Simulates an older backend that sends `unearned` (the all-years total)
 /// but does not yet send `unearned_by_year`.
 class _FakeRepoNoYearBreakdown implements FinancesRepository {
+  @override
+  Future<PaymentsDue> fetchDue(int bandId) => throw UnimplementedError();
+
   @override
   Future<FinanceTrends> fetchTrends(int bandId,
       {required int year,

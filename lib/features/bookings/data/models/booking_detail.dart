@@ -6,6 +6,7 @@ import '../../../lodging/data/models/lodging.dart';
 import 'booking_contact.dart';
 import 'booking_contract.dart';
 import 'booking_payment.dart';
+import 'payment_due_state.dart';
 
 class BookingDetail {
   const BookingDetail({
@@ -32,6 +33,7 @@ class BookingDetail {
     this.depositType = 'percent',
     this.depositValue = '50.00',
     this.expectedDepositAmount,
+    this.paymentDue,
     this.lodgings = const [],
   });
 
@@ -85,6 +87,11 @@ class BookingDetail {
   /// the backend from depositType + depositValue + price. Null on legacy
   /// responses that pre-date the deposit-config feature.
   final String? expectedDepositAmount;
+
+  /// When the deposit and balance are due and where they stand. Null until
+  /// the booking is confirmed with a signed contract, on list payloads, and on
+  /// older backends.
+  final PaymentDueState? paymentDue;
 
   /// Lodging summaries visible to this viewer (backend gates per-viewer;
   /// missing/malformed payloads parse to empty).
@@ -160,6 +167,7 @@ class BookingDetail {
       depositType: depositType,
       depositValue: depositValue,
       expectedDepositAmount: expectedDepositAmount,
+      paymentDue: PaymentDueState.tryFromJson(json['payment_due']),
       lodgings: lodgings,
     );
   }

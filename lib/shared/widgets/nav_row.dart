@@ -15,6 +15,7 @@ class NavRow extends StatelessWidget {
     this.onTap,
     this.showChevron = true,
     this.semanticLabel,
+    this.trailing,
   });
 
   final String title;
@@ -31,6 +32,9 @@ class NavRow extends StatelessWidget {
 
   /// Override for the Semantics label; defaults to [title] + [subtitle].
   final String? semanticLabel;
+
+  /// Optional widget shown before the chevron, such as a count.
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +80,7 @@ class NavRow extends StatelessWidget {
               ],
             ),
           ),
+          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
           if (showChevron) ...[
             const SizedBox(width: 4),
             Icon(

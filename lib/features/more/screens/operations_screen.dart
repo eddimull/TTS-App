@@ -1,3 +1,4 @@
+import 'package:tts_bandmate/features/finances/providers/finances_provider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +22,7 @@ class OperationsScreen extends ConsumerWidget {
     final currentBand =
         bandId == null ? null : bands.where((b) => b.id == bandId).firstOrNull;
     final isOwner = currentBand?.isOwner ?? false;
+    final overdueCount = ref.watch(selectedBandOverdueCountProvider);
 
     return CupertinoPageScaffold(
       navigationBar: const CupertinoNavigationBar(middle: Text('Operations')),
@@ -37,6 +39,9 @@ class OperationsScreen extends ConsumerWidget {
             title: 'Finances',
             leading: Icon(CupertinoIcons.money_dollar_circle,
                 size: 22, color: context.secondaryText),
+            semanticLabel:
+                overdueCount > 0 ? 'Finances, $overdueCount overdue' : null,
+            trailing: overdueCount > 0 ? _OverduePill(count: overdueCount) : null,
             onTap: () => context.push('/finances'),
           ),
           NavRow(
@@ -84,6 +89,28 @@ class OperationsScreen extends ConsumerWidget {
             onTap: () => context.push('/questionnaires'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _OverduePill extends StatelessWidget {
+  const _OverduePill({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final red = CupertinoColors.systemRed.resolveFrom(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: red.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(13),
+      ),
+      child: Text(
+        '$count overdue',
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: red),
       ),
     );
   }

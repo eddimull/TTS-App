@@ -129,6 +129,8 @@ class ApiEndpoints {
 
   static String mobileBandFinances(int bandId) =>
       '/api/mobile/bands/$bandId/finances';
+  static String mobileBandFinancesDue(int bandId) =>
+      '/api/mobile/bands/$bandId/finances/due';
   static String mobileBandFinancesUnpaid(int bandId) =>
       '/api/mobile/bands/$bandId/finances/unpaid';
   static String mobileBandFinancesPaid(int bandId) =>

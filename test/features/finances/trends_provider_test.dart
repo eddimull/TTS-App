@@ -4,9 +4,13 @@ import 'package:tts_bandmate/features/finances/data/finances_repository.dart';
 import 'package:tts_bandmate/features/finances/data/models/band_revenue.dart';
 import 'package:tts_bandmate/features/finances/data/models/finance_booking.dart';
 import 'package:tts_bandmate/features/finances/data/models/finance_trends.dart';
+import 'package:tts_bandmate/features/finances/data/models/payments_due.dart';
 import 'package:tts_bandmate/features/finances/providers/finances_provider.dart';
 
 class _FakeRepo implements FinancesRepository {
+  @override
+  Future<PaymentsDue> fetchDue(int bandId) => throw UnimplementedError();
+
   int calls = 0;
   int? lastYear;
   String? lastSnapshot;

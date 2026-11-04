@@ -1,3 +1,6 @@
+import 'package:tts_bandmate/features/finances/data/finances_repository.dart';
+import 'package:tts_bandmate/features/finances/data/models/payments_due.dart';
+import 'package:tts_bandmate/features/finances/providers/finances_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -41,6 +44,19 @@ class _NoopDashboardNotifier extends DashboardNotifier {
 class _FakeBandNotifier extends SelectedBandNotifier {
   @override
   Future<int?> build() async => 7;
+}
+
+class _CountingFinancesRepo implements FinancesRepository {
+  int dueFetches = 0;
+
+  @override
+  Future<PaymentsDue> fetchDue(int bandId) async {
+    dueFetches++;
+    return PaymentsDue.fromJson(const {});
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
@@ -89,6 +105,31 @@ void main() {
     container.read(cacheInvalidatorProvider).onEventChanged(eventKey: 'evt-1');
 
     expect(storage.read('7:event:evt-1'), isNull);
+  });
+
+  test('onEventChanged refetches payments due, since a show date sets them',
+      () async {
+    final repo = _CountingFinancesRepo();
+    SharedPreferences.setMockInitialValues({});
+    final container = ProviderContainer(overrides: [
+      bookingsCacheStorageProvider.overrideWithValue(_RecordingCache()),
+      dashboardProvider.overrideWith(_NoopDashboardNotifier.new),
+      apiCacheStorageProvider.overrideWithValue(
+          ApiCacheStorage(await SharedPreferences.getInstance())),
+      selectedBandProvider.overrideWith(_FakeBandNotifier.new),
+      connectivityProvider.overrideWithValue(const AsyncValue.data(true)),
+      financesRepositoryProvider.overrideWithValue(repo),
+    ]);
+    addTearDown(container.dispose);
+    await container.read(selectedBandProvider.future);
+    container.listen(paymentsDueProvider(7), (_, __) {});
+    await container.read(paymentsDueProvider(7).future);
+    expect(repo.dueFetches, 1);
+
+    container.read(cacheInvalidatorProvider).onEventChanged(eventKey: 'evt-1');
+    await container.read(paymentsDueProvider(7).future);
+
+    expect(repo.dueFetches, 2);
   });
 
   test('onQuestionnaireAppliedToEvents drops every event of the band only',

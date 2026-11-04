@@ -195,6 +195,8 @@ class CacheInvalidator {
     _ref.invalidate(eventDetailProvider);
     _ref.invalidate(bookingDetailProvider);
     _ref.invalidate(bookingsWindowProvider);
+    // Also covers a new day: a payment can go overdue with nothing changing.
+    _ref.invalidate(paymentsDueProvider);
   }
 }
 

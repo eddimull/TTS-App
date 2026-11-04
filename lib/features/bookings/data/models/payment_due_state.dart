@@ -38,12 +38,17 @@ class PaymentDueState {
     required this.eventDate,
     required this.deposit,
     required this.balance,
+    this.merged = false,
   });
 
   /// ISO date of the first event.
   final String eventDate;
   final PaymentDue deposit;
   final PaymentDue balance;
+
+  /// Signed so close to the show that the deposit and balance share one
+  /// deadline, with [balance] holding the full amount owed.
+  final bool merged;
 
   /// Null when [json] isn't a usable payload, so a malformed response degrades
   /// to "no due dates" instead of breaking the booking screen.
@@ -58,6 +63,7 @@ class PaymentDueState {
       eventDate: json['event_date']?.toString() ?? '',
       deposit: PaymentDue.fromJson(deposit),
       balance: PaymentDue.fromJson(balance),
+      merged: json['merged'] == true,
     );
   }
 }

@@ -16,6 +16,7 @@ import '../../features/chat/providers/conversations_provider.dart';
 import '../../features/chat/providers/topic_thread_provider.dart';
 import '../../features/dashboard/providers/dashboard_provider.dart';
 import '../../features/library/providers/library_provider.dart';
+import '../../features/finances/providers/finances_provider.dart';
 import '../../features/lodging/providers/lodging_provider.dart';
 import '../../features/media/providers/media_provider.dart';
 import '../../features/search/providers/music_provider.dart';
@@ -61,6 +62,7 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
         bandBookingsProvider,
         bookingDetailProvider,
         bookingsWindowProvider,
+        paymentsDueProvider,
         bookingDateStatusesProvider,
         bookingDateInfoProvider,
         bookingHistoryProvider,
@@ -74,6 +76,8 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
     // A band event (eventable) changing its title or venue.
     case 'band_events':
       return [
+        // A show's date sets when its balance is due.
+        paymentsDueProvider,
         bandEventsProvider,
         eventDetailProvider,
         eventSubsProvider,
@@ -126,6 +130,7 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
     case 'payout_adjustment':
     case 'band_payout_config':
       return [
+        paymentsDueProvider,
         bookingDetailProvider,
         bookingPayoutProvider,
       ];

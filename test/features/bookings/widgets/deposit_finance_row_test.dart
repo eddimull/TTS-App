@@ -165,6 +165,25 @@ void main() {
       expect(find.text('Due by Feb 27, 2027'), findsOneWidget);
     });
 
+    testWidgets('says due, not rest due, when deposit and balance share a deadline',
+        (tester) async {
+      await _pump(
+        tester,
+        BalanceFinanceRow(
+          booking: _booking(
+            paymentDue: PaymentDueState(
+              eventDate: '2027-03-06',
+              merged: true,
+              deposit: _due('250.00', '2027-02-27'),
+              balance: _due('1000.00', '2027-02-27'),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Due by Feb 27, 2027'), findsOneWidget);
+    });
+
     testWidgets('reads due now, not overdue, in the last 7 days', (tester) async {
       await _pump(
         tester,

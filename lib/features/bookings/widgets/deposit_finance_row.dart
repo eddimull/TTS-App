@@ -197,7 +197,8 @@ class BalanceFinanceRow extends StatelessWidget {
         statusBold: true,
       );
     }
-    final prefix = state.deposit.owedAmount > 0 ? 'Rest due' : 'Due';
+    final prefix =
+        state.deposit.owedAmount > 0 && !state.merged ? 'Rest due' : 'Due';
     return _StatusRow(
       label: label,
       value: value,

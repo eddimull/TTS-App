@@ -245,6 +245,28 @@ void main() {
     expect(pushed, ['/bookings/1/7/payments']);
   });
 
+  testWidgets('screen readers can activate rows', (tester) async {
+    final handle = tester.ensureSemantics();
+    final pushed = <String>[];
+    await withClock(Clock.fixed(today), () async {
+      await _pumpView(
+        tester,
+        _due(overdue: [_row()], older: [_row(name: 'Old Show', event: '2026-01-01')]),
+        pushed: pushed,
+      );
+
+      tester.semantics.tap(find.semantics.byLabel(RegExp(r'^Show all ')));
+      await tester.pumpAndSettle();
+      expect(find.text('Old Show'), findsOneWidget);
+
+      tester.semantics.tap(find.semantics.byLabel(RegExp(r'^Hartley Wedding, ')));
+      await tester.pumpAndSettle();
+    });
+
+    expect(pushed, ['/bookings/1/7/payments']);
+    handle.dispose();
+  });
+
   testWidgets('says so when nothing is due', (tester) async {
     await _pumpView(tester, _due());
 

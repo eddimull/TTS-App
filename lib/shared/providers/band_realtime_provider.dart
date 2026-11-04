@@ -76,8 +76,10 @@ List<ProviderOrFamily> invalidationTargetsFor(String model) {
     // A band event (eventable) changing its title or venue.
     case 'band_events':
       return [
-        // A show's date sets when its balance is due.
+        // A show's date sets when its balance is due, on the Due tab and on
+        // the booking's finance cards.
         paymentsDueProvider,
+        bookingDetailProvider,
         bandEventsProvider,
         eventDetailProvider,
         eventSubsProvider,

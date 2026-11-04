@@ -158,6 +158,10 @@ class CacheInvalidator {
     _ref.invalidate(eventDetailProvider(eventKey));
     _ref.invalidate(eventMusicProvider(eventKey));
     _ref.invalidate(eventClientRequestsProvider(eventKey));
+    // A show's date sets when its balance is due. Family roots, because only
+    // the event's key is known here.
+    _ref.invalidate(paymentsDueProvider);
+    _ref.invalidate(bookingDetailProvider);
     _ref.read(dashboardProvider.notifier).refresh();
   }
 

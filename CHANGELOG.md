@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.31.0](https://github.com/eddimull/TTS-App/compare/v1.30.1...v1.31.0) (2026-11-05)
+
+
+### Features
+
+* **events:** show questionnaire answers in the wedding section ([939d401](https://github.com/eddimull/TTS-App/commit/939d401e27a8239aad9b282fccf34496e5af1c05))
+* **events:** show questionnaire answers in the wedding section ([b233d2d](https://github.com/eddimull/TTS-App/commit/b233d2de7c444a0fa7df419462b05ca3fc897a96))
+* **finances:** add Due tab for payments owed ([5e01e9d](https://github.com/eddimull/TTS-App/commit/5e01e9d29685116f42f49297d67033888f4dc87c))
+* **finances:** add Due tab for payments owed ([a529606](https://github.com/eddimull/TTS-App/commit/a5296061d8bc8e4699a3ce51f3348b03973b0b7c))
+
+
+### Bug Fixes
+
+* **events:** announce the question on wedding answer fields ([e8ba375](https://github.com/eddimull/TTS-App/commit/e8ba3758368620395cf1483562af78c75f4f84f7))
+* **finances:** keep Due data fresh and rows accessible ([985a37d](https://github.com/eddimull/TTS-App/commit/985a37daa931e3380f342b0405264657fd728d6e))
+* **finances:** refresh due dates when a show date changes ([ff5a460](https://github.com/eddimull/TTS-App/commit/ff5a4609df21f40aaa5dcd4298e69701290675a8))
+
 ## [1.30.1](https://github.com/eddimull/TTS-App/compare/v1.30.0...v1.30.1) (2026-11-02)
 
 

@@ -123,8 +123,26 @@ class WeddingDance {
       );
 }
 
+/// One answer mapped from a questionnaire; [title] is the question text.
+class WeddingQuestionDetail {
+  const WeddingQuestionDetail({required this.title, this.data});
+  final String title;
+  final String? data;
+
+  factory WeddingQuestionDetail.fromJson(Map<String, dynamic> json) =>
+      WeddingQuestionDetail(
+        title: json['title'] as String? ?? '',
+        data: json['data'] as String?,
+      );
+}
+
 class WeddingDetail {
-  const WeddingDetail({this.onsite, required this.dances, this.colors});
+  const WeddingDetail({
+    this.onsite,
+    required this.dances,
+    this.colors,
+    this.details = const [],
+  });
   final bool? onsite;
 
   /// The couple's colors (`additional_data.wedding.colors`), e.g.
@@ -132,14 +150,27 @@ class WeddingDetail {
   final String? colors;
   final List<WeddingDance> dances;
 
+  /// Answers to custom questions mapped to the wedding section
+  /// (`additional_data.wedding.details`).
+  final List<WeddingQuestionDetail> details;
+
   factory WeddingDetail.fromJson(Map<String, dynamic> json) {
     final rawDances = json['dances'];
     final dances = rawDances is List
         ? rawDances.cast<Map<String, dynamic>>().map(WeddingDance.fromJson).toList()
         : <WeddingDance>[];
+    final rawDetails = json['details'];
+    final details = rawDetails is List
+        ? rawDetails
+            .whereType<Map<String, dynamic>>()
+            .map(WeddingQuestionDetail.fromJson)
+            .where((d) => d.title.isNotEmpty)
+            .toList()
+        : <WeddingQuestionDetail>[];
     return WeddingDetail(
       onsite: json['onsite'] as bool?,
       dances: dances,
+      details: details,
       colors: json['colors'] is String &&
               (json['colors'] as String).trim().isNotEmpty
           ? (json['colors'] as String).trim()

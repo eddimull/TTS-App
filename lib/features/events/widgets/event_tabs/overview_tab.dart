@@ -33,6 +33,7 @@ class OverviewTab extends StatelessWidget {
     final showWedding = wedding != null &&
         (wedding.onsite != null ||
             wedding.colors != null ||
+            wedding.details.isNotEmpty ||
             wedding.dances.isNotEmpty);
     final showDetails = !showWedding && EventDetailsCard.hasContent(event);
     final hasGlance = EventGlanceCard.hasContent(event);

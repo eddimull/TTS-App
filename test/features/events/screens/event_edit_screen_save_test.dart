@@ -239,6 +239,89 @@ void main() {
       },
     );
 
+    group('wedding details', () {
+      EventDetail eventWithDetails() => EventDetail.fromJson({
+            'id': 1,
+            'key': 'evt-1',
+            'title': 'Test Event',
+            'date': '2026-04-15',
+            'can_write': true,
+            'members': [],
+            'timeline': [],
+            'wedding': {
+              'onsite': true,
+              'dances': [],
+              'details': [
+                {'title': 'Introduced as', 'data': 'The Smiths'},
+                {'title': "Groom's mother's name", 'data': 'Linda Smith'},
+              ],
+            },
+          });
+
+      Finder fieldWith(String text) => find.byWidgetPredicate(
+            (w) => w is CupertinoTextField && w.controller?.text == text,
+          );
+
+      // The form is a lazy list, so rows below the fold aren't built yet.
+      Future<void> scrollTo(WidgetTester tester, Finder finder) =>
+          tester.dragUntilVisible(
+            finder,
+            find.byType(Scrollable).first,
+            const Offset(0, -200),
+          );
+
+      Future<void> save(WidgetTester tester) async {
+        await tester.tap(find.widgetWithText(CupertinoButton, 'Save'));
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets('an untouched save leaves the stored rows alone',
+          (tester) async {
+        final repo = _RecordingEventsRepository();
+        await _pumpEditScreen(tester, event: eventWithDetails(), repo: repo);
+
+        await save(tester);
+
+        expect(repo.lastWedding!.containsKey('details'), isFalse);
+      });
+
+      testWidgets('an edited answer is sent under its question',
+          (tester) async {
+        final repo = _RecordingEventsRepository();
+        await _pumpEditScreen(tester, event: eventWithDetails(), repo: repo);
+
+        final field = fieldWith('The Smiths');
+        await scrollTo(tester, field);
+        await tester.enterText(field, 'Mr. and Mrs. Smith');
+        await save(tester);
+
+        expect(repo.lastWedding!['details'], [
+          {'title': 'Introduced as', 'data': 'Mr. and Mrs. Smith'},
+          {'title': "Groom's mother's name", 'data': 'Linda Smith'},
+        ]);
+      });
+
+      testWidgets('a removed or cleared row is dropped', (tester) async {
+        final repo = _RecordingEventsRepository();
+        await _pumpEditScreen(tester, event: eventWithDetails(), repo: repo);
+
+        await scrollTo(tester, fieldWith('The Smiths'));
+        final remove = find.byIcon(CupertinoIcons.minus_circle).first;
+        await tester.ensureVisible(remove);
+        await tester.pumpAndSettle();
+        await tester.tap(remove);
+        await tester.pump();
+        expect(find.text('Introduced as'), findsNothing);
+
+        final field = fieldWith('Linda Smith');
+        await scrollTo(tester, field);
+        await tester.enterText(field, ' ');
+        await save(tester);
+
+        expect(repo.lastWedding!['details'], isEmpty);
+      });
+    });
+
     testWidgets(
       'omits wedding when the event has no wedding block',
       (tester) async {

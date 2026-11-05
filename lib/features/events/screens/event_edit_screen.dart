@@ -29,6 +29,15 @@ class _TimelineEntry {
   String? time; // "HH:mm"
 }
 
+class _WeddingQuestionDetail {
+  _WeddingQuestionDetail({required this.title, String? data})
+      : initialData = data ?? '',
+        controller = TextEditingController(text: data ?? '');
+  final String title;
+  final String initialData;
+  final TextEditingController controller;
+}
+
 class _WeddingDance {
   _WeddingDance({required this.title, this.data});
   String title; // e.g. "first_dance"
@@ -72,6 +81,8 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
   // Wedding dances (null means this event has no wedding block)
   bool? _weddingOnsite;
   List<_WeddingDance>? _weddingDances;
+  // Answers mapped from questionnaire questions; the question stays the label.
+  final List<_WeddingQuestionDetail> _weddingDetails = [];
 
   // Attachments (managed immediately via separate API calls)
   late List<EventAttachment> _attachments;
@@ -91,6 +102,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
   bool? _initBacklineProvided;
   bool? _initProductionNeeded;
   List<_WeddingDance>? _initWeddingDances;
+  int _initWeddingDetailCount = 0;
   bool? _initWeddingOnsite;
   late List<_TimelineEntry> _initTimeline;
 
@@ -126,6 +138,9 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
       _weddingDances = e.wedding!.dances
           .map((d) => _WeddingDance(title: d.title, data: d.data))
           .toList();
+      _weddingDetails.addAll(e.wedding!.details.map(
+          (d) => _WeddingQuestionDetail(title: d.title, data: d.data)));
+      _initWeddingDetailCount = _weddingDetails.length;
     }
 
     _attachments = List.of(e.attachments);
@@ -157,6 +172,9 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     _title.dispose();
     _notes.dispose();
     _attire.dispose();
+    for (final detail in _weddingDetails) {
+      detail.controller.dispose();
+    }
     super.dispose();
   }
 
@@ -200,6 +218,7 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     if (_backlineProvided != _initBacklineProvided) return true;
     if (_productionNeeded != _initProductionNeeded) return true;
     if (_weddingOnsite != _initWeddingOnsite) return true;
+    if (_weddingDetailsChanged) return true;
     if (_weddingDances != null) {
       final init = _initWeddingDances!;
       final curr = _weddingDances!;
@@ -217,6 +236,10 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
     }
     return false;
   }
+
+  bool get _weddingDetailsChanged =>
+      _weddingDetails.length != _initWeddingDetailCount ||
+      _weddingDetails.any((d) => d.controller.text.trim() != d.initialData.trim());
 
   Future<void> _confirmCancel() async {
     if (!_hasChanges()) {
@@ -290,6 +313,16 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                 'dances': _weddingDances!
                     .map((d) => {'title': d.title, 'data': d.data})
                     .toList(),
+                // Only when edited: an untouched save leaves the stored rows
+                // alone, including any sent from another device meanwhile.
+                if (_weddingDetailsChanged)
+                  'details': _weddingDetails
+                      .where((d) => d.controller.text.trim().isNotEmpty)
+                      .map((d) => {
+                            'title': d.title,
+                            'data': d.controller.text.trim(),
+                          })
+                      .toList(),
               },
       );
       ref
@@ -948,6 +981,15 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
 
     songCtrl.dispose();
     customCtrl.dispose();
+  }
+
+  void _removeWeddingDetail(int index) {
+    final removed = _weddingDetails[index];
+    setState(() => _weddingDetails.removeAt(index));
+    // The field still holds the controller until this rebuild finishes.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      removed.controller.dispose();
+    });
   }
 
   void _removeWeddingDance(int index) {
@@ -1761,6 +1803,70 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
               ),
             ),
           ]),
+
+          // ── Wedding Details ─────────────────────────────────────────────────
+          if (_weddingDetails.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const _SectionHeader(title: 'Wedding Details'),
+            _FormCard(children: [
+              for (int i = 0; i < _weddingDetails.length; i++) ...[
+                if (i > 0) _Divider(),
+                Padding(
+                  key: ObjectKey(_weddingDetails[i]),
+                  padding: const EdgeInsets.fromLTRB(16, 10, 4, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _weddingDetails[i].title,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: context.secondaryText,
+                              ),
+                            ),
+                          ),
+                          CupertinoButton(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            minimumSize: const Size(44, 24),
+                            onPressed: () => _removeWeddingDetail(i),
+                            child: Icon(
+                              CupertinoIcons.minus_circle,
+                              size: 20,
+                              semanticLabel:
+                                  'Remove ${_weddingDetails[i].title}',
+                              color: CupertinoColors.destructiveRed
+                                  .resolveFrom(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        // The question above is a separate node; a screen reader
+                        // moving between fields would otherwise skip it.
+                        child: Semantics(
+                          label: _weddingDetails[i].title,
+                          textField: true,
+                          child: CupertinoTextField(
+                            controller: _weddingDetails[i].controller,
+                            minLines: 1,
+                            maxLines: 4,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ]),
+          ],
 
           // ── Wedding Dances ──────────────────────────────────────────────────
           if (_weddingDances != null) ...[

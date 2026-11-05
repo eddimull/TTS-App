@@ -1847,12 +1847,18 @@ class _EventEditScreenState extends ConsumerState<EventEditScreen> {
                       const SizedBox(height: 6),
                       Padding(
                         padding: const EdgeInsets.only(right: 12),
-                        child: CupertinoTextField(
-                          controller: _weddingDetails[i].controller,
-                          minLines: 1,
-                          maxLines: 4,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
+                        // The question above is a separate node; a screen reader
+                        // moving between fields would otherwise skip it.
+                        child: Semantics(
+                          label: _weddingDetails[i].title,
+                          textField: true,
+                          child: CupertinoTextField(
+                            controller: _weddingDetails[i].controller,
+                            minLines: 1,
+                            maxLines: 4,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                          ),
                         ),
                       ),
                     ],

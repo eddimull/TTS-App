@@ -301,6 +301,32 @@ void main() {
         ]);
       });
 
+      testWidgets('each answer field is announced with its question',
+          (tester) async {
+        final semantics = tester.ensureSemantics();
+        final repo = _RecordingEventsRepository();
+        await _pumpEditScreen(tester, event: eventWithDetails(), repo: repo);
+
+        final field = fieldWith('The Smiths');
+        await scrollTo(tester, field);
+        await tester.enterText(field, '');
+        await tester.pump();
+
+        // Still identifiable once the answer has been cleared.
+        expect(
+          find.descendant(
+            of: find.bySemanticsLabel('Introduced as'),
+            matching: find.byType(EditableText),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          tester.getSemantics(find.bySemanticsLabel('Introduced as')),
+          isSemantics(label: 'Introduced as', isTextField: true),
+        );
+        semantics.dispose();
+      });
+
       testWidgets('a removed or cleared row is dropped', (tester) async {
         final repo = _RecordingEventsRepository();
         await _pumpEditScreen(tester, event: eventWithDetails(), repo: repo);

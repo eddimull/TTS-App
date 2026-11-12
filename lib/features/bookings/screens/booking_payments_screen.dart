@@ -5,10 +5,12 @@ import 'package:intl/intl.dart';
 import 'package:tts_bandmate/shared/cache/cache_invalidator.dart';
 import 'package:tts_bandmate/shared/widgets/error_view.dart';
 import '../data/bookings_repository.dart';
+import '../data/models/booking_detail.dart';
 import '../data/models/booking_payment.dart';
 import '../providers/bookings_provider.dart';
 import '../widgets/deposit_finance_row.dart';
 import '../widgets/payment_type_picker.dart';
+import '../widgets/write_off_sheet.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
 
 class BookingPaymentsScreen extends ConsumerWidget {
@@ -69,11 +71,35 @@ class BookingPaymentsScreen extends ConsumerWidget {
                                 .resolveFrom(context),
                           ),
                           BalanceFinanceRow(booking: booking),
+                          WriteOffFinanceRow(booking: booking),
                         ],
                       ),
                     ),
                   ),
                 ),
+
+                // ── Write off / undo ────────────────────────────────────
+                if (_canWriteOff(booking) || booking.writeOff != null)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Center(
+                        child: booking.writeOff != null
+                            ? CupertinoButton(
+                                onPressed: () =>
+                                    _confirmUndoWriteOff(context, ref),
+                                child: const Text('Undo Write-Off',
+                                    style: TextStyle(fontSize: 15)),
+                              )
+                            : CupertinoButton(
+                                onPressed: () =>
+                                    _showWriteOff(context, ref, booking),
+                                child: const Text('Write Off Balance…',
+                                    style: TextStyle(fontSize: 15)),
+                              ),
+                      ),
+                    ),
+                  ),
 
                 // ── Payments list ───────────────────────────────────────
                 if (booking.payments.isEmpty)
@@ -114,6 +140,67 @@ class BookingPaymentsScreen extends ConsumerWidget {
           bandId: bandId,
           bookingId: bookingId,
         );
+  }
+
+  static bool _canWriteOff(BookingDetail booking) =>
+      booking.writeOff == null &&
+      !booking.isPaid &&
+      (double.tryParse(booking.amountDue ?? '') ?? 0) > 0;
+
+  void _showWriteOff(
+      BuildContext context, WidgetRef ref, BookingDetail booking) {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (_) => WriteOffSheet(
+        bandId: bandId,
+        booking: booking,
+        onSaved: () => _invalidate(ref),
+      ),
+    );
+  }
+
+  Future<void> _confirmUndoWriteOff(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (dialogContext) => CupertinoAlertDialog(
+        title: const Text('Undo Write-Off?'),
+        content: const Text(
+            'The balance goes back on the books as owed. The client isn’t notified.'),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Undo'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ref.read(bookingsRepositoryProvider).undoWriteOff(bandId, bookingId);
+      _invalidate(ref);
+    } catch (e) {
+      if (context.mounted) {
+        showCupertinoDialog<void>(
+          context: context,
+          builder: (dialogContext) => CupertinoAlertDialog(
+            title: const Text('Error'),
+            content: Text(e.toString()),
+            actions: [
+              CupertinoDialogAction(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _confirmDelete(

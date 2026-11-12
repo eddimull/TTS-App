@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tts_bandmate/features/bookings/data/models/balance_write_off.dart';
 import 'package:tts_bandmate/features/bookings/data/models/booking_contract.dart';
 import 'package:tts_bandmate/features/bookings/data/models/booking_detail.dart';
 import 'package:tts_bandmate/features/bookings/data/models/payment_due_state.dart';
@@ -25,6 +26,7 @@ BookingDetail _booking({
   String? contractOption = 'default',
   String? contractStatus,
   PaymentDueState? paymentDue,
+  BalanceWriteOff? writeOff,
 }) =>
     BookingDetail(
       id: 1,
@@ -47,6 +49,7 @@ BookingDetail _booking({
       depositValue: depositValue,
       expectedDepositAmount: expectedDepositAmount,
       paymentDue: paymentDue,
+      writeOff: writeOff,
     );
 
 Future<void> _pump(WidgetTester tester, Widget child) => tester.pumpWidget(
@@ -220,6 +223,68 @@ void main() {
 
       expect(find.text(r'$0.00'), findsOneWidget);
       expect(find.textContaining('Due'), findsNothing);
+    });
+  });
+
+  group('WriteOffFinanceRow', () {
+    testWidgets('renders nothing without a write-off', (tester) async {
+      await _pump(tester, WriteOffFinanceRow(booking: _booking()));
+
+      expect(find.text('Written off'), findsNothing);
+    });
+
+    testWidgets('shows the amount, date, who and note', (tester) async {
+      await _pump(
+        tester,
+        WriteOffFinanceRow(
+          booking: _booking(
+            amountDue: '0.00',
+            isPaid: true,
+            writeOff: const BalanceWriteOff(
+              amount: '50.00',
+              at: '2026-11-12T15:00:00Z',
+              by: 'Eddie',
+              note: 'Short on the final check',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Written off'), findsOneWidget);
+      expect(find.text('−\$50.00'), findsOneWidget);
+      expect(find.text('Nov 12, 2026 by Eddie · Short on the final check'), findsOneWidget);
+    });
+  });
+
+  group('BalanceWriteOff.tryFromJson', () {
+    test('parses the backend payload', () {
+      final w = BalanceWriteOff.tryFromJson({
+        'amount': '50.00',
+        'at': '2026-11-12T15:00:00Z',
+        'by': 'Eddie',
+        'note': '  ',
+      })!;
+
+      expect(w.amountValue, 50);
+      expect(w.displayAmount, r'$50.00');
+      expect(w.note, isNull);
+    });
+
+    test('treats null or malformed payloads as no write-off', () {
+      expect(BalanceWriteOff.tryFromJson(null), isNull);
+      expect(BalanceWriteOff.tryFromJson({'at': '2026-11-12'}), isNull);
+    });
+
+    test('BookingDetail reads write_off', () {
+      final detail = BookingDetail.fromJson({
+        'id': 1,
+        'name': 'Test',
+        'is_paid': true,
+        'amount_due': '0.00',
+        'write_off': {'amount': '50.00', 'at': null, 'by': null, 'note': null},
+      });
+      expect(detail.writeOff?.amount, '50.00');
+      expect(BookingDetail.fromJson({'id': 1, 'name': 'Test'}).writeOff, isNull);
     });
   });
 

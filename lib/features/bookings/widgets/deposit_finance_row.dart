@@ -206,3 +206,33 @@ class BalanceFinanceRow extends StatelessWidget {
     );
   }
 }
+
+/// The "Written off" line of a booking's finance summary. Renders nothing
+/// unless the band wrote off the rest of the balance.
+class WriteOffFinanceRow extends StatelessWidget {
+  const WriteOffFinanceRow({super.key, required this.booking});
+
+  final BookingDetail booking;
+
+  @override
+  Widget build(BuildContext context) {
+    final writeOff = booking.writeOff;
+    if (writeOff == null) return const SizedBox.shrink();
+
+    final details = [
+      if (writeOff.at != null) _formatDate(writeOff.at!),
+      if (writeOff.by != null && writeOff.by!.isNotEmpty) 'by ${writeOff.by}',
+    ].join(' ');
+    final status = [
+      if (details.isNotEmpty) details,
+      if (writeOff.note != null) writeOff.note!,
+    ].join(' · ');
+
+    return _StatusRow(
+      label: 'Written off',
+      value: '−${writeOff.displayAmount}',
+      valueColor: context.secondaryText,
+      status: status.isEmpty ? null : status,
+    );
+  }
+}

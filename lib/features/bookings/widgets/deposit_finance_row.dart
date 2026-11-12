@@ -12,6 +12,15 @@ String _formatDate(String iso) {
   return date == null ? iso : DateFormat('MMM d, yyyy').format(date);
 }
 
+/// Like [_formatDate], for an instant (with time zone) rather than a calendar
+/// date: shown on the viewer's local day, not the UTC one.
+String _formatTimestamp(String iso) {
+  final instant = DateTime.tryParse(iso);
+  return instant == null
+      ? iso
+      : DateFormat('MMM d, yyyy').format(instant.toLocal());
+}
+
 /// A label/value row with a smaller status line under the value.
 class _StatusRow extends StatelessWidget {
   const _StatusRow({
@@ -220,7 +229,7 @@ class WriteOffFinanceRow extends StatelessWidget {
     if (writeOff == null) return const SizedBox.shrink();
 
     final details = [
-      if (writeOff.at != null) _formatDate(writeOff.at!),
+      if (writeOff.at != null) _formatTimestamp(writeOff.at!),
       if (writeOff.by != null && writeOff.by!.isNotEmpty) 'by ${writeOff.by}',
     ].join(' ');
     final status = [

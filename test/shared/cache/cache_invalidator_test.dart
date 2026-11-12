@@ -3,6 +3,7 @@ import 'package:tts_bandmate/features/finances/data/models/payments_due.dart';
 import 'package:tts_bandmate/features/finances/providers/finances_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tts_bandmate/features/finances/data/models/finance_booking.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tts_bandmate/features/bookings/data/bookings_cache_storage.dart';
 import 'package:tts_bandmate/features/dashboard/providers/dashboard_provider.dart';
@@ -48,6 +49,20 @@ class _FakeBandNotifier extends SelectedBandNotifier {
 
 class _CountingFinancesRepo implements FinancesRepository {
   int dueFetches = 0;
+  int unpaidFetches = 0;
+  int paidFetches = 0;
+
+  @override
+  Future<List<FinanceBooking>> fetchUnpaid(int bandId, {int? year}) async {
+    unpaidFetches++;
+    return const [];
+  }
+
+  @override
+  Future<List<FinanceBooking>> fetchPaid(int bandId, {int? year}) async {
+    paidFetches++;
+    return const [];
+  }
 
   @override
   Future<PaymentsDue> fetchDue(int bandId) async {
@@ -130,6 +145,38 @@ void main() {
     await container.read(paymentsDueProvider(7).future);
 
     expect(repo.dueFetches, 2);
+  });
+
+  test('onBookingDetailChanged refetches the Finances paid and unpaid lists',
+      () async {
+    final repo = _CountingFinancesRepo();
+    SharedPreferences.setMockInitialValues({});
+    final container = ProviderContainer(overrides: [
+      bookingsCacheStorageProvider.overrideWithValue(_RecordingCache()),
+      dashboardProvider.overrideWith(_NoopDashboardNotifier.new),
+      apiCacheStorageProvider.overrideWithValue(
+          ApiCacheStorage(await SharedPreferences.getInstance())),
+      selectedBandProvider.overrideWith(_FakeBandNotifier.new),
+      connectivityProvider.overrideWithValue(const AsyncValue.data(true)),
+      financesRepositoryProvider.overrideWithValue(repo),
+    ]);
+    addTearDown(container.dispose);
+    await container.read(selectedBandProvider.future);
+    const params = FinancesParams(bandId: 7, year: 2026);
+    container.listen(unpaidServicesProvider(params), (_, __) {});
+    container.listen(paidServicesProvider(params), (_, __) {});
+    await container.read(unpaidServicesProvider(params).future);
+    await container.read(paidServicesProvider(params).future);
+    expect((repo.unpaidFetches, repo.paidFetches), (1, 1));
+
+    // A write-off (or payment) moves a booking between these lists.
+    container
+        .read(cacheInvalidatorProvider)
+        .onBookingDetailChanged(bandId: 7, bookingId: 42);
+    await container.read(unpaidServicesProvider(params).future);
+    await container.read(paidServicesProvider(params).future);
+
+    expect((repo.unpaidFetches, repo.paidFetches), (2, 2));
   });
 
   test('onQuestionnaireAppliedToEvents drops every event of the band only',

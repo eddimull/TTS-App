@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:tts_bandmate/features/bookings/data/models/balance_write_off.dart';
 import 'package:tts_bandmate/features/bookings/data/models/booking_contract.dart';
 import 'package:tts_bandmate/features/bookings/data/models/booking_detail.dart';
@@ -254,6 +255,24 @@ void main() {
       expect(find.text('−\$50.00'), findsOneWidget);
       expect(find.text('Nov 12, 2026 by Eddie · Short on the final check'), findsOneWidget);
     });
+  });
+
+  testWidgets('dates the write-off on the local day, not the UTC one',
+      (tester) async {
+    const at = '2026-11-13T01:00:00Z';
+    await _pump(
+      tester,
+      WriteOffFinanceRow(
+        booking: _booking(
+          amountDue: '0.00',
+          isPaid: true,
+          writeOff: const BalanceWriteOff(amount: '50.00', at: at),
+        ),
+      ),
+    );
+
+    final local = DateFormat('MMM d, yyyy').format(DateTime.parse(at).toLocal());
+    expect(find.text(local), findsOneWidget);
   });
 
   group('BalanceWriteOff.tryFromJson', () {

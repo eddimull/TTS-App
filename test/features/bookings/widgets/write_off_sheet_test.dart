@@ -7,8 +7,9 @@ import 'package:tts_bandmate/features/bookings/data/models/booking_detail.dart';
 import 'package:tts_bandmate/features/bookings/widgets/write_off_sheet.dart';
 
 class _FakeRepo extends BookingsRepository {
-  _FakeRepo() : super(Dio());
+  _FakeRepo({this.error}) : super(Dio());
 
+  final Object? error;
   int calls = 0;
   bool? notifyClient;
   String? note;
@@ -21,6 +22,7 @@ class _FakeRepo extends BookingsRepository {
     String? note,
   }) async {
     calls++;
+    if (error != null) throw error!;
     this.notifyClient = notifyClient;
     this.note = note;
     return {'amount_due': '0.00', 'is_paid': true};
@@ -42,8 +44,12 @@ const _booking = BookingDetail(
   amountDue: '50.00',
 );
 
-Future<_FakeRepo> _pump(WidgetTester tester, {VoidCallback? onSaved}) async {
-  final repo = _FakeRepo();
+Future<_FakeRepo> _pump(
+  WidgetTester tester, {
+  VoidCallback? onSaved,
+  Object? error,
+}) async {
+  final repo = _FakeRepo(error: error);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [bookingsRepositoryProvider.overrideWithValue(repo)],
@@ -98,5 +104,39 @@ void main() {
     await tester.pump();
 
     expect(repo.notifyClient, isTrue);
+  });
+
+  testWidgets('shows the backend reason when the write-off is rejected',
+      (tester) async {
+    final options = RequestOptions(path: '/write-off');
+    var saved = false;
+    await _pump(
+      tester,
+      onSaved: () => saved = true,
+      error: DioException(
+        requestOptions: options,
+        type: DioExceptionType.badResponse,
+        response: Response(
+          requestOptions: options,
+          statusCode: 422,
+          data: {'message': 'Nothing is owed on this booking.'},
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Write Off'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nothing is owed on this booking.'), findsOneWidget);
+    expect(saved, isFalse);
+  });
+
+  testWidgets('announces the switch as Notify client', (tester) async {
+    final handle = tester.ensureSemantics();
+    await _pump(tester);
+
+    final node = tester.getSemantics(find.byType(CupertinoSwitch));
+    expect(node.label, contains('Notify client'));
+    handle.dispose();
   });
 }

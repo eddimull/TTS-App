@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:tts_bandmate/core/theme/context_colors.dart';
+import 'package:tts_bandmate/shared/widgets/error_view.dart';
 
 import '../data/models/booking_detail.dart';
 import '../data/bookings_repository.dart';
@@ -58,7 +59,7 @@ class _WriteOffSheetState extends ConsumerState<WriteOffSheet> {
         context: context,
         builder: (dialogContext) => CupertinoAlertDialog(
           title: const Text('Couldn’t Write Off'),
-          content: Text(e.toString()),
+          content: Text(ErrorView.friendlyMessage(e)),
           actions: [
             CupertinoDialogAction(
               onPressed: () => Navigator.pop(dialogContext),
@@ -74,14 +75,17 @@ class _WriteOffSheetState extends ConsumerState<WriteOffSheet> {
   Widget build(BuildContext context) {
     final secondary = context.secondaryText;
     return Container(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       decoration: BoxDecoration(
         color: CupertinoColors.systemBackground.resolveFrom(context),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
+        // Scrolls once the keyboard leaves too little room (landscape, large
+        // text), so the Write Off button stays reachable.
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -100,7 +104,8 @@ class _WriteOffSheetState extends ConsumerState<WriteOffSheet> {
               const SizedBox(height: 16),
               Text(
                 'Write Off $_owed',
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                style:
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
               Text(
@@ -116,37 +121,42 @@ class _WriteOffSheetState extends ConsumerState<WriteOffSheet> {
                 padding: const EdgeInsets.all(12),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Notify client', style: TextStyle(fontSize: 15)),
-                        const SizedBox(height: 2),
-                        Text(
-                          _notifyClient
-                              ? 'Emails the contacts that nothing more is owed.'
-                              : 'The client isn’t told. Their portal shows nothing due.',
-                          style: TextStyle(fontSize: 13, color: secondary),
-                        ),
-                      ],
+              // Merged so screen readers announce the switch as "Notify client".
+              MergeSemantics(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Notify client',
+                              style: TextStyle(fontSize: 15)),
+                          const SizedBox(height: 2),
+                          Text(
+                            _notifyClient
+                                ? 'Emails the contacts that nothing more is owed.'
+                                : 'The client isn’t told. Their portal shows nothing due.',
+                            style: TextStyle(fontSize: 13, color: secondary),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  CupertinoSwitch(
-                    value: _notifyClient,
-                    onChanged: _saving
-                        ? null
-                        : (v) => setState(() => _notifyClient = v),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    CupertinoSwitch(
+                      value: _notifyClient,
+                      onChanged: _saving
+                          ? null
+                          : (v) => setState(() => _notifyClient = v),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 20),
               CupertinoButton.filled(
                 onPressed: _saving ? null : _save,
                 child: _saving
-                    ? const CupertinoActivityIndicator(color: CupertinoColors.white)
+                    ? const CupertinoActivityIndicator(
+                        color: CupertinoColors.white)
                     : const Text('Write Off'),
               ),
             ],

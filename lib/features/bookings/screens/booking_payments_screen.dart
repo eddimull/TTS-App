@@ -149,12 +149,18 @@ class BookingPaymentsScreen extends ConsumerWidget {
 
   void _showWriteOff(
       BuildContext context, WidgetRef ref, BookingDetail booking) {
+    // Captured now: the sheet can finish after this screen is gone, when its
+    // WidgetRef is disposed but the caches still need refreshing.
+    final invalidator = ref.read(cacheInvalidatorProvider);
     showCupertinoModalPopup<void>(
       context: context,
       builder: (_) => WriteOffSheet(
         bandId: bandId,
         booking: booking,
-        onSaved: () => _invalidate(ref),
+        onSaved: () => invalidator.onBookingDetailChanged(
+          bandId: bandId,
+          bookingId: bookingId,
+        ),
       ),
     );
   }
@@ -179,18 +185,20 @@ class BookingPaymentsScreen extends ConsumerWidget {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !context.mounted) return;
 
+    final repo = ref.read(bookingsRepositoryProvider);
+    final invalidator = ref.read(cacheInvalidatorProvider);
     try {
-      await ref.read(bookingsRepositoryProvider).undoWriteOff(bandId, bookingId);
-      _invalidate(ref);
+      await repo.undoWriteOff(bandId, bookingId);
+      invalidator.onBookingDetailChanged(bandId: bandId, bookingId: bookingId);
     } catch (e) {
       if (context.mounted) {
         showCupertinoDialog<void>(
           context: context,
           builder: (dialogContext) => CupertinoAlertDialog(
-            title: const Text('Error'),
-            content: Text(e.toString()),
+            title: const Text('Couldn’t Undo'),
+            content: Text(ErrorView.friendlyMessage(e)),
             actions: [
               CupertinoDialogAction(
                 onPressed: () => Navigator.pop(dialogContext),

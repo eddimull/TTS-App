@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../../auth/data/models/band_summary.dart';
 import '../../../events/data/models/event_summary.dart';
 import '../../../lodging/data/models/lodging.dart';
+import 'balance_write_off.dart';
 import 'booking_contact.dart';
 import 'booking_contract.dart';
 import 'booking_payment.dart';
@@ -34,6 +35,7 @@ class BookingDetail {
     this.depositValue = '50.00',
     this.expectedDepositAmount,
     this.paymentDue,
+    this.writeOff,
     this.lodgings = const [],
   });
 
@@ -92,6 +94,10 @@ class BookingDetail {
   /// the booking is confirmed with a signed contract, on list payloads, and on
   /// older backends.
   final PaymentDueState? paymentDue;
+
+  /// Set when the band wrote off what was left of the balance. [amountDue]
+  /// and [isPaid] already account for it; [amountPaid] does not.
+  final BalanceWriteOff? writeOff;
 
   /// Lodging summaries visible to this viewer (backend gates per-viewer;
   /// missing/malformed payloads parse to empty).
@@ -168,6 +174,7 @@ class BookingDetail {
       depositValue: depositValue,
       expectedDepositAmount: expectedDepositAmount,
       paymentDue: PaymentDueState.tryFromJson(json['payment_due']),
+      writeOff: BalanceWriteOff.tryFromJson(json['write_off']),
       lodgings: lodgings,
     );
   }

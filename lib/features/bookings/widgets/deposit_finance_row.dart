@@ -12,6 +12,15 @@ String _formatDate(String iso) {
   return date == null ? iso : DateFormat('MMM d, yyyy').format(date);
 }
 
+/// Like [_formatDate], for an instant (with time zone) rather than a calendar
+/// date: shown on the viewer's local day, not the UTC one.
+String _formatTimestamp(String iso) {
+  final instant = DateTime.tryParse(iso);
+  return instant == null
+      ? iso
+      : DateFormat('MMM d, yyyy').format(instant.toLocal());
+}
+
 /// A label/value row with a smaller status line under the value.
 class _StatusRow extends StatelessWidget {
   const _StatusRow({
@@ -203,6 +212,36 @@ class BalanceFinanceRow extends StatelessWidget {
       label: label,
       value: value,
       status: '$prefix by ${_formatDate(balance.dueDate)}',
+    );
+  }
+}
+
+/// The "Written off" line of a booking's finance summary. Renders nothing
+/// unless the band wrote off the rest of the balance.
+class WriteOffFinanceRow extends StatelessWidget {
+  const WriteOffFinanceRow({super.key, required this.booking});
+
+  final BookingDetail booking;
+
+  @override
+  Widget build(BuildContext context) {
+    final writeOff = booking.writeOff;
+    if (writeOff == null) return const SizedBox.shrink();
+
+    final details = [
+      if (writeOff.at != null) _formatTimestamp(writeOff.at!),
+      if (writeOff.by != null && writeOff.by!.isNotEmpty) 'by ${writeOff.by}',
+    ].join(' ');
+    final status = [
+      if (details.isNotEmpty) details,
+      if (writeOff.note != null) writeOff.note!,
+    ].join(' · ');
+
+    return _StatusRow(
+      label: 'Written off',
+      value: '−${writeOff.displayAmount}',
+      valueColor: context.secondaryText,
+      status: status.isEmpty ? null : status,
     );
   }
 }

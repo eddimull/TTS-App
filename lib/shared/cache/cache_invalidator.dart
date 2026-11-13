@@ -137,6 +137,12 @@ class CacheInvalidator {
     _ref.invalidate(bookingDateStatusesProvider(bandId));
     // A payment or contract change moves what's due, and the menu dot with it.
     _ref.invalidate(paymentsDueProvider(bandId));
+    // Payments and write-offs also move the Finances lists and totals.
+    // Family roots: every (band, year) a screen has loaded.
+    _ref.invalidate(unpaidServicesProvider);
+    _ref.invalidate(paidServicesProvider);
+    _ref.invalidate(revenueProvider);
+    _ref.invalidate(trendsProvider);
     // Dashboard surfaces upcoming events/charts derived from band data.
     _ref.read(dashboardProvider.notifier).refresh();
   }

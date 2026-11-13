@@ -292,6 +292,31 @@ class BookingsRepository {
     return response.data as Map<String, dynamic>;
   }
 
+  /// Settles whatever is still owed without recording a payment. The client
+  /// hears about it only when [notifyClient] is true.
+  Future<Map<String, dynamic>> writeOffBalance(
+    int bandId,
+    int bookingId, {
+    required bool notifyClient,
+    String? note,
+  }) async {
+    final response = await _dio.post(
+      ApiEndpoints.mobileBookingWriteOff(bandId, bookingId),
+      data: {
+        'notify_client': notifyClient,
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Puts a written-off balance back on the books. Never notifies the client.
+  Future<Map<String, dynamic>> undoWriteOff(int bandId, int bookingId) async {
+    final response = await _dio.delete(
+        ApiEndpoints.mobileBookingWriteOff(bandId, bookingId));
+    return response.data as Map<String, dynamic>;
+  }
+
   Future<BookingDetail> uploadContract(
       int bandId, int bookingId, List<int> pdfBytes, String filename) async {
     final formData = FormData.fromMap({

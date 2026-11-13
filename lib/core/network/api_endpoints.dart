@@ -61,6 +61,8 @@ class ApiEndpoints {
       '/api/mobile/bands/$bandId/bookings/$bookingId/payments';
   static String mobileBookingPayment(int bandId, int bookingId, int paymentId) =>
       '/api/mobile/bands/$bandId/bookings/$bookingId/payments/$paymentId';
+  static String mobileBookingWriteOff(int bandId, int bookingId) =>
+      '/api/mobile/bands/$bandId/bookings/$bookingId/write-off';
   static String mobileBookingPayout(int bandId, int bookingId) =>
       '/api/mobile/bands/$bandId/bookings/$bookingId/payout';
   static String mobileBookingPayoutAdjustments(int bandId, int bookingId) =>

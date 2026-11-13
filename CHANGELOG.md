@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.32.0](https://github.com/eddimull/TTS-App/compare/v1.31.0...v1.32.0) (2026-11-13)
+
+
+### Features
+
+* **finances:** write off a booking's remaining balance ([acdc85f](https://github.com/eddimull/TTS-App/commit/acdc85f4660db3c3a6ea3ba2255ddf2a81ed8a9e))
+* **finances:** write off a booking's remaining balance ([76c2d85](https://github.com/eddimull/TTS-App/commit/76c2d85e02a78d312c4a3dd0d59aa2b73c2021b9))
+
+
+### Bug Fixes
+
+* **finances:** harden write-off sheet per review ([fa8fb15](https://github.com/eddimull/TTS-App/commit/fa8fb1568549cd5270c6d2eb00ba6e7825f5bacf))
+* **finances:** refresh Finances lists after payment changes; local write-off date ([c19e6eb](https://github.com/eddimull/TTS-App/commit/c19e6ebb35c560425f95be2e24e636d7932801e7))
+
 ## [1.31.0](https://github.com/eddimull/TTS-App/compare/v1.30.1...v1.31.0) (2026-11-05)
 
 

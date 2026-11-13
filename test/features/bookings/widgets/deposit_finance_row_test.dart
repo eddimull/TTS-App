@@ -253,7 +253,9 @@ void main() {
 
       expect(find.text('Written off'), findsOneWidget);
       expect(find.text('−\$50.00'), findsOneWidget);
-      expect(find.text('Nov 12, 2026 by Eddie · Short on the final check'), findsOneWidget);
+      final day = DateFormat('MMM d, yyyy')
+          .format(DateTime.parse('2026-11-12T15:00:00Z').toLocal());
+      expect(find.text('$day by Eddie · Short on the final check'), findsOneWidget);
     });
   });
 

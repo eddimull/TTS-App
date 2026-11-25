@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_endpoints.dart';
+import '../../setlist/data/models/client_notes.dart';
 import 'models/event_setlist.dart';
 import 'models/setlist_prompt_template.dart';
 
@@ -11,6 +12,7 @@ class SetlistEditorPayload {
     required this.bandSongs,
     required this.canWrite,
     this.clientRequests,
+    this.clientNotes,
   });
 
   final EventSetlist? setlist;
@@ -19,6 +21,10 @@ class SetlistEditorPayload {
 
   /// Client must-play / do-not-play picks; null when none were submitted.
   final ClientSongRequests? clientRequests;
+
+  /// The questionnaire's free text read by the AI (requests by title, which
+  /// may not be in the catalog); null until the booking's first parse.
+  final ClientNotes? clientNotes;
 }
 
 class RefineResult {
@@ -43,13 +49,18 @@ class SetlistEditorRepository {
         .toList();
 
     final requestsJson = data['client_requests'] as Map<String, dynamic>?;
+    final notesJson = data['client_notes'];
 
     return SetlistEditorPayload(
       setlist: setlistJson != null ? EventSetlist.fromJson(setlistJson) : null,
       bandSongs: songs,
       canWrite: data['can_write'] as bool? ?? false,
-      clientRequests:
-          requestsJson != null ? ClientSongRequests.fromJson(requestsJson) : null,
+      clientRequests: requestsJson != null
+          ? ClientSongRequests.fromJson(requestsJson)
+          : null,
+      clientNotes: notesJson is Map<String, dynamic>
+          ? ClientNotes.fromJson(notesJson)
+          : null,
     );
   }
 
@@ -142,6 +153,7 @@ class SetlistEditorRepository {
       .delete(ApiEndpoints.mobileBandSetlistPromptTemplate(bandId, templateId));
 }
 
-final setlistEditorRepositoryProvider = Provider<SetlistEditorRepository>((ref) {
+final setlistEditorRepositoryProvider =
+    Provider<SetlistEditorRepository>((ref) {
   return SetlistEditorRepository(ref.watch(apiClientProvider).dio);
 });

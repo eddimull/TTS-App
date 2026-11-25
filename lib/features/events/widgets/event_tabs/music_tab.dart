@@ -82,7 +82,9 @@ class MusicSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final songs = music?.songCount ?? event.performance?.songs.length ?? 0;
     final toLearn = music?.toLearn ?? const [];
-    final requests = music?.requestsSummary?.mustPlay.length ?? 0;
+    final summary = music?.requestsSummary;
+    final requests =
+        (summary?.mustPlay.length ?? 0) + (summary?.ifTime.length ?? 0);
     final sep = CupertinoColors.separator.resolveFrom(context);
 
     return Semantics(

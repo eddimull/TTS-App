@@ -1,28 +1,33 @@
+import '../../setlist/data/models/client_notes.dart';
 import '../../setlist_editor/data/models/event_setlist.dart';
 import 'client_requests_summary.dart';
 
 /// Everything the Music tab and Music page read from the event's setlist
-/// endpoint: the setlist, the band's catalog and the client's picks.
+/// endpoint: the setlist, the band's catalog, the client's picks and the
+/// requests the AI read from the questionnaire's free text.
 class EventMusic {
   const EventMusic({
     this.setlist,
     this.bandSongs = const [],
     this.requests,
+    this.clientNotes,
     this.canWrite = false,
   });
 
   final EventSetlist? setlist;
   final List<BandSongSummary> bandSongs;
   final ClientSongRequests? requests;
+  final ClientNotes? clientNotes;
   final bool canWrite;
 
-  /// The client's picks resolved to song names; null when there are none.
+  /// The client's song-picker picks and the free-text requests read from
+  /// the questionnaire, resolved to song names; null when there are none.
   ClientRequestsSummary? get requestsSummary =>
-      summarizeClientRequests(requests, bandSongs);
+      summarizeClientRequests(requests, bandSongs, notes: clientNotes);
 
   int get songCount => setlist?.songCount ?? 0;
 
-  /// Worth a Music tab: setlist songs or client picks.
+  /// Worth a Music tab: setlist songs or client requests.
   bool get hasContent => songCount > 0 || requestsSummary != null;
 
   List<SetlistEntry> get toLearn => songsToLearn(setlist);
@@ -68,16 +73,20 @@ List<SetlistSet> splitSets(EventSetlist setlist) {
   return sets;
 }
 
-/// How many must-play picks are already on the setlist.
-int mustPlaysOnSetlist(ClientSongRequests? requests, EventSetlist? setlist) {
-  if (requests == null || setlist == null) return 0;
-  final onSetlist = {
+/// How many of the summary's must-play songs are already on the setlist:
+/// by catalog id, or by title (ignoring case and punctuation) for typed-in
+/// setlist entries and requests the catalog doesn't have. Counts the same
+/// songs as [ClientRequestsSummary.mustPlay], so it never exceeds it.
+int mustPlaysOnSetlist(ClientRequestsSummary? summary, EventSetlist? setlist) {
+  if (summary == null || setlist == null) return 0;
+  final songs = [
     for (final e in setlist.songs)
-      if (e.songId != null) e.songId!
-  };
-  return requests.mustPlayIds
-      .where(
-          (id) => !requests.doNotPlayIds.contains(id) && onSetlist.contains(id))
+      if (!e.isBreak) e
+  ];
+  return summary.mustPlaySongs
+      .where((r) => songs.any((e) =>
+          (r.songId != null && e.songId == r.songId) ||
+          sameSongTitle(e.displayTitle, r.title)))
       .length;
 }
 

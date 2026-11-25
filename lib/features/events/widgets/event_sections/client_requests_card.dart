@@ -5,8 +5,8 @@ import 'package:tts_bandmate/core/theme/context_colors.dart';
 import '../../data/client_requests_summary.dart';
 import 'section_primitives.dart';
 
-/// The client's must-play / do-not-play picks from a submitted
-/// questionnaire. Each list shows its first few songs with a "Show all"
+/// The client's song requests from a submitted questionnaire: song-picker
+/// picks and songs written into its free-text answers. Each list shows its first few songs with a "Show all"
 /// toggle; the last row opens the setlist editor's Catalog view.
 class ClientRequestsCard extends StatefulWidget {
   const ClientRequestsCard({
@@ -25,8 +25,7 @@ class ClientRequestsCard extends StatefulWidget {
 }
 
 class _ClientRequestsCardState extends State<ClientRequestsCard> {
-  bool _mustExpanded = false;
-  bool _doNotExpanded = false;
+  final _expanded = <String>{};
 
   void _openCatalog() =>
       context.push('/events/${widget.eventKey}/setlist?view=catalog');
@@ -50,22 +49,21 @@ class _ClientRequestsCardState extends State<ClientRequestsCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (s.mustPlay.isNotEmpty)
+              for (final (i, list) in [
+                ('Must play', s.mustPlay),
+                ('If time', s.ifTime),
+                ('Do not play', s.doNotPlay),
+                ('Client wishes', s.guidelines),
+              ].where((l) => l.$2.isNotEmpty).indexed) ...[
+                if (i > 0) const SectionDivider(),
                 _PickList(
-                  label: 'Must play',
-                  songs: s.mustPlay,
-                  expanded: _mustExpanded,
-                  onShowAll: () => setState(() => _mustExpanded = true),
+                  label: list.$1,
+                  songs: list.$2,
+                  notInCatalog: s.notInCatalog,
+                  expanded: _expanded.contains(list.$1),
+                  onShowAll: () => setState(() => _expanded.add(list.$1)),
                 ),
-              if (s.mustPlay.isNotEmpty && s.doNotPlay.isNotEmpty)
-                const SectionDivider(),
-              if (s.doNotPlay.isNotEmpty)
-                _PickList(
-                  label: 'Do not play',
-                  songs: s.doNotPlay,
-                  expanded: _doNotExpanded,
-                  onShowAll: () => setState(() => _doNotExpanded = true),
-                ),
+              ],
               const SectionDivider(),
               Semantics(
                 button: true,
@@ -102,20 +100,23 @@ class _PickList extends StatelessWidget {
   const _PickList({
     required this.label,
     required this.songs,
+    this.notInCatalog = const {},
     required this.expanded,
     required this.onShowAll,
   });
 
   final String label;
   final List<String> songs;
+
+  /// Entries to mark "Not in catalog".
+  final Set<String> notInCatalog;
   final bool expanded;
   final VoidCallback onShowAll;
 
   @override
   Widget build(BuildContext context) {
-    final shown = expanded
-        ? songs
-        : songs.take(ClientRequestsCard.previewCount).toList();
+    final shown =
+        expanded ? songs : songs.take(ClientRequestsCard.previewCount).toList();
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
@@ -132,7 +133,20 @@ class _PickList extends StatelessWidget {
           for (final song in shown)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Text(song, style: const TextStyle(fontSize: 15)),
+              child: Text.rich(TextSpan(
+                text: song,
+                style: const TextStyle(fontSize: 15),
+                children: [
+                  if (notInCatalog.contains(song))
+                    TextSpan(
+                      text: '  Not in catalog',
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: CupertinoColors.systemOrange
+                              .resolveFrom(context)),
+                    ),
+                ],
+              )),
             ),
           if (shown.length < songs.length)
             CupertinoButton(

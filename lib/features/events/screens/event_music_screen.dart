@@ -141,7 +141,7 @@ class _EventMusicScreenState extends ConsumerState<EventMusicScreen> {
             if (requests.mustPlay.isNotEmpty && setlist != null) ...[
               const SizedBox(height: 6),
               Text(
-                '${mustPlaysOnSetlist(music!.requests, setlist, notes: music.clientNotes)} of the '
+                '${mustPlaysOnSetlist(requests, setlist)} of the '
                 '${requests.mustPlay.length} must-plays are on the setlist.',
                 style: TextStyle(fontSize: 13, color: context.secondaryText),
               ),

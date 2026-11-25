@@ -8,6 +8,7 @@ class ClientRequestsSummary {
   const ClientRequestsSummary({
     required this.mustPlay,
     required this.doNotPlay,
+    this.mustPlaySongs = const [],
     this.ifTime = const [],
     this.guidelines = const [],
     this.notInCatalog = const {},
@@ -17,6 +18,9 @@ class ClientRequestsSummary {
   /// "Title · Artist" labels, sorted by title.
   final List<String> mustPlay;
   final List<String> doNotPlay;
+
+  /// The songs behind [mustPlay], in the same order.
+  final List<RequestedSong> mustPlaySongs;
   final List<String> ifTime;
 
   /// Blanket wishes from the free text ("No slow songs", "No Taylor Swift").
@@ -49,23 +53,24 @@ ClientRequestsSummary? summarizeClientRequests(
   if (requests == null && notes == null) return null;
   final byId = {for (final s in bandSongs) s.id: s};
 
-  // Keyed by a normalized title so a pick and the same song typed into the
-  // free text count once.
-  final must = <String, _Song>{};
-  final ifTime = <String, _Song>{};
-  final doNot = <String, _Song>{};
+  // Catalog songs are keyed by id (two catalog songs can share a title);
+  // songs the catalog doesn't have, by normalized title, so the same song
+  // written twice counts once.
+  final must = <String, RequestedSong>{};
+  final ifTime = <String, RequestedSong>{};
+  final doNot = <String, RequestedSong>{};
 
-  void add(Map<String, _Song> into, String title, String? artist,
-          {bool offCatalog = false}) =>
-      into.putIfAbsent(_key(title), () => _Song(title, artist, offCatalog));
+  void addCatalog(Map<String, RequestedSong> into, BandSongSummary s) =>
+      into.putIfAbsent('id:${s.id}',
+          () => RequestedSong(title: s.title, artist: s.artist, songId: s.id));
 
   for (final id in requests?.mustPlayIds ?? const <int>{}) {
     final s = byId[id];
-    if (s != null) add(must, s.title, s.artist);
+    if (s != null) addCatalog(must, s);
   }
   for (final id in requests?.doNotPlayIds ?? const <int>{}) {
     final s = byId[id];
-    if (s != null) add(doNot, s.title, s.artist);
+    if (s != null) addCatalog(doNot, s);
   }
 
   for (final r in notes?.requests ?? const <ClientRequest>[]) {
@@ -80,9 +85,10 @@ ClientRequestsSummary? summarizeClientRequests(
     final song = (r.songId != null ? byId[r.songId] : null) ??
         findCatalogSong(r.title, bandSongs);
     if (song != null) {
-      add(into, song.title, song.artist);
+      addCatalog(into, song);
     } else {
-      add(into, r.title, r.artist, offCatalog: true);
+      into.putIfAbsent('title:${_key(r.title)}',
+          () => RequestedSong(title: r.title, artist: r.artist));
     }
   }
 
@@ -94,18 +100,21 @@ ClientRequestsSummary? summarizeClientRequests(
     ifTime.remove(k);
   }
 
-  List<_Song> sorted(Map<String, _Song> songs) => songs.values.toList()
+  List<RequestedSong> sorted(Map<String, RequestedSong> songs) => songs.values
+      .toList()
     ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
+  final mustSongs = sorted(must);
   final all = [...must.values, ...ifTime.values, ...doNot.values];
   final summary = ClientRequestsSummary(
-    mustPlay: [for (final s in sorted(must)) s.label],
+    mustPlay: [for (final s in mustSongs) s.label],
+    mustPlaySongs: mustSongs,
     ifTime: [for (final s in sorted(ifTime)) s.label],
     doNotPlay: [for (final s in sorted(doNot)) s.label],
     guidelines: notes?.rules ?? const [],
     notInCatalog: {
       for (final s in all)
-        if (s.offCatalog) s.label
+        if (s.songId == null) s.label
     },
     sourceName: requests?.sourceName,
   );
@@ -118,12 +127,15 @@ String _key(String title) => title
     .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
     .trim();
 
-class _Song {
-  const _Song(this.title, this.artist, this.offCatalog);
+/// One requested song: a catalog song ([songId] set) or one the catalog
+/// doesn't have.
+class RequestedSong {
+  const RequestedSong({required this.title, this.artist, this.songId});
   final String title;
   final String? artist;
-  final bool offCatalog;
+  final int? songId;
 
+  /// "Title · Artist", or the title alone.
   String get label =>
       (artist?.isNotEmpty ?? false) ? '$title · $artist' : title;
 }

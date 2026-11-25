@@ -96,4 +96,15 @@ void main() {
           isNull);
     });
   });
+
+  test('catalog songs sharing a title stay separate', () {
+    const songs = [
+      BandSongSummary(id: 1, title: 'Hello', artist: 'Adele'),
+      BandSongSummary(id: 2, title: 'Hello', artist: 'Lionel Richie'),
+    ];
+    const r = ClientSongRequests(mustPlayIds: {1}, doNotPlayIds: {2});
+    final s = summarizeClientRequests(r, songs)!;
+    expect(s.mustPlay, ['Hello · Adele']);
+    expect(s.doNotPlay, ['Hello · Lionel Richie']);
+  });
 }

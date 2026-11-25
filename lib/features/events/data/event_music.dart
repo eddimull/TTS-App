@@ -73,39 +73,21 @@ List<SetlistSet> splitSets(EventSetlist setlist) {
   return sets;
 }
 
-/// How many must-play requests are already on the setlist: picks by catalog
-/// id, free-text requests (when [notes] is given) by id or title.
-int mustPlaysOnSetlist(
-  ClientSongRequests? requests,
-  EventSetlist? setlist, {
-  ClientNotes? notes,
-}) {
-  if (setlist == null) return 0;
-  final doNotPlay = {
-    ...?requests?.doNotPlayIds,
-    ...?notes?.idsOf({ClientRequestKind.doNotPlay}),
-  };
-  final onSetlist = {
+/// How many of the summary's must-play songs are already on the setlist:
+/// by catalog id, or by title (ignoring case and punctuation) for typed-in
+/// setlist entries and requests the catalog doesn't have. Counts the same
+/// songs as [ClientRequestsSummary.mustPlay], so it never exceeds it.
+int mustPlaysOnSetlist(ClientRequestsSummary? summary, EventSetlist? setlist) {
+  if (summary == null || setlist == null) return 0;
+  final songs = [
     for (final e in setlist.songs)
-      if (e.songId != null) e.songId!
-  };
-  final titles = [
-    for (final e in setlist.songs)
-      if (!e.isBreak) e.displayTitle
+      if (!e.isBreak) e
   ];
-  final ids = {...?requests?.mustPlayIds}..removeAll(doNotPlay);
-  var count = ids.where(onSetlist.contains).length;
-  for (final r in notes?.requests ?? const <ClientRequest>[]) {
-    if (r.kind != ClientRequestKind.mustPlay) continue;
-    if (r.songId != null) {
-      // Counted above when it was also picked.
-      if (ids.contains(r.songId) || doNotPlay.contains(r.songId)) continue;
-      if (onSetlist.contains(r.songId)) count++;
-    } else if (titles.any((t) => sameSongTitle(t, r.title))) {
-      count++;
-    }
-  }
-  return count;
+  return summary.mustPlaySongs
+      .where((r) => songs.any((e) =>
+          (r.songId != null && e.songId == r.songId) ||
+          sameSongTitle(e.displayTitle, r.title)))
+      .length;
 }
 
 String _norm(String s) => s

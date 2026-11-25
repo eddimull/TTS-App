@@ -1,28 +1,33 @@
+import '../../setlist/data/models/client_notes.dart';
 import '../../setlist_editor/data/models/event_setlist.dart';
 import 'client_requests_summary.dart';
 
 /// Everything the Music tab and Music page read from the event's setlist
-/// endpoint: the setlist, the band's catalog and the client's picks.
+/// endpoint: the setlist, the band's catalog, the client's picks and the
+/// requests the AI read from the questionnaire's free text.
 class EventMusic {
   const EventMusic({
     this.setlist,
     this.bandSongs = const [],
     this.requests,
+    this.clientNotes,
     this.canWrite = false,
   });
 
   final EventSetlist? setlist;
   final List<BandSongSummary> bandSongs;
   final ClientSongRequests? requests;
+  final ClientNotes? clientNotes;
   final bool canWrite;
 
-  /// The client's picks resolved to song names; null when there are none.
+  /// The client's song-picker picks and the free-text requests read from
+  /// the questionnaire, resolved to song names; null when there are none.
   ClientRequestsSummary? get requestsSummary =>
-      summarizeClientRequests(requests, bandSongs);
+      summarizeClientRequests(requests, bandSongs, notes: clientNotes);
 
   int get songCount => setlist?.songCount ?? 0;
 
-  /// Worth a Music tab: setlist songs or client picks.
+  /// Worth a Music tab: setlist songs or client requests.
   bool get hasContent => songCount > 0 || requestsSummary != null;
 
   List<SetlistEntry> get toLearn => songsToLearn(setlist);
@@ -68,17 +73,39 @@ List<SetlistSet> splitSets(EventSetlist setlist) {
   return sets;
 }
 
-/// How many must-play picks are already on the setlist.
-int mustPlaysOnSetlist(ClientSongRequests? requests, EventSetlist? setlist) {
-  if (requests == null || setlist == null) return 0;
+/// How many must-play requests are already on the setlist: picks by catalog
+/// id, free-text requests (when [notes] is given) by id or title.
+int mustPlaysOnSetlist(
+  ClientSongRequests? requests,
+  EventSetlist? setlist, {
+  ClientNotes? notes,
+}) {
+  if (setlist == null) return 0;
+  final doNotPlay = {
+    ...?requests?.doNotPlayIds,
+    ...?notes?.idsOf({ClientRequestKind.doNotPlay}),
+  };
   final onSetlist = {
     for (final e in setlist.songs)
       if (e.songId != null) e.songId!
   };
-  return requests.mustPlayIds
-      .where(
-          (id) => !requests.doNotPlayIds.contains(id) && onSetlist.contains(id))
-      .length;
+  final titles = [
+    for (final e in setlist.songs)
+      if (!e.isBreak) e.displayTitle
+  ];
+  final ids = {...?requests?.mustPlayIds}..removeAll(doNotPlay);
+  var count = ids.where(onSetlist.contains).length;
+  for (final r in notes?.requests ?? const <ClientRequest>[]) {
+    if (r.kind != ClientRequestKind.mustPlay) continue;
+    if (r.songId != null) {
+      // Counted above when it was also picked.
+      if (ids.contains(r.songId) || doNotPlay.contains(r.songId)) continue;
+      if (onSetlist.contains(r.songId)) count++;
+    } else if (titles.any((t) => sameSongTitle(t, r.title))) {
+      count++;
+    }
+  }
+  return count;
 }
 
 String _norm(String s) => s

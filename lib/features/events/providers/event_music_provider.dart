@@ -21,6 +21,7 @@ final eventMusicProvider =
       setlist: p.setlist,
       bandSongs: p.bandSongs,
       requests: p.clientRequests,
+      clientNotes: p.clientNotes,
       canWrite: p.canWrite,
     );
   } catch (_) {

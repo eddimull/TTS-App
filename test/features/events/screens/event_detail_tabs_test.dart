@@ -8,6 +8,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tts_bandmate/features/setlist/data/models/client_notes.dart';
 import 'package:tts_bandmate/features/chat/data/chat_repository.dart';
 import 'package:tts_bandmate/features/chat/data/models/conversation.dart';
 import 'package:tts_bandmate/features/chat/providers/topic_thread_provider.dart';
@@ -451,6 +452,24 @@ void main() {
       expect(find.text('Third New'), findsNothing);
       expect(find.text('+ 1 more'), findsOneWidget);
       expect(find.text('Open music'), findsOneWidget);
+    });
+
+    testWidgets('free-text requests count with the picks', (tester) async {
+      await _pump(tester, _event(music: true),
+          music: const EventMusic(
+            bandSongs: [BandSongSummary(id: 1, title: 'Song 1')],
+            requests: ClientSongRequests(mustPlayIds: {1}, doNotPlayIds: {}),
+            clientNotes: ClientNotes(requests: [
+              ClientRequest(
+                  title: 'Atomic Dog', kind: ClientRequestKind.mustPlay),
+              ClientRequest(
+                  title: 'Dance No More', kind: ClientRequestKind.ifTime),
+              ClientRequest(
+                  title: 'Wagon Wheel', kind: ClientRequestKind.doNotPlay),
+            ]),
+          ),
+          prefs: {'event_last_tab': 'music'});
+      expect(find.text('3'), findsOneWidget); // requests
     });
 
     testWidgets('picks alone show the Music tab', (tester) async {

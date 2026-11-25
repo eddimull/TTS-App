@@ -11,7 +11,8 @@ class _FakeAdapter implements HttpClientAdapter {
   final Future<ResponseBody> Function(RequestOptions) responder;
 
   @override
-  Future<ResponseBody> fetch(RequestOptions options, _, __) => responder(options);
+  Future<ResponseBody> fetch(RequestOptions options, _, __) =>
+      responder(options);
 
   @override
   void close({bool force = false}) {}
@@ -54,6 +55,17 @@ void main() {
           'do_not_play': [],
           'source': {'instance_id': 1, 'name': 'Q', 'submitted_at': null},
         },
+        'client_notes': {
+          'requests': [
+            {
+              'title': 'Atomic Dog',
+              'artist': 'George Clinton',
+              'song_id': null,
+              'kind': 'must_play',
+            },
+          ],
+          'rules': ['No Taylor Swift'],
+        },
       });
     });
 
@@ -65,6 +77,8 @@ void main() {
     expect(result.canWrite, true);
     expect(result.clientRequests?.mustPlayIds, {10});
     expect(result.clientRequests?.sourceName, 'Q');
+    expect(result.clientNotes?.requests.single.title, 'Atomic Dog');
+    expect(result.clientNotes?.rules, ['No Taylor Swift']);
   });
 
   test('getSetlist handles null setlist', () async {
@@ -84,6 +98,7 @@ void main() {
     expect(result.bandSongs, isEmpty);
     expect(result.canWrite, false);
     expect(result.clientRequests, isNull);
+    expect(result.clientNotes, isNull);
   });
 
   test('updateSetlist serialises entries correctly', () async {
@@ -101,10 +116,13 @@ void main() {
     });
 
     final repo = SetlistEditorRepository(dio);
-    final result = await repo.updateSetlist('abc', [
-      const SetlistEntry(type: 'song', position: 1, songId: 5),
-      const SetlistEntry(type: 'break', position: 2),
-    ], status: 'ready');
+    final result = await repo.updateSetlist(
+        'abc',
+        [
+          const SetlistEntry(type: 'song', position: 1, songId: 5),
+          const SetlistEntry(type: 'break', position: 2),
+        ],
+        status: 'ready');
 
     expect(capturedBody!['status'], 'ready');
     expect((capturedBody!['songs'] as List).length, 2);
@@ -224,7 +242,8 @@ void main() {
     });
 
     final repo = SetlistEditorRepository(dio);
-    final tpl = await repo.createPromptTemplate(3, name: 'Corporate', prompt: 'Tasteful');
+    final tpl = await repo.createPromptTemplate(3,
+        name: 'Corporate', prompt: 'Tasteful');
 
     expect(capturedBody!['name'], 'Corporate');
     expect(tpl.id, 7);

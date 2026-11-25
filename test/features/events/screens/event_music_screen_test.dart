@@ -13,6 +13,7 @@ import 'package:tts_bandmate/features/library/providers/library_provider.dart';
 import 'package:tts_bandmate/features/rehearsals/data/models/rehearsal_detail.dart';
 import 'package:tts_bandmate/features/rehearsals/data/models/rehearsal_schedule.dart';
 import 'package:tts_bandmate/features/rehearsals/data/rehearsals_repository.dart';
+import 'package:tts_bandmate/features/setlist/data/models/client_notes.dart';
 import 'package:tts_bandmate/features/setlist_editor/data/models/event_setlist.dart';
 import 'package:tts_bandmate/shared/providers/selected_band_provider.dart';
 
@@ -135,6 +136,7 @@ class _FakeRehearsals extends RehearsalsRepository {
 
 Future<_FakeRehearsals> _pump(
   WidgetTester tester, {
+  EventMusic? music,
   List<Map<String, dynamic>> rehearsals = const [
     {'id': 5, 'date': '2026-11-03', 'time': '19:00'},
   ],
@@ -146,7 +148,7 @@ Future<_FakeRehearsals> _pump(
   await tester.pumpWidget(ProviderScope(
     overrides: [
       eventDetailProvider(_key).overrideWith(_FakeDetail.new),
-      eventMusicProvider.overrideWith((ref, key) async => _music),
+      eventMusicProvider.overrideWith((ref, key) async => music ?? _music),
       selectedBandProvider.overrideWith(_FakeBand.new),
       rehearsalsRepositoryProvider.overrideWithValue(repo),
       libraryProvider.overrideWith(_FakeLibrary.new),
@@ -273,6 +275,44 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Not in our catalog'), findsWidgets);
       expect(find.text('No chart or recording yet'), findsOneWidget);
+    });
+  });
+
+  testWidgets('free-text requests show in the Requests card', (tester) async {
+    await withClock(Clock.fixed(now), () async {
+      await _pump(tester,
+          music: EventMusic(
+            bandSongs: _music.bandSongs,
+            requests: _music.requests,
+            setlist: _music.setlist,
+            clientNotes: const ClientNotes(
+              requests: [
+                ClientRequest(
+                    title: 'Atomic Dog',
+                    artist: 'George Clinton',
+                    kind: ClientRequestKind.mustPlay),
+                ClientRequest(
+                    title: 'Boogie Wonderland',
+                    kind: ClientRequestKind.mustPlay),
+                ClientRequest(
+                    title: 'Wagon Wheel', kind: ClientRequestKind.doNotPlay),
+              ],
+              rules: ['No Taylor Swift'],
+            ),
+          ));
+      expect(find.text('Must play (3)'), findsOneWidget);
+      expect(find.text('Do not play (1)'), findsOneWidget);
+      expect(find.text('Client wishes (1)'), findsOneWidget);
+      expect(find.text('No Taylor Swift'), findsOneWidget);
+      expect(
+          find.text('Atomic Dog · George Clinton  Not in catalog',
+              findRichText: true),
+          findsOneWidget);
+      expect(find.text('Wagon Wheel  Not in catalog', findRichText: true),
+          findsOneWidget);
+      // September by id, Boogie Wonderland by title.
+      expect(find.text('2 of the 3 must-plays are on the setlist.'),
+          findsOneWidget);
     });
   });
 }

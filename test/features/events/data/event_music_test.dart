@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tts_bandmate/features/events/data/event_music.dart';
 import 'package:tts_bandmate/features/events/data/rehearsal_prep.dart';
 import 'package:tts_bandmate/features/rehearsals/data/models/rehearsal_schedule.dart';
+import 'package:tts_bandmate/features/setlist/data/models/client_notes.dart';
 import 'package:tts_bandmate/features/setlist_editor/data/models/event_setlist.dart';
 
 SetlistEntry _song(int pos, {int? id, String? title, String? custom}) =>
@@ -210,5 +211,33 @@ void main() {
     }
     expect(isPlaceholderSong('Forever and Ever, Amen'), isFalse);
     expect(isPlaceholderSong('Nonesuch'), isFalse);
+  });
+
+  test('mustPlaysOnSetlist counts free-text must-plays by id or title', () {
+    const requests = ClientSongRequests(mustPlayIds: {1}, doNotPlayIds: {});
+    final setlist = EventSetlist(id: 1, status: 'draft', songs: [
+      _song(1, id: 1, title: 'September'),
+      _song(2, id: 2, title: 'Casanova'),
+      _song(3, custom: 'Atomic Dog'),
+    ]);
+    const notes = ClientNotes(requests: [
+      ClientRequest(
+          title: 'September', kind: ClientRequestKind.mustPlay, songId: 1),
+      ClientRequest(
+          title: 'Casanova', kind: ClientRequestKind.mustPlay, songId: 2),
+      ClientRequest(title: 'atomic dog', kind: ClientRequestKind.mustPlay),
+      ClientRequest(title: 'Baby Got Back', kind: ClientRequestKind.mustPlay),
+    ]);
+    expect(mustPlaysOnSetlist(requests, setlist, notes: notes), 3);
+  });
+
+  test('free-text requests alone give the event music content', () {
+    const music = EventMusic(
+      clientNotes: ClientNotes(requests: [
+        ClientRequest(title: 'Atomic Dog', kind: ClientRequestKind.mustPlay),
+      ]),
+    );
+    expect(music.hasContent, isTrue);
+    expect(music.requestsSummary?.mustPlay, ['Atomic Dog']);
   });
 }
